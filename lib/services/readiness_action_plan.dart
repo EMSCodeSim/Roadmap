@@ -29,6 +29,11 @@ class ReadinessActionItem {
   Requirement get requirement => roadmapRequirement.requirement;
 }
 
+typedef ReadinessActivityResolver = RequirementActivityStatus Function(
+  String goalId,
+  String requirementId,
+);
+
 /// Converts the existing readiness snapshot into a small, ordered action plan.
 ///
 /// This does not recalculate roadmap priority. The snapshot/roadmap remain the
@@ -49,16 +54,34 @@ class CareerReadinessActionPlan {
       return const CareerReadinessActionPlan(items: []);
     }
 
+    return CareerReadinessActionPlan.fromRoadmap(
+      roadmap,
+      maxItems: maxItems,
+      activityResolver: (goalId, requirementId) => state.activityStatusFor(
+        goalId: goalId,
+        requirementId: requirementId,
+      ),
+    );
+  }
+
+  /// Builds an action plan directly from a roadmap.
+  ///
+  /// This is useful for isolated UI/tests and keeps presentation code from
+  /// depending on the entire AppState object. If no resolver is provided,
+  /// requirements are treated as not started.
+  factory CareerReadinessActionPlan.fromRoadmap(
+    Roadmap roadmap, {
+    int maxItems = 5,
+    ReadinessActivityResolver? activityResolver,
+  }) {
     final snapshot = CareerReadinessSnapshot.fromRoadmap(roadmap);
     final ordered = snapshot.majorGaps;
     final result = <ReadinessActionItem>[];
 
     for (final gap in ordered.take(maxItems)) {
       final r = gap.requirement;
-      final activity = state.activityStatusFor(
-        goalId: roadmap.goal.id,
-        requirementId: r.id,
-      );
+      final activity = activityResolver?.call(roadmap.goal.id, r.id) ??
+          RequirementActivityStatus.notStarted;
 
       final action = _actionFor(r, activity);
       result.add(
