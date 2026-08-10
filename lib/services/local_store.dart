@@ -9,6 +9,7 @@ class LocalStore {
   static const String _kCertifications = 'fireops.certifications';
   static const String _kCustomRequirements = 'fireops.customRequirements';
   static const String _kPathOverrides = 'fireops.pathOverrides';
+  static const String _kCertMatchConfirmations = 'fireops.certMatchConfirmations';
 
   Future<bool> getOnboardingComplete() async {
     try {
@@ -80,4 +81,11 @@ class LocalStore {
 
   Future<List<Map<String, dynamic>>> loadPathOverrides() => loadJsonList(_kPathOverrides);
   Future<void> savePathOverrides(List<Map<String, dynamic>> json) => saveJson(_kPathOverrides, json);
+
+  /// Stores user-confirmed mappings for uncertain certification matches.
+  ///
+  /// Map key: normalized user-entered certification text
+  /// Map value: certificationDefinitionId OR empty string meaning "no match"
+  Future<Map<String, dynamic>> loadCertificationMatchConfirmations() async => (await loadJsonMap(_kCertMatchConfirmations)) ?? <String, dynamic>{};
+  Future<void> saveCertificationMatchConfirmations(Map<String, dynamic> json) => saveJson(_kCertMatchConfirmations, json);
 }

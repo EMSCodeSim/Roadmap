@@ -73,6 +73,7 @@ class PathRequirementOverride {
   final DateTime? suggestedStartDate;
   final DateTime? suggestedCompletionDate;
   final bool removedFromTimeline;
+  final List<ResourceLink> userResourceLinks;
 
   const PathRequirementOverride({
     required this.goalId,
@@ -90,6 +91,7 @@ class PathRequirementOverride {
     required this.suggestedStartDate,
     required this.suggestedCompletionDate,
     required this.removedFromTimeline,
+    this.userResourceLinks = const <ResourceLink>[],
   });
 
   PathRequirementOverride copyWith({
@@ -108,6 +110,7 @@ class PathRequirementOverride {
     DateTime? suggestedCompletionDate,
     bool? removedFromTimeline,
     bool clearSuggestedDates = false,
+    List<ResourceLink>? userResourceLinks,
   }) {
     return PathRequirementOverride(
       goalId: goalId,
@@ -125,6 +128,7 @@ class PathRequirementOverride {
       suggestedStartDate: clearSuggestedDates ? null : (suggestedStartDate ?? this.suggestedStartDate),
       suggestedCompletionDate: clearSuggestedDates ? null : (suggestedCompletionDate ?? this.suggestedCompletionDate),
       removedFromTimeline: removedFromTimeline ?? this.removedFromTimeline,
+      userResourceLinks: userResourceLinks ?? this.userResourceLinks,
     );
   }
 
@@ -144,6 +148,7 @@ class PathRequirementOverride {
     'suggestedStartDate': suggestedStartDate?.toIso8601String(),
     'suggestedCompletionDate': suggestedCompletionDate?.toIso8601String(),
     'removedFromTimeline': removedFromTimeline,
+    'userResourceLinks': userResourceLinks.map((e) => e.toJson()).toList(),
   };
 
   factory PathRequirementOverride.fromJson(Map<String, dynamic> json) {
@@ -163,6 +168,17 @@ class PathRequirementOverride {
 
     DateTime? _dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
 
+    List<ResourceLink> _links(dynamic v) {
+      if (v is! List) return const <ResourceLink>[];
+      return v.whereType<Map>().map((e) {
+        try {
+          return ResourceLink.fromJson(Map<String, dynamic>.from(e));
+        } catch (_) {
+          return null;
+        }
+      }).whereType<ResourceLink>().toList();
+    }
+
     return PathRequirementOverride(
       goalId: (json['goalId'] as String?) ?? '',
       requirementId: (json['requirementId'] as String?) ?? '',
@@ -179,6 +195,7 @@ class PathRequirementOverride {
       suggestedStartDate: _dt(json['suggestedStartDate']),
       suggestedCompletionDate: _dt(json['suggestedCompletionDate']),
       removedFromTimeline: (json['removedFromTimeline'] as bool?) ?? false,
+      userResourceLinks: _links(json['userResourceLinks']),
     );
   }
 }
@@ -272,8 +289,21 @@ class Roadmap {
   }
 }
 
+class PendingCertMatch {
+  final String certId;
+  final String userText;
+  final String suggestedDefinitionId;
+
+  const PendingCertMatch({required this.certId, required this.userText, required this.suggestedDefinitionId});
+}
+
 class AppState extends ChangeNotifier {
   final LocalStore _store = LocalStore();
+
+  Map<String, String> _certMatchConfirmations = <String, String>{};
+  final List<PendingCertMatch> _pendingCertMatches = <PendingCertMatch>[];
+
+  List<PendingCertMatch> get pendingCertMatches => List.unmodifiable(_pendingCertMatches);
 
   bool _bootstrapped = false;
   bool _onboardingComplete = false;
@@ -322,9 +352,25 @@ class AppState extends ChangeNotifier {
     if (goal == null) return null;
 
     // Certification completion should consider expired credentials as NOT complete.
-    final certStatusByName = {
-      for (final c in certifications) c.name.trim().toLowerCase(): c.status,
-    };
+    final certStatusByDefId = <String, CertificationStatus>{};
+    for (final c in certifications) {
+      final defId = c.certificationDefinitionId;
+      if (defId == null || defId.isEmpty) continue;
+      final current = certStatusByDefId[defId];
+      // Prefer the "best" status.
+      final next = c.status;
+      if (current == null) {
+        certStatusByDefId[defId] = next;
+        continue;
+      }
+      // current beats expiringSoon beats expired
+      int rank(CertificationStatus s) => switch (s) {
+            CertificationStatus.current => 0,
+            CertificationStatus.expiringSoon => 1,
+            CertificationStatus.expired => 2,
+          };
+      if (rank(next) < rank(current)) certStatusByDefId[defId] = next;
+    }
     final goalCustom = _customRequirements.where((r) => r.id.startsWith('${goal.id}::')).toList();
     final allReqsRaw = [...goal.requirements, ...goalCustom];
 
@@ -347,10 +393,12 @@ class AppState extends ChangeNotifier {
 
     bool completeFor(Requirement r) {
       if (r.type == RequirementType.certification) {
-        final ref = (r.certificationReference ?? r.name).trim().toLowerCase();
-        final status = certStatusByName[ref];
+        final defId = r.certificationDefinitionId;
+        if (defId == null || defId.isEmpty) return false;
+        final status = certStatusByDefId[defId];
         if (status == null) return false;
-        return status != CertificationStatus.expired;
+        if (status == CertificationStatus.expired) return r.allowExpiredCertification;
+        return true;
       }
       if (r.type == RequirementType.experience) {
         final required = r.experienceValue;
@@ -380,6 +428,9 @@ class AppState extends ChangeNotifier {
     try {
       _onboardingComplete = await _store.getOnboardingComplete();
 
+      final confirmationsRaw = await _store.loadCertificationMatchConfirmations();
+      _certMatchConfirmations = confirmationsRaw.map((k, v) => MapEntry(k, (v as String?) ?? '')).cast<String, String>();
+
       final profileJson = await _store.loadProfile();
       _profile = profileJson == null ? UserProfile.empty() : UserProfile.fromJson(profileJson);
 
@@ -393,6 +444,14 @@ class AppState extends ChangeNotifier {
           debugPrint('Skipping invalid certification entry: $e');
         }
       }
+
+      // Silent migration: try to map existing certifications to stable definition IDs.
+      await _migrateCertifications();
+
+      assert(() {
+        FireOpsCatalog.validateCatalog();
+        return true;
+      }());
 
       final reqJsonList = await _store.loadCustomRequirements();
       _customRequirements
@@ -426,11 +485,112 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<void> _migrateCertifications() async {
+    _pendingCertMatches.clear();
+    if (_certsById.isEmpty) return;
+
+    final updated = <String, Certification>{};
+    bool changed = false;
+
+    for (final entry in _certsById.entries) {
+      final cert = entry.value;
+      if (cert.certificationDefinitionId != null && cert.certificationDefinitionId!.isNotEmpty) {
+        updated[entry.key] = cert;
+        continue;
+      }
+
+      final normalized = FireOpsCatalog.normalizeCertificationText(cert.name);
+      final confirmed = _certMatchConfirmations[normalized];
+      if (confirmed != null) {
+        if (confirmed.isEmpty) {
+          updated[entry.key] = cert; // user said "no match"
+        } else {
+          updated[entry.key] = cert.copyWith(certificationDefinitionId: confirmed, updatedAt: DateTime.now());
+          changed = true;
+        }
+        continue;
+      }
+
+      final direct = FireOpsCatalog.matchCertificationDefinitionId(cert.name);
+      if (direct != null) {
+        updated[entry.key] = cert.copyWith(certificationDefinitionId: direct, updatedAt: DateTime.now());
+        changed = true;
+        continue;
+      }
+
+      // If we can't confidently match, keep as-is but allow later user confirmation.
+      final suggestion = _suggestDefinitionId(cert.name);
+      if (suggestion != null) {
+        _pendingCertMatches.add(PendingCertMatch(certId: cert.id, userText: cert.name, suggestedDefinitionId: suggestion));
+      }
+      updated[entry.key] = cert;
+    }
+
+    if (changed) {
+      _certsById
+        ..clear()
+        ..addAll(updated);
+    }
+  }
+
+  String? _suggestDefinitionId(String userText) {
+    // Conservative: if normalization matches exactly one display/alias after stripping common prefixes.
+    final norm = FireOpsCatalog.normalizeCertificationText(userText);
+    if (norm.isEmpty) return null;
+
+    final defs = FireOpsCatalog.certificationDefinitions();
+    final matches = <String>[];
+    for (final d in defs) {
+      final aliasNorms = <String>{
+        FireOpsCatalog.normalizeCertificationText(d.displayName),
+        if (d.shortName != null) FireOpsCatalog.normalizeCertificationText(d.shortName!),
+        ...d.aliases.map(FireOpsCatalog.normalizeCertificationText),
+      };
+      if (aliasNorms.any((a) => a == norm)) {
+        matches.add(d.id);
+      }
+    }
+    if (matches.length == 1) return matches.first;
+    return null;
+  }
+
+  Future<void> confirmCertificationMatch({required String userText, required String suggestedDefinitionId, required bool accepted}) async {
+    final norm = FireOpsCatalog.normalizeCertificationText(userText);
+    _certMatchConfirmations[norm] = accepted ? suggestedDefinitionId : '';
+    await _store.saveCertificationMatchConfirmations(_certMatchConfirmations);
+
+    if (accepted) {
+      final id = suggestedDefinitionId;
+      for (final k in _certsById.keys.toList()) {
+        final c = _certsById[k]!;
+        if (c.certificationDefinitionId == null && FireOpsCatalog.normalizeCertificationText(c.name) == norm) {
+          _certsById[k] = c.copyWith(certificationDefinitionId: id, updatedAt: DateTime.now());
+        }
+      }
+      await _persistAll();
+    }
+
+    _pendingCertMatches.removeWhere((m) => FireOpsCatalog.normalizeCertificationText(m.userText) == norm);
+    notifyListeners();
+  }
+
+  String certificationDisplayName(Certification c) {
+    final defId = c.certificationDefinitionId;
+    if (defId != null) {
+      final def = FireOpsCatalog.certificationById()[defId];
+      if (def != null) return def.displayName;
+    }
+    return c.name;
+  }
+
   Future<void> completeOnboarding({required UserProfile profile, required List<Certification> certifications}) async {
     _profile = profile.copyWith(updatedAt: DateTime.now());
     _certsById
       ..clear()
-      ..addEntries(certifications.where((c) => c.name.trim().isNotEmpty).map((c) => MapEntry(c.id, c.copyWith(updatedAt: DateTime.now()))));
+      ..addEntries(certifications.where((c) => c.name.trim().isNotEmpty).map((c) {
+        final mapped = c.certificationDefinitionId == null ? FireOpsCatalog.matchCertificationDefinitionId(c.name) : c.certificationDefinitionId;
+        return MapEntry(c.id, c.copyWith(certificationDefinitionId: mapped, updatedAt: DateTime.now()));
+      }));
     _onboardingComplete = true;
     await _store.setOnboardingComplete(true);
     await _persistAll();
@@ -532,6 +692,39 @@ class AppState extends ChangeNotifier {
     return (c, t);
   }
 
+  List<ResourceLink> userResourceLinksFor({required String goalId, required String requirementId}) => getOverride(goalId, requirementId)?.userResourceLinks ?? const <ResourceLink>[];
+
+  Future<void> addUserResourceLink({required String goalId, required String requirementId, required ResourceLink link}) async {
+    final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
+    if (idx >= 0) {
+      final next = [..._overrides[idx].userResourceLinks, link];
+      _overrides[idx] = _overrides[idx].copyWith(userResourceLinks: next);
+    } else {
+      _overrides.add(
+        PathRequirementOverride(
+          goalId: goalId,
+          requirementId: requirementId,
+          excluded: false,
+          completed: null,
+          overrideExperienceValue: null,
+          overrideProgressCurrent: null,
+          overrideProgressRequired: null,
+          overrideProgressUnit: null,
+          activityStatus: null,
+          schedule: null,
+          taskBookCompletedItems: null,
+          taskBookTotalItems: null,
+          suggestedStartDate: null,
+          suggestedCompletionDate: null,
+          removedFromTimeline: false,
+          userResourceLinks: [link],
+        ),
+      );
+    }
+    await _persistAll();
+    notifyListeners();
+  }
+
   Future<void> setRequirementActivityStatus({required String goalId, required String requirementId, required RequirementActivityStatus status}) async {
     final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
     if (idx >= 0) {
@@ -554,6 +747,7 @@ class AppState extends ChangeNotifier {
           suggestedStartDate: null,
           suggestedCompletionDate: null,
           removedFromTimeline: false,
+          userResourceLinks: const [],
         ),
       );
     }
@@ -583,6 +777,7 @@ class AppState extends ChangeNotifier {
           suggestedStartDate: null,
           suggestedCompletionDate: null,
           removedFromTimeline: false,
+          userResourceLinks: const [],
         ),
       );
     }
@@ -612,6 +807,7 @@ class AppState extends ChangeNotifier {
           suggestedStartDate: null,
           suggestedCompletionDate: null,
           removedFromTimeline: false,
+          userResourceLinks: const [],
         ),
       );
     }
@@ -641,6 +837,7 @@ class AppState extends ChangeNotifier {
           suggestedStartDate: null,
           suggestedCompletionDate: null,
           removedFromTimeline: false,
+          userResourceLinks: const [],
         ),
       );
     }
@@ -670,6 +867,7 @@ class AppState extends ChangeNotifier {
           suggestedStartDate: null,
           suggestedCompletionDate: null,
           removedFromTimeline: false,
+          userResourceLinks: const [],
         ),
       );
     }
@@ -699,6 +897,7 @@ class AppState extends ChangeNotifier {
           suggestedStartDate: null,
           suggestedCompletionDate: null,
           removedFromTimeline: false,
+          userResourceLinks: const [],
         ),
       );
     }
@@ -728,6 +927,7 @@ class AppState extends ChangeNotifier {
           suggestedStartDate: null,
           suggestedCompletionDate: null,
           removedFromTimeline: false,
+          userResourceLinks: const [],
         ),
       );
     }
@@ -757,6 +957,7 @@ class AppState extends ChangeNotifier {
           suggestedStartDate: null,
           suggestedCompletionDate: null,
           removedFromTimeline: false,
+          userResourceLinks: const [],
         ),
       );
     }
@@ -820,6 +1021,7 @@ class AppState extends ChangeNotifier {
           suggestedStartDate: suggestedStartDate,
           suggestedCompletionDate: null,
           removedFromTimeline: removed,
+          userResourceLinks: const [],
         ),
       );
     }

@@ -11,6 +11,7 @@ import 'package:firepath/pages/resources/resources_page.dart';
 import 'package:firepath/pages/requirement/requirement_detail_page.dart';
 import 'package:firepath/pages/requirement/get_started_page.dart';
 import 'package:firepath/pages/certifications/certification_detail_page.dart';
+import 'package:firepath/pages/certifications/certification_picker_page.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -84,6 +85,12 @@ class AppRouter {
         name: 'certification_detail',
         pageBuilder: (context, state) => MaterialPage(child: CertificationDetailPage(certId: state.pathParameters['id']!, extra: state.extra)),
       ),
+
+      GoRoute(
+        path: AppRoutes.certificationAdd,
+        name: 'certification_add',
+        pageBuilder: (context, state) => MaterialPage(child: CertificationPickerPage(extra: state.extra)),
+      ),
     ],
   );
 }
@@ -100,4 +107,5 @@ class AppRoutes {
   static const String requirementDetail = '/requirement';
   static const String getStarted = '/get-started';
   static const String certificationDetail = '/certification';
+  static const String certificationAdd = '/certifications/add';
 }

@@ -46,7 +46,7 @@ class _CertificationsPageState extends State<CertificationsPage> {
         actions: [
           IconButton(
             tooltip: 'Add',
-            onPressed: () => context.push('${AppRoutes.certificationDetail}/new'),
+            onPressed: () => context.push(AppRoutes.certificationAdd),
             icon: const Icon(Icons.add),
           ),
         ],
@@ -121,7 +121,7 @@ class _CertificationsPageState extends State<CertificationsPage> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(cert.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                                        Text(state.certificationDisplayName(cert), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
                                         const SizedBox(height: 2),
                                         Text(
                                           [label, expText, if (remainingText != null) remainingText].join(' • '),
@@ -144,7 +144,7 @@ class _CertificationsPageState extends State<CertificationsPage> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('${AppRoutes.certificationDetail}/new'),
+        onPressed: () => context.push(AppRoutes.certificationAdd),
         backgroundColor: cs.primary,
         foregroundColor: cs.onPrimary,
         icon: const Icon(Icons.add),

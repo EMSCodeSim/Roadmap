@@ -230,6 +230,8 @@ class MyPathPage extends StatelessWidget {
       experienceValue: reqType == RequirementType.experience ? expValue : null,
       experienceUnit: reqType == RequirementType.experience ? (expUnit ?? 'years') : null,
       certificationReference: null,
+      certificationDefinitionId: null,
+      allowExpiredCertification: false,
       prerequisiteRequirementIds: const [],
       resourceIds: const [],
       resourceLinks: const [],

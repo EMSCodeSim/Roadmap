@@ -258,13 +258,14 @@ class CareerTimelinePlanner {
   }
 
   static List<TimelineItem> _buildRenewals(AppState state, List<Requirement> requirements, DateTime target) {
-    final requiredCertKeys = requirements
+    final requiredCertIds = requirements
         .where((r) => r.type == RequirementType.certification)
-        .map((r) => (r.certificationReference ?? r.name).trim().toLowerCase())
+        .map((r) => r.certificationDefinitionId)
+        .whereType<String>()
         .where((s) => s.isNotEmpty)
         .toSet();
 
-    final relevantCerts = state.certifications.where((c) => requiredCertKeys.contains(c.name.trim().toLowerCase()));
+    final relevantCerts = state.certifications.where((c) => c.certificationDefinitionId != null && requiredCertIds.contains(c.certificationDefinitionId));
 
     final items = <TimelineItem>[];
     for (final cert in relevantCerts) {
@@ -276,7 +277,7 @@ class CareerTimelinePlanner {
           kind: TimelineItemKind.renewal,
           requirement: null,
           certification: cert,
-          title: 'Renew ${cert.name}',
+          title: 'Renew ${state.certificationDisplayName(cert)}',
           subtitle: 'Expires ${_fmtMonthYear(exp)} — renew before your target ready date.',
           fixedDate: exp,
           isNextStep: false,

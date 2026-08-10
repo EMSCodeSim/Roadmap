@@ -97,15 +97,18 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
 
         final certs = _selectedCertNames.map((name) {
           final id = name.toLowerCase().replaceAll('–', '-').replaceAll(RegExp(r'[^a-z0-9\- ]'), '').trim().replaceAll(' ', '_');
+          final defId = FireOpsCatalog.matchCertificationDefinitionId(name);
           return Certification(
             id: id,
             name: name,
+            certificationDefinitionId: defId,
             issuingOrganization: null,
             certificationNumber: null,
             issueDate: null,
             expirationDate: null,
             doesNotExpire: false,
             notes: null,
+            renewalHistory: const [],
             createdAt: now,
             updatedAt: now,
           );

@@ -6,6 +6,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/user_profile.dart';
+import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/timeline_planner.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
@@ -34,6 +35,10 @@ class HomePage extends StatelessWidget {
           children: [
             _TopHeader(title: 'FireOps Path', subtitle: 'Your Fire Service Career Roadmap'),
             const SizedBox(height: AppSpacing.lg),
+            if (state.pendingCertMatches.isNotEmpty) ...[
+              _PossibleMatchBanner(onTap: () => _showCertMatchSheet(context, state)),
+              const SizedBox(height: AppSpacing.md),
+            ],
             if (roadmap == null) ...[
               _EmptyHome(onChooseGoal: () => context.go(AppRoutes.onboarding)),
               const SizedBox(height: AppSpacing.md),
@@ -83,7 +88,11 @@ class HomePage extends StatelessWidget {
     final prereqs = r.prerequisiteRequirementIds;
     final prereqsOk = prereqs.isEmpty
         ? null
-        : prereqs.every((p) => roadmap.included.any((e) => (e.requirement.certificationReference ?? e.requirement.name).toLowerCase() == p.toLowerCase() && e.isComplete));
+        : prereqs.every((p) {
+            final pid = FireOpsCatalog.matchCertificationDefinitionId(p);
+            if (pid == null) return false;
+            return roadmap.included.any((e) => e.requirement.certificationDefinitionId == pid && e.isComplete);
+          });
     final reason = switch (r.requirementSource) {
       RequirementSource.commonlyRequired => 'a core item on your $goalName path',
       RequirementSource.recommended => 'a recommended item on your $goalName path',
@@ -97,7 +106,8 @@ class HomePage extends StatelessWidget {
 
   static String _ctaLabelFor(AppState state, Roadmap roadmap, Requirement r) {
     if (r.type == RequirementType.certification) {
-      final cert = state.certifications.where((c) => c.name.trim().toLowerCase() == r.name.trim().toLowerCase()).firstOrNull;
+      final id = r.certificationDefinitionId;
+      final cert = id == null ? null : state.certifications.where((c) => c.certificationDefinitionId == id).firstOrNull;
       if (cert != null && cert.status == CertificationStatus.expired) return 'RENEW';
       return 'GET STARTED';
     }
@@ -714,6 +724,111 @@ class _CertAlertCard extends StatelessWidget {
     final now = DateTime.now();
     final days = exp.difference(DateTime(now.year, now.month, now.day)).inDays;
     return '⚠️ ${c.name} expires in $days days';
+  }
+}
+
+Future<void> _showCertMatchSheet(BuildContext context, AppState state) async {
+  if (state.pendingCertMatches.isEmpty) return;
+
+  await showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) {
+      final cs = Theme.of(context).colorScheme;
+      final defs = FireOpsCatalog.certificationById();
+      return Padding(
+        padding: AppSpacing.paddingLg,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Possible matches', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Confirming these helps your roadmap stay accurate.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
+            const SizedBox(height: AppSpacing.lg),
+            ...state.pendingCertMatches.take(3).map((m) {
+              final def = defs[m.suggestedDefinitionId];
+              final targetName = def?.displayName ?? m.suggestedDefinitionId;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: Container(
+                  padding: AppSpacing.paddingMd,
+                  decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: cs.outline.withValues(alpha: 0.14))),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('POSSIBLE MATCH', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 6),
+                      Text('You entered: ${m.userText}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 6),
+                      Text('Is this: $targetName?', style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4)),
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () => context.read<AppState>().confirmCertificationMatch(userText: m.userText, suggestedDefinitionId: m.suggestedDefinitionId, accepted: true),
+                              style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+                              child: const Text('YES'),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => context.read<AppState>().confirmCertificationMatch(userText: m.userText, suggestedDefinitionId: m.suggestedDefinitionId, accepted: false),
+                              style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+                              child: const Text('NO'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            if (state.pendingCertMatches.length > 3)
+              Text('More matches will appear after you confirm these.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+class _PossibleMatchBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _PossibleMatchBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: Container(
+        padding: AppSpacing.paddingMd,
+        decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: FireOpsSemanticColors.warning.withValues(alpha: 0.5))),
+        child: Row(
+          children: [
+            Icon(Icons.help_outline, color: FireOpsSemanticColors.warning),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Help us match a certification', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 2),
+                  Text('Quick confirmation improves your roadmap accuracy.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
   }
 }
 

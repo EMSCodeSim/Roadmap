@@ -103,7 +103,7 @@ class _PersonalizedResourcesView extends StatelessWidget {
         final items = FireOpsCatalog.resources();
         final road = state.roadmap;
         final goalId = road?.goal.id;
-        final nextKey = road?.nextStep?.requirement.name;
+        final nextCertId = road?.nextStep?.requirement.certificationDefinitionId;
         final userState = state.profile.state;
 
         final activeRequirementIds = <String>{};
@@ -119,7 +119,11 @@ class _PersonalizedResourcesView extends StatelessWidget {
         bool matchText(Resource r, String q) {
           final query = q.trim().toLowerCase();
           if (query.isEmpty) return true;
-          final blob = '${r.title} ${r.description} ${r.relatedCertificationIds.join(' ')}'.toLowerCase();
+          final defs = FireOpsCatalog.certificationById();
+          final relatedNames = r.relatedCertificationDefinitionIds
+              .map((id) => defs[id]?.displayName ?? id)
+              .join(' ');
+          final blob = '${r.title} ${r.description} $relatedNames'.toLowerCase();
           return blob.contains(query);
         }
 
@@ -128,10 +132,10 @@ class _PersonalizedResourcesView extends StatelessWidget {
           if (chips.isEmpty) return true;
 
           bool onMyPath() {
-            if (goalId == null && nextKey == null && activeRequirementIds.isEmpty) return true;
+            if (goalId == null && nextCertId == null && activeRequirementIds.isEmpty) return true;
             final matchesGoal = goalId != null && r.relatedCareerGoalIds.contains(goalId);
-            final matchesNext = nextKey != null && r.relatedCertificationIds.any((e) => e.toLowerCase() == nextKey!.toLowerCase());
-            final matchesActive = activeRequirementIds.any((id) => r.relatedCertificationIds.any((k) => k.toLowerCase().contains(id.toLowerCase())));
+            final matchesNext = nextCertId != null && r.relatedCertificationDefinitionIds.contains(nextCertId);
+            final matchesActive = activeRequirementIds.isNotEmpty;
             return matchesGoal || matchesNext || matchesActive;
           }
 
@@ -139,12 +143,12 @@ class _PersonalizedResourcesView extends StatelessWidget {
           for (final c in chips) {
             ok = ok && switch (c) {
               'My Path' => onMyPath(),
-              'Official' => r.type == ResourceType.officialAgency,
-              'Training' => r.type == ResourceType.courseProvider,
-              'Study' => r.type == ResourceType.studyGuide,
-              'Practice' => r.type == ResourceType.practice || r.type == ResourceType.fireOpsTool,
-              'Fire' => r.relatedCertificationIds.any((e) => e.toLowerCase().contains('fire') || e.toLowerCase().contains('haz')),
-              'EMS' => r.relatedCertificationIds.any((e) => e.toLowerCase().contains('emt') || e.toLowerCase().contains('paramedic') || e.toLowerCase().contains('cpr')),
+              'Official' => r.type == ResourceType.officialStateAgency || r.type == ResourceType.officialFederalAgency,
+              'Training' => r.type == ResourceType.trainingProvider || r.type == ResourceType.courseFinder || r.type == ResourceType.collegeAcademy,
+              'Study' => r.type == ResourceType.studyResource,
+              'Practice' => r.type == ResourceType.practiceResource || r.type == ResourceType.fireOpsTool,
+              'Fire' => r.relatedCertificationDefinitionIds.any((e) => e.contains('fire') || e.contains('haz') || e.contains('driver_operator')),
+              'EMS' => r.relatedCertificationDefinitionIds.any((e) => e == 'emt' || e == 'aemt' || e == 'paramedic' || e == 'bls' || e == 'acls' || e == 'pals'),
               _ => true,
             };
           }
@@ -156,7 +160,7 @@ class _PersonalizedResourcesView extends StatelessWidget {
       int score(Resource r) {
         int s = 0;
         if (userState != null && r.state != null && r.state == userState) s += 100;
-        if (nextKey != null && r.relatedCertificationIds.any((e) => e.toLowerCase() == nextKey!.toLowerCase())) s += 60;
+        if (nextCertId != null && r.relatedCertificationDefinitionIds.contains(nextCertId)) s += 60;
         if (goalId != null && r.relatedCareerGoalIds.contains(goalId)) s += 30;
         if (r.type == ResourceType.fireOpsTool) s += 10;
         return -s;
@@ -182,10 +186,10 @@ class _PersonalizedResourcesView extends StatelessWidget {
                 const SizedBox(height: AppSpacing.md),
                 _FilterChips(selected: chipFilter, onToggle: onToggleChip),
                 const SizedBox(height: AppSpacing.lg),
-                if (nextKey != null) ...[
-                  _SectionHeader(title: 'YOUR NEXT STEP', subtitle: nextKey),
+                if (nextCertId != null) ...[
+                  _SectionHeader(title: 'YOUR NEXT STEP', subtitle: FireOpsCatalog.certificationById()[nextCertId]?.displayName ?? ''),
                   const SizedBox(height: AppSpacing.sm),
-                  ..._buildCards(context, filtered.where((r) => r.relatedCertificationIds.any((e) => e.toLowerCase() == nextKey.toLowerCase())).toList(), limit: 6),
+                  ..._buildCards(context, filtered.where((r) => r.relatedCertificationDefinitionIds.contains(nextCertId)).toList(), limit: 6),
                   const SizedBox(height: AppSpacing.lg),
                 ],
                 if (stateSpecific.isNotEmpty) ...[
@@ -246,8 +250,10 @@ class _RequirementResourcesView extends StatelessWidget {
 
         bool match(Resource r) {
           final q = value.text.trim().toLowerCase();
-          final blob = '${r.title} ${r.description} ${r.relatedCertificationIds.join(' ')}'.toLowerCase();
-          final keyOk = key == null || key.isEmpty ? true : r.relatedCertificationIds.any((e) => e.toLowerCase() == key.toLowerCase()) || blob.contains(key.toLowerCase());
+          final defs = FireOpsCatalog.certificationById();
+          final relatedNames = r.relatedCertificationDefinitionIds.map((id) => defs[id]?.displayName ?? id).join(' ');
+          final blob = '${r.title} ${r.description} $relatedNames'.toLowerCase();
+          final keyOk = key == null || key.isEmpty ? true : r.relatedCertificationDefinitionIds.contains(key) || blob.contains(key.toLowerCase());
           final qOk = q.isEmpty ? true : blob.contains(q);
           final typeOk = typeFilter.isEmpty ? true : typeFilter.contains(r.type);
           return keyOk && qOk && typeOk;
@@ -406,11 +412,13 @@ class ResourceCard extends StatelessWidget {
 
   static IconData _iconFor(ResourceType t) {
     return switch (t) {
-      ResourceType.officialAgency => Icons.verified_outlined,
-      ResourceType.courseProvider => Icons.school,
-      ResourceType.studyGuide => Icons.menu_book,
-      ResourceType.practice => Icons.fitness_center,
-      ResourceType.video => Icons.play_circle_outline,
+      ResourceType.officialStateAgency || ResourceType.officialFederalAgency => Icons.verified_outlined,
+      ResourceType.credentialingOrganization => Icons.badge_outlined,
+      ResourceType.trainingProvider || ResourceType.courseFinder => Icons.school,
+      ResourceType.collegeAcademy => Icons.account_balance_outlined,
+      ResourceType.professionalOrganization => Icons.groups_2_outlined,
+      ResourceType.studyResource => Icons.menu_book,
+      ResourceType.practiceResource => Icons.fitness_center,
       ResourceType.fireOpsTool => Icons.bolt,
       ResourceType.departmentResource => Icons.apartment,
     };

@@ -7,6 +7,7 @@ import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/services/catalog.dart';
 
 class CertificationDetailPage extends StatefulWidget {
   final String certId;
@@ -60,9 +61,14 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
       // Optional prefill when coming from a requirement.
       final extra = widget.extra;
       String? prefill;
+      String? prefillDefId;
       if (extra is Map && extra['name'] is String) prefill = extra['name'] as String;
+      if (extra is Map && extra['definitionId'] is String) prefillDefId = extra['definitionId'] as String;
       if (prefill != null && _name.text.trim().isEmpty) {
         _name.text = prefill;
+      }
+      if (prefillDefId != null && (_cert.certificationDefinitionId == null || _cert.certificationDefinitionId!.isEmpty)) {
+        _cert = _cert.copyWith(certificationDefinitionId: prefillDefId);
       }
     }
   }
@@ -92,6 +98,45 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Duplicate protection (stable ID).
+    final defId = _cert.certificationDefinitionId;
+    if (widget.certId == 'new' && defId != null) {
+      final existing = context.read<AppState>().certifications.where((c) => c.certificationDefinitionId == defId).toList();
+      if (existing.isNotEmpty) {
+        final picked = await _showDuplicateDialog(context, name: FireOpsCatalog.certificationById()[defId]?.displayName ?? _name.text.trim());
+        if (picked == null) return;
+        if (picked == _DuplicateChoice.updateExisting) {
+          // Reuse the most recently updated record.
+          existing.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+          _cert = existing.first;
+        }
+      }
+    }
+
+    // Renewal history (minimal structure; no full UI yet).
+    List<CertificationRenewal> history = List.of(_cert.renewalHistory);
+    if (widget.certId != 'new') {
+      final before = context.read<AppState>().getCertificationById(_cert.id);
+      if (before != null) {
+        final changedDates = before.issueDate != _issueDate || before.expirationDate != (_doesNotExpire ? null : _expirationDate) || before.doesNotExpire != _doesNotExpire;
+        if (changedDates) {
+          history = [
+            ...history,
+            CertificationRenewal(
+              issueDate: before.issueDate,
+              expirationDate: before.expirationDate,
+              doesNotExpire: before.doesNotExpire,
+              issuingOrganization: before.issuingOrganization,
+              certificationNumber: before.certificationNumber,
+              notes: before.notes,
+              createdAt: DateTime.now(),
+            ),
+          ];
+        }
+      }
+    }
+
     final updated = _cert.copyWith(
       name: _name.text.trim(),
       issuingOrganization: _org.text.trim().isEmpty ? null : _org.text.trim(),
@@ -100,6 +145,7 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
       expirationDate: _doesNotExpire ? null : _expirationDate,
       doesNotExpire: _doesNotExpire,
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+      renewalHistory: history,
       updatedAt: DateTime.now(),
       clearExpirationDate: _doesNotExpire,
     );
@@ -254,6 +300,10 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
                 decoration: const InputDecoration(labelText: 'Certification name'),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter a name' : null,
               ),
+              if (_cert.certificationDefinitionId != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                _LinkedDefinitionChip(definitionId: _cert.certificationDefinitionId!),
+              ],
               const SizedBox(height: AppSpacing.md),
               TextFormField(controller: _org, decoration: const InputDecoration(labelText: 'Issuing organization')),
               const SizedBox(height: AppSpacing.md),
@@ -342,5 +392,74 @@ class _DateTile extends StatelessWidget {
   static String _formatDate(DateTime d) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
+  }
+}
+
+enum _DuplicateChoice { updateExisting, addAnother }
+
+extension on _CertificationDetailPageState {
+  Future<_DuplicateChoice?> _showDuplicateDialog(BuildContext context, {required String name}) {
+    return showModalBottomSheet<_DuplicateChoice>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final cs = Theme.of(context).colorScheme;
+        return Padding(
+          padding: AppSpacing.paddingLg,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Already added', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: AppSpacing.sm),
+              Text('You already have $name. Some people keep multiple records (different issuers or renewals).', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
+              const SizedBox(height: AppSpacing.lg),
+              SizedBox(
+                height: 52,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(_DuplicateChoice.updateExisting),
+                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+                  child: const Text('Update Existing'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                height: 52,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(_DuplicateChoice.addAnother),
+                  style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+                  child: const Text('Add Another Record'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextButton(onPressed: () => Navigator.of(context).pop(null), child: const Text('Cancel')),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _LinkedDefinitionChip extends StatelessWidget {
+  final String definitionId;
+  const _LinkedDefinitionChip({required this.definitionId});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final def = FireOpsCatalog.certificationById()[definitionId];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(color: cs.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(999), border: Border.all(color: cs.primary.withValues(alpha: 0.22))),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.link, size: 16, color: cs.primary),
+          const SizedBox(width: 8),
+          Text(def?.displayName ?? definitionId, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.primary, fontWeight: FontWeight.w900)),
+        ],
+      ),
+    );
   }
 }

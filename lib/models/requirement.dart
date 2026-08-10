@@ -61,6 +61,13 @@ class Requirement {
   final double? experienceValue;
   final String? experienceUnit;
   final String? certificationReference;
+  /// Stable certification definition ID for certification requirements.
+  /// Prefer this over [certificationReference] for matching.
+  final String? certificationDefinitionId;
+
+  /// If true, an expired credential can still satisfy this requirement.
+  /// Defaults to false.
+  final bool allowExpiredCertification;
   /// Prerequisite requirement keys.
   ///
   /// In the starter dataset these are typically certification names (e.g.
@@ -100,6 +107,8 @@ class Requirement {
     required this.experienceValue,
     required this.experienceUnit,
     required this.certificationReference,
+    required this.certificationDefinitionId,
+    required this.allowExpiredCertification,
     required this.prerequisiteRequirementIds,
     required this.resourceIds,
     required this.resourceLinks,
@@ -132,6 +141,8 @@ class Requirement {
     double? experienceValue,
     String? experienceUnit,
     String? certificationReference,
+    String? certificationDefinitionId,
+    bool? allowExpiredCertification,
     List<String>? prerequisiteRequirementIds,
     List<String>? resourceIds,
     List<ResourceLink>? resourceLinks,
@@ -162,6 +173,8 @@ class Requirement {
       experienceValue: experienceValue ?? this.experienceValue,
       experienceUnit: experienceUnit ?? this.experienceUnit,
       certificationReference: certificationReference ?? this.certificationReference,
+      certificationDefinitionId: certificationDefinitionId ?? this.certificationDefinitionId,
+      allowExpiredCertification: allowExpiredCertification ?? this.allowExpiredCertification,
       prerequisiteRequirementIds: prerequisiteRequirementIds ?? this.prerequisiteRequirementIds,
       resourceIds: resourceIds ?? this.resourceIds,
       resourceLinks: resourceLinks ?? this.resourceLinks,
@@ -196,6 +209,8 @@ class Requirement {
     'experienceValue': experienceValue,
     'experienceUnit': experienceUnit,
     'certificationReference': certificationReference,
+    'certificationDefinitionId': certificationDefinitionId,
+    'allowExpiredCertification': allowExpiredCertification,
     'prerequisiteRequirementIds': prerequisiteRequirementIds,
     'resourceIds': resourceIds,
     'resourceLinks': resourceLinks.map((e) => e.toJson()).toList(),
@@ -241,6 +256,8 @@ class Requirement {
 
     final resIdsRaw = json['resourceIds'];
     final resIds = resIdsRaw is List ? resIdsRaw.whereType<String>().toList() : <String>[];
+
+    bool _bool(dynamic v, bool fallback) => v is bool ? v : fallback;
 
     RequirementType _parseType(dynamic v) {
       if (v is! String) return RequirementType.custom;
@@ -289,6 +306,8 @@ class Requirement {
       experienceValue: (json['experienceValue'] as num?)?.toDouble(),
       experienceUnit: json['experienceUnit'] as String?,
       certificationReference: json['certificationReference'] as String?,
+      certificationDefinitionId: json['certificationDefinitionId'] as String?,
+      allowExpiredCertification: _bool(json['allowExpiredCertification'], false),
       prerequisiteRequirementIds: prereq,
       resourceIds: resIds,
       resourceLinks: links,
