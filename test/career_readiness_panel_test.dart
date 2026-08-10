@@ -74,15 +74,17 @@ void main() {
       all: requirements.map((r) => RoadmapRequirement(requirement: r, isComplete: false, isExcluded: false)).toList(),
     );
     final snapshot = CareerReadinessSnapshot.fromRoadmap(road);
-    final plan = CareerReadinessActionPlan.fromRoadmapForTesting(road);
+    final plan = CareerReadinessActionPlan.fromRoadmap(road);
 
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: CareerReadinessPanel(
-            snapshot: snapshot,
-            actionPlan: plan,
-            goalTitle: 'Engineer',
+          body: SingleChildScrollView(
+            child: CareerReadinessPanel(
+              snapshot: snapshot,
+              actionPlan: plan,
+              goalTitle: 'Engineer',
+            ),
           ),
         ),
       ),
@@ -91,5 +93,7 @@ void main() {
     expect(find.textContaining('Engineer'), findsWidgets);
     expect(find.text('MAJOR GAPS'), findsOneWidget);
     expect(find.textContaining('Driver Operator'), findsWidgets);
+    expect(find.text('GET STARTED'), findsWidgets);
+    expect(find.text('LOG PROGRESS'), findsWidgets);
   });
 }
