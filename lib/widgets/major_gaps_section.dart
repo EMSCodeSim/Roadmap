@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/services/readiness_snapshot.dart';
+import 'package:firepath/state/app_state.dart';
 
 /// Compact, phone-friendly list of the highest-impact gaps on a career path.
 ///
@@ -80,10 +81,11 @@ class MajorGapsSection extends StatelessWidget {
 
   static String gapLabel(
     CareerReadinessSnapshot snapshot,
-    dynamic item,
+    RoadmapRequirement item,
   ) {
-    final id = item.requirement.id as String;
-    bool contains(List list) => list.any((e) => e.requirement.id == id);
+    final id = item.requirement.id;
+    bool contains(List<RoadmapRequirement> list) =>
+        list.any((e) => e.requirement.id == id);
 
     if (contains(snapshot.prerequisiteGaps)) return 'PREREQUISITE';
     if (contains(snapshot.coreGaps)) return 'CORE';
