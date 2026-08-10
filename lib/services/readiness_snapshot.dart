@@ -37,8 +37,14 @@ class CareerReadinessSnapshot {
   bool get isReady => totalCount > 0 && remainingCount == 0;
 
   /// Major gaps are the items most likely to affect readiness first.
-  int get majorGapCount {
-    final ids = <String>{};
+  ///
+  /// The same requirement can appear in more than one bucket (for example a
+  /// department task book), so this getter de-duplicates by requirement ID and
+  /// keeps the most useful presentation order: prerequisite, core, department,
+  /// experience, then task book.
+  List<RoadmapRequirement> get majorGaps {
+    final seen = <String>{};
+    final ordered = <RoadmapRequirement>[];
     for (final item in <RoadmapRequirement>[
       ...prerequisiteGaps,
       ...coreGaps,
@@ -46,10 +52,12 @@ class CareerReadinessSnapshot {
       ...experienceGaps,
       ...taskBookGaps,
     ]) {
-      ids.add(item.requirement.id);
+      if (seen.add(item.requirement.id)) ordered.add(item);
     }
-    return ids.length;
+    return List.unmodifiable(ordered);
   }
+
+  int get majorGapCount => majorGaps.length;
 
   factory CareerReadinessSnapshot.fromRoadmap(Roadmap roadmap) {
     final missing = roadmap.missing;
