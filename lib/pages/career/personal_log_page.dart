@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/quick_log_tracker.dart';
+import 'package:firepath/models/quick_log_template.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/quick_log_preferences_store.dart';
@@ -43,13 +45,63 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
 
   Future<void> _load() async {
     final records = await _store.load();
-    final config = await _preferences.load();
+    final preferences = await _preferences.load();
     if (!mounted) return;
     setState(() {
       _records = records;
-      _config = config;
+      _config = _configFromPreferences(preferences);
       _loading = false;
     });
+  }
+
+  static QuickLogConfig _configFromPreferences(QuickLogPreferences preferences) {
+    final customTrackers = preferences.customTemplates
+        .map(
+          (template) => QuickLogTracker(
+            keyName: template.id,
+            title: template.title,
+            category: template.category,
+            type: template.type,
+            iconName: template.iconKey,
+            tracksOutcome: template.tracksOutcome,
+            custom: template.isCustom,
+          ),
+        )
+        .where((tracker) => tracker.keyName.isNotEmpty && tracker.title.trim().isNotEmpty)
+        .toList();
+
+    return QuickLogConfig(
+      rolePreset: _guessRolePreset(preferences.pinnedIds),
+      pinnedKeys: preferences.pinnedIds,
+      customTrackers: customTrackers,
+    );
+  }
+
+  static QuickLogPreferences _preferencesFromConfig(QuickLogConfig config) {
+    final customTemplates = config.customTrackers
+        .where((tracker) => tracker.custom)
+        .map(
+          (tracker) => QuickLogTemplate(
+            id: tracker.keyName,
+            title: tracker.title,
+            category: tracker.category,
+            type: tracker.type,
+            tracksOutcome: tracker.tracksOutcome,
+            iconKey: tracker.iconName,
+            isCustom: true,
+          ),
+        )
+        .toList();
+
+    return QuickLogPreferences(pinnedIds: config.pinnedKeys, customTemplates: customTemplates);
+  }
+
+  static QuickLogRolePreset? _guessRolePreset(List<String> pinnedIds) {
+    for (final preset in QuickLogRolePreset.values) {
+      final defaults = QuickLogCatalog.defaultsFor(preset);
+      if (listEquals(defaults, pinnedIds)) return preset;
+    }
+    return null;
   }
 
   List<QuickLogTracker> get _pinnedTrackers => _config.pinnedKeys
@@ -202,7 +254,7 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     ),
                     const SizedBox(height: 14),
                     DropdownButtonFormField<CareerRecordType>(
-                      initialValue: type,
+                      value: type,
                       decoration: const InputDecoration(labelText: 'Type'),
                       items: CareerRecordType.values.map((value) => DropdownMenuItem(value: value, child: Text(value.label))).toList(),
                       onChanged: (value) {
@@ -248,7 +300,7 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<CareerRecordOutcome?>(
-                      initialValue: outcome,
+                      value: outcome,
                       decoration: const InputDecoration(labelText: 'Outcome (optional)'),
                       items: [
                         const DropdownMenuItem<CareerRecordOutcome?>(value: null, child: Text('Not tracked')),
@@ -453,13 +505,14 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
     );
 
     if (result == null) return;
-    final saved = await _preferences.save(result);
-    if (!mounted) return;
-    if (!saved) {
-      _showSaveFailure();
-      return;
+    try {
+      await _preferences.save(_preferencesFromConfig(result));
+      if (!mounted) return;
+      setState(() => _config = result);
+    } catch (e) {
+      debugPrint('Failed to save Quick Log preferences: $e');
+      if (mounted) _showSaveFailure();
     }
-    setState(() => _config = result);
   }
 
   Future<QuickLogTracker?> _chooseTracker(
@@ -538,7 +591,7 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                 TextFormField(controller: category, decoration: const InputDecoration(labelText: 'Category (optional)')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<CareerRecordType>(
-                  initialValue: type,
+                  value: type,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: CareerRecordType.values.map((value) => DropdownMenuItem(value: value, child: Text(value.label))).toList(),
                   onChanged: (value) {
