@@ -61,9 +61,51 @@ class Requirement {
   final double? experienceValue;
   final String? experienceUnit;
   final String? certificationReference;
+
+  /// Stable certification definition ID explicitly stored on this requirement.
+  final String? _certificationDefinitionId;
+
   /// Stable certification definition ID for certification requirements.
-  /// Prefer this over [certificationReference] for matching.
-  final String? certificationDefinitionId;
+  ///
+  /// Most catalog entries provide this through [certificationReference]. Older
+  /// state/NREMT EMS requirements were created without a reference, which made
+  /// them impossible to match against a user's tracked EMT/AEMT/Paramedic
+  /// credential. The getter keeps explicit IDs authoritative and provides a
+  /// narrow backwards-compatible inference for those legacy EMS labels.
+  String? get certificationDefinitionId {
+    final explicit = _certificationDefinitionId?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    if (type != RequirementType.certification) return null;
+    return _inferLegacyEmsCertificationId(certificationReference ?? name);
+  }
+
+  static String? _inferLegacyEmsCertificationId(String value) {
+    final normalized = value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .trim()
+        .replaceAll(RegExp(r'\s+'), ' ');
+    if (normalized.isEmpty) return null;
+
+    // Order matters because "AEMT" and "Advanced EMT" contain the EMT term.
+    if (normalized == 'aemt' ||
+        normalized == 'advanced emt' ||
+        normalized.startsWith('national registry aemt') ||
+        normalized.startsWith('state aemt certification')) {
+      return 'aemt';
+    }
+    if (normalized == 'paramedic' ||
+        normalized.startsWith('national registry paramedic') ||
+        normalized.startsWith('state paramedic certification')) {
+      return 'paramedic';
+    }
+    if (normalized == 'emt' ||
+        normalized.startsWith('national registry emt') ||
+        normalized.startsWith('state emt certification')) {
+      return 'emt';
+    }
+    return null;
+  }
 
   /// If true, an expired credential can still satisfy this requirement.
   /// Defaults to false.
@@ -107,7 +149,7 @@ class Requirement {
     required this.experienceValue,
     required this.experienceUnit,
     required this.certificationReference,
-    required this.certificationDefinitionId,
+    required String? certificationDefinitionId,
     required this.allowExpiredCertification,
     required this.prerequisiteRequirementIds,
     required this.resourceIds,
@@ -122,7 +164,7 @@ class Requirement {
     required this.suggestedCompletionDate,
     required this.createdAt,
     required this.updatedAt,
-  });
+  }) : _certificationDefinitionId = certificationDefinitionId;
 
   Requirement copyWith({
     String? name,
