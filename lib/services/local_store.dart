@@ -37,6 +37,7 @@ class LocalStore {
       if (raw == null) return null;
       final decoded = jsonDecode(raw);
       if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
       return null;
     } catch (e) {
       debugPrint('LocalStore.loadJsonMap($key) failed: $e');
@@ -51,8 +52,7 @@ class LocalStore {
       if (raw == null) return <Map<String, dynamic>>[];
       final decoded = jsonDecode(raw);
       if (decoded is List) {
-        final list = decoded.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-        return list;
+        return decoded.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
       }
       return <Map<String, dynamic>>[];
     } catch (e) {
@@ -62,11 +62,30 @@ class LocalStore {
   }
 
   Future<void> saveJson(String key, Object value) async {
+    await saveJsonChecked(key, value);
+  }
+
+  /// Saves JSON and reports whether the write actually succeeded.
+  ///
+  /// Use this for user-generated career history where the UI must not report a
+  /// successful save if SharedPreferences rejected the write.
+  Future<bool> saveJsonChecked(String key, Object value) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(key, jsonEncode(value));
+      return await prefs.setString(key, jsonEncode(value));
     } catch (e) {
-      debugPrint('LocalStore.saveJson($key) failed: $e');
+      debugPrint('LocalStore.saveJsonChecked($key) failed: $e');
+      return false;
+    }
+  }
+
+  Future<bool> removeKey(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return await prefs.remove(key);
+    } catch (e) {
+      debugPrint('LocalStore.removeKey($key) failed: $e');
+      return false;
     }
   }
 
@@ -86,6 +105,8 @@ class LocalStore {
   ///
   /// Map key: normalized user-entered certification text
   /// Map value: certificationDefinitionId OR empty string meaning "no match"
-  Future<Map<String, dynamic>> loadCertificationMatchConfirmations() async => (await loadJsonMap(_kCertMatchConfirmations)) ?? <String, dynamic>{};
-  Future<void> saveCertificationMatchConfirmations(Map<String, dynamic> json) => saveJson(_kCertMatchConfirmations, json);
+  Future<Map<String, dynamic>> loadCertificationMatchConfirmations() async =>
+      (await loadJsonMap(_kCertMatchConfirmations)) ?? <String, dynamic>{};
+  Future<void> saveCertificationMatchConfirmations(Map<String, dynamic> json) =>
+      saveJson(_kCertMatchConfirmations, json);
 }
