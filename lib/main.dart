@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => AppState()..bootstrap(),
       child: MaterialApp.router(
-        title: 'FireOps Path',
+        title: 'FireOps Career Road',
         debugShowCheckedModeBanner: false,
         theme: lightTheme,
         darkTheme: darkTheme,

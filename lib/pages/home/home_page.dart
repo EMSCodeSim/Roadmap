@@ -33,7 +33,7 @@ class HomePage extends StatelessWidget {
         child: ListView(
           padding: AppSpacing.paddingLg,
           children: [
-            _TopHeader(title: 'FireOps Path', subtitle: 'Your Fire Service Career Roadmap'),
+            _TopHeader(title: 'FireOps Career Road', subtitle: 'Your Fire Service Career Roadmap'),
             const SizedBox(height: AppSpacing.lg),
             if (state.pendingCertMatches.isNotEmpty) ...[
               _PossibleMatchBanner(onTap: () => _showCertMatchSheet(context, state)),

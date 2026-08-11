@@ -344,7 +344,7 @@ class _WelcomeStep extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('FireOps Path', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: onPrimary, fontWeight: FontWeight.w700)),
+                Text('FireOps Career Road', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: onPrimary, fontWeight: FontWeight.w700)),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   "Know where you are.\nKnow where you're going.\nKnow what comes next.",
