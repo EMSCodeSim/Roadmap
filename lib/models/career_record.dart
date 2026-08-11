@@ -10,6 +10,22 @@ enum CareerRecordType {
   taskBookEvidence,
 }
 
+enum CareerRecordOutcome {
+  successful,
+  unsuccessful,
+  attempted,
+  completed,
+}
+
+extension CareerRecordOutcomeX on CareerRecordOutcome {
+  String get label => switch (this) {
+        CareerRecordOutcome.successful => 'Successful',
+        CareerRecordOutcome.unsuccessful => 'Unsuccessful',
+        CareerRecordOutcome.attempted => 'Attempted',
+        CareerRecordOutcome.completed => 'Completed',
+      };
+}
+
 extension CareerRecordTypeX on CareerRecordType {
   String get label => switch (this) {
         CareerRecordType.operationalExperience => 'Operational experience',
@@ -52,6 +68,8 @@ class CareerRecord {
   final String? relatedGoalId;
   final String? relatedRequirementId;
   final bool highlight;
+  final String? trackingKey;
+  final CareerRecordOutcome? outcome;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -71,6 +89,8 @@ class CareerRecord {
     required this.relatedGoalId,
     required this.relatedRequirementId,
     required this.highlight,
+    this.trackingKey,
+    this.outcome,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -90,6 +110,8 @@ class CareerRecord {
     String? relatedGoalId,
     String? relatedRequirementId,
     bool? highlight,
+    String? trackingKey,
+    CareerRecordOutcome? outcome,
     DateTime? updatedAt,
     bool clearRoleOrAssignment = false,
     bool clearSummary = false,
@@ -98,6 +120,8 @@ class CareerRecord {
     bool clearHours = false,
     bool clearRelatedGoalId = false,
     bool clearRelatedRequirementId = false,
+    bool clearTrackingKey = false,
+    bool clearOutcome = false,
   }) {
     return CareerRecord(
       id: id,
@@ -115,6 +139,8 @@ class CareerRecord {
       relatedGoalId: clearRelatedGoalId ? null : (relatedGoalId ?? this.relatedGoalId),
       relatedRequirementId: clearRelatedRequirementId ? null : (relatedRequirementId ?? this.relatedRequirementId),
       highlight: highlight ?? this.highlight,
+      trackingKey: clearTrackingKey ? null : (trackingKey ?? this.trackingKey),
+      outcome: clearOutcome ? null : (outcome ?? this.outcome),
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -136,6 +162,8 @@ class CareerRecord {
         'relatedGoalId': relatedGoalId,
         'relatedRequirementId': relatedRequirementId,
         'highlight': highlight,
+        'trackingKey': trackingKey,
+        'outcome': outcome?.name,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
       };
@@ -148,6 +176,15 @@ class CareerRecord {
         } catch (_) {}
       }
       return CareerRecordType.training;
+    }
+
+    CareerRecordOutcome? parseOutcome(dynamic value) {
+      if (value is String) {
+        try {
+          return CareerRecordOutcome.values.byName(value);
+        } catch (_) {}
+      }
+      return null;
     }
 
     DateTime parseDate(dynamic value, DateTime fallback) {
@@ -174,6 +211,8 @@ class CareerRecord {
       relatedGoalId: json['relatedGoalId'] as String?,
       relatedRequirementId: json['relatedRequirementId'] as String?,
       highlight: (json['highlight'] as bool?) ?? false,
+      trackingKey: json['trackingKey'] as String?,
+      outcome: parseOutcome(json['outcome']),
       createdAt: createdAt,
       updatedAt: parseDate(json['updatedAt'], createdAt),
     );

@@ -8,6 +8,7 @@ import 'package:firepath/pages/onboarding/onboarding_flow_page.dart';
 import 'package:firepath/pages/path/my_path_page.dart';
 import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
+import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/certifications/certifications_page.dart';
 import 'package:firepath/pages/resources/resources_page.dart';
 import 'package:firepath/pages/requirement/requirement_detail_page.dart';
@@ -83,7 +84,12 @@ class AppRouter {
       // Details (outside the shell so they slide over any tab)
       GoRoute(
         path: AppRoutes.careerVault,
-        name: 'career_vault',
+        name: 'personal_log',
+        pageBuilder: (context, state) => const MaterialPage(child: PersonalLogPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.careerEvidence,
+        name: 'career_evidence',
         pageBuilder: (context, state) => const MaterialPage(child: CareerVaultPage()),
       ),
       GoRoute(
@@ -118,6 +124,7 @@ class AppRoutes {
   static const String myPath = '/path';
   static const String career = '/career';
   static const String careerVault = '/career/vault';
+  static const String careerEvidence = '/career/vault/evidence';
   static const String certifications = '/certifications';
   static const String resources = '/resources';
 

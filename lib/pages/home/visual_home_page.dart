@@ -28,7 +28,7 @@ class VisualHomePage extends StatelessWidget {
                       children: [
                         _GraphicLink(
                           imagePath: 'assets/graphics/career_vault.jpg',
-                          label: 'Career Vault',
+                          label: 'Personal Log',
                           onTap: () => context.push('/career/vault'),
                         ),
                         const SizedBox(width: 10),
