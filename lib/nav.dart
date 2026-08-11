@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:firepath/pages/bootstrap_page.dart';
 import 'package:firepath/pages/shell/app_shell_page.dart';
-import 'package:firepath/pages/home/home_page.dart';
+import 'package:firepath/pages/home/visual_home_page.dart';
 import 'package:firepath/pages/onboarding/onboarding_flow_page.dart';
 import 'package:firepath/pages/path/my_path_page.dart';
 import 'package:firepath/pages/career/career_hub_page.dart';
@@ -37,7 +37,7 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.home,
                 name: 'home',
-                pageBuilder: (context, state) => const NoTransitionPage(child: HomePage()),
+                pageBuilder: (context, state) => const NoTransitionPage(child: VisualHomePage()),
               ),
             ],
           ),
