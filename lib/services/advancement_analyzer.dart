@@ -1,4 +1,5 @@
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/state/app_state.dart';
 
@@ -152,7 +153,6 @@ class AdvancementAnalyzer {
   }) {
     final roadmap = app.roadmap;
     final goal = app.selectedGoal;
-    final requirementIds = roadmap == null ? <String>{} : roadmap.included.map((e) => e.requirement.id).toSet();
 
     final requirementStatuses = <RequirementEvidenceStatus>[];
     if (roadmap != null) {
@@ -340,7 +340,7 @@ class AdvancementAnalyzer {
       );
     }
 
-    final taskBookGap = evidenceGaps.where((status) => status.requirement.type == RequirementType.taskBook).firstOrNull;
+    final taskBookGap = _firstOrNull(evidenceGaps.where((status) => status.requirement.type == RequirementType.taskBook));
     if (taskBookGap != null) {
       return AdvancementRecommendation(
         kind: AdvancementActionKind.documentRequirement,
@@ -351,7 +351,7 @@ class AdvancementAnalyzer {
       );
     }
 
-    final priorityEvidenceGap = evidenceGaps.where((status) => !status.isComplete).firstOrNull ?? evidenceGaps.firstOrNull;
+    final priorityEvidenceGap = _firstOrNull(evidenceGaps.where((status) => !status.isComplete)) ?? _firstOrNull(evidenceGaps);
     if (priorityEvidenceGap != null) {
       return AdvancementRecommendation(
         kind: AdvancementActionKind.documentRequirement,
@@ -477,7 +477,7 @@ class AdvancementAnalyzer {
         targetExamples: 1,
         suggestedType: CareerRecordType.project,
         directTypes: {CareerRecordType.project},
-        keywords: {'committee', 'policy', 'sop', 'quality improvement', ' qI ', 'budget', 'schedule', 'inventory', 'project', 'program'},
+        keywords: {'committee', 'policy', 'sop', 'quality improvement', 'qi', 'budget', 'schedule', 'inventory', 'project', 'program'},
       ),
       _CompetencyDefinition(
         id: 'technical',
@@ -566,6 +566,8 @@ class AdvancementAnalyzer {
     const months = <String>['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
+
+  static T? _firstOrNull<T>(Iterable<T> values) => values.isEmpty ? null : values.first;
 }
 
 class _CompetencyDefinition {
@@ -588,8 +590,4 @@ class _CompetencyDefinition {
     required this.directTypes,
     required this.keywords,
   });
-}
-
-extension<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }
