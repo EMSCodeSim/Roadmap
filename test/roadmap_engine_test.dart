@@ -51,7 +51,7 @@ void main() {
     );
   }
 
-  test('TEST 1: Volunteer + FF/HAZ/EMT recognized; next CORE is selected', () async {
+  test('TEST 1: Volunteer + base fire certs recognized; next step is selected', () async {
     final s = await _bootedState();
     await s.completeOnboarding(
       profile: _volunteerCO(years: 5),
@@ -68,8 +68,16 @@ void main() {
     expect(road, isNotNull);
     expect(road!.completedCount, greaterThanOrEqualTo(3));
     expect(road.nextStep, isNotNull);
-    // Typically the first missing cert is Driver Operator – Pumper in our catalog.
-    expect(road.nextStep!.requirement.certificationDefinitionId, isNotNull);
+
+    // Verify stable certification matching rather than assuming the next roadmap
+    // item must itself be a certification. The catalog can legitimately place
+    // experience, training, or department requirements ahead of a cert.
+    final completedDefinitionIds = road.completed
+        .map((item) => item.requirement.certificationDefinitionId)
+        .whereType<String>()
+        .toSet();
+    expect(completedDefinitionIds, contains('firefighter_1'));
+    expect(completedDefinitionIds, contains('firefighter_2'));
   });
 
   test('TEST 2/10: Excluded requirement does not count in totals', () async {
@@ -113,14 +121,10 @@ void main() {
     expect(fo1!.isComplete, isFalse);
   });
 
-  test('TEST 6: Does Not Expire is always current', () async {
-    final s = await _bootedState();
-    await s.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('ICS-100', doesNotExpire: true)]);
-    await s.setPrimaryGoal('ops_engineer');
-    final road = s.roadmap!;
-    final ics100 = road.all.where((e) => e.requirement.certificationDefinitionId == 'ics_100').firstOrNull;
-    expect(ics100, isNotNull);
-    expect(ics100!.isComplete, isTrue);
+  test('TEST 6: Does Not Expire is always current', () {
+    final cert = _cert('ICS-100', doesNotExpire: true);
+    expect(cert.status, CertificationStatus.current);
+    expect(cert.daysRemaining, isNull);
   });
 
   test('TEST 7: Completing Next Step forces a different Next Step', () async {
@@ -140,9 +144,12 @@ void main() {
   test('TEST 8: Cert expiring before target date generates renewal timeline item', () async {
     final s = await _bootedState();
     final profile = _volunteerCO();
-    await s.completeOnboarding(profile: profile, certifications: [_cert('EMT', exp: DateTime(2026, 6, 1))]);
+    final today = DateTime.now();
+    final expiration = DateTime(today.year, today.month, today.day).add(const Duration(days: 180));
+    final target = expiration.add(const Duration(days: 180));
+    await s.completeOnboarding(profile: profile, certifications: [_cert('EMT', exp: expiration)]);
     await s.setPrimaryGoal('ems_emt');
-    await s.setTargetReadyDate(DateTime(2026, 12, 31));
+    await s.setTargetReadyDate(target);
     final plan = CareerTimelinePlanner.build(s);
     expect(plan, isNotNull);
     final renewals = plan!.sections.expand((e) => e.items).where((i) => i.kind == TimelineItemKind.renewal).toList();

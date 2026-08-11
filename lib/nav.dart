@@ -6,6 +6,8 @@ import 'package:firepath/pages/shell/app_shell_page.dart';
 import 'package:firepath/pages/home/home_page.dart';
 import 'package:firepath/pages/onboarding/onboarding_flow_page.dart';
 import 'package:firepath/pages/path/my_path_page.dart';
+import 'package:firepath/pages/career/career_hub_page.dart';
+import 'package:firepath/pages/career/career_vault_page.dart';
 import 'package:firepath/pages/certifications/certifications_page.dart';
 import 'package:firepath/pages/resources/resources_page.dart';
 import 'package:firepath/pages/requirement/requirement_detail_page.dart';
@@ -51,6 +53,15 @@ class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: AppRoutes.career,
+                name: 'career',
+                pageBuilder: (context, state) => const NoTransitionPage(child: CareerHubPage()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: AppRoutes.certifications,
                 name: 'certifications',
                 pageBuilder: (context, state) => const NoTransitionPage(child: CertificationsPage()),
@@ -71,6 +82,11 @@ class AppRouter {
 
       // Details (outside the shell so they slide over any tab)
       GoRoute(
+        path: AppRoutes.careerVault,
+        name: 'career_vault',
+        pageBuilder: (context, state) => const MaterialPage(child: CareerVaultPage()),
+      ),
+      GoRoute(
         path: AppRoutes.requirementDetail,
         name: 'requirement_detail',
         pageBuilder: (context, state) => MaterialPage(child: RequirementDetailPage(requirement: state.extra)),
@@ -85,7 +101,6 @@ class AppRouter {
         name: 'certification_detail',
         pageBuilder: (context, state) => MaterialPage(child: CertificationDetailPage(certId: state.pathParameters['id']!, extra: state.extra)),
       ),
-
       GoRoute(
         path: AppRoutes.certificationAdd,
         name: 'certification_add',
@@ -101,6 +116,8 @@ class AppRoutes {
 
   static const String home = '/home';
   static const String myPath = '/path';
+  static const String career = '/career';
+  static const String careerVault = '/career/vault';
   static const String certifications = '/certifications';
   static const String resources = '/resources';
 
