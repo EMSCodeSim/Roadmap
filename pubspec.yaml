@@ -24,9 +24,15 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icons/career_road_icon.jpg
+    - assets/graphics/professional_growth_roadmap_banner.jpg
+    - assets/graphics/career_vault.jpg
+    - assets/graphics/advancement_dashboard.jpg
+    - assets/graphics/promotion_story_bank.jpg
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/icons/dreamflow_icon.jpg
+  image_path: assets/icons/career_road_icon.jpg
   remove_alpha_ios: true
