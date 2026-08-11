@@ -54,8 +54,17 @@ class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.career,
-                name: 'career',
+                path: AppRoutes.personalLog,
+                name: 'personal_log',
+                pageBuilder: (context, state) => const NoTransitionPage(child: PersonalLogPage()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.growth,
+                name: 'growth',
                 pageBuilder: (context, state) => const NoTransitionPage(child: CareerHubPage()),
               ),
             ],
@@ -69,28 +78,22 @@ class AppRouter {
               ),
             ],
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.resources,
-                name: 'resources',
-                pageBuilder: (context, state) => NoTransitionPage(child: ResourcesPage(extra: state.extra)),
-              ),
-            ],
-          ),
         ],
       ),
 
-      // Details (outside the shell so they slide over any tab)
-      GoRoute(
-        path: AppRoutes.careerVault,
-        name: 'personal_log',
-        pageBuilder: (context, state) => const MaterialPage(child: PersonalLogPage()),
-      ),
+      // Legacy links retained so existing bookmarks/deep links do not break.
+      GoRoute(path: '/career', redirect: (context, state) => AppRoutes.growth),
+      GoRoute(path: '/career/vault', redirect: (context, state) => AppRoutes.personalLog),
+
       GoRoute(
         path: AppRoutes.careerEvidence,
         name: 'career_evidence',
         pageBuilder: (context, state) => const MaterialPage(child: CareerVaultPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.resources,
+        name: 'resources',
+        pageBuilder: (context, state) => MaterialPage(child: ResourcesPage(extra: state.extra)),
       ),
       GoRoute(
         path: AppRoutes.requirementDetail,
@@ -122,10 +125,14 @@ class AppRoutes {
 
   static const String home = '/home';
   static const String myPath = '/path';
-  static const String career = '/career';
-  static const String careerVault = '/career/vault';
-  static const String careerEvidence = '/career/vault/evidence';
+  static const String personalLog = '/log';
+  static const String growth = '/growth';
   static const String certifications = '/certifications';
+
+  // Compatibility aliases used throughout the existing app.
+  static const String career = growth;
+  static const String careerVault = personalLog;
+  static const String careerEvidence = '/growth/evidence';
   static const String resources = '/resources';
 
   static const String requirementDetail = '/requirement';
