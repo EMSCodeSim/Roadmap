@@ -201,7 +201,7 @@ class _GraphicHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     return Container(
-      minHeight: 126,
+      constraints: const BoxConstraints(minHeight: 126),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
