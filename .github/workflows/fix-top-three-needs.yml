@@ -1,0 +1,458 @@
+name: Fix top three roadmap needs
+
+on:
+  push:
+    branches:
+      - agent/fix-top-three-needs
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/fix-top-three-needs
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Apply navigation, custom-goal, and portfolio-backup fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'Missing expected text for {label}')
+              return text.replace(old, new, 1)
+
+          # 1) Correct the primary navigation so labels match the StatefulShellRoute branches.
+          shell = Path('lib/pages/shell/app_shell_page.dart')
+          shell.write_text("""import 'package:flutter/material.dart';
+          import 'package:go_router/go_router.dart';
+
+          class AppShellPage extends StatelessWidget {
+            final StatefulNavigationShell navigationShell;
+
+            const AppShellPage({super.key, required this.navigationShell});
+
+            void _onTap(int index) {
+              navigationShell.goBranch(
+                index,
+                initialLocation: index == navigationShell.currentIndex,
+              );
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              final cs = Theme.of(context).colorScheme;
+              return Scaffold(
+                body: navigationShell,
+                bottomNavigationBar: SafeArea(
+                  top: false,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      border: Border(top: BorderSide(color: cs.outline.withValues(alpha: 0.15))),
+                    ),
+                    child: BottomNavigationBar(
+                      type: BottomNavigationBarType.fixed,
+                      currentIndex: navigationShell.currentIndex,
+                      onTap: _onTap,
+                      selectedItemColor: cs.primary,
+                      unselectedItemColor: cs.onSurfaceVariant,
+                      selectedFontSize: 11,
+                      unselectedFontSize: 11,
+                      items: const [
+                        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
+                        BottomNavigationBarItem(icon: Icon(Icons.route_outlined), activeIcon: Icon(Icons.route), label: 'Roadmap'),
+                        BottomNavigationBarItem(icon: Icon(Icons.add_task_outlined), activeIcon: Icon(Icons.add_task), label: 'Log'),
+                        BottomNavigationBarItem(icon: Icon(Icons.trending_up_outlined), activeIcon: Icon(Icons.trending_up), label: 'Growth'),
+                        BottomNavigationBarItem(icon: Icon(Icons.verified_outlined), activeIcon: Icon(Icons.verified), label: 'Certs'),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+          """)
+
+          # 2) Seed custom goals with editable, incomplete milestones instead of an empty/complete roadmap.
+          state_path = Path('lib/state/app_state.dart')
+          state = state_path.read_text()
+
+          helper = r'''
+  void _ensureCustomGoalStarterRequirements(String? goalId) {
+    if (goalId == null || !goalId.startsWith('custom:')) return;
+    if (_customRequirements.any((r) => r.id.startsWith('$goalId::'))) return;
+
+    final now = DateTime.now();
+    Requirement starter({
+      required String suffix,
+      required String name,
+      required String category,
+      required String description,
+      required RequirementPriority priority,
+      required int sortOrder,
+      TimelineCategory timelineCategory = TimelineCategory.development,
+    }) {
+      return Requirement(
+        id: '$goalId::$suffix',
+        name: name,
+        category: category,
+        priority: priority,
+        description: description,
+        type: RequirementType.custom,
+        requirementSource: RequirementSource.departmentRequirement,
+        defaultRequired: true,
+        stateDependent: false,
+        departmentDependent: true,
+        completed: false,
+        progressCurrent: null,
+        progressRequired: null,
+        progressUnit: null,
+        experienceValue: null,
+        experienceUnit: null,
+        certificationReference: null,
+        certificationDefinitionId: null,
+        allowExpiredCertification: false,
+        prerequisiteRequirementIds: const [],
+        resourceIds: const [],
+        resourceLinks: const [],
+        sortOrder: sortOrder,
+        estimatedDurationDays: null,
+        recommendedLeadTimeDays: null,
+        canRunConcurrent: true,
+        timelineCategory: timelineCategory,
+        suggestedStartDate: null,
+        suggestedCompletionDate: null,
+        createdAt: now,
+        updatedAt: now,
+      );
+    }
+
+    _customRequirements.addAll([
+      starter(
+        suffix: 'define_eligibility',
+        name: 'Define eligibility requirements',
+        category: 'Eligibility',
+        description: 'Confirm the department, agency, state, education, time-in-grade, and prerequisite rules for this goal. Edit this milestone to match your organization.',
+        priority: RequirementPriority.core,
+        sortOrder: 10,
+        timelineCategory: TimelineCategory.departmentRequirement,
+      ),
+      starter(
+        suffix: 'build_qualifications',
+        name: 'Build required qualifications',
+        category: 'Qualifications',
+        description: 'Add the certifications, courses, task books, and qualifications that make you eligible and competitive for this goal.',
+        priority: RequirementPriority.core,
+        sortOrder: 20,
+        timelineCategory: TimelineCategory.certification,
+      ),
+      starter(
+        suffix: 'document_experience',
+        name: 'Document relevant experience and evidence',
+        category: 'Experience',
+        description: 'Capture assignments, leadership examples, projects, incidents, teaching, and other evidence you may need years later.',
+        priority: RequirementPriority.recommended,
+        sortOrder: 30,
+        timelineCategory: TimelineCategory.experience,
+      ),
+      starter(
+        suffix: 'prepare_selection',
+        name: 'Prepare for the selection or promotion process',
+        category: 'Promotion Prep',
+        description: 'Add the written exam, assessment center, interview, resume, portfolio, or other selection steps used for this goal.',
+        priority: RequirementPriority.recommended,
+        sortOrder: 40,
+        timelineCategory: TimelineCategory.promotionalPreparation,
+      ),
+    ]);
+  }
+
+'''
+          marker = '  Future<void> completeOnboarding({required UserProfile profile, required List<Certification> certifications}) async {'
+          if helper.strip() not in state:
+              if marker not in state:
+                  raise SystemExit('Could not find completeOnboarding marker')
+              state = state.replace(marker, helper + marker, 1)
+
+          old = """    _onboardingComplete = true;
+    await _store.setOnboardingComplete(true);
+    await _persistAll();"""
+          new = """    _onboardingComplete = true;
+    _ensureCustomGoalStarterRequirements(_profile.primaryGoalId);
+    await _store.setOnboardingComplete(true);
+    await _persistAll();"""
+          state = replace_once(state, old, new, 'custom goal seed during onboarding')
+
+          old = """    _profile = _profile.copyWith(primaryGoalId: goalId, careerPlan: plan, updatedAt: now);
+    await _persistAll();"""
+          new = """    _profile = _profile.copyWith(primaryGoalId: goalId, careerPlan: plan, updatedAt: now);
+    _ensureCustomGoalStarterRequirements(goalId);
+    await _persistAll();"""
+          state = replace_once(state, old, new, 'custom goal seed when changing goal')
+          state_path.write_text(state)
+
+          # 3) Upgrade the existing Career Log backup into a complete portfolio backup,
+          #    while keeping old v2 Career Log backups restorable.
+          store_path = Path('lib/services/career_record_store.dart')
+          store = store_path.read_text()
+          start = store.index('  Future<String> exportBackup() async {')
+          end = store.index('\n}\n\nclass CareerRestoreResult', start)
+          replacement = r'''  Future<String> exportBackup() async {
+    final records = await load();
+    final profile = await _store.loadProfile();
+    final certifications = await _store.loadCertifications();
+    final customRequirements = await _store.loadCustomRequirements();
+    final pathOverrides = await _store.loadPathOverrides();
+    final certMatches = await _store.loadCertificationMatchConfirmations();
+    final quickLogPreferences = await _store.loadJsonMap('fireops.quickLogPreferences.v1');
+    final onboardingComplete = await _store.getOnboardingComplete();
+
+    return const JsonEncoder.withIndent('  ').convert({
+      'format': 'fireops-career-portfolio',
+      'version': 3,
+      'exportedAt': DateTime.now().toIso8601String(),
+      'onboardingComplete': onboardingComplete,
+      'profile': profile,
+      'certifications': certifications,
+      'customRequirements': customRequirements,
+      'pathOverrides': pathOverrides,
+      'certificationMatchConfirmations': certMatches,
+      'quickLogPreferences': quickLogPreferences,
+      'records': records.map((e) => e.toJson()).toList(),
+    });
+  }
+
+  Future<CareerRestoreResult> restoreBackup(String raw) async {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        return const CareerRestoreResult(success: false, count: 0, message: 'Backup is not valid JSON.');
+      }
+      final map = Map<String, dynamic>.from(decoded);
+      final format = map['format'];
+      final isPortfolio = format == 'fireops-career-portfolio';
+      final isLegacyLog = format == 'fireops-career-log';
+      final recordsRaw = map['records'];
+      if ((!isPortfolio && !isLegacyLog) || recordsRaw is! List) {
+        return const CareerRestoreResult(success: false, count: 0, message: 'This is not a recognized FireOps career backup.');
+      }
+
+      List<Map<String, dynamic>> mapList(dynamic value, String field) {
+        if (value == null) return <Map<String, dynamic>>[];
+        if (value is! List) throw FormatException('$field is not a list');
+        return value.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      }
+
+      Map<String, dynamic>? mapValue(dynamic value, String field) {
+        if (value == null) return null;
+        if (value is! Map) throw FormatException('$field is not an object');
+        return Map<String, dynamic>.from(value);
+      }
+
+      final restored = <CareerRecord>[];
+      for (final item in recordsRaw.whereType<Map>()) {
+        final record = CareerRecord.fromJson(Map<String, dynamic>.from(item));
+        if (record.id.isNotEmpty && record.title.trim().isNotEmpty) restored.add(record);
+      }
+
+      // Validate all portfolio sections before writing anything beyond the career log.
+      Map<String, dynamic>? profile;
+      List<Map<String, dynamic>> certifications = const [];
+      List<Map<String, dynamic>> customRequirements = const [];
+      List<Map<String, dynamic>> pathOverrides = const [];
+      Map<String, dynamic>? certificationMatchConfirmations;
+      Map<String, dynamic>? quickLogPreferences;
+      if (isPortfolio) {
+        profile = mapValue(map['profile'], 'profile');
+        certifications = mapList(map['certifications'], 'certifications');
+        customRequirements = mapList(map['customRequirements'], 'customRequirements');
+        pathOverrides = mapList(map['pathOverrides'], 'pathOverrides');
+        certificationMatchConfirmations = mapValue(map['certificationMatchConfirmations'], 'certificationMatchConfirmations');
+        quickLogPreferences = mapValue(map['quickLogPreferences'], 'quickLogPreferences');
+      }
+
+      final logSaved = await save(restored);
+      if (!logSaved) {
+        return const CareerRestoreResult(success: false, count: 0, message: 'The backup was read, but the device could not save it.');
+      }
+
+      if (isPortfolio) {
+        if (profile != null) await _store.saveProfile(profile);
+        await _store.saveCertifications(certifications);
+        await _store.saveCustomRequirements(customRequirements);
+        await _store.savePathOverrides(pathOverrides);
+        if (certificationMatchConfirmations != null) {
+          await _store.saveCertificationMatchConfirmations(certificationMatchConfirmations);
+        }
+        if (quickLogPreferences != null) {
+          await _store.saveJson('fireops.quickLogPreferences.v1', quickLogPreferences);
+        }
+        final onboardingValue = map['onboardingComplete'];
+        await _store.setOnboardingComplete(onboardingValue is bool ? onboardingValue : profile != null);
+        return CareerRestoreResult(
+          success: true,
+          count: restored.length,
+          message: 'Restored your FireOps career portfolio with ${restored.length} career records.',
+        );
+      }
+
+      return CareerRestoreResult(
+        success: true,
+        count: restored.length,
+        message: 'Restored ${restored.length} career records from the older Career Log backup.',
+      );
+    } catch (e) {
+      debugPrint('CareerRecordStore.restoreBackup failed: $e');
+      return const CareerRestoreResult(success: false, count: 0, message: 'Backup could not be read. Check that the complete backup text was pasted.');
+    }
+  }
+'''
+          store = store[:start] + replacement + store[end:]
+          store_path.write_text(store)
+
+          # Refresh AppState immediately after a complete portfolio restore and improve user-facing copy.
+          log_path = Path('lib/pages/career/personal_log_page.dart')
+          log = log_path.read_text()
+          if "import 'package:provider/provider.dart';" not in log:
+              log = log.replace("import 'package:go_router/go_router.dart';\n", "import 'package:go_router/go_router.dart';\nimport 'package:provider/provider.dart';\n", 1)
+          if "import 'package:firepath/state/app_state.dart';" not in log:
+              log = log.replace("import 'package:firepath/services/quick_log_preferences_store.dart';\n", "import 'package:firepath/services/quick_log_preferences_store.dart';\nimport 'package:firepath/state/app_state.dart';\n", 1)
+          log = log.replace("title: const Text('Backup / Restore')", "title: const Text('Portfolio Backup / Restore')")
+          log = log.replace('Back up your career log before changing phones or periodically for safekeeping.', 'Back up your complete FireOps career portfolio before changing phones or periodically for safekeeping.')
+          log = log.replace("label: const Text('Copy backup')", "label: const Text('Copy portfolio backup')")
+          log = log.replace("Text('Restore a backup'", "Text('Restore a portfolio backup'")
+          log = log.replace('Restoring replaces the career log on this device. Paste a FireOps Career Log backup below.', 'Restoring replaces the local FireOps career portfolio on this device. Paste a FireOps Career Portfolio backup below. Older Career Log backups are also supported.')
+          log = log.replace("title: const Text('Replace current log?')", "title: const Text('Replace current portfolio?')")
+          log = log.replace('The career log on this device will be replaced with the pasted backup.', 'The local FireOps career portfolio on this device will be replaced with the pasted backup.')
+          old_restore = """                    if (result.success) {
+                      Navigator.pop(dialogContext);
+                      await _load();
+                    }"""
+          new_restore = """                    if (result.success) {
+                      Navigator.pop(dialogContext);
+                      await context.read<AppState>().bootstrap();
+                      await _load();
+                    }"""
+          log = replace_once(log, old_restore, new_restore, 'reload AppState after portfolio restore')
+          log_path.write_text(log)
+
+          # Add focused regression coverage for the two behavior changes that previously failed silently.
+          test_path = Path('test/top_three_fixes_test.dart')
+          test_path.write_text(r'''import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:firepath/models/certification.dart';
+import 'package:firepath/models/user_profile.dart';
+import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/state/app_state.dart';
+
+void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  UserProfile profile() {
+    final now = DateTime(2026, 8, 12);
+    return UserProfile(
+      currentRoles: const ['Firefighter'],
+      primaryGoalId: null,
+      targetDate: null,
+      careerPlan: CareerPlan.empty(),
+      yearsOfService: 4,
+      serviceType: 'Career',
+      departmentName: 'Test Department',
+      state: 'CO',
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  Certification cert() {
+    final now = DateTime(2026, 8, 12);
+    return Certification(
+      id: 'ff1',
+      name: 'Firefighter I',
+      certificationDefinitionId: 'firefighter_1',
+      issuingOrganization: 'Test',
+      certificationNumber: null,
+      issueDate: now,
+      expirationDate: null,
+      doesNotExpire: true,
+      notes: null,
+      renewalHistory: const [],
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  test('custom goal starts with actionable milestones instead of an empty completed roadmap', () async {
+    final state = AppState();
+    await state.bootstrap();
+    await state.completeOnboarding(profile: profile(), certifications: [cert()]);
+    await state.setPrimaryGoal('custom:Training Captain');
+
+    expect(state.roadmap, isNotNull);
+    expect(state.roadmap!.totalCount, greaterThanOrEqualTo(4));
+    expect(state.roadmap!.completedCount, 0);
+    expect(state.roadmap!.nextStep, isNotNull);
+    expect(state.roadmap!.nextStep!.requirement.name, 'Define eligibility requirements');
+  });
+
+  test('portfolio backup includes roadmap, certifications, preferences, and career records envelope', () async {
+    final state = AppState();
+    await state.bootstrap();
+    await state.completeOnboarding(profile: profile(), certifications: [cert()]);
+    await state.setPrimaryGoal('custom:Training Captain');
+
+    final raw = await CareerRecordStore().exportBackup();
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+
+    expect(decoded['format'], 'fireops-career-portfolio');
+    expect(decoded['version'], 3);
+    expect(decoded['profile'], isA<Map>());
+    expect((decoded['certifications'] as List), isNotEmpty);
+    expect((decoded['customRequirements'] as List).length, greaterThanOrEqualTo(4));
+    expect(decoded.containsKey('pathOverrides'), isTrue);
+    expect(decoded.containsKey('quickLogPreferences'), isTrue);
+    expect(decoded.containsKey('records'), isTrue);
+  });
+}
+''')
+          PY
+
+      - name: Validate fixes
+        run: |
+          flutter pub get
+          dart format lib/pages/shell/app_shell_page.dart lib/state/app_state.dart lib/services/career_record_store.dart lib/pages/career/personal_log_page.dart test/top_three_fixes_test.dart
+          flutter analyze --no-fatal-warnings --no-fatal-infos
+          flutter test
+
+      - name: Commit fixes
+        run: |
+          rm -f .github/workflows/fix-top-three-needs.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Fix navigation custom goals and portfolio backup"
+            git push origin HEAD:agent/fix-top-three-needs
+          fi
