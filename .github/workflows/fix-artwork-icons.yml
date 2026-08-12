@@ -1,0 +1,57 @@
+name: Fix artwork and launcher icons
+
+on:
+  push:
+    branches:
+      - agent/fix-artwork-icons
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/fix-artwork-icons
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install SVG renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+
+      - name: Apply artwork cleanup
+        run: python .github/scripts/fix_artwork_icons.py
+
+      - name: Build canonical app icon
+        run: rsvg-convert -w 1024 -h 1024 assets/icons/career_road_icon.svg > assets/icons/career_road_icon.png
+
+      - name: Generate platform icons
+        run: |
+          flutter pub get
+          dart run flutter_launcher_icons
+
+      - name: Validate app
+        run: |
+          flutter analyze --no-fatal-warnings --no-fatal-infos
+          flutter test
+
+      - name: Commit repaired artwork and icons
+        run: |
+          rm -f .github/workflows/fix-artwork-icons.yml .github/scripts/fix_artwork_icons.py
+          git checkout main -- pubspec.lock
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix artwork and launcher icon branding"
+          git push origin HEAD:agent/fix-artwork-icons
