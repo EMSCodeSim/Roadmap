@@ -249,7 +249,7 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     DropdownButtonFormField<RequirementType>(
-                      initialValue: type,
+                      value: type,
                       decoration: const InputDecoration(labelText: 'Type'),
                       items: const [
                         DropdownMenuItem(

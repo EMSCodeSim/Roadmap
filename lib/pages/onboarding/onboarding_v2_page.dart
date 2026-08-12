@@ -144,7 +144,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         ),
         const SizedBox(height: 20),
         DropdownButtonFormField<String?>(
-          initialValue: _serviceType,
+          value: _serviceType,
           decoration: const InputDecoration(labelText: 'Service type'),
           items: const [
             DropdownMenuItem(value: null, child: Text('Not set')),
@@ -162,7 +162,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           children: [
             Expanded(
               child: DropdownButtonFormField<String?>(
-                initialValue: _state,
+                value: _state,
                 decoration: const InputDecoration(labelText: 'State'),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('Not set')),

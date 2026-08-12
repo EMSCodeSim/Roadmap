@@ -887,7 +887,7 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<CareerRecordOutcome?>(
-                initialValue: _outcome,
+                value: _outcome,
                 decoration: const InputDecoration(labelText: 'Outcome'),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('Not tracked')),
