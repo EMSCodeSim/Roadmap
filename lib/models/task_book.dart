@@ -50,10 +50,10 @@ class TaskBookResourceLink {
       };
 
   factory TaskBookResourceLink.fromJson(Map<String, dynamic> json) {
-    TaskBookTaskResourceType _type(dynamic v) {
-      if (v is! String) return TaskBookTaskResourceType.other;
+    TaskBookTaskResourceType parseType(dynamic value) {
+      if (value is! String) return TaskBookTaskResourceType.other;
       try {
-        return TaskBookTaskResourceType.values.byName(v);
+        return TaskBookTaskResourceType.values.byName(value);
       } catch (_) {
         return TaskBookTaskResourceType.other;
       }
@@ -62,7 +62,7 @@ class TaskBookResourceLink {
     return TaskBookResourceLink(
       title: (json['title'] as String?) ?? '',
       url: json['url'] as String?,
-      type: _type(json['type']),
+      type: parseType(json['type']),
       issuingSource: json['issuingSource'] as String?,
       notes: json['notes'] as String?,
       fileRef: json['fileRef'] as String?,
@@ -75,11 +75,17 @@ class TaskBookPracticeToolLink {
   final String route;
   final String? subtitle;
 
-  const TaskBookPracticeToolLink(
-      {required this.title, required this.route, required this.subtitle});
+  const TaskBookPracticeToolLink({
+    required this.title,
+    required this.route,
+    required this.subtitle,
+  });
 
-  Map<String, dynamic> toJson() =>
-      {'title': title, 'route': route, 'subtitle': subtitle};
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'route': route,
+        'subtitle': subtitle,
+      };
 
   factory TaskBookPracticeToolLink.fromJson(Map<String, dynamic> json) =>
       TaskBookPracticeToolLink(
@@ -95,12 +101,8 @@ class TaskBookTaskDefinition {
   final String section;
 
   /// Optional scoping for user-created custom tasks.
-  ///
-  /// If set, the task belongs to a specific goal + requirement.
   final String? goalId;
   final String? requirementId;
-
-  /// True when created by the user (not FireOps starter content).
   final bool isCustom;
 
   /// FireOps-created helper content. This is not an official skill sheet.
@@ -109,7 +111,6 @@ class TaskBookTaskDefinition {
   final List<String> performanceTasks;
   final List<String> safetyPoints;
   final List<String> commonMistakes;
-
   final List<TaskBookPracticeToolLink> practiceTools;
   final List<TaskBookResourceLink> resources;
 
@@ -146,17 +147,17 @@ class TaskBookTaskDefinition {
       };
 
   factory TaskBookTaskDefinition.fromJson(Map<String, dynamic> json) {
-    List<String> _strings(dynamic v) =>
-        v is List ? v.whereType<String>().toList() : const <String>[];
-    List<TaskBookPracticeToolLink> _tools(dynamic v) => v is List
-        ? v
+    List<String> strings(dynamic value) =>
+        value is List ? value.whereType<String>().toList() : const <String>[];
+    List<TaskBookPracticeToolLink> tools(dynamic value) => value is List
+        ? value
             .whereType<Map>()
             .map((e) => TaskBookPracticeToolLink.fromJson(
                 Map<String, dynamic>.from(e)))
             .toList()
         : const <TaskBookPracticeToolLink>[];
-    List<TaskBookResourceLink> _resources(dynamic v) => v is List
-        ? v
+    List<TaskBookResourceLink> resources(dynamic value) => value is List
+        ? value
             .whereType<Map>()
             .map((e) =>
                 TaskBookResourceLink.fromJson(Map<String, dynamic>.from(e)))
@@ -171,12 +172,12 @@ class TaskBookTaskDefinition {
       requirementId: json['requirementId'] as String?,
       isCustom: (json['isCustom'] as bool?) ?? false,
       fireOpsObjective: json['fireOpsObjective'] as String?,
-      whatToKnow: _strings(json['whatToKnow']),
-      performanceTasks: _strings(json['performanceTasks']),
-      safetyPoints: _strings(json['safetyPoints']),
-      commonMistakes: _strings(json['commonMistakes']),
-      practiceTools: _tools(json['practiceTools']),
-      resources: _resources(json['resources']),
+      whatToKnow: strings(json['whatToKnow']),
+      performanceTasks: strings(json['performanceTasks']),
+      safetyPoints: strings(json['safetyPoints']),
+      commonMistakes: strings(json['commonMistakes']),
+      practiceTools: tools(json['practiceTools']),
+      resources: resources(json['resources']),
     );
   }
 }
@@ -208,13 +209,18 @@ class TaskBookTaskProgress {
     DateTime? completedAt,
     DateTime? updatedAt,
   }) {
+    final nextStatus = status ?? this.status;
+    final isComplete = nextStatus == TaskBookTaskStatus.complete;
     return TaskBookTaskProgress(
       goalId: goalId,
       requirementId: requirementId,
       taskId: taskId,
-      status: status ?? this.status,
-      completionSource: completionSource ?? this.completionSource,
-      completedAt: completedAt ?? this.completedAt,
+      status: nextStatus,
+      // Completion metadata must never survive after a task is moved back to a
+      // non-complete state. This keeps self/supervisor verification truthful.
+      completionSource:
+          isComplete ? (completionSource ?? this.completionSource) : null,
+      completedAt: isComplete ? (completedAt ?? this.completedAt) : null,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -232,35 +238,41 @@ class TaskBookTaskProgress {
       };
 
   factory TaskBookTaskProgress.fromJson(Map<String, dynamic> json) {
-    DateTime? _dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
-    TaskBookTaskStatus _status(dynamic v) {
-      if (v is! String) return TaskBookTaskStatus.notStarted;
+    DateTime? parseDate(dynamic value) =>
+        value is String ? DateTime.tryParse(value) : null;
+    TaskBookTaskStatus parseStatus(dynamic value) {
+      if (value is! String) return TaskBookTaskStatus.notStarted;
       try {
-        return TaskBookTaskStatus.values.byName(v);
+        return TaskBookTaskStatus.values.byName(value);
       } catch (_) {
         return TaskBookTaskStatus.notStarted;
       }
     }
 
-    TaskBookCompletionSource? _source(dynamic v) {
-      if (v is! String) return null;
+    TaskBookCompletionSource? parseSource(dynamic value) {
+      if (value is! String) return null;
       try {
-        return TaskBookCompletionSource.values.byName(v);
+        return TaskBookCompletionSource.values.byName(value);
       } catch (_) {
         return null;
       }
     }
 
     final now = DateTime.now();
-    final created = _dt(json['createdAt']) ?? now;
-    final updated = _dt(json['updatedAt']) ?? created;
+    final created = parseDate(json['createdAt']) ?? now;
+    final updated = parseDate(json['updatedAt']) ?? created;
+    final status = parseStatus(json['status']);
     return TaskBookTaskProgress(
       goalId: (json['goalId'] as String?) ?? '',
       requirementId: (json['requirementId'] as String?) ?? '',
       taskId: (json['taskId'] as String?) ?? '',
-      status: _status(json['status']),
-      completionSource: _source(json['completionSource']),
-      completedAt: _dt(json['completedAt']),
+      status: status,
+      completionSource: status == TaskBookTaskStatus.complete
+          ? parseSource(json['completionSource'])
+          : null,
+      completedAt: status == TaskBookTaskStatus.complete
+          ? parseDate(json['completedAt'])
+          : null,
       createdAt: created,
       updatedAt: updated,
     );

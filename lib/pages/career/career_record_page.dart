@@ -1,13 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/models/requirement.dart';
+import 'package:firepath/models/task_book.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
+import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
-import 'package:firepath/models/prefill.dart';
+
+enum _RecordFilter {
+  all,
+  calls,
+  skills,
+  training,
+  driving,
+  leadership,
+  teaching,
+  achievements,
+  projects,
+  taskBook,
+  education,
+}
+
+extension on _RecordFilter {
+  String get label => switch (this) {
+        _RecordFilter.all => 'ALL',
+        _RecordFilter.calls => 'CALLS',
+        _RecordFilter.skills => 'SKILLS',
+        _RecordFilter.training => 'TRAINING',
+        _RecordFilter.driving => 'DRIVING',
+        _RecordFilter.leadership => 'LEADERSHIP',
+        _RecordFilter.teaching => 'TEACHING',
+        _RecordFilter.achievements => 'ACHIEVEMENTS',
+        _RecordFilter.projects => 'PROJECTS',
+        _RecordFilter.taskBook => 'TASK BOOK',
+        _RecordFilter.education => 'EDUCATION',
+      };
+}
 
 class CareerRecordPage extends StatefulWidget {
   const CareerRecordPage({super.key});
@@ -18,29 +51,34 @@ class CareerRecordPage extends StatefulWidget {
 
 class _CareerRecordPageState extends State<CareerRecordPage> {
   final CareerRecordStore _store = CareerRecordStore();
+  final TextEditingController _search = TextEditingController();
+
   List<CareerRecord> _records = const [];
   bool _loading = true;
-
   bool _careerView = false;
   late int _year = DateTime.now().year;
-  CareerRecordType? _typeFilter;
-  final TextEditingController _search = TextEditingController();
+  _RecordFilter _filter = _RecordFilter.all;
 
   @override
   void initState() {
     super.initState();
+    _search.addListener(_refreshSearch);
     _load();
-    _search.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
+    _search.removeListener(_refreshSearch);
     _search.dispose();
     super.dispose();
   }
 
+  void _refreshSearch() {
+    if (mounted) setState(() {});
+  }
+
   Future<void> _load() async {
-    setState(() => _loading = true);
+    if (mounted) setState(() => _loading = true);
     final loaded = await _store.load();
     loaded.sort((a, b) => b.date.compareTo(a.date));
     if (!mounted) return;
@@ -53,45 +91,76 @@ class _CareerRecordPageState extends State<CareerRecordPage> {
   List<CareerRecord> get _visible {
     final query = _search.text.trim().toLowerCase();
     Iterable<CareerRecord> items = _records;
-    if (!_careerView) items = items.where((e) => e.date.year == _year);
-    if (_typeFilter != null) items = items.where((e) => e.type == _typeFilter);
+    if (!_careerView) items = items.where((record) => record.date.year == _year);
+    items = items.where(_matchesFilter);
     if (query.isNotEmpty) {
-      items = items.where((e) {
-        final hay = '${e.title} ${e.category} ${e.summary ?? ''} ${e.roleOrAssignment ?? ''} ${e.tags.join(' ')}'
-            .toLowerCase();
-        return hay.contains(query);
+      items = items.where((record) {
+        final haystack = [
+          record.title,
+          record.category,
+          record.summary ?? '',
+          record.roleOrAssignment ?? '',
+          record.tags.join(' '),
+          record.relatedGoalId ?? '',
+          record.relatedRequirementId ?? '',
+          record.relatedTaskId ?? '',
+        ].join(' ').toLowerCase();
+        return haystack.contains(query);
       });
     }
     return items.toList();
   }
 
+  bool _matchesFilter(CareerRecord record) => switch (_filter) {
+        _RecordFilter.all => true,
+        _RecordFilter.calls =>
+          record.type == CareerRecordType.operationalExperience,
+        _RecordFilter.skills => record.type == CareerRecordType.skill &&
+            !CareerStats.isDrivingRecord(record),
+        _RecordFilter.training => record.type == CareerRecordType.training,
+        _RecordFilter.driving => CareerStats.isDrivingRecord(record),
+        _RecordFilter.leadership => record.type == CareerRecordType.leadership,
+        _RecordFilter.teaching => record.type == CareerRecordType.teaching,
+        _RecordFilter.achievements =>
+          record.type == CareerRecordType.achievement,
+        _RecordFilter.projects => record.type == CareerRecordType.project,
+        _RecordFilter.taskBook =>
+          record.type == CareerRecordType.taskBookEvidence ||
+              record.relatedRequirementId != null,
+        _RecordFilter.education => record.type == CareerRecordType.education,
+      };
+
   @override
   Widget build(BuildContext context) {
+    final app = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
     final visible = _visible;
     final stats = CareerStats.fromRecords(visible);
-    final title = _careerView ? 'Career Record' : 'Career Record $_year';
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: Text(_careerView ? 'Career Record' : 'Career Record $_year'),
         actions: [
           IconButton(
             tooltip: 'Quick Log',
-            onPressed: () async {
-              await QuickLogLauncher.open(context);
-              await _load();
-            },
+            onPressed: _openQuickLog,
             icon: const Icon(Icons.add_task),
           ),
           PopupMenuButton<String>(
+            tooltip: 'Career record tools',
             onSelected: (value) {
-              if (value == 'legacy') context.push(AppRoutes.personalLogLegacy);
+              if (value == 'advanced') {
+                context.push(AppRoutes.personalLogLegacy);
+              }
             },
             itemBuilder: (context) => const [
               PopupMenuItem(
-                value: 'legacy',
-                child: Text('Open legacy Personal Log'),
+                value: 'advanced',
+                child: ListTile(
+                  leading: Icon(Icons.tune),
+                  title: Text('Advanced log tools'),
+                  subtitle: Text('Quick actions, backup, restore, and evidence'),
+                ),
               ),
             ],
           ),
@@ -106,26 +175,14 @@ class _CareerRecordPageState extends State<CareerRecordPage> {
               _TopControls(
                 careerView: _careerView,
                 year: _year,
-                onToggleView: (v) => setState(() => _careerView = v),
-                onPickYear: _careerView
-                    ? null
-                    : () async {
-                        final picked = await showModalBottomSheet<int>(
-                          context: context,
-                          showDragHandle: true,
-                          builder: (sheetContext) => _YearPickerSheet(
-                            selected: _year,
-                            years: CareerStats.availableYears(_records),
-                          ),
-                        );
-                        if (picked != null) setState(() => _year = picked);
-                      },
                 search: _search,
+                onToggleView: (value) => setState(() => _careerView = value),
+                onPickYear: _careerView ? null : _pickYear,
               ),
               const SizedBox(height: AppSpacing.md),
-              _TypeFilterRow(
-                selected: _typeFilter,
-                onSelected: (t) => setState(() => _typeFilter = t),
+              _FilterRow(
+                selected: _filter,
+                onSelected: (filter) => setState(() => _filter = filter),
               ),
               const SizedBox(height: AppSpacing.md),
               if (_loading)
@@ -140,19 +197,13 @@ class _CareerRecordPageState extends State<CareerRecordPage> {
                         ?.copyWith(fontWeight: FontWeight.w900)),
                 const SizedBox(height: AppSpacing.sm),
                 if (visible.isEmpty)
-                  _EmptyState(onQuickLog: () async {
-                    await QuickLogLauncher.open(context);
-                    await _load();
-                  })
+                  _EmptyState(onQuickLog: _openQuickLog)
                 else
-                  ...visible.map((r) => _RecordTile(
-                        record: r,
-                        onEdit: () => context.push(AppRoutes.personalLogLegacy,
-                            extra: LogPrefill.fromRecord(r)),
-                        onDelete: () async {
-                          await _store.delete(r);
-                          await _load();
-                        },
+                  ...visible.map((record) => _RecordTile(
+                        record: record,
+                        taskBookLabel: _taskBookLabel(app, record),
+                        onEdit: () => _editRecord(record),
+                        onDelete: () => _deleteRecord(record),
                       )),
               ],
               const SizedBox(height: 28),
@@ -169,6 +220,357 @@ class _CareerRecordPageState extends State<CareerRecordPage> {
       ),
     );
   }
+
+  Future<void> _openQuickLog() async {
+    await QuickLogLauncher.open(context);
+    await _load();
+  }
+
+  Future<void> _pickYear() async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => _YearPickerSheet(
+        selected: _year,
+        years: CareerStats.availableYears(_records),
+      ),
+    );
+    if (picked != null && mounted) setState(() => _year = picked);
+  }
+
+  String? _taskBookLabel(AppState app, CareerRecord record) {
+    if (record.relatedRequirementId == null) return null;
+    final roadmap = app.roadmap;
+    if (roadmap == null || roadmap.goal.id != record.relatedGoalId) {
+      return 'Task Book linked';
+    }
+    final match = roadmap.all
+        .where((item) => item.requirement.id == record.relatedRequirementId)
+        .firstOrNull;
+    return match == null
+        ? 'Task Book linked'
+        : '${roadmap.goal.title} • ${match.requirement.name}';
+  }
+
+  Future<void> _deleteRecord(CareerRecord record) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete career record?'),
+        content: Text(
+          '${record.title} from ${CareerStats.formatDate(record.date)} will be permanently removed from this device.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final deleted = await _store.delete(record);
+    if (!deleted) {
+      _showMessage('This record could not be deleted. No other records changed.');
+      return;
+    }
+
+    await _adjustNumericProgress(record, -1);
+    final remaining = await _store.load();
+    await _resetTaskPracticeIfNeeded(record, remaining);
+    if (!mounted) return;
+    setState(() {
+      _records = remaining..sort((a, b) => b.date.compareTo(a.date));
+    });
+  }
+
+  Future<void> _editRecord(CareerRecord existing) async {
+    final result = await showDialog<CareerRecord>(
+      context: context,
+      builder: (dialogContext) => _RecordEditorDialog(record: existing),
+    );
+    if (result == null) return;
+
+    final saved = await _store.upsert(result);
+    if (!saved) {
+      _showMessage('Changes could not be saved. The original record is unchanged.');
+      return;
+    }
+
+    if (existing.date.year != result.date.year) {
+      final removed = await _store.delete(existing);
+      if (!removed) {
+        _showMessage(
+            'Changes were saved, but the old yearly copy could not be removed. Review the history for a duplicate.');
+      }
+    }
+
+    await _adjustNumericProgress(existing, -1);
+    await _adjustNumericProgress(result, 1);
+    await _load();
+  }
+
+  Future<void> _adjustNumericProgress(
+      CareerRecord record, double direction) async {
+    if (!record.tags.contains('task-book-progress-applied')) return;
+    final goalId = record.relatedGoalId;
+    final requirementId = record.relatedRequirementId;
+    if (goalId == null || requirementId == null) return;
+    final app = context.read<AppState>();
+    final roadmap = app.roadmap;
+    if (roadmap == null || roadmap.goal.id != goalId) return;
+    final requirement = roadmap.all
+        .where((item) => item.requirement.id == requirementId)
+        .map((item) => item.requirement)
+        .firstOrNull;
+    if (requirement?.type != RequirementType.numericProgress ||
+        requirement?.progressRequired == null ||
+        requirement!.progressRequired! <= 0) {
+      return;
+    }
+    final delta = record.hours ?? record.repetitions.toDouble();
+    final next = (requirement.progressCurrent ?? 0) + (delta * direction);
+    await app.setNumericProgress(
+      goalId: goalId,
+      requirementId: requirementId,
+      current: next < 0 ? 0 : next,
+      required: requirement.progressRequired!,
+      unit: requirement.progressUnit,
+    );
+  }
+
+  Future<void> _resetTaskPracticeIfNeeded(
+      CareerRecord deleted, List<CareerRecord> remaining) async {
+    final goalId = deleted.relatedGoalId;
+    final requirementId = deleted.relatedRequirementId;
+    final taskId = deleted.relatedTaskId;
+    if (goalId == null || requirementId == null || taskId == null) return;
+    if (remaining.any((record) =>
+        record.relatedGoalId == goalId &&
+        record.relatedRequirementId == requirementId &&
+        record.relatedTaskId == taskId)) {
+      return;
+    }
+    final app = context.read<AppState>();
+    final status = app.taskStatusFor(
+      goalId: goalId,
+      requirementId: requirementId,
+      taskId: taskId,
+    );
+    if (status == TaskBookTaskStatus.practicing) {
+      await app.setTaskStatus(
+        goalId: goalId,
+        requirementId: requirementId,
+        taskId: taskId,
+        status: TaskBookTaskStatus.notStarted,
+      );
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _RecordEditorDialog extends StatefulWidget {
+  final CareerRecord record;
+  const _RecordEditorDialog({required this.record});
+
+  @override
+  State<_RecordEditorDialog> createState() => _RecordEditorDialogState();
+}
+
+class _RecordEditorDialogState extends State<_RecordEditorDialog> {
+  late CareerRecordType _type = widget.record.type;
+  late DateTime _date = widget.record.date;
+  late CareerRecordOutcome? _outcome = widget.record.outcome;
+  late final TextEditingController _title =
+      TextEditingController(text: widget.record.title);
+  late final TextEditingController _category =
+      TextEditingController(text: widget.record.category);
+  late final TextEditingController _role =
+      TextEditingController(text: widget.record.roleOrAssignment ?? '');
+  late final TextEditingController _note =
+      TextEditingController(text: widget.record.summary ?? '');
+  late final TextEditingController _hours = TextEditingController(
+      text: widget.record.hours?.toString() ?? '');
+  late final TextEditingController _repetitions =
+      TextEditingController(text: widget.record.repetitions.toString());
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _category.dispose();
+    _role.dispose();
+    _note.dispose();
+    _hours.dispose();
+    _repetitions.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit career record'),
+      content: SizedBox(
+        width: 560,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<CareerRecordType>(
+                value: _type,
+                decoration: const InputDecoration(labelText: 'Type'),
+                items: CareerRecordType.values
+                    .map((type) => DropdownMenuItem(
+                          value: type,
+                          child: Text(type.label),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => _type = value);
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _title,
+                decoration: const InputDecoration(labelText: 'Title'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _category,
+                decoration:
+                    const InputDecoration(labelText: 'Category (optional)'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _repetitions,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Count / reps'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _hours,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration:
+                          const InputDecoration(labelText: 'Hours (optional)'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _role,
+                decoration:
+                    const InputDecoration(labelText: 'Role / assignment (optional)'),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<CareerRecordOutcome?>(
+                value: _outcome,
+                decoration:
+                    const InputDecoration(labelText: 'Outcome (optional)'),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Not tracked')),
+                  ...CareerRecordOutcome.values.map((outcome) =>
+                      DropdownMenuItem(
+                          value: outcome, child: Text(outcome.label))),
+                ],
+                onChanged: (value) => setState(() => _outcome = value),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _note,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(labelText: 'Note (optional)'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _pickDate,
+                icon: const Icon(Icons.calendar_today_outlined),
+                label: Text(CareerStats.formatDate(_date)),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _save,
+          child: const Text('Save changes'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(1970),
+      lastDate: DateTime.now(),
+    );
+    if (picked == null) return;
+    setState(() => _date = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          _date.hour,
+          _date.minute,
+        ));
+  }
+
+  void _save() {
+    final title = _title.text.trim();
+    if (title.isEmpty) return;
+    final reps = int.tryParse(_repetitions.text.trim()) ?? 1;
+    final hoursText = _hours.text.trim();
+    final hours = hoursText.isEmpty ? null : double.tryParse(hoursText);
+    if (reps <= 0 || (hoursText.isNotEmpty && (hours == null || hours <= 0))) {
+      return;
+    }
+    Navigator.pop(
+      context,
+      CareerRecord(
+        id: widget.record.id,
+        type: _type,
+        title: title,
+        category: _category.text.trim(),
+        date: _date,
+        roleOrAssignment: _role.text.trim().isEmpty ? null : _role.text.trim(),
+        summary: _note.text.trim().isEmpty ? null : _note.text.trim(),
+        impact: widget.record.impact,
+        evidenceReference: widget.record.evidenceReference,
+        hours: hours,
+        repetitions: reps,
+        tags: widget.record.tags,
+        relatedGoalId: widget.record.relatedGoalId,
+        relatedRequirementId: widget.record.relatedRequirementId,
+        relatedTaskId: widget.record.relatedTaskId,
+        highlight: widget.record.highlight,
+        trackingKey: widget.record.trackingKey,
+        outcome: _outcome,
+        createdAt: widget.record.createdAt,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
 }
 
 class _TopControls extends StatelessWidget {
@@ -177,12 +579,14 @@ class _TopControls extends StatelessWidget {
   final ValueChanged<bool> onToggleView;
   final VoidCallback? onPickYear;
   final TextEditingController search;
-  const _TopControls(
-      {required this.careerView,
-      required this.year,
-      required this.onToggleView,
-      required this.onPickYear,
-      required this.search});
+
+  const _TopControls({
+    required this.careerView,
+    required this.year,
+    required this.onToggleView,
+    required this.onPickYear,
+    required this.search,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -197,36 +601,35 @@ class _TopControls extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
           ),
-          child: Row(
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: SegmentedButton<bool>(
-                  showSelectedIcon: false,
-                  segments: const [
-                    ButtonSegment(value: false, label: Text('THIS YEAR')),
-                    ButtonSegment(value: true, label: Text('CAREER')),
-                  ],
-                  selected: {careerView},
-                  onSelectionChanged: (set) => onToggleView(set.first),
-                ),
+              SegmentedButton<bool>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: false, label: Text('THIS YEAR')),
+                  ButtonSegment(value: true, label: Text('CAREER')),
+                ],
+                selected: {careerView},
+                onSelectionChanged: (selection) =>
+                    onToggleView(selection.first),
               ),
-              if (!careerView) ...[
-                const SizedBox(width: 10),
+              if (!careerView)
                 FilledButton.tonalIcon(
                   onPressed: onPickYear,
-                  icon: Icon(Icons.calendar_month, color: cs.onSecondaryContainer),
-                  label: Text(year.toString(),
-                      style: TextStyle(color: cs.onSecondaryContainer)),
+                  icon: const Icon(Icons.calendar_month),
+                  label: Text(year.toString()),
                 ),
-              ],
             ],
           ),
         ),
         const SizedBox(height: AppSpacing.md),
         TextField(
           controller: search,
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.search),
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
             hintText: 'Search calls, skills, training, goals, tasks…',
             filled: true,
           ),
@@ -236,64 +639,27 @@ class _TopControls extends StatelessWidget {
   }
 }
 
-class _TypeFilterRow extends StatelessWidget {
-  final CareerRecordType? selected;
-  final ValueChanged<CareerRecordType?> onSelected;
-  const _TypeFilterRow({required this.selected, required this.onSelected});
+class _FilterRow extends StatelessWidget {
+  final _RecordFilter selected;
+  final ValueChanged<_RecordFilter> onSelected;
+
+  const _FilterRow({required this.selected, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: [
-          _FilterChip(
-            label: 'ALL',
-            selected: selected == null,
-            onTap: () => onSelected(null),
-          ),
-          ...CareerRecordType.values.map((t) => Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: _FilterChip(
-                  label: t.shortLabel.toUpperCase(),
-                  selected: selected == t,
-                  onTap: () => onSelected(t),
-                ),
-              )),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _FilterChip(
-      {required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? cs.primaryContainer : cs.surface,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-              color:
-                  selected ? cs.primaryContainer : cs.outline.withValues(alpha: 0.16)),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: selected ? cs.onPrimaryContainer : cs.onSurface),
-        ),
+        children: _RecordFilter.values
+            .map((filter) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(filter.label),
+                    selected: selected == filter,
+                    onSelected: (_) => onSelected(filter),
+                  ),
+                ))
+            .toList(),
       ),
     );
   }
@@ -306,19 +672,26 @@ class _StatsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <_StatItem>[
-      _StatItem('Calls', stats.calls.toString(), Icons.local_fire_department),
-      _StatItem('Skill reps', stats.skillRepetitions.toString(), Icons.handyman),
-      _StatItem('Training', stats.trainingLabel, Icons.school),
-      _StatItem('Drive', stats.driveLabel, Icons.local_shipping),
-      _StatItem('Teaching', stats.teachingLabel, Icons.record_voice_over),
-      _StatItem('Leadership', stats.leadershipCount.toString(), Icons.groups),
+      if (stats.calls > 0)
+        _StatItem('Calls', '${stats.calls}', Icons.local_fire_department),
+      if (stats.skillRepetitions > 0)
+        _StatItem('Skill reps', '${stats.skillRepetitions}', Icons.handyman),
+      if (stats.trainingHours > 0)
+        _StatItem('Training', stats.trainingLabel, Icons.school),
+      if (stats.driveHours > 0)
+        _StatItem('Drive time', stats.driveLabel, Icons.local_shipping),
+      if (stats.teachingHours > 0)
+        _StatItem('Teaching', stats.teachingLabel, Icons.record_voice_over),
+      if (stats.leadershipCount > 0)
+        _StatItem('Leadership', '${stats.leadershipCount}', Icons.groups),
       if (stats.achievements > 0)
-        _StatItem('Achievements', stats.achievements.toString(), Icons.emoji_events),
-      if (stats.awards > 0) _StatItem('Awards', stats.awards.toString(), Icons.military_tech),
+        _StatItem('Achievements', '${stats.achievements}', Icons.emoji_events),
+      if (stats.awards > 0)
+        _StatItem('Awards', '${stats.awards}', Icons.military_tech),
       if (stats.projects > 0)
-        _StatItem('Projects', stats.projects.toString(), Icons.assignment_turned_in),
+        _StatItem('Projects', '${stats.projects}', Icons.assignment_turned_in),
       if (stats.taskBookUpdates > 0)
-        _StatItem('Task Book', stats.taskBookUpdates.toString(), Icons.fact_check),
+        _StatItem('Task Book', '${stats.taskBookUpdates}', Icons.fact_check),
     ];
 
     return Column(
@@ -330,24 +703,27 @@ class _StatsGrid extends StatelessWidget {
                 .titleSmall
                 ?.copyWith(fontWeight: FontWeight.w900)),
         const SizedBox(height: AppSpacing.sm),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 640;
-            final crossAxisCount = wide ? 3 : 2;
-            return GridView.builder(
-              itemCount: items.length,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: wide ? 2.35 : 2.1,
-              ),
-              itemBuilder: (context, index) => _StatCard(item: items[index]),
-            );
-          },
-        ),
+        if (items.isEmpty)
+          Text('No activity recorded for this view yet.',
+              style: Theme.of(context).textTheme.bodyMedium)
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 720 ? 3 : 2;
+              return GridView.builder(
+                itemCount: items.length,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: columns == 3 ? 2.5 : 2.05,
+                ),
+                itemBuilder: (context, index) => _StatCard(item: items[index]),
+              );
+            },
+          ),
       ],
     );
   }
@@ -376,16 +752,7 @@ class _StatCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            alignment: Alignment.center,
-            child: Icon(item.icon, color: cs.onPrimaryContainer, size: 18),
-          ),
+          Icon(item.icon, color: cs.primary),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -397,7 +764,6 @@ class _StatCard extends StatelessWidget {
                         .textTheme
                         .labelMedium
                         ?.copyWith(color: cs.onSurfaceVariant)),
-                const SizedBox(height: 2),
                 Text(item.value,
                     style: Theme.of(context)
                         .textTheme
@@ -414,21 +780,32 @@ class _StatCard extends StatelessWidget {
 
 class _RecordTile extends StatelessWidget {
   final CareerRecord record;
+  final String? taskBookLabel;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  const _RecordTile(
-      {required this.record, required this.onEdit, required this.onDelete});
+
+  const _RecordTile({
+    required this.record,
+    required this.taskBookLabel,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final countLabel = record.hours != null
+    final amount = record.hours != null
         ? CareerStats.formatDurationHours(record.hours!)
-        : (record.repetitions < 2 ? null : '${record.repetitions} reps');
-    final subtitleBits = <String>[record.type.label];
-    if (record.category.trim().isNotEmpty) subtitleBits.add(record.category);
-    if (countLabel != null) subtitleBits.add(countLabel);
-    if (record.outcome != null) subtitleBits.add(record.outcome!.label);
+        : record.repetitions > 1
+            ? '${record.repetitions} reps'
+            : null;
+    final details = <String>[
+      record.type.label,
+      if (record.category.trim().isNotEmpty) record.category,
+      if (amount != null) amount,
+      if (record.outcome != null) record.outcome!.label,
+    ];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -439,16 +816,7 @@ class _RecordTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: cs.secondaryContainer,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            alignment: Alignment.center,
-            child: Icon(_icon(record.type), color: cs.onSecondaryContainer),
-          ),
+          Icon(_recordIcon(record), color: cs.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -460,12 +828,18 @@ class _RecordTile extends StatelessWidget {
                         .titleSmall
                         ?.copyWith(fontWeight: FontWeight.w900)),
                 const SizedBox(height: 2),
-                Text(subtitleBits.join(' • '),
+                Text(details.join(' • '),
                     style: Theme.of(context)
                         .textTheme
                         .bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.35)),
-                const SizedBox(height: 6),
+                        ?.copyWith(color: cs.onSurfaceVariant)),
+                if (taskBookLabel != null) ...[
+                  const SizedBox(height: 4),
+                  Text(taskBookLabel!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.primary, fontWeight: FontWeight.w700)),
+                ],
+                const SizedBox(height: 5),
                 Text(CareerStats.formatDate(record.date),
                     style: Theme.of(context)
                         .textTheme
@@ -474,7 +848,6 @@ class _RecordTile extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 10),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'edit') onEdit();
@@ -490,17 +863,20 @@ class _RecordTile extends StatelessWidget {
     );
   }
 
-  static IconData _icon(CareerRecordType t) => switch (t) {
-        CareerRecordType.operationalExperience => Icons.local_fire_department,
-        CareerRecordType.skill => Icons.handyman,
-        CareerRecordType.training => Icons.school,
-        CareerRecordType.achievement => Icons.emoji_events,
-        CareerRecordType.leadership => Icons.groups,
-        CareerRecordType.teaching => Icons.record_voice_over,
-        CareerRecordType.project => Icons.assignment,
-        CareerRecordType.education => Icons.menu_book,
-        CareerRecordType.taskBookEvidence => Icons.fact_check,
-      };
+  static IconData _recordIcon(CareerRecord record) {
+    if (CareerStats.isDrivingRecord(record)) return Icons.local_shipping;
+    return switch (record.type) {
+      CareerRecordType.operationalExperience => Icons.local_fire_department,
+      CareerRecordType.skill => Icons.handyman,
+      CareerRecordType.training => Icons.school,
+      CareerRecordType.achievement => Icons.emoji_events,
+      CareerRecordType.leadership => Icons.groups,
+      CareerRecordType.teaching => Icons.record_voice_over,
+      CareerRecordType.project => Icons.assignment,
+      CareerRecordType.education => Icons.menu_book,
+      CareerRecordType.taskBookEvidence => Icons.fact_check,
+    };
+  }
 }
 
 class _EmptyState extends StatelessWidget {
@@ -509,41 +885,25 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Nothing here yet.',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w900)),
+          const Text('Nothing here yet.',
+              style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
-          Text(
-            'Use Quick Log to capture calls, skills, training, drive time, leadership, awards, and Task Book progress without leaving what you’re doing.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
-          ),
+          const Text(
+              'Use Quick Log to capture calls, skills, training, drive time, leadership, achievements, and Task Book progress.'),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 52,
-            child: FilledButton.icon(
-              onPressed: onQuickLog,
-              icon: Icon(Icons.add_task, color: cs.onPrimary),
-              label: Text('Quick Log', style: TextStyle(color: cs.onPrimary)),
-              style: FilledButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.lg))),
-            ),
+          FilledButton.icon(
+            onPressed: onQuickLog,
+            icon: const Icon(Icons.add_task),
+            label: const Text('Quick Log'),
           ),
         ],
       ),
@@ -555,35 +915,24 @@ class _LoadingCard extends StatelessWidget {
   const _LoadingCard();
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      height: 140,
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
-      ),
-      alignment: Alignment.center,
-      child: const CircularProgressIndicator(),
-    );
-  }
+  Widget build(BuildContext context) => const SizedBox(
+        height: 150,
+        child: Center(child: CircularProgressIndicator()),
+      );
 }
 
 class _YearPickerSheet extends StatelessWidget {
   final int selected;
   final List<int> years;
+
   const _YearPickerSheet({required this.selected, required this.years});
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final safeYears = years.isEmpty
-        ? [DateTime.now().year]
-        : years;
+    final available = years.isEmpty ? [DateTime.now().year] : years;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -593,21 +942,18 @@ class _YearPickerSheet extends StatelessWidget {
                     .textTheme
                     .titleLarge
                     ?.copyWith(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: safeYears
-                  .sorted((a, b) => b.compareTo(a))
-                  .map((y) => ChoiceChip(
-                        label: Text(y.toString()),
-                        selected: y == selected,
-                        onSelected: (_) => context.pop(y),
-                        selectedColor: cs.primaryContainer,
+              spacing: 8,
+              runSpacing: 8,
+              children: available
+                  .map((year) => ChoiceChip(
+                        label: Text('$year'),
+                        selected: year == selected,
+                        onSelected: (_) => context.pop(year),
                       ))
                   .toList(),
             ),
-            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -615,10 +961,6 @@ class _YearPickerSheet extends StatelessWidget {
   }
 }
 
-extension _SortedListX<T> on List<T> {
-  List<T> sorted(int Function(T a, T b) compare) {
-    final copy = List<T>.from(this);
-    copy.sort(compare);
-    return copy;
-  }
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
 }

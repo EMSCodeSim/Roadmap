@@ -32,14 +32,17 @@ class CareerRecordStore {
     );
   }
 
+  Future<List<CareerRecord>> loadYear(int year) => _loadYear(year);
+
   Future<List<CareerRecord>> _loadYear(int year) async {
     final raw = await _store.loadJsonList(_yearKey(year));
     final records = <CareerRecord>[];
     for (final item in raw) {
       try {
         final record = CareerRecord.fromJson(item);
-        if (record.id.isNotEmpty && record.title.trim().isNotEmpty)
+        if (record.id.isNotEmpty && record.title.trim().isNotEmpty) {
           records.add(record);
+        }
       } catch (e) {
         debugPrint('Skipping invalid career record for $year: $e');
       }
@@ -77,8 +80,9 @@ class CareerRecordStore {
     for (final item in raw) {
       try {
         final record = CareerRecord.fromJson(item);
-        if (record.id.isNotEmpty && record.title.trim().isNotEmpty)
+        if (record.id.isNotEmpty && record.title.trim().isNotEmpty) {
           records.add(record);
+        }
       } catch (e) {
         debugPrint('Skipping invalid legacy career record: $e');
       }
@@ -87,9 +91,8 @@ class CareerRecordStore {
     return records;
   }
 
-  /// Replaces the full career record set. This remains available for the
-  /// detailed evidence editor and restore workflow. Everyday Personal Log
-  /// entries use [upsert] so only one year's segment is rewritten.
+  /// Replaces the full career record set. Everyday logging should use [upsert]
+  /// so only one year's segment is rewritten.
   Future<bool> save(List<CareerRecord> records) async {
     final existingYears = await _loadYears();
     final grouped = <int, List<CareerRecord>>{};
@@ -143,8 +146,7 @@ class CareerRecordStore {
     if (records.isEmpty) {
       final removed = await _store.removeKey(_yearKey(year));
       if (!removed) return false;
-      final years = await _loadYears()
-        ..remove(year);
+      final years = await _loadYears()..remove(year);
       return _saveYears(years);
     }
     return _store.saveJsonChecked(
@@ -153,6 +155,8 @@ class CareerRecordStore {
     );
   }
 
+  /// Full portable career backup. Version 4 adds Task Book task progress and
+  /// custom Task Book tasks while remaining backward-compatible with v3.
   Future<String> exportBackup() async {
     final records = await load();
     final profile = await _store.loadProfile();
@@ -163,10 +167,12 @@ class CareerRecordStore {
     final quickLogPreferences =
         await _store.loadJsonMap('fireops.quickLogPreferences.v1');
     final onboardingComplete = await _store.getOnboardingComplete();
+    final taskBookTaskProgress = await _store.loadTaskBookTaskProgress();
+    final taskBookCustomTasks = await _store.loadTaskBookCustomTasks();
 
     return const JsonEncoder.withIndent('  ').convert({
       'format': 'fireops-career-portfolio',
-      'version': 3,
+      'version': 4,
       'exportedAt': DateTime.now().toIso8601String(),
       'onboardingComplete': onboardingComplete,
       'profile': profile,
@@ -175,6 +181,8 @@ class CareerRecordStore {
       'pathOverrides': pathOverrides,
       'certificationMatchConfirmations': certMatches,
       'quickLogPreferences': quickLogPreferences,
+      'taskBookTaskProgress': taskBookTaskProgress,
+      'taskBookCustomTasks': taskBookCustomTasks,
       'records': records.map((e) => e.toJson()).toList(),
     });
   }
@@ -184,7 +192,10 @@ class CareerRecordStore {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) {
         return const CareerRestoreResult(
-            success: false, count: 0, message: 'Backup is not valid JSON.');
+          success: false,
+          count: 0,
+          message: 'Backup is not valid JSON.',
+        );
       }
       final map = Map<String, dynamic>.from(decoded);
       final format = map['format'];
@@ -193,9 +204,10 @@ class CareerRecordStore {
       final recordsRaw = map['records'];
       if ((!isPortfolio && !isLegacyLog) || recordsRaw is! List) {
         return const CareerRestoreResult(
-            success: false,
-            count: 0,
-            message: 'This is not a recognized FireOps career backup.');
+          success: false,
+          count: 0,
+          message: 'This is not a recognized FireOps career backup.',
+        );
       }
 
       List<Map<String, dynamic>> mapList(dynamic value, String field) {
@@ -216,8 +228,9 @@ class CareerRecordStore {
       final restored = <CareerRecord>[];
       for (final item in recordsRaw.whereType<Map>()) {
         final record = CareerRecord.fromJson(Map<String, dynamic>.from(item));
-        if (record.id.isNotEmpty && record.title.trim().isNotEmpty)
+        if (record.id.isNotEmpty && record.title.trim().isNotEmpty) {
           restored.add(record);
+        }
       }
 
       Map<String, dynamic>? profile;
@@ -226,6 +239,9 @@ class CareerRecordStore {
       List<Map<String, dynamic>> pathOverrides = const [];
       Map<String, dynamic>? certificationMatchConfirmations;
       Map<String, dynamic>? quickLogPreferences;
+      Map<String, dynamic>? taskBookTaskProgress;
+      List<Map<String, dynamic>>? taskBookCustomTasks;
+
       if (isPortfolio) {
         profile = mapValue(map['profile'], 'profile');
         certifications = mapList(map['certifications'], 'certifications');
@@ -233,18 +249,29 @@ class CareerRecordStore {
             mapList(map['customRequirements'], 'customRequirements');
         pathOverrides = mapList(map['pathOverrides'], 'pathOverrides');
         certificationMatchConfirmations = mapValue(
-            map['certificationMatchConfirmations'],
-            'certificationMatchConfirmations');
+          map['certificationMatchConfirmations'],
+          'certificationMatchConfirmations',
+        );
         quickLogPreferences =
             mapValue(map['quickLogPreferences'], 'quickLogPreferences');
+        if (map.containsKey('taskBookTaskProgress')) {
+          taskBookTaskProgress =
+              mapValue(map['taskBookTaskProgress'], 'taskBookTaskProgress') ??
+                  <String, dynamic>{};
+        }
+        if (map.containsKey('taskBookCustomTasks')) {
+          taskBookCustomTasks =
+              mapList(map['taskBookCustomTasks'], 'taskBookCustomTasks');
+        }
       }
 
       final logSaved = await save(restored);
       if (!logSaved) {
         return const CareerRestoreResult(
-            success: false,
-            count: 0,
-            message: 'The backup was read, but the device could not save it.');
+          success: false,
+          count: 0,
+          message: 'The backup was read, but the device could not save it.',
+        );
       }
 
       if (isPortfolio) {
@@ -260,9 +287,36 @@ class CareerRecordStore {
           await _store.saveJson(
               'fireops.quickLogPreferences.v1', quickLogPreferences);
         }
+
+        // Older v3 backups intentionally leave newer Task Book data alone.
+        // Version 4 backups explicitly replace the Task Book snapshot.
+        if (taskBookTaskProgress != null) {
+          final ok = await _store.saveTaskBookTaskProgress(taskBookTaskProgress);
+          if (!ok) {
+            return CareerRestoreResult(
+              success: false,
+              count: restored.length,
+              message:
+                  'Career records were restored, but Task Book progress could not be saved.',
+            );
+          }
+        }
+        if (taskBookCustomTasks != null) {
+          final ok = await _store.saveTaskBookCustomTasks(taskBookCustomTasks);
+          if (!ok) {
+            return CareerRestoreResult(
+              success: false,
+              count: restored.length,
+              message:
+                  'Career records were restored, but custom Task Book tasks could not be saved.',
+            );
+          }
+        }
+
         final onboardingValue = map['onboardingComplete'];
         await _store.setOnboardingComplete(
-            onboardingValue is bool ? onboardingValue : profile != null);
+          onboardingValue is bool ? onboardingValue : profile != null,
+        );
         return CareerRestoreResult(
           success: true,
           count: restored.length,
@@ -280,10 +334,11 @@ class CareerRecordStore {
     } catch (e) {
       debugPrint('CareerRecordStore.restoreBackup failed: $e');
       return const CareerRestoreResult(
-          success: false,
-          count: 0,
-          message:
-              'Backup could not be read. Check that the complete backup text was pasted.');
+        success: false,
+        count: 0,
+        message:
+            'Backup could not be read. Check that the complete backup text was pasted.',
+      );
     }
   }
 }
@@ -293,6 +348,9 @@ class CareerRestoreResult {
   final int count;
   final String message;
 
-  const CareerRestoreResult(
-      {required this.success, required this.count, required this.message});
+  const CareerRestoreResult({
+    required this.success,
+    required this.count,
+    required this.message,
+  });
 }

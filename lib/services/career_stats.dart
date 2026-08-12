@@ -2,8 +2,8 @@ import 'package:firepath/models/career_record.dart';
 
 /// Shared statistics engine for Career Records.
 ///
-/// Home, Career Record, Growth, and Task Book can all compute consistent totals
-/// from the same logic.
+/// Home, Career Record, Growth, and Task Book should use this logic so totals
+/// stay consistent across the app.
 class CareerStats {
   final int calls;
   final int skillRepetitions;
@@ -57,30 +57,29 @@ class CareerStats {
     for (final r in records) {
       final count = r.repetitions < 1 ? 1 : r.repetitions;
       final hours = r.hours;
-      final titleLower = r.title.toLowerCase();
-      final categoryLower = r.category.toLowerCase();
 
       switch (r.type) {
         case CareerRecordType.operationalExperience:
           calls += count;
         case CareerRecordType.skill:
-          skillReps += count;
-          if (hours != null && _looksLikeDriving(titleLower, categoryLower)) {
-            driveHrs += hours;
+          if (isDrivingRecord(r)) {
+            if (hours != null && hours > 0) driveHrs += hours;
+          } else {
+            skillReps += count;
           }
         case CareerRecordType.training:
-          if (hours != null) trainingHrs += hours;
+          if (hours != null && hours > 0) trainingHrs += hours;
         case CareerRecordType.teaching:
-          if (hours != null) teachingHrs += hours;
+          if (hours != null && hours > 0) teachingHrs += hours;
         case CareerRecordType.leadership:
-          leadership += 1;
+          leadership += count;
         case CareerRecordType.achievement:
-          achievements += 1;
-          if (_looksLikeAward(titleLower, categoryLower)) awards += 1;
+          achievements += count;
+          if (isAwardRecord(r)) awards += count;
         case CareerRecordType.project:
-          projects += 1;
+          projects += count;
         case CareerRecordType.taskBookEvidence:
-          taskBook += 1;
+          taskBook += count;
         case CareerRecordType.education:
           break;
       }
@@ -100,26 +99,34 @@ class CareerStats {
     );
   }
 
-  static bool _looksLikeDriving(String titleLower, String categoryLower) {
-    final hay = '$titleLower $categoryLower';
-    return hay.contains('drive') ||
+  /// Drive time is intentionally stored using the existing `skill` record type
+  /// for backward compatibility. A stable tracking key is preferred, with
+  /// text matching retained for older records.
+  static bool isDrivingRecord(CareerRecord record) {
+    final key = (record.trackingKey ?? '').toLowerCase();
+    if (key == 'quick.drive_time' || key == 'fire.driver') return true;
+    final hay = '${record.title} ${record.category}'.toLowerCase();
+    return hay.contains('drive time') ||
         hay.contains('driving') ||
-        hay.contains('apparatus') ||
-        hay.contains('engine') ||
-        hay.contains('truck') ||
-        hay.contains('tender');
+        hay.contains('apparatus driving') ||
+        hay.contains('emergency driving');
   }
 
-  static bool _looksLikeAward(String titleLower, String categoryLower) {
-    final hay = '$titleLower $categoryLower';
-    return hay.contains('award') || hay.contains('recognition') || hay.contains('commendation');
+  static bool isAwardRecord(CareerRecord record) {
+    final key = (record.trackingKey ?? '').toLowerCase();
+    if (key == 'quick.award') return true;
+    final hay = '${record.title} ${record.category}'.toLowerCase();
+    return hay.contains('award') ||
+        hay.contains('recognition') ||
+        hay.contains('commendation');
   }
 
-  String get trainingLabel => trainingHours <= 0 ? '0 hr' : formatDurationHours(trainingHours);
-  String get driveLabel => driveHours <= 0 ? '0 hr' : formatDurationHours(driveHours);
-  String get teachingLabel => teachingHours <= 0 ? '0 hr' : formatDurationHours(teachingHours);
+  String get trainingLabel => formatDurationHours(trainingHours);
+  String get driveLabel => formatDurationHours(driveHours);
+  String get teachingLabel => formatDurationHours(teachingHours);
 
   static String formatDurationHours(double hours) {
+    if (hours <= 0) return '0 hr';
     final rounded = (hours * 10).roundToDouble() / 10;
     if (rounded == rounded.roundToDouble()) {
       return '${rounded.toInt()} hr';
@@ -143,17 +150,13 @@ class CareerStats {
   ];
 
   static String formatDate(DateTime dt) {
-    final m = (dt.month >= 1 && dt.month <= 12) ? _months[dt.month - 1] : '';
-    return '$m ${dt.day}, ${dt.year}';
+    final month = _months[dt.month - 1];
+    return '$month ${dt.day}, ${dt.year}';
   }
 
   static List<int> availableYears(List<CareerRecord> records) {
-    final out = <int>{};
-    for (final r in records) {
-      out.add(r.date.year);
-    }
-    final list = out.toList();
-    list.sort();
-    return list;
+    final years = records.map((r) => r.date.year).toSet().toList()
+      ..sort((a, b) => b.compareTo(a));
+    return years;
   }
 }
