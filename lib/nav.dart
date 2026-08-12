@@ -9,6 +9,7 @@ import 'package:firepath/pages/path/goal_picker_page.dart';
 import 'package:firepath/pages/path/roadmap_entry_page.dart';
 import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
+import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/certifications/certifications_page.dart';
 import 'package:firepath/pages/resources/resources_page.dart';
@@ -73,7 +74,7 @@ class AppRouter {
                 path: AppRoutes.growth,
                 name: 'growth',
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: CareerHubPage()),
+                    const NoTransitionPage(child: GrowthOverviewPage()),
               ),
             ],
           ),
@@ -102,6 +103,12 @@ class AppRouter {
         name: 'goal_setup',
         pageBuilder: (context, state) =>
             const MaterialPage(child: GoalPickerPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.growthDetails,
+        name: 'growth_details',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: CareerHubPage()),
       ),
       GoRoute(
         path: AppRoutes.careerEvidence,
@@ -164,6 +171,7 @@ class AppRoutes {
   static const String resources = '/resources';
 
   static const String goalSetup = '/goal-setup';
+  static const String growthDetails = '/growth-tools';
   static const String requirementDetail = '/requirement';
   static const String getStarted = '/get-started';
   static const String certificationDetail = '/certification';
