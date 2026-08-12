@@ -13,7 +13,10 @@ class RoadmapRequirement {
   final bool isComplete;
   final bool isExcluded;
 
-  const RoadmapRequirement({required this.requirement, required this.isComplete, required this.isExcluded});
+  const RoadmapRequirement(
+      {required this.requirement,
+      required this.isComplete,
+      required this.isExcluded});
 }
 
 enum RequirementActivityStatus { notStarted, planning, scheduled, inProgress }
@@ -36,13 +39,13 @@ class TrainingSchedule {
   });
 
   Map<String, dynamic> toJson() => {
-    'courseName': courseName,
-    'provider': provider,
-    'startDate': startDate?.toIso8601String(),
-    'endDate': endDate?.toIso8601String(),
-    'location': location,
-    'notes': notes,
-  };
+        'courseName': courseName,
+        'provider': provider,
+        'startDate': startDate?.toIso8601String(),
+        'endDate': endDate?.toIso8601String(),
+        'location': location,
+        'notes': notes,
+      };
 
   factory TrainingSchedule.fromJson(Map<String, dynamic> json) {
     DateTime? _dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
@@ -117,39 +120,47 @@ class PathRequirementOverride {
       requirementId: requirementId,
       excluded: excluded ?? this.excluded,
       completed: completed ?? this.completed,
-      overrideExperienceValue: overrideExperienceValue ?? this.overrideExperienceValue,
-      overrideProgressCurrent: overrideProgressCurrent ?? this.overrideProgressCurrent,
-      overrideProgressRequired: overrideProgressRequired ?? this.overrideProgressRequired,
+      overrideExperienceValue:
+          overrideExperienceValue ?? this.overrideExperienceValue,
+      overrideProgressCurrent:
+          overrideProgressCurrent ?? this.overrideProgressCurrent,
+      overrideProgressRequired:
+          overrideProgressRequired ?? this.overrideProgressRequired,
       overrideProgressUnit: overrideProgressUnit ?? this.overrideProgressUnit,
       activityStatus: activityStatus ?? this.activityStatus,
       schedule: clearSchedule ? null : (schedule ?? this.schedule),
-      taskBookCompletedItems: taskBookCompletedItems ?? this.taskBookCompletedItems,
+      taskBookCompletedItems:
+          taskBookCompletedItems ?? this.taskBookCompletedItems,
       taskBookTotalItems: taskBookTotalItems ?? this.taskBookTotalItems,
-      suggestedStartDate: clearSuggestedDates ? null : (suggestedStartDate ?? this.suggestedStartDate),
-      suggestedCompletionDate: clearSuggestedDates ? null : (suggestedCompletionDate ?? this.suggestedCompletionDate),
+      suggestedStartDate: clearSuggestedDates
+          ? null
+          : (suggestedStartDate ?? this.suggestedStartDate),
+      suggestedCompletionDate: clearSuggestedDates
+          ? null
+          : (suggestedCompletionDate ?? this.suggestedCompletionDate),
       removedFromTimeline: removedFromTimeline ?? this.removedFromTimeline,
       userResourceLinks: userResourceLinks ?? this.userResourceLinks,
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'goalId': goalId,
-    'requirementId': requirementId,
-    'excluded': excluded,
-    'completed': completed,
-    'overrideExperienceValue': overrideExperienceValue,
-    'overrideProgressCurrent': overrideProgressCurrent,
-    'overrideProgressRequired': overrideProgressRequired,
-    'overrideProgressUnit': overrideProgressUnit,
-    'activityStatus': activityStatus?.name,
-    'schedule': schedule?.toJson(),
-    'taskBookCompletedItems': taskBookCompletedItems,
-    'taskBookTotalItems': taskBookTotalItems,
-    'suggestedStartDate': suggestedStartDate?.toIso8601String(),
-    'suggestedCompletionDate': suggestedCompletionDate?.toIso8601String(),
-    'removedFromTimeline': removedFromTimeline,
-    'userResourceLinks': userResourceLinks.map((e) => e.toJson()).toList(),
-  };
+        'goalId': goalId,
+        'requirementId': requirementId,
+        'excluded': excluded,
+        'completed': completed,
+        'overrideExperienceValue': overrideExperienceValue,
+        'overrideProgressCurrent': overrideProgressCurrent,
+        'overrideProgressRequired': overrideProgressRequired,
+        'overrideProgressUnit': overrideProgressUnit,
+        'activityStatus': activityStatus?.name,
+        'schedule': schedule?.toJson(),
+        'taskBookCompletedItems': taskBookCompletedItems,
+        'taskBookTotalItems': taskBookTotalItems,
+        'suggestedStartDate': suggestedStartDate?.toIso8601String(),
+        'suggestedCompletionDate': suggestedCompletionDate?.toIso8601String(),
+        'removedFromTimeline': removedFromTimeline,
+        'userResourceLinks': userResourceLinks.map((e) => e.toJson()).toList(),
+      };
 
   factory PathRequirementOverride.fromJson(Map<String, dynamic> json) {
     RequirementActivityStatus? _status(dynamic v) {
@@ -170,13 +181,17 @@ class PathRequirementOverride {
 
     List<ResourceLink> _links(dynamic v) {
       if (v is! List) return const <ResourceLink>[];
-      return v.whereType<Map>().map((e) {
-        try {
-          return ResourceLink.fromJson(Map<String, dynamic>.from(e));
-        } catch (_) {
-          return null;
-        }
-      }).whereType<ResourceLink>().toList();
+      return v
+          .whereType<Map>()
+          .map((e) {
+            try {
+              return ResourceLink.fromJson(Map<String, dynamic>.from(e));
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<ResourceLink>()
+          .toList();
     }
 
     return PathRequirementOverride(
@@ -184,9 +199,12 @@ class PathRequirementOverride {
       requirementId: (json['requirementId'] as String?) ?? '',
       excluded: (json['excluded'] as bool?) ?? false,
       completed: json['completed'] as bool?,
-      overrideExperienceValue: (json['overrideExperienceValue'] as num?)?.toDouble(),
-      overrideProgressCurrent: (json['overrideProgressCurrent'] as num?)?.toDouble(),
-      overrideProgressRequired: (json['overrideProgressRequired'] as num?)?.toDouble(),
+      overrideExperienceValue:
+          (json['overrideExperienceValue'] as num?)?.toDouble(),
+      overrideProgressCurrent:
+          (json['overrideProgressCurrent'] as num?)?.toDouble(),
+      overrideProgressRequired:
+          (json['overrideProgressRequired'] as num?)?.toDouble(),
       overrideProgressUnit: json['overrideProgressUnit'] as String?,
       activityStatus: _status(json['activityStatus']),
       schedule: _schedule(json['schedule']),
@@ -209,14 +227,22 @@ class Roadmap {
   // Progress only counts requirements that are included (not excluded by the user).
   int get completedCount => included.where((e) => e.isComplete).length;
   int get totalCount => included.length;
-  double get percentComplete => totalCount == 0 ? 0 : completedCount / totalCount;
+  double get percentComplete =>
+      totalCount == 0 ? 0 : completedCount / totalCount;
 
-  List<RoadmapRequirement> get included => all.where((e) => !e.isExcluded).toList();
-  List<RoadmapRequirement> get completed => included.where((e) => e.isComplete).toList();
-  List<RoadmapRequirement> get missing => included.where((e) => !e.isComplete).toList();
+  List<RoadmapRequirement> get included =>
+      all.where((e) => !e.isExcluded).toList();
+  List<RoadmapRequirement> get completed =>
+      included.where((e) => e.isComplete).toList();
+  List<RoadmapRequirement> get missing =>
+      included.where((e) => !e.isComplete).toList();
 
-  List<RoadmapRequirement> get missingCore => missing.where((e) => e.requirement.priority == RequirementPriority.core).toList();
-  List<RoadmapRequirement> get missingRecommended => missing.where((e) => e.requirement.priority == RequirementPriority.recommended).toList();
+  List<RoadmapRequirement> get missingCore => missing
+      .where((e) => e.requirement.priority == RequirementPriority.core)
+      .toList();
+  List<RoadmapRequirement> get missingRecommended => missing
+      .where((e) => e.requirement.priority == RequirementPriority.recommended)
+      .toList();
 
   RoadmapRequirement? get nextStep {
     // Explicit priority order (matches product spec):
@@ -240,7 +266,10 @@ class Roadmap {
       // Prereq gating: recommend the earliest unmet prereq first (if it's part of the roadmap).
       for (final prereqKey in req.prerequisiteRequirementIds) {
         final prereqReq = included.where((e) {
-          final ref = (e.requirement.certificationReference ?? e.requirement.name).trim().toLowerCase();
+          final ref =
+              (e.requirement.certificationReference ?? e.requirement.name)
+                  .trim()
+                  .toLowerCase();
           return ref == prereqKey.trim().toLowerCase();
         }).firstOrNull;
         if (prereqReq != null && !prereqReq.isComplete) {
@@ -268,21 +297,26 @@ class Roadmap {
 
   List<RoadmapRequirement> get comingUp {
     final items = missing.toList();
-    items.sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
+    items.sort(
+        (a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
     return items;
   }
 
   static int _tierFor(Requirement r) {
-    final isCoreLike = r.priority == RequirementPriority.core || r.priority == RequirementPriority.state;
-    final isDept = r.priority == RequirementPriority.department || r.requirementSource == RequirementSource.departmentRequirement;
+    final isCoreLike = r.priority == RequirementPriority.core ||
+        r.priority == RequirementPriority.state;
+    final isDept = r.priority == RequirementPriority.department ||
+        r.requirementSource == RequirementSource.departmentRequirement;
 
     if (isCoreLike) return 1;
     if (isDept) {
-      if (r.type == RequirementType.experience || r.type == RequirementType.numericProgress) return 3;
+      if (r.type == RequirementType.experience ||
+          r.type == RequirementType.numericProgress) return 3;
       if (r.type == RequirementType.taskBook) return 4;
       return 2;
     }
-    if (r.type == RequirementType.experience || r.type == RequirementType.numericProgress) return 3;
+    if (r.type == RequirementType.experience ||
+        r.type == RequirementType.numericProgress) return 3;
     if (r.type == RequirementType.taskBook) return 4;
     if (r.priority == RequirementPriority.recommended) return 5;
     return 6;
@@ -294,7 +328,10 @@ class PendingCertMatch {
   final String userText;
   final String suggestedDefinitionId;
 
-  const PendingCertMatch({required this.certId, required this.userText, required this.suggestedDefinitionId});
+  const PendingCertMatch(
+      {required this.certId,
+      required this.userText,
+      required this.suggestedDefinitionId});
 }
 
 class AppState extends ChangeNotifier {
@@ -303,7 +340,8 @@ class AppState extends ChangeNotifier {
   Map<String, String> _certMatchConfirmations = <String, String>{};
   final List<PendingCertMatch> _pendingCertMatches = <PendingCertMatch>[];
 
-  List<PendingCertMatch> get pendingCertMatches => List.unmodifiable(_pendingCertMatches);
+  List<PendingCertMatch> get pendingCertMatches =>
+      List.unmodifiable(_pendingCertMatches);
 
   bool _bootstrapped = false;
   bool _onboardingComplete = false;
@@ -316,15 +354,19 @@ class AppState extends ChangeNotifier {
   bool get bootstrapped => _bootstrapped;
   bool get onboardingComplete => _onboardingComplete;
   UserProfile get profile => _profile;
-  List<Certification> get certifications => _certsById.values.toList()..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-  List<Requirement> get customRequirements => List.unmodifiable(_customRequirements);
-  List<PathRequirementOverride> get pathOverrides => List.unmodifiable(_overrides);
+  List<Certification> get certifications => _certsById.values.toList()
+    ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  List<Requirement> get customRequirements =>
+      List.unmodifiable(_customRequirements);
+  List<PathRequirementOverride> get pathOverrides =>
+      List.unmodifiable(_overrides);
 
   List<CareerGoal> get availableGoals => FireOpsCatalog.goals();
   CareerGoal? get selectedGoal {
     final id = profile.primaryGoalId;
     if (id == null) return null;
-    final existing = availableGoals.where((g) => g.id == id).cast<CareerGoal?>().firstOrNull;
+    final existing =
+        availableGoals.where((g) => g.id == id).cast<CareerGoal?>().firstOrNull;
     if (existing != null) return existing;
     if (id.startsWith('custom:')) {
       final name = id.substring('custom:'.length).trim();
@@ -371,11 +413,15 @@ class AppState extends ChangeNotifier {
           };
       if (rank(next) < rank(current)) certStatusByDefId[defId] = next;
     }
-    final goalCustom = _customRequirements.where((r) => r.id.startsWith('${goal.id}::')).toList();
+    final goalCustom = _customRequirements
+        .where((r) => r.id.startsWith('${goal.id}::'))
+        .toList();
     final allReqsRaw = [...goal.requirements, ...goalCustom];
 
     final overrideByReqId = {
-      for (final o in _overrides.where((o) => o.goalId == goal.id && o.requirementId.isNotEmpty)) o.requirementId: o,
+      for (final o in _overrides
+          .where((o) => o.goalId == goal.id && o.requirementId.isNotEmpty))
+        o.requirementId: o,
     };
 
     final allReqs = allReqsRaw.map((r) {
@@ -397,7 +443,8 @@ class AppState extends ChangeNotifier {
         if (defId == null || defId.isEmpty) return false;
         final status = certStatusByDefId[defId];
         if (status == null) return false;
-        if (status == CertificationStatus.expired) return r.allowExpiredCertification;
+        if (status == CertificationStatus.expired)
+          return r.allowExpiredCertification;
         return true;
       }
       if (r.type == RequirementType.experience) {
@@ -408,7 +455,8 @@ class AppState extends ChangeNotifier {
         return years.toDouble() >= required;
       }
       if (r.type == RequirementType.numericProgress) {
-        if (r.progressCurrent == null || r.progressRequired == null) return false;
+        if (r.progressCurrent == null || r.progressRequired == null)
+          return false;
         return r.progressCurrent! >= r.progressRequired!;
       }
       return r.completed;
@@ -419,8 +467,14 @@ class AppState extends ChangeNotifier {
       return o?.excluded ?? false;
     }
 
-    final items = allReqs.map((r) => RoadmapRequirement(requirement: r, isComplete: completeFor(r), isExcluded: excludedFor(r))).toList();
-    items.sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
+    final items = allReqs
+        .map((r) => RoadmapRequirement(
+            requirement: r,
+            isComplete: completeFor(r),
+            isExcluded: excludedFor(r)))
+        .toList();
+    items.sort(
+        (a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
     return Roadmap(goal: goal, all: items);
   }
 
@@ -428,11 +482,16 @@ class AppState extends ChangeNotifier {
     try {
       _onboardingComplete = await _store.getOnboardingComplete();
 
-      final confirmationsRaw = await _store.loadCertificationMatchConfirmations();
-      _certMatchConfirmations = confirmationsRaw.map((k, v) => MapEntry(k, (v as String?) ?? '')).cast<String, String>();
+      final confirmationsRaw =
+          await _store.loadCertificationMatchConfirmations();
+      _certMatchConfirmations = confirmationsRaw
+          .map((k, v) => MapEntry(k, (v as String?) ?? ''))
+          .cast<String, String>();
 
       final profileJson = await _store.loadProfile();
-      _profile = profileJson == null ? UserProfile.empty() : UserProfile.fromJson(profileJson);
+      _profile = profileJson == null
+          ? UserProfile.empty()
+          : UserProfile.fromJson(profileJson);
 
       final certJsonList = await _store.loadCertifications();
       _certsById.clear();
@@ -467,13 +526,16 @@ class AppState extends ChangeNotifier {
       final overridesJson = await _store.loadPathOverrides();
       _overrides
         ..clear()
-        ..addAll(overridesJson.map((e) {
-          try {
-            return PathRequirementOverride.fromJson(e);
-          } catch (_) {
-            return null;
-          }
-        }).whereType<PathRequirementOverride>().where((o) => o.goalId.isNotEmpty && o.requirementId.isNotEmpty));
+        ..addAll(overridesJson
+            .map((e) {
+              try {
+                return PathRequirementOverride.fromJson(e);
+              } catch (_) {
+                return null;
+              }
+            })
+            .whereType<PathRequirementOverride>()
+            .where((o) => o.goalId.isNotEmpty && o.requirementId.isNotEmpty));
 
       // Sanitize writes back to prevent repeated decode problems.
       await _persistAll();
@@ -494,7 +556,8 @@ class AppState extends ChangeNotifier {
 
     for (final entry in _certsById.entries) {
       final cert = entry.value;
-      if (cert.certificationDefinitionId != null && cert.certificationDefinitionId!.isNotEmpty) {
+      if (cert.certificationDefinitionId != null &&
+          cert.certificationDefinitionId!.isNotEmpty) {
         updated[entry.key] = cert;
         continue;
       }
@@ -505,7 +568,8 @@ class AppState extends ChangeNotifier {
         if (confirmed.isEmpty) {
           updated[entry.key] = cert; // user said "no match"
         } else {
-          updated[entry.key] = cert.copyWith(certificationDefinitionId: confirmed, updatedAt: DateTime.now());
+          updated[entry.key] = cert.copyWith(
+              certificationDefinitionId: confirmed, updatedAt: DateTime.now());
           changed = true;
         }
         continue;
@@ -513,7 +577,8 @@ class AppState extends ChangeNotifier {
 
       final direct = FireOpsCatalog.matchCertificationDefinitionId(cert.name);
       if (direct != null) {
-        updated[entry.key] = cert.copyWith(certificationDefinitionId: direct, updatedAt: DateTime.now());
+        updated[entry.key] = cert.copyWith(
+            certificationDefinitionId: direct, updatedAt: DateTime.now());
         changed = true;
         continue;
       }
@@ -521,7 +586,10 @@ class AppState extends ChangeNotifier {
       // If we can't confidently match, keep as-is but allow later user confirmation.
       final suggestion = _suggestDefinitionId(cert.name);
       if (suggestion != null) {
-        _pendingCertMatches.add(PendingCertMatch(certId: cert.id, userText: cert.name, suggestedDefinitionId: suggestion));
+        _pendingCertMatches.add(PendingCertMatch(
+            certId: cert.id,
+            userText: cert.name,
+            suggestedDefinitionId: suggestion));
       }
       updated[entry.key] = cert;
     }
@@ -543,7 +611,8 @@ class AppState extends ChangeNotifier {
     for (final d in defs) {
       final aliasNorms = <String>{
         FireOpsCatalog.normalizeCertificationText(d.displayName),
-        if (d.shortName != null) FireOpsCatalog.normalizeCertificationText(d.shortName!),
+        if (d.shortName != null)
+          FireOpsCatalog.normalizeCertificationText(d.shortName!),
         ...d.aliases.map(FireOpsCatalog.normalizeCertificationText),
       };
       if (aliasNorms.any((a) => a == norm)) {
@@ -554,7 +623,10 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
-  Future<void> confirmCertificationMatch({required String userText, required String suggestedDefinitionId, required bool accepted}) async {
+  Future<void> confirmCertificationMatch(
+      {required String userText,
+      required String suggestedDefinitionId,
+      required bool accepted}) async {
     final norm = FireOpsCatalog.normalizeCertificationText(userText);
     _certMatchConfirmations[norm] = accepted ? suggestedDefinitionId : '';
     await _store.saveCertificationMatchConfirmations(_certMatchConfirmations);
@@ -563,14 +635,17 @@ class AppState extends ChangeNotifier {
       final id = suggestedDefinitionId;
       for (final k in _certsById.keys.toList()) {
         final c = _certsById[k]!;
-        if (c.certificationDefinitionId == null && FireOpsCatalog.normalizeCertificationText(c.name) == norm) {
-          _certsById[k] = c.copyWith(certificationDefinitionId: id, updatedAt: DateTime.now());
+        if (c.certificationDefinitionId == null &&
+            FireOpsCatalog.normalizeCertificationText(c.name) == norm) {
+          _certsById[k] = c.copyWith(
+              certificationDefinitionId: id, updatedAt: DateTime.now());
         }
       }
       await _persistAll();
     }
 
-    _pendingCertMatches.removeWhere((m) => FireOpsCatalog.normalizeCertificationText(m.userText) == norm);
+    _pendingCertMatches.removeWhere(
+        (m) => FireOpsCatalog.normalizeCertificationText(m.userText) == norm);
     notifyListeners();
   }
 
@@ -583,15 +658,117 @@ class AppState extends ChangeNotifier {
     return c.name;
   }
 
-  Future<void> completeOnboarding({required UserProfile profile, required List<Certification> certifications}) async {
+  void _ensureCustomGoalStarterRequirements(String? goalId) {
+    if (goalId == null || !goalId.startsWith('custom:')) return;
+    if (_customRequirements.any((r) => r.id.startsWith('$goalId::'))) return;
+
+    final now = DateTime.now();
+    Requirement starter({
+      required String suffix,
+      required String name,
+      required String category,
+      required String description,
+      required RequirementPriority priority,
+      required int sortOrder,
+      TimelineCategory timelineCategory = TimelineCategory.development,
+    }) {
+      return Requirement(
+        id: '$goalId::$suffix',
+        name: name,
+        category: category,
+        priority: priority,
+        description: description,
+        type: RequirementType.custom,
+        requirementSource: RequirementSource.departmentRequirement,
+        defaultRequired: true,
+        stateDependent: false,
+        departmentDependent: true,
+        completed: false,
+        progressCurrent: null,
+        progressRequired: null,
+        progressUnit: null,
+        experienceValue: null,
+        experienceUnit: null,
+        certificationReference: null,
+        certificationDefinitionId: null,
+        allowExpiredCertification: false,
+        prerequisiteRequirementIds: const [],
+        resourceIds: const [],
+        resourceLinks: const [],
+        sortOrder: sortOrder,
+        estimatedDurationDays: null,
+        recommendedLeadTimeDays: null,
+        canRunConcurrent: true,
+        timelineCategory: timelineCategory,
+        suggestedStartDate: null,
+        suggestedCompletionDate: null,
+        createdAt: now,
+        updatedAt: now,
+      );
+    }
+
+    _customRequirements.addAll([
+      starter(
+        suffix: 'define_eligibility',
+        name: 'Define eligibility requirements',
+        category: 'Eligibility',
+        description:
+            'Confirm the department, agency, state, education, time-in-grade, and prerequisite rules for this goal. Edit this milestone to match your organization.',
+        priority: RequirementPriority.core,
+        sortOrder: 10,
+        timelineCategory: TimelineCategory.departmentRequirement,
+      ),
+      starter(
+        suffix: 'build_qualifications',
+        name: 'Build required qualifications',
+        category: 'Qualifications',
+        description:
+            'Add the certifications, courses, task books, and qualifications that make you eligible and competitive for this goal.',
+        priority: RequirementPriority.core,
+        sortOrder: 20,
+        timelineCategory: TimelineCategory.certification,
+      ),
+      starter(
+        suffix: 'document_experience',
+        name: 'Document relevant experience and evidence',
+        category: 'Experience',
+        description:
+            'Capture assignments, leadership examples, projects, incidents, teaching, and other evidence you may need years later.',
+        priority: RequirementPriority.recommended,
+        sortOrder: 30,
+        timelineCategory: TimelineCategory.experience,
+      ),
+      starter(
+        suffix: 'prepare_selection',
+        name: 'Prepare for the selection or promotion process',
+        category: 'Promotion Prep',
+        description:
+            'Add the written exam, assessment center, interview, resume, portfolio, or other selection steps used for this goal.',
+        priority: RequirementPriority.recommended,
+        sortOrder: 40,
+        timelineCategory: TimelineCategory.promotionalPreparation,
+      ),
+    ]);
+  }
+
+  Future<void> completeOnboarding(
+      {required UserProfile profile,
+      required List<Certification> certifications}) async {
     _profile = profile.copyWith(updatedAt: DateTime.now());
     _certsById
       ..clear()
-      ..addEntries(certifications.where((c) => c.name.trim().isNotEmpty).map((c) {
-        final mapped = c.certificationDefinitionId == null ? FireOpsCatalog.matchCertificationDefinitionId(c.name) : c.certificationDefinitionId;
-        return MapEntry(c.id, c.copyWith(certificationDefinitionId: mapped, updatedAt: DateTime.now()));
+      ..addEntries(
+          certifications.where((c) => c.name.trim().isNotEmpty).map((c) {
+        final mapped = c.certificationDefinitionId == null
+            ? FireOpsCatalog.matchCertificationDefinitionId(c.name)
+            : c.certificationDefinitionId;
+        return MapEntry(
+            c.id,
+            c.copyWith(
+                certificationDefinitionId: mapped, updatedAt: DateTime.now()));
       }));
     _onboardingComplete = true;
+    _ensureCustomGoalStarterRequirements(_profile.primaryGoalId);
     await _store.setOnboardingComplete(true);
     await _persistAll();
     notifyListeners();
@@ -605,9 +782,13 @@ class AppState extends ChangeNotifier {
       goalId: goalId,
       startDate: shouldResetStart ? now : existingPlan.startDate,
       timelineEnabled: existingPlan.targetDate != null,
-      timelineStatus: existingPlan.targetDate == null ? TimelineStatus.noTargetDate : existingPlan.timelineStatus,
+      timelineStatus: existingPlan.targetDate == null
+          ? TimelineStatus.noTargetDate
+          : existingPlan.timelineStatus,
     );
-    _profile = _profile.copyWith(primaryGoalId: goalId, careerPlan: plan, updatedAt: now);
+    _profile = _profile.copyWith(
+        primaryGoalId: goalId, careerPlan: plan, updatedAt: now);
+    _ensureCustomGoalStarterRequirements(goalId);
     await _persistAll();
     notifyListeners();
   }
@@ -617,7 +798,9 @@ class AppState extends ChangeNotifier {
     final plan = _profile.careerPlan.copyWith(
       targetDate: targetDate,
       timelineEnabled: targetDate != null,
-      timelineStatus: targetDate == null ? TimelineStatus.noTargetDate : _profile.careerPlan.timelineStatus,
+      timelineStatus: targetDate == null
+          ? TimelineStatus.noTargetDate
+          : _profile.careerPlan.timelineStatus,
       clearTargetDate: targetDate == null,
     );
     _profile = _profile.copyWith(careerPlan: plan, updatedAt: now);
@@ -632,7 +815,8 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> setCurrentRoles(List<String> roles) async {
-    _profile = _profile.copyWith(currentRoles: roles, updatedAt: DateTime.now());
+    _profile =
+        _profile.copyWith(currentRoles: roles, updatedAt: DateTime.now());
     await _persistAll();
     notifyListeners();
   }
@@ -651,7 +835,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addDepartmentRequirement({required String goalId, required Requirement requirement}) async {
+  Future<void> addDepartmentRequirement(
+      {required String goalId, required Requirement requirement}) async {
     final now = DateTime.now();
     final saved = requirement.copyWith(updatedAt: now);
     _customRequirements.add(saved);
@@ -674,17 +859,23 @@ class AppState extends ChangeNotifier {
   }
 
   PathRequirementOverride? getOverride(String goalId, String requirementId) {
-    return _overrides.where((o) => o.goalId == goalId && o.requirementId == requirementId).firstOrNull;
+    return _overrides
+        .where((o) => o.goalId == goalId && o.requirementId == requirementId)
+        .firstOrNull;
   }
 
-  RequirementActivityStatus activityStatusFor({required String goalId, required String requirementId}) {
+  RequirementActivityStatus activityStatusFor(
+      {required String goalId, required String requirementId}) {
     final o = getOverride(goalId, requirementId);
     return o?.activityStatus ?? RequirementActivityStatus.notStarted;
   }
 
-  TrainingSchedule? scheduleFor({required String goalId, required String requirementId}) => getOverride(goalId, requirementId)?.schedule;
+  TrainingSchedule? scheduleFor(
+          {required String goalId, required String requirementId}) =>
+      getOverride(goalId, requirementId)?.schedule;
 
-  (int completed, int total)? taskBookProgressFor({required String goalId, required String requirementId}) {
+  (int completed, int total)? taskBookProgressFor(
+      {required String goalId, required String requirementId}) {
     final o = getOverride(goalId, requirementId);
     final c = o?.taskBookCompletedItems;
     final t = o?.taskBookTotalItems;
@@ -692,10 +883,17 @@ class AppState extends ChangeNotifier {
     return (c, t);
   }
 
-  List<ResourceLink> userResourceLinksFor({required String goalId, required String requirementId}) => getOverride(goalId, requirementId)?.userResourceLinks ?? const <ResourceLink>[];
+  List<ResourceLink> userResourceLinksFor(
+          {required String goalId, required String requirementId}) =>
+      getOverride(goalId, requirementId)?.userResourceLinks ??
+      const <ResourceLink>[];
 
-  Future<void> addUserResourceLink({required String goalId, required String requirementId, required ResourceLink link}) async {
-    final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
+  Future<void> addUserResourceLink(
+      {required String goalId,
+      required String requirementId,
+      required ResourceLink link}) async {
+    final idx = _overrides.indexWhere(
+        (o) => o.goalId == goalId && o.requirementId == requirementId);
     if (idx >= 0) {
       final next = [..._overrides[idx].userResourceLinks, link];
       _overrides[idx] = _overrides[idx].copyWith(userResourceLinks: next);
@@ -725,8 +923,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setRequirementActivityStatus({required String goalId, required String requirementId, required RequirementActivityStatus status}) async {
-    final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
+  Future<void> setRequirementActivityStatus(
+      {required String goalId,
+      required String requirementId,
+      required RequirementActivityStatus status}) async {
+    final idx = _overrides.indexWhere(
+        (o) => o.goalId == goalId && o.requirementId == requirementId);
     if (idx >= 0) {
       _overrides[idx] = _overrides[idx].copyWith(activityStatus: status);
     } else {
@@ -755,10 +957,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setRequirementSchedule({required String goalId, required String requirementId, required TrainingSchedule? schedule}) async {
-    final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
+  Future<void> setRequirementSchedule(
+      {required String goalId,
+      required String requirementId,
+      required TrainingSchedule? schedule}) async {
+    final idx = _overrides.indexWhere(
+        (o) => o.goalId == goalId && o.requirementId == requirementId);
     if (idx >= 0) {
-      _overrides[idx] = _overrides[idx].copyWith(schedule: schedule, clearSchedule: schedule == null);
+      _overrides[idx] = _overrides[idx]
+          .copyWith(schedule: schedule, clearSchedule: schedule == null);
     } else {
       _overrides.add(
         PathRequirementOverride(
@@ -785,10 +992,17 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setTaskBookProgress({required String goalId, required String requirementId, required int completedItems, required int totalItems}) async {
-    final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
+  Future<void> setTaskBookProgress(
+      {required String goalId,
+      required String requirementId,
+      required int completedItems,
+      required int totalItems}) async {
+    final idx = _overrides.indexWhere(
+        (o) => o.goalId == goalId && o.requirementId == requirementId);
     if (idx >= 0) {
-      _overrides[idx] = _overrides[idx].copyWith(taskBookCompletedItems: completedItems, taskBookTotalItems: totalItems);
+      _overrides[idx] = _overrides[idx].copyWith(
+          taskBookCompletedItems: completedItems,
+          taskBookTotalItems: totalItems);
     } else {
       _overrides.add(
         PathRequirementOverride(
@@ -815,8 +1029,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setRequirementExcluded({required String goalId, required String requirementId, required bool excluded}) async {
-    final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
+  Future<void> setRequirementExcluded(
+      {required String goalId,
+      required String requirementId,
+      required bool excluded}) async {
+    final idx = _overrides.indexWhere(
+        (o) => o.goalId == goalId && o.requirementId == requirementId);
     if (idx >= 0) {
       _overrides[idx] = _overrides[idx].copyWith(excluded: excluded);
     } else {
@@ -845,10 +1063,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setExperienceMinimum({required String goalId, required String requirementId, required double years}) async {
-    final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
+  Future<void> setExperienceMinimum(
+      {required String goalId,
+      required String requirementId,
+      required double years}) async {
+    final idx = _overrides.indexWhere(
+        (o) => o.goalId == goalId && o.requirementId == requirementId);
     if (idx >= 0) {
-      _overrides[idx] = _overrides[idx].copyWith(overrideExperienceValue: years);
+      _overrides[idx] =
+          _overrides[idx].copyWith(overrideExperienceValue: years);
     } else {
       _overrides.add(
         PathRequirementOverride(
@@ -875,10 +1098,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setNumericRequired({required String goalId, required String requirementId, required double requiredValue}) async {
-    final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
+  Future<void> setNumericRequired(
+      {required String goalId,
+      required String requirementId,
+      required double requiredValue}) async {
+    final idx = _overrides.indexWhere(
+        (o) => o.goalId == goalId && o.requirementId == requirementId);
     if (idx >= 0) {
-      _overrides[idx] = _overrides[idx].copyWith(overrideProgressRequired: requiredValue);
+      _overrides[idx] =
+          _overrides[idx].copyWith(overrideProgressRequired: requiredValue);
     } else {
       _overrides.add(
         PathRequirementOverride(
@@ -905,8 +1133,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setRequirementCompleted({required String goalId, required String requirementId, required bool completed}) async {
-    final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
+  Future<void> setRequirementCompleted(
+      {required String goalId,
+      required String requirementId,
+      required bool completed}) async {
+    final idx = _overrides.indexWhere(
+        (o) => o.goalId == goalId && o.requirementId == requirementId);
     if (idx >= 0) {
       _overrides[idx] = _overrides[idx].copyWith(completed: completed);
     } else {
@@ -935,10 +1167,19 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setNumericProgress({required String goalId, required String requirementId, required double current, required double required, String? unit}) async {
-    final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
+  Future<void> setNumericProgress(
+      {required String goalId,
+      required String requirementId,
+      required double current,
+      required double required,
+      String? unit}) async {
+    final idx = _overrides.indexWhere(
+        (o) => o.goalId == goalId && o.requirementId == requirementId);
     if (idx >= 0) {
-      _overrides[idx] = _overrides[idx].copyWith(overrideProgressCurrent: current, overrideProgressRequired: required, overrideProgressUnit: unit);
+      _overrides[idx] = _overrides[idx].copyWith(
+          overrideProgressCurrent: current,
+          overrideProgressRequired: required,
+          overrideProgressUnit: unit);
     } else {
       _overrides.add(
         PathRequirementOverride(
@@ -965,28 +1206,52 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> moveTimelineEarlier({required String goalId, required String requirementId}) async {
+  Future<void> moveTimelineEarlier(
+      {required String goalId, required String requirementId}) async {
     final now = DateTime.now();
     final existing = getOverride(goalId, requirementId);
-    final base = existing?.suggestedStartDate ?? existing?.schedule?.startDate ?? now;
+    final base =
+        existing?.suggestedStartDate ?? existing?.schedule?.startDate ?? now;
     final shifted = base.subtract(const Duration(days: 90));
-    await _setTimelineOverride(goalId: goalId, requirementId: requirementId, suggestedStartDate: DateTime(shifted.year, shifted.month, 1), removed: false);
+    await _setTimelineOverride(
+        goalId: goalId,
+        requirementId: requirementId,
+        suggestedStartDate: DateTime(shifted.year, shifted.month, 1),
+        removed: false);
   }
 
-  Future<void> moveTimelineLater({required String goalId, required String requirementId}) async {
+  Future<void> moveTimelineLater(
+      {required String goalId, required String requirementId}) async {
     final now = DateTime.now();
     final existing = getOverride(goalId, requirementId);
-    final base = existing?.suggestedStartDate ?? existing?.schedule?.startDate ?? now;
+    final base =
+        existing?.suggestedStartDate ?? existing?.schedule?.startDate ?? now;
     final shifted = base.add(const Duration(days: 90));
-    await _setTimelineOverride(goalId: goalId, requirementId: requirementId, suggestedStartDate: DateTime(shifted.year, shifted.month, 1), removed: false);
+    await _setTimelineOverride(
+        goalId: goalId,
+        requirementId: requirementId,
+        suggestedStartDate: DateTime(shifted.year, shifted.month, 1),
+        removed: false);
   }
 
-  Future<void> removeFromTimeline({required String goalId, required String requirementId}) async {
-    await _setTimelineOverride(goalId: goalId, requirementId: requirementId, suggestedStartDate: null, removed: true, clearSuggestedDates: true);
+  Future<void> removeFromTimeline(
+      {required String goalId, required String requirementId}) async {
+    await _setTimelineOverride(
+        goalId: goalId,
+        requirementId: requirementId,
+        suggestedStartDate: null,
+        removed: true,
+        clearSuggestedDates: true);
   }
 
-  Future<void> clearTimelineOverride({required String goalId, required String requirementId}) async {
-    await _setTimelineOverride(goalId: goalId, requirementId: requirementId, suggestedStartDate: null, removed: false, clearSuggestedDates: true);
+  Future<void> clearTimelineOverride(
+      {required String goalId, required String requirementId}) async {
+    await _setTimelineOverride(
+        goalId: goalId,
+        requirementId: requirementId,
+        suggestedStartDate: null,
+        removed: false,
+        clearSuggestedDates: true);
   }
 
   Future<void> _setTimelineOverride({
@@ -996,7 +1261,8 @@ class AppState extends ChangeNotifier {
     required bool removed,
     bool clearSuggestedDates = false,
   }) async {
-    final idx = _overrides.indexWhere((o) => o.goalId == goalId && o.requirementId == requirementId);
+    final idx = _overrides.indexWhere(
+        (o) => o.goalId == goalId && o.requirementId == requirementId);
     if (idx >= 0) {
       _overrides[idx] = _overrides[idx].copyWith(
         suggestedStartDate: suggestedStartDate,
@@ -1029,18 +1295,24 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> toggleCustomRequirementComplete(String requirementId, bool complete) async {
+  Future<void> toggleCustomRequirementComplete(
+      String requirementId, bool complete) async {
     final idx = _customRequirements.indexWhere((e) => e.id == requirementId);
     if (idx < 0) return;
-    _customRequirements[idx] = _customRequirements[idx].copyWith(completed: complete, updatedAt: DateTime.now());
+    _customRequirements[idx] = _customRequirements[idx]
+        .copyWith(completed: complete, updatedAt: DateTime.now());
     await _persistAll();
     notifyListeners();
   }
 
-  Future<void> updateNumericProgress(String requirementId, {required double current, required double required}) async {
+  Future<void> updateNumericProgress(String requirementId,
+      {required double current, required double required}) async {
     final idx = _customRequirements.indexWhere((e) => e.id == requirementId);
     if (idx < 0) return;
-    _customRequirements[idx] = _customRequirements[idx].copyWith(progressCurrent: current, progressRequired: required, updatedAt: DateTime.now());
+    _customRequirements[idx] = _customRequirements[idx].copyWith(
+        progressCurrent: current,
+        progressRequired: required,
+        updatedAt: DateTime.now());
     await _persistAll();
     notifyListeners();
   }
@@ -1049,14 +1321,18 @@ class AppState extends ChangeNotifier {
     try {
       final estimated = CareerTimelinePlanner.estimateStatus(this);
       if (_profile.careerPlan.timelineStatus != estimated) {
-        _profile = _profile.copyWith(careerPlan: _profile.careerPlan.copyWith(timelineStatus: estimated), updatedAt: DateTime.now());
+        _profile = _profile.copyWith(
+            careerPlan: _profile.careerPlan.copyWith(timelineStatus: estimated),
+            updatedAt: DateTime.now());
       }
     } catch (e) {
       debugPrint('Timeline status estimation failed: $e');
     }
     await _store.saveProfile(_profile.toJson());
-    await _store.saveCertifications(_certsById.values.map((e) => e.toJson()).toList());
-    await _store.saveCustomRequirements(_customRequirements.map((e) => e.toJson()).toList());
+    await _store
+        .saveCertifications(_certsById.values.map((e) => e.toJson()).toList());
+    await _store.saveCustomRequirements(
+        _customRequirements.map((e) => e.toJson()).toList());
     await _store.savePathOverrides(_overrides.map((e) => e.toJson()).toList());
   }
 }

@@ -6,8 +6,11 @@ class AppShellPage extends StatelessWidget {
 
   const AppShellPage({super.key, required this.navigationShell});
 
-  void _onTap(BuildContext context, int index) {
-    navigationShell.goBranch(index, initialLocation: index == navigationShell.currentIndex);
+  void _onTap(int index) {
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
+    );
   }
 
   @override
@@ -20,22 +23,38 @@ class AppShellPage extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: cs.surface,
-            border: Border(top: BorderSide(color: cs.outline.withValues(alpha: 0.15))),
+            border: Border(
+                top: BorderSide(color: cs.outline.withValues(alpha: 0.15))),
           ),
           child: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
             currentIndex: navigationShell.currentIndex,
-            onTap: (i) => _onTap(context, i),
+            onTap: _onTap,
             selectedItemColor: cs.primary,
             unselectedItemColor: cs.onSurfaceVariant,
             selectedFontSize: 11,
             unselectedFontSize: 11,
             items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(icon: Icon(Icons.route_outlined), activeIcon: Icon(Icons.route), label: 'Roadmap'),
-              BottomNavigationBarItem(icon: Icon(Icons.work_history_outlined), activeIcon: Icon(Icons.work_history), label: 'Career'),
-              BottomNavigationBarItem(icon: Icon(Icons.verified_outlined), activeIcon: Icon(Icons.verified), label: 'Certs'),
-              BottomNavigationBarItem(icon: Icon(Icons.library_books_outlined), activeIcon: Icon(Icons.library_books), label: 'Resources'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home),
+                  label: 'Home'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.route_outlined),
+                  activeIcon: Icon(Icons.route),
+                  label: 'Roadmap'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.add_task_outlined),
+                  activeIcon: Icon(Icons.add_task),
+                  label: 'Log'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.trending_up_outlined),
+                  activeIcon: Icon(Icons.trending_up),
+                  label: 'Growth'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.verified_outlined),
+                  activeIcon: Icon(Icons.verified),
+                  label: 'Certs'),
             ],
           ),
         ),
