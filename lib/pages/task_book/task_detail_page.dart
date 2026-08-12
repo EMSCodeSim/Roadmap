@@ -520,10 +520,25 @@ class _PracticeCard extends StatelessWidget {
                 height: 52,
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () => context.push(
-                    AppRoutes.resources,
-                    extra: {'tool': t.route, 'title': t.title},
-                  ),
+                  onPressed: () {
+                    final String? externalUrl = switch (t.route) {
+                      '/resources?tool=firepumpsim' =>
+                        'https://fireopssim.com/fire-pump-training-scenarios.html',
+                      '/resources?tool=fireops_calc' =>
+                        'https://fireopssim.com/fire-pump-calculator.html',
+                      '/resources?tool=hydrant_flow' =>
+                        'https://fireopssim.com/hydrant-flow-calculator.html',
+                      _ => null,
+                    };
+                    if (externalUrl != null) {
+                      _openExternalUrl(externalUrl);
+                      return;
+                    }
+                    context.push(
+                      AppRoutes.resources,
+                      extra: {'tool': t.route, 'title': t.title},
+                    );
+                  },
                   icon: Icon(Icons.build_outlined, color: cs.primary),
                   label: Text(t.title),
                   style: OutlinedButton.styleFrom(
