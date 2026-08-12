@@ -15,13 +15,12 @@ class MyPathPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final roadmap = state.roadmap;
-    final cs = Theme.of(context).colorScheme;
 
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('My Path'),
+          title: const Text('Roadmap'),
           centerTitle: false,
           bottom: roadmap == null
               ? null
@@ -34,10 +33,22 @@ class MyPathPage extends StatelessWidget {
                 ),
           actions: [
             if (roadmap != null)
-              IconButton(
-                tooltip: 'Customize My Path',
-                onPressed: () => _showCustomizeSheet(context, state, roadmap),
-                icon: const Icon(Icons.tune),
+              PopupMenuButton<String>(
+                tooltip: 'Roadmap tools',
+                onSelected: (value) {
+                  if (value == 'customize') {
+                    _showCustomizeSheet(context, state, roadmap);
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'customize',
+                    child: ListTile(
+                      leading: Icon(Icons.tune),
+                      title: Text('Customize requirements'),
+                    ),
+                  ),
+                ],
               ),
           ],
         ),
@@ -51,15 +62,6 @@ class MyPathPage extends StatelessWidget {
                   _PathTab(roadmap: roadmap),
                   const CareerTimelineTab(),
                 ],
-              ),
-        floatingActionButton: roadmap == null
-            ? null
-            : FloatingActionButton.extended(
-                onPressed: () => _showCustomizeSheet(context, state, roadmap),
-                backgroundColor: cs.primary,
-                foregroundColor: cs.onPrimary,
-                icon: const Icon(Icons.tune),
-                label: const Text('Customize'),
               ),
       ),
     );
@@ -258,44 +260,304 @@ class _PathTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
+
+    final currentRole = state.profile.currentRoles.isEmpty
+        ? 'Current role'
+        : state.profile.currentRoles.first;
+    final goalTitle = roadmap.goal.title;
+    final percentReady = (roadmap.percentComplete * 100).round();
+    final targetDate = state.profile.careerPlan.targetDate;
+
+    final nextActions = _buildNextActions(roadmap);
+    final stillNeeded = roadmap.missing
+        .where((e) => nextActions.indexWhere((n) => n.requirement.id == e.requirement.id) == -1)
+        .toList()
+      ..sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
+    final completed = roadmap.completed
+      ..sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
+
+    final grouped = <String, List<RoadmapRequirement>>{};
+    for (final item in stillNeeded) {
+      final key = _groupLabel(item.requirement);
+      (grouped[key] ??= <RoadmapRequirement>[]).add(item);
+    }
+    final groupOrder = [
+      'Certifications',
+      'Training',
+      'Experience',
+      'Task Books',
+      'Department Requirements',
+      'Promotion Preparation',
+      'Other',
+    ];
+    final orderedGroups = grouped.keys.toList()
+      ..sort((a, b) {
+        final ia = groupOrder.indexOf(a);
+        final ib = groupOrder.indexOf(b);
+        if (ia == -1 && ib == -1) return a.compareTo(b);
+        if (ia == -1) return 1;
+        if (ib == -1) return -1;
+        return ia.compareTo(ib);
+      });
+
     return SafeArea(
       child: ListView(
         padding: AppSpacing.paddingLg,
         children: [
-          _PathHeader(roadmap: roadmap, currentRoles: state.profile.currentRoles),
-          const SizedBox(height: AppSpacing.lg),
-          _SafetyNotice(),
-          const SizedBox(height: AppSpacing.lg),
-          _SectionTitle(label: 'WHAT I SHOULD DO NEXT'),
-          const SizedBox(height: AppSpacing.sm),
-          _NextStepPanel(
-            title: roadmap.nextStep?.requirement.name ?? 'You’re all caught up!',
-            subtitle: roadmap.nextStep == null ? null : MyPathPage._whyLabel(roadmap.nextStep!.requirement),
-            onTap: roadmap.nextStep == null ? null : () => context.push(AppRoutes.getStarted, extra: roadmap.nextStep!.requirement),
+          _RoadmapHeader(
+            fromRole: currentRole,
+            goalTitle: goalTitle,
+            percentReady: percentReady,
+            targetDate: targetDate,
           ),
-          const SizedBox(height: AppSpacing.xl),
-          _SectionTitle(label: 'WHAT I ALREADY HAVE'),
+          const SizedBox(height: AppSpacing.lg),
+          _SectionTitle(label: 'NEXT'),
           const SizedBox(height: AppSpacing.sm),
-          if (roadmap.completed.isEmpty)
-            Text('Nothing yet — start with your next step.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant))
+          if (nextActions.isEmpty)
+            Text(
+              'You’re all caught up. Review Timeline or customize your path as needed.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+            )
           else
-            ...roadmap.completed.map((r) => _ReqTile(
-                  requirement: r.requirement,
-                  statusIcon: Icons.check_circle,
-                  statusColor: FireOpsSemanticColors.completed,
-                  onTap: () => context.push(AppRoutes.requirementDetail, extra: r.requirement),
-                )),
+            ...nextActions.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final item = entry.value;
+              final emphasized = idx == 0;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: _NextActionCard(
+                  requirement: item.requirement,
+                  emphasized: emphasized,
+                  subtitle: MyPathPage._whyLabel(item.requirement),
+                  primaryLabel: _primaryLabel(item.requirement),
+                  onOpen: () => context.push(AppRoutes.requirementDetail, extra: item.requirement),
+                  onPrimary: () => _primaryAction(context, state, item.requirement),
+                ),
+              );
+            }),
           const SizedBox(height: AppSpacing.xl),
-          _SectionTitle(label: 'WHAT I STILL NEED'),
+          _SectionTitle(label: 'STILL NEEDED'),
           const SizedBox(height: AppSpacing.sm),
-          ...roadmap.comingUp.where((r) => roadmap.nextStep == null || r.requirement.id != roadmap.nextStep!.requirement.id).map((r) => _ReqTile(
-                requirement: r.requirement,
-                statusIcon: Icons.circle_outlined,
-                statusColor: cs.onSurfaceVariant,
-                onTap: () => context.push(AppRoutes.requirementDetail, extra: r.requirement),
-              )),
+          if (orderedGroups.isEmpty)
+            Text('Nothing remaining.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant))
+          else
+            ...orderedGroups.expand((group) {
+              final items = grouped[group]!;
+              return [
+                _GroupHeading(title: group, count: items.length),
+                const SizedBox(height: AppSpacing.sm),
+                ...items.map((r) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: _ReqTile(
+                        requirement: r.requirement,
+                        statusIcon: Icons.circle_outlined,
+                        statusColor: cs.onSurfaceVariant,
+                        onTap: () => context.push(AppRoutes.requirementDetail, extra: r.requirement),
+                        compactBadges: true,
+                      ),
+                    )),
+                const SizedBox(height: AppSpacing.md),
+              ];
+            }).toList(),
+          const SizedBox(height: AppSpacing.xl),
+          ExpansionTile(
+            initiallyExpanded: false,
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            title: Text(
+              'COMPLETED ${completed.isEmpty ? '' : '(${completed.length})'}',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900, color: cs.onSurfaceVariant),
+            ),
+            children: [
+              if (completed.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                  child: Text('Nothing completed yet.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+                )
+              else
+                ...completed.map((r) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: _ReqTile(
+                        requirement: r.requirement,
+                        statusIcon: Icons.check_circle,
+                        statusColor: FireOpsSemanticColors.completed,
+                        onTap: () => context.push(AppRoutes.requirementDetail, extra: r.requirement),
+                        compactBadges: true,
+                      ),
+                    )),
+            ],
+          ),
           const SizedBox(height: AppSpacing.lg),
         ],
+      ),
+    );
+  }
+
+  static List<RoadmapRequirement> _buildNextActions(Roadmap roadmap) {
+    final next = roadmap.nextStep;
+    if (next == null) return const <RoadmapRequirement>[];
+    final others = roadmap.missing
+        .where((e) => e.requirement.id != next.requirement.id)
+        .toList()
+      ..sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
+    return [next, ...others.take(2)];
+  }
+
+  static String _primaryLabel(Requirement r) {
+    return switch (r.type) {
+      RequirementType.taskBook || RequirementType.numericProgress => 'Update',
+      RequirementType.experience => 'Log',
+      _ => 'Start',
+    };
+  }
+
+  static void _primaryAction(BuildContext context, AppState state, Requirement r) {
+    if (r.type == RequirementType.taskBook || r.type == RequirementType.numericProgress) {
+      context.push(AppRoutes.requirementDetail, extra: r);
+      return;
+    }
+    if (r.type == RequirementType.experience) {
+      context.go(AppRoutes.personalLog);
+      return;
+    }
+    context.push(AppRoutes.getStarted, extra: r);
+  }
+
+  static String _groupLabel(Requirement r) {
+    if (r.type == RequirementType.certification) return 'Certifications';
+    if (r.type == RequirementType.taskBook) return 'Task Books';
+    if (r.type == RequirementType.experience || r.type == RequirementType.numericProgress) {
+      return 'Experience';
+    }
+    if (r.requirementSource == RequirementSource.departmentRequirement) {
+      return 'Department Requirements';
+    }
+    if (r.type == RequirementType.interview || r.type == RequirementType.promotionalTest) {
+      return 'Promotion Preparation';
+    }
+    if (r.type == RequirementType.trainingCourse || r.type == RequirementType.course || r.type == RequirementType.education || r.type == RequirementType.practical) {
+      return 'Training';
+    }
+    return 'Other';
+  }
+}
+
+class _RoadmapHeader extends StatelessWidget {
+  final String fromRole;
+  final String goalTitle;
+  final int percentReady;
+  final DateTime? targetDate;
+
+  const _RoadmapHeader({required this.fromRole, required this.goalTitle, required this.percentReady, required this.targetDate});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: AppSpacing.paddingLg,
+      decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(AppRadius.xl), border: Border.all(color: cs.outline.withValues(alpha: 0.14))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(fromRole, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Icon(Icons.arrow_downward, size: 18, color: cs.onSurfaceVariant),
+          ),
+          Text(goalTitle, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$percentReady% Ready',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ),
+              if (targetDate != null)
+                Text(
+                  'Target: ${_fmtMonthYear(targetDate!)}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: (percentReady / 100).clamp(0, 1),
+              backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+              valueColor: AlwaysStoppedAnimation(cs.primary),
+              minHeight: 10,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _fmtMonthYear(DateTime d) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[d.month - 1]} ${d.year}';
+  }
+}
+
+class _GroupHeading extends StatelessWidget {
+  final String title;
+  final int count;
+  const _GroupHeading({required this.title, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Expanded(child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900))),
+        Text('$count', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w900)),
+      ],
+    );
+  }
+}
+
+class _NextActionCard extends StatelessWidget {
+  final Requirement requirement;
+  final bool emphasized;
+  final String subtitle;
+  final String primaryLabel;
+  final VoidCallback onOpen;
+  final VoidCallback onPrimary;
+
+  const _NextActionCard({required this.requirement, required this.emphasized, required this.subtitle, required this.primaryLabel, required this.onOpen, required this.onPrimary});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final bg = emphasized ? cs.primaryContainer : cs.surface;
+    final border = emphasized ? cs.primary.withValues(alpha: 0.18) : cs.outline.withValues(alpha: 0.14);
+    return InkWell(
+      onTap: onOpen,
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+      child: Container(
+        padding: AppSpacing.paddingLg,
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.xl), border: Border.all(color: border)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(requirement.name, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: AppSpacing.xs),
+            Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 50,
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: onPrimary,
+                style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+                child: Text(primaryLabel),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -377,8 +639,9 @@ class _ReqTile extends StatelessWidget {
   final IconData statusIcon;
   final Color statusColor;
   final VoidCallback onTap;
+  final bool compactBadges;
 
-  const _ReqTile({required this.requirement, required this.statusIcon, required this.statusColor, required this.onTap});
+  const _ReqTile({required this.requirement, required this.statusIcon, required this.statusColor, required this.onTap, this.compactBadges = false});
 
   @override
   Widget build(BuildContext context) {
@@ -407,7 +670,8 @@ class _ReqTile extends StatelessWidget {
                       children: [
                         Expanded(child: Text(requirement.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
                         const SizedBox(width: AppSpacing.sm),
-                        _RequirementBadges(requirement: requirement),
+                        if (!compactBadges)
+                          _RequirementBadges(requirement: requirement),
                       ],
                     ),
                     const SizedBox(height: 2),

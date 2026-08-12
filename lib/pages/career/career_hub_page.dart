@@ -308,7 +308,7 @@ class _CareerHubPageState extends State<CareerHubPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Professional Growth'),
+        title: const Text('Growth'),
         actions: [
           IconButton(
             tooltip: 'Promotion prep brief',
@@ -340,55 +340,64 @@ class _CareerHubPageState extends State<CareerHubPage> {
                   ),
                   const SizedBox(height: 18),
                   const _SectionHeading(
-                    title: 'Advancement dashboard',
-                    subtitle: 'Roadmap completion is only one part of readiness. The app also looks for proof, breadth, and stories you can reuse later.',
+                    title: 'Promotion Readiness',
+                    subtitle: 'Four areas that make you more competitive for the next position.',
                   ),
                   const SizedBox(height: 9),
                   _ProgressPanel(
                     icon: Icons.route_outlined,
-                    label: 'Roadmap readiness',
+                    label: 'Qualifications',
                     value: analysis.roadmapProgress,
                     valueText: analysis.totalRequirements == 0
                         ? 'No target'
                         : '${analysis.completedRequirements}/${analysis.totalRequirements}',
-                    detail: 'Required and recommended steps completed for your selected path.',
+                    detail: 'Roadmap requirements completed for your selected path.',
                   ),
                   const SizedBox(height: 8),
                   _ProgressPanel(
                     icon: Icons.attach_file_outlined,
-                    label: 'Evidence coverage',
+                    label: 'Experience Evidence',
                     value: analysis.evidenceProgress,
                     valueText: analysis.evidenceExpected == 0
                         ? '—'
                         : '${analysis.evidenceCovered}/${analysis.evidenceExpected}',
-                    detail: 'Roadmap items with personal examples or proof linked for future recall.',
+                    detail: 'Proof/examples linked so you can recall them later.',
                   ),
                   const SizedBox(height: 8),
                   _ProgressPanel(
                     icon: Icons.hub_outlined,
-                    label: 'Promotion competency breadth',
+                    label: 'Leadership / Competencies',
                     value: analysis.competencyProgress,
                     valueText: '${analysis.supportedCompetencies}/${analysis.totalCompetencies}',
-                    detail: 'Leadership, training, operations, safety, communication, problem-solving, projects, and technical depth.',
+                    detail: 'Breadth across leadership, communication, safety, projects, and more.',
                   ),
                   const SizedBox(height: 8),
                   _ProgressPanel(
                     icon: Icons.auto_stories_outlined,
-                    label: 'Interview-ready stories',
+                    label: 'Interview Stories',
                     value: (analysis.storyReadyCount / 5).clamp(0.0, 1.0).toDouble(),
                     valueText: '${analysis.storyReadyCount}/5+',
-                    detail: 'Examples with your role, actions, and result documented clearly enough to reuse later.',
+                    detail: 'Stories documented clearly enough to reuse later.',
                   ),
                   const SizedBox(height: 18),
-                  _QuickNavigation(
-                    onRoadmap: () => context.go(AppRoutes.myPath),
-                    onVault: _openVault,
-                    onBrief: () => _showBrief(app),
-                    onCerts: () => context.go(AppRoutes.certifications),
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: EdgeInsets.zero,
+                    title: Text('Tools', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                    children: [
+                      const SizedBox(height: 8),
+                      _QuickNavigation(
+                        onRoadmap: () => context.go(AppRoutes.myPath),
+                        onVault: _openVault,
+                        onBrief: () => _showBrief(app),
+                        onCerts: () => context.go(AppRoutes.certifications),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 18),
                   _SectionHeading(
-                    title: 'Evidence gaps',
+                    title: 'Best Next Evidence',
                     subtitle: analysis.goalTitle == null
                         ? 'Choose an advancement target to see which roadmap requirements need supporting career evidence.'
                         : 'These are the strongest places to document examples now so you are not trying to remember them years later.',

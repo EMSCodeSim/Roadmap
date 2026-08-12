@@ -16,6 +16,70 @@ class CertificationsPage extends StatefulWidget {
   State<CertificationsPage> createState() => _CertificationsPageState();
 }
 
+class _CertSummaryHeader extends StatelessWidget {
+  final int total;
+  final int current;
+  final int expiring;
+  final int expired;
+  final VoidCallback onAdd;
+
+  const _CertSummaryHeader({required this.total, required this.current, required this.expiring, required this.expired, required this.onAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: AppSpacing.paddingMd,
+      decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: cs.outline.withValues(alpha: 0.14))),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$total Certifications', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 4),
+                Text('$current Current • $expiring Expiring • $expired Expired', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          SizedBox(
+            height: 44,
+            child: FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: const Text('Add'),
+              style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CertEmptyState extends StatelessWidget {
+  final VoidCallback onAdd;
+  const _CertEmptyState({required this.onAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Start your credential record', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+        const SizedBox(height: AppSpacing.sm),
+        Text('Add the certifications you already hold and FireOps will help track renewals.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
+        const SizedBox(height: AppSpacing.lg),
+        SizedBox(height: 52, child: FilledButton(onPressed: onAdd, child: const Text('Add Certification'))),
+      ],
+    );
+  }
+}
+
 class _CertificationsPageState extends State<CertificationsPage> {
   _CertFilter _filter = _CertFilter.all;
 
@@ -24,6 +88,11 @@ class _CertificationsPageState extends State<CertificationsPage> {
     final state = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
     final certs = state.certifications;
+
+    final total = certs.length;
+    final currentCount = certs.where((c) => c.status == CertificationStatus.current).length;
+    final expiringCount = certs.where((c) => c.status == CertificationStatus.expiringSoon).length;
+    final expiredCount = certs.where((c) => c.status == CertificationStatus.expired).length;
 
     List<Certification> filtered() {
       switch (_filter) {
@@ -39,10 +108,31 @@ class _CertificationsPageState extends State<CertificationsPage> {
     }
 
     final list = filtered();
+    final sorted = [...list]..sort((a, b) {
+      int statusRank(Certification c) {
+        return switch (c.status) {
+          CertificationStatus.expired => 0,
+          CertificationStatus.expiringSoon => 1,
+          CertificationStatus.current => 2,
+        };
+      }
+
+      final sr = statusRank(a).compareTo(statusRank(b));
+      if (sr != 0) return sr;
+      final ad = a.doesNotExpire ? null : a.expirationDate;
+      final bd = b.doesNotExpire ? null : b.expirationDate;
+      if (ad == null && bd != null) return 1;
+      if (ad != null && bd == null) return -1;
+      if (ad != null && bd != null) {
+        final dr = ad.compareTo(bd);
+        if (dr != 0) return dr;
+      }
+      return state.certificationDisplayName(a).compareTo(state.certificationDisplayName(b));
+    });
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Certifications'),
+        title: const Text('Certifications'),
         actions: [
           IconButton(
             tooltip: 'Add',
@@ -54,6 +144,17 @@ class _CertificationsPageState extends State<CertificationsPage> {
       body: SafeArea(
         child: Column(
           children: [
+            Padding(
+              padding: AppSpacing.horizontalMd.add(const EdgeInsets.only(top: AppSpacing.sm)),
+              child: _CertSummaryHeader(
+                total: total,
+                current: currentCount,
+                expiring: expiringCount,
+                expired: expiredCount,
+                onAdd: () => context.push(AppRoutes.certificationAdd),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
             Padding(
               padding: AppSpacing.horizontalMd.add(const EdgeInsets.only(top: AppSpacing.sm)),
               child: SegmentedButton<_CertFilter>(
@@ -69,18 +170,18 @@ class _CertificationsPageState extends State<CertificationsPage> {
             ),
             const SizedBox(height: AppSpacing.sm),
             Expanded(
-              child: list.isEmpty
+              child: sorted.isEmpty
                   ? Center(
                       child: Padding(
                         padding: AppSpacing.paddingLg,
-                        child: Text('No certifications yet. Tap + to add one.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+                        child: _CertEmptyState(onAdd: () => context.push(AppRoutes.certificationAdd)),
                       ),
                     )
                   : ListView.builder(
                       padding: AppSpacing.paddingLg,
-                      itemCount: list.length,
+                      itemCount: sorted.length,
                       itemBuilder: (context, i) {
-                        final cert = list[i];
+                        final cert = sorted[i];
                         final status = cert.status;
                         final (label, color, icon) = switch (status) {
                           CertificationStatus.current => ('Current', FireOpsSemanticColors.completed, Icons.check_circle),
@@ -91,15 +192,10 @@ class _CertificationsPageState extends State<CertificationsPage> {
                         final expText = cert.doesNotExpire
                             ? 'Does not expire'
                             : cert.expirationDate == null
-                                ? 'Expiration: —'
+                                ? 'Expires —'
                                 : 'Expires ${_formatDate(cert.expirationDate!)}';
 
-                        final remaining = cert.daysRemaining;
-                        final remainingText = remaining == null
-                            ? null
-                            : remaining < 0
-                                ? '${remaining.abs()} days past'
-                                : '$remaining days remaining';
+                        final org = (cert.issuingOrganization ?? '').trim();
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -124,7 +220,7 @@ class _CertificationsPageState extends State<CertificationsPage> {
                                         Text(state.certificationDisplayName(cert), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
                                         const SizedBox(height: 2),
                                         Text(
-                                          [label, expText, if (remainingText != null) remainingText].join(' • '),
+                                          [if (org.isNotEmpty) org, label, expText].join(' • '),
                                           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                                         ),
                                       ],

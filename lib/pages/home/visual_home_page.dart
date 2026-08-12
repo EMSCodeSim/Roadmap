@@ -10,6 +10,7 @@ import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/timeline_planner.dart';
 import 'package:firepath/state/app_state.dart';
+import 'package:firepath/theme.dart';
 
 class VisualHomePage extends StatelessWidget {
   const VisualHomePage({super.key});
@@ -78,11 +79,7 @@ class VisualHomePage extends StatelessWidget {
                   : state.certificationDisplayName(nextExpiration),
               nextExpirationDate: nextExpiration?.expirationDate,
               nextExpirationDays: nextExpiration?.daysRemaining,
-              pendingMatches: state.pendingCertMatches.length,
               onTap: () => context.go(AppRoutes.certifications),
-              onReviewMatches: state.pendingCertMatches.isEmpty
-                  ? null
-                  : () => _showCertMatchSheet(context, state),
             ),
             const SizedBox(height: 12),
             _PersonalLogCard(
@@ -227,7 +224,7 @@ class VisualHomePage extends StatelessWidget {
                             ),
                             const SizedBox(height: 18),
                             DropdownButtonFormField<String?>(
-                              initialValue: serviceType,
+                              value: serviceType,
                               decoration: const InputDecoration(
                                 labelText: 'Service type',
                               ),
@@ -316,7 +313,7 @@ class VisualHomePage extends StatelessWidget {
                                   );
                                   await state.updateProfile(updated);
                                   if (sheetContext.mounted) {
-                                    Navigator.of(sheetContext).pop();
+                                    sheetContext.pop();
                                   }
                                 },
                           child: const Text('Save current level'),
@@ -413,7 +410,7 @@ class VisualHomePage extends StatelessWidget {
                                       accepted: false,
                                     );
                                     if (sheetContext.mounted) {
-                                      Navigator.of(sheetContext).pop();
+                                      sheetContext.pop();
                                     }
                                   },
                                   child: const Text('Not a match'),
@@ -430,7 +427,7 @@ class VisualHomePage extends StatelessWidget {
                                       accepted: true,
                                     );
                                     if (sheetContext.mounted) {
-                                      Navigator.of(sheetContext).pop();
+                                      sheetContext.pop();
                                     }
                                   },
                                   child: const Text('Confirm'),
@@ -469,8 +466,8 @@ class _GraphicHeader extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF071A33),
-            cs.primary,
+            FireOpsSemanticColors.headerDark,
+            cs.secondary,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -536,7 +533,7 @@ class _CurrentLevelCard extends StatelessWidget {
     final detailParts = <String>[
       if (serviceType != null && serviceType!.trim().isNotEmpty) serviceType!,
       if (yearsOfService != null)
-        '$yearsOfService ${yearsOfService == 1 ? 'year' : 'years'} of service',
+        '$yearsOfService ${yearsOfService == 1 ? 'year' : 'years'}',
     ];
 
     return _HomeCard(
@@ -595,17 +592,17 @@ class _GoalCard extends StatelessWidget {
     return _HomeCard(
       icon: Icons.flag_outlined,
       eyebrow: 'GOAL',
-      title: hasGoal ? goalTitle! : 'Choose your next career goal',
+      title: hasGoal ? goalTitle! : 'Where do you want to go next?',
       subtitle: hasGoal
           ? [
-              if (targetDate != null) 'Target ${_formatMonthYear(targetDate!)}',
-              '$completed of $total requirements complete',
+              '${(progress * 100).round()}% complete',
+              if (targetDate != null) 'Target: ${_formatMonthYear(targetDate!)}',
             ].join(' • ')
-          : 'Build a roadmap for the position or specialty you want next.',
+          : 'Choose a career goal and FireOps will build your path.',
       emphasisText: hasGoal && nextStep != null ? 'Next: $nextStep' : null,
       progress: hasGoal ? progress : null,
       status: status,
-      actionLabel: hasGoal ? 'Open Roadmap' : 'Build My Path',
+      actionLabel: hasGoal ? 'Open Roadmap' : 'Choose Goal',
       onTap: onTap,
     );
   }
@@ -619,9 +616,7 @@ class _CertificationsCard extends StatelessWidget {
   final String? nextExpirationName;
   final DateTime? nextExpirationDate;
   final int? nextExpirationDays;
-  final int pendingMatches;
   final VoidCallback onTap;
-  final VoidCallback? onReviewMatches;
 
   const _CertificationsCard({
     required this.total,
@@ -631,15 +626,12 @@ class _CertificationsCard extends StatelessWidget {
     required this.nextExpirationName,
     required this.nextExpirationDate,
     required this.nextExpirationDays,
-    required this.pendingMatches,
     required this.onTap,
-    required this.onReviewMatches,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
 
     final _CardStatus? status;
     if (expired > 0) {
@@ -658,9 +650,7 @@ class _CertificationsCard extends StatelessWidget {
 
     String detail;
     if (expired > 0) {
-      detail = expired == 1
-          ? '1 certification is expired. Review renewal status.'
-          : '$expired certifications are expired. Review renewal status.';
+      detail = expired == 1 ? '1 certification expired' : '$expired certifications expired';
     } else if (nextExpirationName != null &&
         nextExpirationDate != null &&
         nextExpirationDays != null &&
@@ -668,69 +658,21 @@ class _CertificationsCard extends StatelessWidget {
       final dayLabel = nextExpirationDays == 1 ? 'day' : 'days';
       detail = '$nextExpirationName expires in $nextExpirationDays $dayLabel • '
           '${_formatDate(nextExpirationDate!)}';
-    } else if (nextExpirationName != null && nextExpirationDate != null) {
-      detail = 'Next expiration: $nextExpirationName • '
-          '${_formatDate(nextExpirationDate!)}';
+    } else if (total == 0) {
+      detail = 'Add the certifications you already hold.';
     } else {
-      detail = total == 0
-          ? 'Add certifications to track renewal and expiration dates.'
-          : 'No certification expirations are currently on file.';
+      detail = 'All tracked certifications are current';
     }
 
     return _HomeCard(
       icon: Icons.verified_outlined,
       eyebrow: 'CERTIFICATIONS',
-      title: total == 0
-          ? 'No certifications added yet'
-          : '$total certifications tracked',
-      subtitle: total == 0
-          ? 'Keep every credential and renewal date in one place.'
-          : 'Current $current • Expiring $expiring • Expired $expired',
+      title: total == 0 ? 'Start your credential record' : '$total tracked',
+      subtitle: total == 0 ? 'Add certifications to track renewals.' : '$current Current • $expiring Expiring',
       detail: detail,
       status: status,
-      actionLabel: 'View Certifications',
+      actionLabel: total == 0 ? 'Add Certification' : 'Open Certifications',
       onTap: onTap,
-      footer: pendingMatches == 0
-          ? null
-          : Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: InkWell(
-                onTap: onReviewMatches,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: cs.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.rule_outlined,
-                        size: 18,
-                        color: cs.onTertiaryContainer,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '$pendingMatches certification ${pendingMatches == 1 ? 'match needs' : 'matches need'} review',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: cs.onTertiaryContainer,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        Icons.chevron_right,
-                        size: 18,
-                        color: cs.onTertiaryContainer,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
     );
   }
 }
@@ -762,8 +704,8 @@ class _PersonalLogCard extends StatelessWidget {
           title: '$year Career Activity',
           subtitle: subtitle,
           detail: summary == null || summary.total == 0
-              ? 'Log calls, skills, trainings, awards, leadership, and other career milestones as they happen.'
-              : 'Keep building a record you can use later for task books, resumes, interviews, and promotions.',
+              ? 'Start building your career history.'
+              : 'Keep logging as it happens — you’ll thank yourself later.',
           actionLabel: 'Open Daily Logger',
           onTap: onTap,
         );

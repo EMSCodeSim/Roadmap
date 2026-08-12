@@ -1009,24 +1009,20 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final currentYear = DateTime.now().year;
-    final yearRecords = _yearRecords;
-    final totalLogged =
-        yearRecords.fold<int>(0, (sum, record) => sum + record.repetitions);
-    final skillCount = yearRecords
-        .where((record) => record.type == CareerRecordType.skill)
-        .fold<int>(0, (sum, record) => sum + record.repetitions);
-    final callCount = yearRecords
-        .where(
-            (record) => record.type == CareerRecordType.operationalExperience)
-        .fold<int>(0, (sum, record) => sum + record.repetitions);
-    final successful = yearRecords
-        .where((record) => record.outcome == CareerRecordOutcome.successful)
-        .fold<int>(0, (sum, record) => sum + record.repetitions);
-    final unsuccessful = yearRecords
-        .where((record) => record.outcome == CareerRecordOutcome.unsuccessful)
-        .fold<int>(0, (sum, record) => sum + record.repetitions);
-    final measured = successful + unsuccessful;
     final trackers = _pinnedTrackers;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    bool isSameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+
+    final todayRecords = _records.where((r) => isSameDay(r.date, today)).toList()..sort((a, b) => a.date.compareTo(b.date));
+
+    final yearRecords = _records.where((r) => r.date.year == currentYear).toList();
+    int sumType(CareerRecordType t) => yearRecords.where((r) => r.type == t).fold<int>(0, (sum, r) => sum + (r.repetitions < 1 ? 1 : r.repetitions));
+    final calls = sumType(CareerRecordType.operationalExperience);
+    final skills = sumType(CareerRecordType.skill);
+    final trainings = sumType(CareerRecordType.training);
+    final achievements = sumType(CareerRecordType.achievement);
 
     return Scaffold(
       appBar: AppBar(
@@ -1130,137 +1126,149 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                         );
                       },
                     ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: OutlinedButton.icon(
-                              onPressed: () => _openLogEditor(),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Past / custom'))),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: OutlinedButton.icon(
-                              onPressed: () =>
-                                  context.push(AppRoutes.careerEvidence),
-                              icon: const Icon(Icons.note_add_outlined),
-                              label: const Text('Detailed Evidence'))),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: Text('My Career Numbers',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w900))),
-                      DropdownButton<int?>(
-                        value: _selectedYear,
-                        items: [
-                          const DropdownMenuItem<int?>(
-                              value: null, child: Text('All time')),
-                          ..._years.map((year) => DropdownMenuItem<int?>(
-                              value: year, child: Text('$year'))),
-                        ],
-                        onChanged: (value) =>
-                            setState(() => _selectedYear = value),
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 18),
+                  Text('Today', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _MetricChip(
-                          label: 'Logged',
-                          value: '$totalLogged',
-                          icon: Icons.add_task_outlined),
-                      _MetricChip(
-                          label: 'Skills',
-                          value: '$skillCount',
-                          icon: Icons.handyman_outlined),
-                      _MetricChip(
-                          label: 'Calls',
-                          value: '$callCount',
-                          icon: Icons.local_fire_department_outlined),
-                      _MetricChip(
-                          label: 'Success',
-                          value: measured == 0
-                              ? '—'
-                              : '${(successful / measured * 100).round()}%',
-                          icon: Icons.trending_up_outlined),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _searchController,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search),
-                      hintText: 'Search IV, car fire, extrication, 2023…',
-                      suffixIcon: _searchController.text.isEmpty
-                          ? null
-                          : IconButton(
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {});
-                              },
-                              icon: const Icon(Icons.clear),
-                            ),
+                  if (todayRecords.isEmpty)
+                    Text('Nothing logged today yet.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant))
+                  else
+                    ...todayRecords.map(
+                      (record) => Padding(
+                        padding: const EdgeInsets.only(bottom: 7),
+                        child: _RecentRecord(
+                          record: record,
+                          onEdit: () => _openLogEditor(existing: record),
+                          onDelete: () => _deleteRecord(record),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 18),
+                  Text('This Year', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: cs.outline.withValues(alpha: 0.14))),
+                    child: Text(
+                      '$currentYear Career Activity\n$calls Calls • $skills Skills • $trainings Trainings • $achievements Achievements',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (_aggregates.isEmpty)
-                    const _EmptyLogCard()
-                  else
-                    ..._aggregates.take(20).map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: _AggregateCard(
-                                item: item, onTap: () => _showTrend(item)),
-                          ),
-                        ),
-                  const SizedBox(height: 20),
-                  Text('Recent entries',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 4),
-                  Text(
-                      'Tap the menu on any entry to correct or remove a mistake.',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: cs.onSurfaceVariant)),
+                  SizedBox(
+                    height: 52,
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _openFullHistory,
+                      child: const Text('View Full History'),
+                    ),
+                  ),
                   const SizedBox(height: 10),
-                  if (_visibleRecords.isEmpty)
-                    const _EmptyLogCard()
-                  else
-                    ..._visibleRecords.take(30).map(
-                          (record) => Padding(
-                            padding: const EdgeInsets.only(bottom: 7),
-                            child: _RecentRecord(
-                              record: record,
-                              onEdit: () => _openLogEditor(existing: record),
-                              onDelete: () => _deleteRecord(record),
-                            ),
-                          ),
-                        ),
-                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 52,
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _openLogEditor(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Log past / custom activity'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   Text(
-                    'Privacy reminder: this is a personal professional log. Do not enter patient names, addresses, DOBs, or other identifying information.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
+                    'Privacy reminder: do not enter patient names, addresses, DOBs, or other identifying information.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
             ),
+    );
+  }
+
+  Future<void> _openFullHistory() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final cs = Theme.of(sheetContext).colorScheme;
+        return SafeArea(
+          child: FractionallySizedBox(
+            heightFactor: 0.92,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text('Full History', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
+                      IconButton(onPressed: () => sheetContext.pop(), icon: const Icon(Icons.close)),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: Text('Trends', style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
+                          DropdownButton<int?>(
+                            value: _selectedYear,
+                            items: [
+                              const DropdownMenuItem<int?>(value: null, child: Text('All time')),
+                              ..._years.map((year) => DropdownMenuItem<int?>(value: year, child: Text('$year'))),
+                            ],
+                            onChanged: (value) => setState(() => _selectedYear = value),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _searchController,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.search),
+                          hintText: 'Search',
+                          suffixIcon: _searchController.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(Icons.clear),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_aggregates.isEmpty)
+                        Text('Nothing logged for this view yet.', style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant))
+                      else
+                        ..._aggregates.take(20).map((item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _AggregateCard(item: item, onTap: () => _showTrend(item)),
+                            )),
+                      const SizedBox(height: 18),
+                      Text('Entries', style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 10),
+                      if (_visibleRecords.isEmpty)
+                        Text('No entries for this filter.', style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant))
+                      else
+                        ..._visibleRecords.take(60).map((record) => Padding(
+                              padding: const EdgeInsets.only(bottom: 7),
+                              child: _RecentRecord(
+                                record: record,
+                                onEdit: () => _openLogEditor(existing: record),
+                                onDelete: () => _deleteRecord(record),
+                              ),
+                            )),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
