@@ -38,7 +38,8 @@ class CareerRecordStore {
     for (final item in raw) {
       try {
         final record = CareerRecord.fromJson(item);
-        if (record.id.isNotEmpty && record.title.trim().isNotEmpty) records.add(record);
+        if (record.id.isNotEmpty && record.title.trim().isNotEmpty)
+          records.add(record);
       } catch (e) {
         debugPrint('Skipping invalid career record for $year: $e');
       }
@@ -76,7 +77,8 @@ class CareerRecordStore {
     for (final item in raw) {
       try {
         final record = CareerRecord.fromJson(item);
-        if (record.id.isNotEmpty && record.title.trim().isNotEmpty) records.add(record);
+        if (record.id.isNotEmpty && record.title.trim().isNotEmpty)
+          records.add(record);
       } catch (e) {
         debugPrint('Skipping invalid legacy career record: $e');
       }
@@ -104,7 +106,8 @@ class CareerRecordStore {
       if (!ok) return false;
     }
 
-    for (final oldYear in existingYears.where((year) => !grouped.containsKey(year))) {
+    for (final oldYear
+        in existingYears.where((year) => !grouped.containsKey(year))) {
       final ok = await _store.removeKey(_yearKey(oldYear));
       if (!ok) return false;
     }
@@ -140,7 +143,8 @@ class CareerRecordStore {
     if (records.isEmpty) {
       final removed = await _store.removeKey(_yearKey(year));
       if (!removed) return false;
-      final years = await _loadYears()..remove(year);
+      final years = await _loadYears()
+        ..remove(year);
       return _saveYears(years);
     }
     return _store.saveJsonChecked(
@@ -151,10 +155,26 @@ class CareerRecordStore {
 
   Future<String> exportBackup() async {
     final records = await load();
+    final profile = await _store.loadProfile();
+    final certifications = await _store.loadCertifications();
+    final customRequirements = await _store.loadCustomRequirements();
+    final pathOverrides = await _store.loadPathOverrides();
+    final certMatches = await _store.loadCertificationMatchConfirmations();
+    final quickLogPreferences =
+        await _store.loadJsonMap('fireops.quickLogPreferences.v1');
+    final onboardingComplete = await _store.getOnboardingComplete();
+
     return const JsonEncoder.withIndent('  ').convert({
-      'format': 'fireops-career-log',
-      'version': 2,
+      'format': 'fireops-career-portfolio',
+      'version': 3,
       'exportedAt': DateTime.now().toIso8601String(),
+      'onboardingComplete': onboardingComplete,
+      'profile': profile,
+      'certifications': certifications,
+      'customRequirements': customRequirements,
+      'pathOverrides': pathOverrides,
+      'certificationMatchConfirmations': certMatches,
+      'quickLogPreferences': quickLogPreferences,
       'records': records.map((e) => e.toJson()).toList(),
     });
   }
@@ -162,23 +182,108 @@ class CareerRecordStore {
   Future<CareerRestoreResult> restoreBackup(String raw) async {
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is! Map) return const CareerRestoreResult(success: false, count: 0, message: 'Backup is not valid JSON.');
-      final map = Map<String, dynamic>.from(decoded);
-      final recordsRaw = map['records'];
-      if (map['format'] != 'fireops-career-log' || recordsRaw is! List) {
-        return const CareerRestoreResult(success: false, count: 0, message: 'This is not a FireOps Career Log backup.');
+      if (decoded is! Map) {
+        return const CareerRestoreResult(
+            success: false, count: 0, message: 'Backup is not valid JSON.');
       }
+      final map = Map<String, dynamic>.from(decoded);
+      final format = map['format'];
+      final isPortfolio = format == 'fireops-career-portfolio';
+      final isLegacyLog = format == 'fireops-career-log';
+      final recordsRaw = map['records'];
+      if ((!isPortfolio && !isLegacyLog) || recordsRaw is! List) {
+        return const CareerRestoreResult(
+            success: false,
+            count: 0,
+            message: 'This is not a recognized FireOps career backup.');
+      }
+
+      List<Map<String, dynamic>> mapList(dynamic value, String field) {
+        if (value == null) return <Map<String, dynamic>>[];
+        if (value is! List) throw FormatException('$field is not a list');
+        return value
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+
+      Map<String, dynamic>? mapValue(dynamic value, String field) {
+        if (value == null) return null;
+        if (value is! Map) throw FormatException('$field is not an object');
+        return Map<String, dynamic>.from(value);
+      }
+
       final restored = <CareerRecord>[];
       for (final item in recordsRaw.whereType<Map>()) {
         final record = CareerRecord.fromJson(Map<String, dynamic>.from(item));
-        if (record.id.isNotEmpty && record.title.trim().isNotEmpty) restored.add(record);
+        if (record.id.isNotEmpty && record.title.trim().isNotEmpty)
+          restored.add(record);
       }
-      final ok = await save(restored);
-      if (!ok) return const CareerRestoreResult(success: false, count: 0, message: 'The backup was read, but the device could not save it.');
-      return CareerRestoreResult(success: true, count: restored.length, message: 'Restored ${restored.length} career records.');
+
+      Map<String, dynamic>? profile;
+      List<Map<String, dynamic>> certifications = const [];
+      List<Map<String, dynamic>> customRequirements = const [];
+      List<Map<String, dynamic>> pathOverrides = const [];
+      Map<String, dynamic>? certificationMatchConfirmations;
+      Map<String, dynamic>? quickLogPreferences;
+      if (isPortfolio) {
+        profile = mapValue(map['profile'], 'profile');
+        certifications = mapList(map['certifications'], 'certifications');
+        customRequirements =
+            mapList(map['customRequirements'], 'customRequirements');
+        pathOverrides = mapList(map['pathOverrides'], 'pathOverrides');
+        certificationMatchConfirmations = mapValue(
+            map['certificationMatchConfirmations'],
+            'certificationMatchConfirmations');
+        quickLogPreferences =
+            mapValue(map['quickLogPreferences'], 'quickLogPreferences');
+      }
+
+      final logSaved = await save(restored);
+      if (!logSaved) {
+        return const CareerRestoreResult(
+            success: false,
+            count: 0,
+            message: 'The backup was read, but the device could not save it.');
+      }
+
+      if (isPortfolio) {
+        if (profile != null) await _store.saveProfile(profile);
+        await _store.saveCertifications(certifications);
+        await _store.saveCustomRequirements(customRequirements);
+        await _store.savePathOverrides(pathOverrides);
+        if (certificationMatchConfirmations != null) {
+          await _store.saveCertificationMatchConfirmations(
+              certificationMatchConfirmations);
+        }
+        if (quickLogPreferences != null) {
+          await _store.saveJson(
+              'fireops.quickLogPreferences.v1', quickLogPreferences);
+        }
+        final onboardingValue = map['onboardingComplete'];
+        await _store.setOnboardingComplete(
+            onboardingValue is bool ? onboardingValue : profile != null);
+        return CareerRestoreResult(
+          success: true,
+          count: restored.length,
+          message:
+              'Restored your FireOps career portfolio with ${restored.length} career records.',
+        );
+      }
+
+      return CareerRestoreResult(
+        success: true,
+        count: restored.length,
+        message:
+            'Restored ${restored.length} career records from the older Career Log backup.',
+      );
     } catch (e) {
       debugPrint('CareerRecordStore.restoreBackup failed: $e');
-      return const CareerRestoreResult(success: false, count: 0, message: 'Backup could not be read. Check that the complete backup text was pasted.');
+      return const CareerRestoreResult(
+          success: false,
+          count: 0,
+          message:
+              'Backup could not be read. Check that the complete backup text was pasted.');
     }
   }
 }
@@ -188,5 +293,6 @@ class CareerRestoreResult {
   final int count;
   final String message;
 
-  const CareerRestoreResult({required this.success, required this.count, required this.message});
+  const CareerRestoreResult(
+      {required this.success, required this.count, required this.message});
 }

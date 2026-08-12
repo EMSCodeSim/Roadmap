@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/quick_log_tracker.dart';
@@ -9,6 +10,7 @@ import 'package:firepath/models/quick_log_template.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/quick_log_preferences_store.dart';
+import 'package:firepath/state/app_state.dart';
 
 class PersonalLogPage extends StatefulWidget {
   const PersonalLogPage({super.key});
@@ -54,7 +56,8 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
     });
   }
 
-  static QuickLogConfig _configFromPreferences(QuickLogPreferences preferences) {
+  static QuickLogConfig _configFromPreferences(
+      QuickLogPreferences preferences) {
     final customTrackers = preferences.customTemplates
         .map(
           (template) => QuickLogTracker(
@@ -67,7 +70,8 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
             custom: template.isCustom,
           ),
         )
-        .where((tracker) => tracker.keyName.isNotEmpty && tracker.title.trim().isNotEmpty)
+        .where((tracker) =>
+            tracker.keyName.isNotEmpty && tracker.title.trim().isNotEmpty)
         .toList();
 
     return QuickLogConfig(
@@ -93,7 +97,8 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
         )
         .toList();
 
-    return QuickLogPreferences(pinnedIds: config.pinnedKeys, customTemplates: customTemplates);
+    return QuickLogPreferences(
+        pinnedIds: config.pinnedKeys, customTemplates: customTemplates);
   }
 
   static QuickLogRolePreset? _guessRolePreset(List<String> pinnedIds) {
@@ -144,14 +149,18 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
       return;
     }
     setState(() {
-      _records = [..._records, record]..sort((a, b) => b.date.compareTo(a.date));
+      _records = [..._records, record]
+        ..sort((a, b) => b.date.compareTo(a.date));
     });
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
-        content: Text('${tracker.title}${outcome == null ? '' : ' • ${outcome.label}'} logged.'),
-        action: SnackBarAction(label: 'UNDO', onPressed: () => _deleteRecord(record, confirm: false)),
+        content: Text(
+            '${tracker.title}${outcome == null ? '' : ' • ${outcome.label}'} logged.'),
+        action: SnackBarAction(
+            label: 'UNDO',
+            onPressed: () => _deleteRecord(record, confirm: false)),
       ),
     );
   }
@@ -167,24 +176,36 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(title, style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+              Text(title,
+                  style: Theme.of(sheetContext)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              Text('How did this attempt go?', style: Theme.of(sheetContext).textTheme.bodyMedium),
+              Text('How did this attempt go?',
+                  style: Theme.of(sheetContext).textTheme.bodyMedium),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: () => Navigator.pop(sheetContext, CareerRecordOutcome.successful),
+                onPressed: () =>
+                    Navigator.pop(sheetContext, CareerRecordOutcome.successful),
                 icon: const Icon(Icons.check_circle_outline),
-                label: const Padding(padding: EdgeInsets.symmetric(vertical: 13), child: Text('Successful')),
+                label: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 13),
+                    child: Text('Successful')),
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(
-                onPressed: () => Navigator.pop(sheetContext, CareerRecordOutcome.unsuccessful),
+                onPressed: () => Navigator.pop(
+                    sheetContext, CareerRecordOutcome.unsuccessful),
                 icon: const Icon(Icons.cancel_outlined),
-                label: const Padding(padding: EdgeInsets.symmetric(vertical: 13), child: Text('Unsuccessful')),
+                label: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 13),
+                    child: Text('Unsuccessful')),
               ),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () => Navigator.pop(sheetContext, CareerRecordOutcome.attempted),
+                onPressed: () =>
+                    Navigator.pop(sheetContext, CareerRecordOutcome.attempted),
                 child: const Text('Log attempt without outcome'),
               ),
             ],
@@ -196,7 +217,9 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
 
   void _showSaveFailure() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('This entry could not be saved. Your existing log was not changed.')),
+      const SnackBar(
+          content: Text(
+              'This entry could not be saved. Your existing log was not changed.')),
     );
   }
 
@@ -206,10 +229,15 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Delete log entry?'),
-          content: Text('${record.title} from ${_formatDate(record.date)} will be removed.'),
+          content: Text(
+              '${record.title} from ${_formatDate(record.date)} will be removed.'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Delete')),
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Delete')),
           ],
         ),
       );
@@ -221,7 +249,8 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
       _showSaveFailure();
       return;
     }
-    setState(() => _records = _records.where((e) => e.id != record.id).toList());
+    setState(
+        () => _records = _records.where((e) => e.id != record.id).toList());
   }
 
   Future<void> _openLogEditor({CareerRecord? existing}) async {
@@ -230,7 +259,8 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
     CareerRecordOutcome? outcome = existing?.outcome;
     final title = TextEditingController(text: existing?.title ?? '');
     final category = TextEditingController(text: existing?.category ?? '');
-    final count = TextEditingController(text: existing?.repetitions.toString() ?? '1');
+    final count =
+        TextEditingController(text: existing?.repetitions.toString() ?? '1');
     final note = TextEditingController(text: existing?.summary ?? '');
     final formKey = GlobalKey<FormState>();
 
@@ -238,7 +268,9 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text(existing == null ? 'Log past or custom activity' : 'Edit log entry'),
+          title: Text(existing == null
+              ? 'Log past or custom activity'
+              : 'Edit log entry'),
           content: SizedBox(
             width: 560,
             child: Form(
@@ -256,7 +288,10 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     DropdownButtonFormField<CareerRecordType>(
                       value: type,
                       decoration: const InputDecoration(labelText: 'Type'),
-                      items: CareerRecordType.values.map((value) => DropdownMenuItem(value: value, child: Text(value.label))).toList(),
+                      items: CareerRecordType.values
+                          .map((value) => DropdownMenuItem(
+                              value: value, child: Text(value.label)))
+                          .toList(),
                       onChanged: (value) {
                         if (value != null) setDialogState(() => type = value);
                       },
@@ -265,11 +300,19 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     TextFormField(
                       controller: title,
                       autofocus: existing == null,
-                      decoration: const InputDecoration(labelText: 'What are you tracking?', hintText: 'Pediatric IV, vehicle fire, rope rescue…'),
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Add a name.' : null,
+                      decoration: const InputDecoration(
+                          labelText: 'What are you tracking?',
+                          hintText: 'Pediatric IV, vehicle fire, rope rescue…'),
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                              ? 'Add a name.'
+                              : null,
                     ),
                     const SizedBox(height: 12),
-                    TextFormField(controller: category, decoration: const InputDecoration(labelText: 'Category (optional)')),
+                    TextFormField(
+                        controller: category,
+                        decoration: const InputDecoration(
+                            labelText: 'Category (optional)')),
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -282,9 +325,11 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                                 firstDate: DateTime(1970),
                                 lastDate: DateTime.now(),
                               );
-                              if (picked != null) setDialogState(() => selectedDate = picked);
+                              if (picked != null)
+                                setDialogState(() => selectedDate = picked);
                             },
-                            icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                            icon: const Icon(Icons.calendar_today_outlined,
+                                size: 18),
                             label: Text(_formatDate(selectedDate)),
                           ),
                         ),
@@ -293,7 +338,8 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                           child: TextFormField(
                             controller: count,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'Count'),
+                            decoration:
+                                const InputDecoration(labelText: 'Count'),
                           ),
                         ),
                       ],
@@ -301,19 +347,25 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<CareerRecordOutcome?>(
                       value: outcome,
-                      decoration: const InputDecoration(labelText: 'Outcome (optional)'),
+                      decoration: const InputDecoration(
+                          labelText: 'Outcome (optional)'),
                       items: [
-                        const DropdownMenuItem<CareerRecordOutcome?>(value: null, child: Text('Not tracked')),
-                        ...CareerRecordOutcome.values.map((value) => DropdownMenuItem<CareerRecordOutcome?>(value: value, child: Text(value.label))),
+                        const DropdownMenuItem<CareerRecordOutcome?>(
+                            value: null, child: Text('Not tracked')),
+                        ...CareerRecordOutcome.values.map((value) =>
+                            DropdownMenuItem<CareerRecordOutcome?>(
+                                value: value, child: Text(value.label))),
                       ],
-                      onChanged: (value) => setDialogState(() => outcome = value),
+                      onChanged: (value) =>
+                          setDialogState(() => outcome = value),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: note,
                       minLines: 2,
                       maxLines: 4,
-                      decoration: const InputDecoration(labelText: 'Quick note (optional)'),
+                      decoration: const InputDecoration(
+                          labelText: 'Quick note (optional)'),
                     ),
                   ],
                 ),
@@ -321,7 +373,9 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () {
                 if (!(formKey.currentState?.validate() ?? false)) return;
@@ -331,22 +385,28 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                 Navigator.pop(
                   dialogContext,
                   CareerRecord(
-                    id: existing?.id ?? now.microsecondsSinceEpoch.toRadixString(36),
+                    id: existing?.id ??
+                        now.microsecondsSinceEpoch.toRadixString(36),
                     type: type,
                     title: cleanTitle,
-                    category: category.text.trim().isEmpty ? type.label : category.text.trim(),
+                    category: category.text.trim().isEmpty
+                        ? type.label
+                        : category.text.trim(),
                     date: selectedDate,
                     roleOrAssignment: existing?.roleOrAssignment,
                     summary: note.text.trim().isEmpty ? null : note.text.trim(),
                     impact: existing?.impact,
                     evidenceReference: existing?.evidenceReference,
                     hours: existing?.hours,
-                    repetitions: parsedCount != null && parsedCount > 0 ? parsedCount : 1,
+                    repetitions: parsedCount != null && parsedCount > 0
+                        ? parsedCount
+                        : 1,
                     tags: existing?.tags ?? const ['quick-log', 'custom-log'],
                     relatedGoalId: existing?.relatedGoalId,
                     relatedRequirementId: existing?.relatedRequirementId,
                     highlight: existing?.highlight ?? false,
-                    trackingKey: existing?.trackingKey ?? _trackingKeyFor(cleanTitle),
+                    trackingKey:
+                        existing?.trackingKey ?? _trackingKeyFor(cleanTitle),
                     outcome: outcome,
                     createdAt: existing?.createdAt ?? now,
                     updatedAt: now,
@@ -380,7 +440,8 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
       return;
     }
     setState(() {
-      final next = _records.where((e) => e.id != result.id).toList()..add(result);
+      final next = _records.where((e) => e.id != result.id).toList()
+        ..add(result);
       next.sort((a, b) => b.date.compareTo(a.date));
       _records = next;
     });
@@ -395,19 +456,27 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
-          final pinnedTrackers = pinned.map((key) => QuickLogCatalog.byKey(key, custom)).whereType<QuickLogTracker>().toList();
+          final pinnedTrackers = pinned
+              .map((key) => QuickLogCatalog.byKey(key, custom))
+              .whereType<QuickLogTracker>()
+              .toList();
           return Dialog.fullscreen(
             child: SafeArea(
               child: Column(
                 children: [
                   AppBar(
                     title: const Text('Customize Quick Log'),
-                    leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(dialogContext)),
+                    leading: IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(dialogContext)),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(
                           dialogContext,
-                          QuickLogConfig(rolePreset: role, pinnedKeys: pinned, customTrackers: custom),
+                          QuickLogConfig(
+                              rolePreset: role,
+                              pinnedKeys: pinned,
+                              customTrackers: custom),
                         ),
                         child: const Text('SAVE'),
                       ),
@@ -417,9 +486,14 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     child: ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
-                        Text('Start with a role', style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                        Text('Start with a role',
+                            style: Theme.of(dialogContext)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800)),
                         const SizedBox(height: 4),
-                        Text('Choose a starting set, then make it yours.', style: Theme.of(dialogContext).textTheme.bodySmall),
+                        Text('Choose a starting set, then make it yours.',
+                            style: Theme.of(dialogContext).textTheme.bodySmall),
                         const SizedBox(height: 10),
                         Wrap(
                           spacing: 8,
@@ -440,14 +514,25 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                         const SizedBox(height: 22),
                         Row(
                           children: [
-                            Expanded(child: Text('Pinned buttons', style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
+                            Expanded(
+                                child: Text('Pinned buttons',
+                                    style: Theme.of(dialogContext)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                            fontWeight: FontWeight.w800))),
                             FilledButton.tonalIcon(
                               onPressed: () async {
-                                final tracker = await _chooseTracker(dialogContext, pinned, custom);
+                                final tracker = await _chooseTracker(
+                                    dialogContext, pinned, custom);
                                 if (tracker == null) return;
                                 setDialogState(() {
-                                  if (tracker.custom && !custom.any((e) => e.keyName == tracker.keyName)) custom.add(tracker);
-                                  if (!pinned.contains(tracker.keyName)) pinned.add(tracker.keyName);
+                                  if (tracker.custom &&
+                                      !custom.any(
+                                          (e) => e.keyName == tracker.keyName))
+                                    custom.add(tracker);
+                                  if (!pinned.contains(tracker.keyName))
+                                    pinned.add(tracker.keyName);
                                 });
                               },
                               icon: const Icon(Icons.add),
@@ -456,10 +541,13 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                           ],
                         ),
                         const SizedBox(height: 5),
-                        Text('Drag to put your most-used actions first. Aim for 6–10 buttons.', style: Theme.of(dialogContext).textTheme.bodySmall),
+                        Text(
+                            'Drag to put your most-used actions first. Aim for 6–10 buttons.',
+                            style: Theme.of(dialogContext).textTheme.bodySmall),
                         const SizedBox(height: 8),
                         if (pinnedTrackers.isEmpty)
-                          const ListTile(title: Text('No Quick Log buttons pinned yet.'))
+                          const ListTile(
+                              title: Text('No Quick Log buttons pinned yet.'))
                         else
                           ReorderableListView.builder(
                             shrinkWrap: true,
@@ -484,8 +572,10 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                                   children: [
                                     IconButton(
                                       tooltip: 'Remove',
-                                      onPressed: () => setDialogState(() => pinned.remove(tracker.keyName)),
-                                      icon: const Icon(Icons.remove_circle_outline),
+                                      onPressed: () => setDialogState(
+                                          () => pinned.remove(tracker.keyName)),
+                                      icon: const Icon(
+                                          Icons.remove_circle_outline),
                                     ),
                                     const Icon(Icons.drag_handle),
                                   ],
@@ -523,7 +613,9 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
     return showDialog<QuickLogTracker>(
       context: parentContext,
       builder: (dialogContext) {
-        final available = QuickLogCatalog.builtIns.where((tracker) => !pinned.contains(tracker.keyName)).toList();
+        final available = QuickLogCatalog.builtIns
+            .where((tracker) => !pinned.contains(tracker.keyName))
+            .toList();
         return AlertDialog(
           title: const Text('Add Quick Log button'),
           content: SizedBox(
@@ -534,8 +626,10 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
               children: [
                 FilledButton.tonalIcon(
                   onPressed: () async {
-                    final customTracker = await _createCustomTracker(dialogContext);
-                    if (customTracker != null && dialogContext.mounted) Navigator.pop(dialogContext, customTracker);
+                    final customTracker =
+                        await _createCustomTracker(dialogContext);
+                    if (customTracker != null && dialogContext.mounted)
+                      Navigator.pop(dialogContext, customTracker);
                   },
                   icon: const Icon(Icons.add_circle_outline),
                   label: const Text('Create custom tracker'),
@@ -559,13 +653,18 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
               ],
             ),
           ),
-          actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel'))],
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'))
+          ],
         );
       },
     );
   }
 
-  Future<QuickLogTracker?> _createCustomTracker(BuildContext parentContext) async {
+  Future<QuickLogTracker?> _createCustomTracker(
+      BuildContext parentContext) async {
     var type = CareerRecordType.skill;
     var tracksOutcome = false;
     final title = TextEditingController();
@@ -584,16 +683,26 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                 TextFormField(
                   controller: title,
                   autofocus: true,
-                  decoration: const InputDecoration(labelText: 'Button name', hintText: 'Pediatric IV, aerial setup, rope rescue…'),
-                  validator: (value) => value == null || value.trim().isEmpty ? 'Add a name.' : null,
+                  decoration: const InputDecoration(
+                      labelText: 'Button name',
+                      hintText: 'Pediatric IV, aerial setup, rope rescue…'),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Add a name.'
+                      : null,
                 ),
                 const SizedBox(height: 12),
-                TextFormField(controller: category, decoration: const InputDecoration(labelText: 'Category (optional)')),
+                TextFormField(
+                    controller: category,
+                    decoration: const InputDecoration(
+                        labelText: 'Category (optional)')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<CareerRecordType>(
                   value: type,
                   decoration: const InputDecoration(labelText: 'Type'),
-                  items: CareerRecordType.values.map((value) => DropdownMenuItem(value: value, child: Text(value.label))).toList(),
+                  items: CareerRecordType.values
+                      .map((value) => DropdownMenuItem(
+                          value: value, child: Text(value.label)))
+                      .toList(),
                   onChanged: (value) {
                     if (value != null) setDialogState(() => type = value);
                   },
@@ -601,15 +710,19 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: tracksOutcome,
-                  onChanged: (value) => setDialogState(() => tracksOutcome = value),
+                  onChanged: (value) =>
+                      setDialogState(() => tracksOutcome = value),
                   title: const Text('Track success / failure'),
-                  subtitle: const Text('Best for procedures and skills with a measurable attempt outcome.'),
+                  subtitle: const Text(
+                      'Best for procedures and skills with a measurable attempt outcome.'),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () {
                 if (!(formKey.currentState?.validate() ?? false)) return;
@@ -617,11 +730,16 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                 Navigator.pop(
                   dialogContext,
                   QuickLogTracker(
-                    keyName: '${_trackingKeyFor(cleanTitle)}.${DateTime.now().millisecondsSinceEpoch}',
+                    keyName:
+                        '${_trackingKeyFor(cleanTitle)}.${DateTime.now().millisecondsSinceEpoch}',
                     title: cleanTitle,
-                    category: category.text.trim().isEmpty ? type.label : category.text.trim(),
+                    category: category.text.trim().isEmpty
+                        ? type.label
+                        : category.text.trim(),
                     type: type,
-                    iconName: type == CareerRecordType.operationalExperience ? 'fire' : 'add_task',
+                    iconName: type == CareerRecordType.operationalExperience
+                        ? 'fire'
+                        : 'add_task',
                     tracksOutcome: tracksOutcome,
                     custom: true,
                   ),
@@ -645,36 +763,45 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Backup / Restore'),
+        title: const Text('Portfolio Backup / Restore'),
         content: SizedBox(
           width: 620,
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Back up your career log before changing phones or periodically for safekeeping.'),
+                const Text(
+                    'Back up your complete FireOps career portfolio before changing phones or periodically for safekeeping.'),
                 const SizedBox(height: 12),
                 FilledButton.icon(
                   onPressed: () async {
                     await Clipboard.setData(ClipboardData(text: backup));
                     if (!dialogContext.mounted) return;
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Backup copied to clipboard. Store it somewhere secure.')));
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(
+                        content: Text(
+                            'Backup copied to clipboard. Store it somewhere secure.')));
                   },
                   icon: const Icon(Icons.copy_all_outlined),
-                  label: const Text('Copy backup'),
+                  label: const Text('Copy portfolio backup'),
                 ),
                 const SizedBox(height: 20),
                 const Divider(),
                 const SizedBox(height: 10),
-                Text('Restore a backup', style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                Text('Restore a portfolio backup',
+                    style: Theme.of(dialogContext)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 6),
-                const Text('Restoring replaces the career log on this device. Paste a FireOps Career Log backup below.'),
+                const Text(
+                    'Restoring replaces the local FireOps career portfolio on this device. Paste a FireOps Career Portfolio backup below. Older Career Log backups are also supported.'),
                 const SizedBox(height: 10),
                 TextField(
                   controller: restoreController,
                   minLines: 4,
                   maxLines: 8,
-                  decoration: const InputDecoration(hintText: 'Paste backup JSON here'),
+                  decoration:
+                      const InputDecoration(hintText: 'Paste backup JSON here'),
                 ),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
@@ -684,20 +811,29 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     final confirmed = await showDialog<bool>(
                       context: dialogContext,
                       builder: (confirmContext) => AlertDialog(
-                        title: const Text('Replace current log?'),
-                        content: const Text('The career log on this device will be replaced with the pasted backup.'),
+                        title: const Text('Replace current portfolio?'),
+                        content: const Text(
+                            'The local FireOps career portfolio on this device will be replaced with the pasted backup.'),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(confirmContext, false), child: const Text('Cancel')),
-                          FilledButton(onPressed: () => Navigator.pop(confirmContext, true), child: const Text('Restore')),
+                          TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(confirmContext, false),
+                              child: const Text('Cancel')),
+                          FilledButton(
+                              onPressed: () =>
+                                  Navigator.pop(confirmContext, true),
+                              child: const Text('Restore')),
                         ],
                       ),
                     );
                     if (confirmed != true) return;
                     final result = await _store.restoreBackup(raw);
                     if (!dialogContext.mounted) return;
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text(result.message)));
+                    ScaffoldMessenger.of(dialogContext)
+                        .showSnackBar(SnackBar(content: Text(result.message)));
                     if (result.success) {
                       Navigator.pop(dialogContext);
+                      await context.read<AppState>().bootstrap();
                       await _load();
                     }
                   },
@@ -708,18 +844,29 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
             ),
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Done'))],
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Done'))
+        ],
       ),
     );
     restoreController.dispose();
   }
 
   List<int> get _years {
-    final years = <int>{DateTime.now().year, ..._records.map((record) => record.date.year)}.toList()..sort((a, b) => b.compareTo(a));
+    final years = <int>{
+      DateTime.now().year,
+      ..._records.map((record) => record.date.year)
+    }.toList()
+      ..sort((a, b) => b.compareTo(a));
     return years;
   }
 
-  List<CareerRecord> get _yearRecords => _records.where((record) => _selectedYear == null || record.date.year == _selectedYear).toList();
+  List<CareerRecord> get _yearRecords => _records
+      .where((record) =>
+          _selectedYear == null || record.date.year == _selectedYear)
+      .toList();
 
   List<CareerRecord> get _visibleRecords {
     final q = _searchController.text.trim().toLowerCase();
@@ -745,16 +892,25 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
       final key = record.trackingKey ?? _trackingKeyFor(record.title);
       final item = map.putIfAbsent(
         key,
-        () => _LogAggregate(keyName: key, title: record.title, category: record.category, type: record.type),
+        () => _LogAggregate(
+            keyName: key,
+            title: record.title,
+            category: record.category,
+            type: record.type),
       );
       item.total += record.repetitions;
-      if (record.outcome == CareerRecordOutcome.successful) item.successful += record.repetitions;
-      if (record.outcome == CareerRecordOutcome.unsuccessful) item.unsuccessful += record.repetitions;
-      if (item.lastDate == null || record.date.isAfter(item.lastDate!)) item.lastDate = record.date;
+      if (record.outcome == CareerRecordOutcome.successful)
+        item.successful += record.repetitions;
+      if (record.outcome == CareerRecordOutcome.unsuccessful)
+        item.unsuccessful += record.repetitions;
+      if (item.lastDate == null || record.date.isAfter(item.lastDate!))
+        item.lastDate = record.date;
     }
     final values = map.values.where((item) {
       if (q.isEmpty) return true;
-      return '${item.title} ${item.category} ${item.type.label}'.toLowerCase().contains(q);
+      return '${item.title} ${item.category} ${item.type.label}'
+          .toLowerCase()
+          .contains(q);
     }).toList()
       ..sort((a, b) => b.total.compareTo(a.total));
     return values;
@@ -762,7 +918,10 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
 
   int _countForTracker(QuickLogTracker tracker, int year) {
     return _records
-        .where((record) => record.date.year == year && (record.trackingKey == tracker.keyName || _trackingKeyFor(record.title) == tracker.keyName))
+        .where((record) =>
+            record.date.year == year &&
+            (record.trackingKey == tracker.keyName ||
+                _trackingKeyFor(record.title) == tracker.keyName))
         .fold<int>(0, (sum, record) => sum + record.repetitions);
   }
 
@@ -770,9 +929,12 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
     if (!tracker.tracksOutcome) return null;
     var success = 0;
     var unsuccessful = 0;
-    for (final record in _records.where((record) => record.date.year == year && record.trackingKey == tracker.keyName)) {
-      if (record.outcome == CareerRecordOutcome.successful) success += record.repetitions;
-      if (record.outcome == CareerRecordOutcome.unsuccessful) unsuccessful += record.repetitions;
+    for (final record in _records.where((record) =>
+        record.date.year == year && record.trackingKey == tracker.keyName)) {
+      if (record.outcome == CareerRecordOutcome.successful)
+        success += record.repetitions;
+      if (record.outcome == CareerRecordOutcome.unsuccessful)
+        unsuccessful += record.repetitions;
     }
     final measured = success + unsuccessful;
     if (measured == 0) return null;
@@ -781,14 +943,21 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
 
   Future<void> _showTrend(_LogAggregate item) async {
     final totals = <int, _LogAggregate>{};
-    for (final record in _records.where((e) => (e.trackingKey ?? _trackingKeyFor(e.title)) == item.keyName)) {
+    for (final record in _records.where(
+        (e) => (e.trackingKey ?? _trackingKeyFor(e.title)) == item.keyName)) {
       final aggregate = totals.putIfAbsent(
         record.date.year,
-        () => _LogAggregate(keyName: item.keyName, title: record.title, category: record.category, type: record.type),
+        () => _LogAggregate(
+            keyName: item.keyName,
+            title: record.title,
+            category: record.category,
+            type: record.type),
       );
       aggregate.total += record.repetitions;
-      if (record.outcome == CareerRecordOutcome.successful) aggregate.successful += record.repetitions;
-      if (record.outcome == CareerRecordOutcome.unsuccessful) aggregate.unsuccessful += record.repetitions;
+      if (record.outcome == CareerRecordOutcome.successful)
+        aggregate.successful += record.repetitions;
+      if (record.outcome == CareerRecordOutcome.unsuccessful)
+        aggregate.unsuccessful += record.repetitions;
     }
     final years = totals.keys.toList()..sort((a, b) => b.compareTo(a));
     if (!mounted) return;
@@ -802,18 +971,31 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(item.title, style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              Text(item.title,
+                  style: Theme.of(sheetContext)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w900)),
               const SizedBox(height: 4),
-              Text('Career history by year', style: Theme.of(sheetContext).textTheme.bodyMedium),
+              Text('Career history by year',
+                  style: Theme.of(sheetContext).textTheme.bodyMedium),
               const SizedBox(height: 12),
               ...years.take(12).map((year) {
                 final row = totals[year]!;
                 final measured = row.successful + row.unsuccessful;
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text('$year', style: const TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: measured == 0 ? null : Text('${row.successful} successful • ${row.unsuccessful} unsuccessful • ${(row.successful / measured * 100).round()}%'),
-                  trailing: Text('${row.total}', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                  title: Text('$year',
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: measured == 0
+                      ? null
+                      : Text(
+                          '${row.successful} successful • ${row.unsuccessful} unsuccessful • ${(row.successful / measured * 100).round()}%'),
+                  trailing: Text('${row.total}',
+                      style: Theme.of(sheetContext)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900)),
                 );
               }),
             ],
@@ -828,11 +1010,21 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
     final cs = Theme.of(context).colorScheme;
     final currentYear = DateTime.now().year;
     final yearRecords = _yearRecords;
-    final totalLogged = yearRecords.fold<int>(0, (sum, record) => sum + record.repetitions);
-    final skillCount = yearRecords.where((record) => record.type == CareerRecordType.skill).fold<int>(0, (sum, record) => sum + record.repetitions);
-    final callCount = yearRecords.where((record) => record.type == CareerRecordType.operationalExperience).fold<int>(0, (sum, record) => sum + record.repetitions);
-    final successful = yearRecords.where((record) => record.outcome == CareerRecordOutcome.successful).fold<int>(0, (sum, record) => sum + record.repetitions);
-    final unsuccessful = yearRecords.where((record) => record.outcome == CareerRecordOutcome.unsuccessful).fold<int>(0, (sum, record) => sum + record.repetitions);
+    final totalLogged =
+        yearRecords.fold<int>(0, (sum, record) => sum + record.repetitions);
+    final skillCount = yearRecords
+        .where((record) => record.type == CareerRecordType.skill)
+        .fold<int>(0, (sum, record) => sum + record.repetitions);
+    final callCount = yearRecords
+        .where(
+            (record) => record.type == CareerRecordType.operationalExperience)
+        .fold<int>(0, (sum, record) => sum + record.repetitions);
+    final successful = yearRecords
+        .where((record) => record.outcome == CareerRecordOutcome.successful)
+        .fold<int>(0, (sum, record) => sum + record.repetitions);
+    final unsuccessful = yearRecords
+        .where((record) => record.outcome == CareerRecordOutcome.unsuccessful)
+        .fold<int>(0, (sum, record) => sum + record.repetitions);
     final measured = successful + unsuccessful;
     final trackers = _pinnedTrackers;
 
@@ -840,7 +1032,10 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
       appBar: AppBar(
         title: const Text('Personal Log'),
         actions: [
-          IconButton(tooltip: 'Customize Quick Log', onPressed: _customizeQuickLog, icon: const Icon(Icons.tune)),
+          IconButton(
+              tooltip: 'Customize Quick Log',
+              onPressed: _customizeQuickLog,
+              icon: const Icon(Icons.tune)),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'custom') _openLogEditor();
@@ -848,9 +1043,21 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
               if (value == 'evidence') context.push(AppRoutes.careerEvidence);
             },
             itemBuilder: (context) => const [
-              PopupMenuItem(value: 'custom', child: ListTile(leading: Icon(Icons.history_toggle_off_outlined), title: Text('Past / custom entry'))),
-              PopupMenuItem(value: 'backup', child: ListTile(leading: Icon(Icons.backup_outlined), title: Text('Backup / Restore'))),
-              PopupMenuItem(value: 'evidence', child: ListTile(leading: Icon(Icons.auto_stories_outlined), title: Text('Detailed Evidence'))),
+              PopupMenuItem(
+                  value: 'custom',
+                  child: ListTile(
+                      leading: Icon(Icons.history_toggle_off_outlined),
+                      title: Text('Past / custom entry'))),
+              PopupMenuItem(
+                  value: 'backup',
+                  child: ListTile(
+                      leading: Icon(Icons.backup_outlined),
+                      title: Text('Backup / Restore'))),
+              PopupMenuItem(
+                  value: 'evidence',
+                  child: ListTile(
+                      leading: Icon(Icons.auto_stories_outlined),
+                      title: Text('Detailed Evidence'))),
             ],
           ),
         ],
@@ -869,16 +1076,26 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Quick Log', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+                            Text('Quick Log',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineSmall
+                                    ?.copyWith(fontWeight: FontWeight.w900)),
                             const SizedBox(height: 3),
                             Text(
                               '${_config.rolePreset?.label ?? 'Custom'} setup • tap once to log routine activity',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: cs.onSurfaceVariant),
                             ),
                           ],
                         ),
                       ),
-                      TextButton.icon(onPressed: _customizeQuickLog, icon: const Icon(Icons.tune, size: 18), label: const Text('Customize')),
+                      TextButton.icon(
+                          onPressed: _customizeQuickLog,
+                          icon: const Icon(Icons.tune, size: 18),
+                          label: const Text('Customize')),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -886,14 +1103,16 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     _ActionCard(
                       icon: Icons.add_circle_outline,
                       title: 'Build your Quick Log',
-                      subtitle: 'Choose the skills and events you want available every shift.',
+                      subtitle:
+                          'Choose the skills and events you want available every shift.',
                       onTap: _customizeQuickLog,
                     )
                   else
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
                         mainAxisSpacing: 10,
                         crossAxisSpacing: 10,
@@ -905,7 +1124,8 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                         return _QuickLogCard(
                           tracker: tracker,
                           count: _countForTracker(tracker, currentYear),
-                          successLabel: _successLabelForTracker(tracker, currentYear),
+                          successLabel:
+                              _successLabelForTracker(tracker, currentYear),
                           onTap: () => _quickLog(tracker),
                         );
                       },
@@ -913,22 +1133,39 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(child: OutlinedButton.icon(onPressed: () => _openLogEditor(), icon: const Icon(Icons.add), label: const Text('Past / custom'))),
+                      Expanded(
+                          child: OutlinedButton.icon(
+                              onPressed: () => _openLogEditor(),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Past / custom'))),
                       const SizedBox(width: 10),
-                      Expanded(child: OutlinedButton.icon(onPressed: () => context.push(AppRoutes.careerEvidence), icon: const Icon(Icons.note_add_outlined), label: const Text('Detailed Evidence'))),
+                      Expanded(
+                          child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  context.push(AppRoutes.careerEvidence),
+                              icon: const Icon(Icons.note_add_outlined),
+                              label: const Text('Detailed Evidence'))),
                     ],
                   ),
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      Expanded(child: Text('My Career Numbers', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
+                      Expanded(
+                          child: Text('My Career Numbers',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900))),
                       DropdownButton<int?>(
                         value: _selectedYear,
                         items: [
-                          const DropdownMenuItem<int?>(value: null, child: Text('All time')),
-                          ..._years.map((year) => DropdownMenuItem<int?>(value: year, child: Text('$year'))),
+                          const DropdownMenuItem<int?>(
+                              value: null, child: Text('All time')),
+                          ..._years.map((year) => DropdownMenuItem<int?>(
+                              value: year, child: Text('$year'))),
                         ],
-                        onChanged: (value) => setState(() => _selectedYear = value),
+                        onChanged: (value) =>
+                            setState(() => _selectedYear = value),
                       ),
                     ],
                   ),
@@ -937,10 +1174,24 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _MetricChip(label: 'Logged', value: '$totalLogged', icon: Icons.add_task_outlined),
-                      _MetricChip(label: 'Skills', value: '$skillCount', icon: Icons.handyman_outlined),
-                      _MetricChip(label: 'Calls', value: '$callCount', icon: Icons.local_fire_department_outlined),
-                      _MetricChip(label: 'Success', value: measured == 0 ? '—' : '${(successful / measured * 100).round()}%', icon: Icons.trending_up_outlined),
+                      _MetricChip(
+                          label: 'Logged',
+                          value: '$totalLogged',
+                          icon: Icons.add_task_outlined),
+                      _MetricChip(
+                          label: 'Skills',
+                          value: '$skillCount',
+                          icon: Icons.handyman_outlined),
+                      _MetricChip(
+                          label: 'Calls',
+                          value: '$callCount',
+                          icon: Icons.local_fire_department_outlined),
+                      _MetricChip(
+                          label: 'Success',
+                          value: measured == 0
+                              ? '—'
+                              : '${(successful / measured * 100).round()}%',
+                          icon: Icons.trending_up_outlined),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -968,13 +1219,23 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     ..._aggregates.take(20).map(
                           (item) => Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: _AggregateCard(item: item, onTap: () => _showTrend(item)),
+                            child: _AggregateCard(
+                                item: item, onTap: () => _showTrend(item)),
                           ),
                         ),
                   const SizedBox(height: 20),
-                  Text('Recent entries', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                  Text('Recent entries',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 4),
-                  Text('Tap the menu on any entry to correct or remove a mistake.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                  Text(
+                      'Tap the menu on any entry to correct or remove a mistake.',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant)),
                   const SizedBox(height: 10),
                   if (_visibleRecords.isEmpty)
                     const _EmptyLogCard()
@@ -992,7 +1253,10 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                   const SizedBox(height: 8),
                   Text(
                     'Privacy reminder: this is a personal professional log. Do not enter patient names, addresses, DOBs, or other identifying information.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -1001,7 +1265,11 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
   }
 
   static String _trackingKeyFor(String value) {
-    final normalized = value.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '.').replaceAll(RegExp(r'^\.+|\.+$'), '');
+    final normalized = value
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '.')
+        .replaceAll(RegExp(r'^\.+|\.+$'), '');
     return normalized.isEmpty ? 'custom.activity' : 'custom.$normalized';
   }
 
@@ -1033,7 +1301,8 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
         _ => Icons.add_task_outlined,
       };
 
-  static String _formatDate(DateTime date) => '${date.month}/${date.day}/${date.year}';
+  static String _formatDate(DateTime date) =>
+      '${date.month}/${date.day}/${date.year}';
 }
 
 class _QuickLogCard extends StatelessWidget {
@@ -1042,7 +1311,11 @@ class _QuickLogCard extends StatelessWidget {
   final String? successLabel;
   final VoidCallback onTap;
 
-  const _QuickLogCard({required this.tracker, required this.count, required this.successLabel, required this.onTap});
+  const _QuickLogCard(
+      {required this.tracker,
+      required this.count,
+      required this.successLabel,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1060,17 +1333,29 @@ class _QuickLogCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(_PersonalLogPageState._trackerIcon(tracker.iconName), color: cs.primary, size: 25),
+                  Icon(_PersonalLogPageState._trackerIcon(tracker.iconName),
+                      color: cs.primary, size: 25),
                   const Spacer(),
                   const Icon(Icons.add_circle_outline, size: 22),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(tracker.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
+              Text(tracker.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w900)),
               const SizedBox(height: 2),
-              Text('$count this year', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+              Text('$count this year',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant)),
               if (successLabel != null)
-                Text(successLabel!, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w800)),
+                Text(successLabel!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: cs.primary, fontWeight: FontWeight.w800)),
             ],
           ),
         ),
@@ -1089,7 +1374,11 @@ class _LogAggregate {
   int unsuccessful = 0;
   DateTime? lastDate;
 
-  _LogAggregate({required this.keyName, required this.title, required this.category, required this.type});
+  _LogAggregate(
+      {required this.keyName,
+      required this.title,
+      required this.category,
+      required this.type});
 }
 
 class _AggregateCard extends StatelessWidget {
@@ -1114,16 +1403,33 @@ class _AggregateCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                    Text(item.title,
+                        style: const TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 3),
-                    Text('${item.category}${item.lastDate == null ? '' : ' • last ${_PersonalLogPageState._formatDate(item.lastDate!)}'}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                    Text(
+                        '${item.category}${item.lastDate == null ? '' : ' • last ${_PersonalLogPageState._formatDate(item.lastDate!)}'}',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: cs.onSurfaceVariant)),
                     if (measured > 0)
-                      Text('${item.successful} successful • ${item.unsuccessful} unsuccessful • ${(item.successful / measured * 100).round()}%', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w700)),
+                      Text(
+                          '${item.successful} successful • ${item.unsuccessful} unsuccessful • ${(item.successful / measured * 100).round()}%',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              Text('${item.total}', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+              Text('${item.total}',
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w900)),
               const SizedBox(width: 4),
               const Icon(Icons.chevron_right),
             ],
@@ -1138,21 +1444,28 @@ class _MetricChip extends StatelessWidget {
   final String label;
   final String value;
   final IconData icon;
-  const _MetricChip({required this.label, required this.value, required this.icon});
+  const _MetricChip(
+      {required this.label, required this.value, required this.icon});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-      decoration: BoxDecoration(color: cs.surfaceContainerHighest.withValues(alpha: 0.55), borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(14)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 18),
           const SizedBox(width: 7),
           Text('$label: ', style: Theme.of(context).textTheme.bodySmall),
-          Text(value, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w900)),
+          Text(value,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(fontWeight: FontWeight.w900)),
         ],
       ),
     );
@@ -1163,29 +1476,45 @@ class _RecentRecord extends StatelessWidget {
   final CareerRecord record;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  const _RecentRecord({required this.record, required this.onEdit, required this.onDelete});
+  const _RecentRecord(
+      {required this.record, required this.onEdit, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 9, 4, 9),
-      decoration: BoxDecoration(border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.65)), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.65)),
+          borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(record.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(record.title,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text('${_PersonalLogPageState._formatDate(record.date)} • ${record.category}${record.outcome == null ? '' : ' • ${record.outcome!.label}'}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                Text(
+                    '${_PersonalLogPageState._formatDate(record.date)} • ${record.category}${record.outcome == null ? '' : ' • ${record.outcome!.label}'}',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant)),
                 if ((record.summary ?? '').trim().isNotEmpty)
-                  Padding(padding: const EdgeInsets.only(top: 3), child: Text(record.summary!, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall)),
+                  Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(record.summary!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall)),
               ],
             ),
           ),
-          if (record.repetitions > 1) Text('×${record.repetitions}', style: const TextStyle(fontWeight: FontWeight.w900)),
+          if (record.repetitions > 1)
+            Text('×${record.repetitions}',
+                style: const TextStyle(fontWeight: FontWeight.w900)),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'edit') onEdit();
@@ -1207,14 +1536,19 @@ class _ActionCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  const _ActionCard({required this.icon, required this.title, required this.subtitle, required this.onTap});
+  const _ActionCard(
+      {required this.icon,
+      required this.title,
+      required this.subtitle,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) => Card(
         child: ListTile(
           onTap: onTap,
           leading: Icon(icon),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          title:
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
           subtitle: Text(subtitle),
           trailing: const Icon(Icons.chevron_right),
         ),
@@ -1229,8 +1563,15 @@ class _EmptyLogCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: cs.surfaceContainerHighest.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(14)),
-      child: Text('Nothing logged for this view yet. Use Quick Log above, or add a past/custom activity.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+      decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(14)),
+      child: Text(
+          'Nothing logged for this view yet. Use Quick Log above, or add a past/custom activity.',
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: cs.onSurfaceVariant)),
     );
   }
 }
