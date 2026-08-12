@@ -633,7 +633,7 @@ class _GraphicHeader extends StatelessWidget {
           AspectRatio(
             aspectRatio: 2.25,
             child: Image.asset(
-              'assets/graphics/career_road_banner_v2.jpg',
+              'assets/graphics/career_road_bannejpg',
               width: double.infinity,
               fit: BoxFit.cover,
               alignment: Alignment.center,
