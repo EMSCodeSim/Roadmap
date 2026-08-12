@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/certification.dart';
+import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/nav.dart';
+import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/timeline_planner.dart';
 import 'package:firepath/state/app_state.dart';
 
 class VisualHomePage extends StatelessWidget {
@@ -16,6 +20,7 @@ class VisualHomePage extends StatelessWidget {
     final roadmap = state.roadmap;
     final profile = state.profile;
     final certs = state.certifications;
+    final timelinePlan = roadmap == null ? null : CareerTimelinePlanner.build(state);
 
     final currentLevel = profile.currentRoles.isEmpty
         ? 'Set your current level'
@@ -36,7 +41,7 @@ class VisualHomePage extends StatelessWidget {
         .toList()
       ..sort((a, b) => a.expirationDate!.compareTo(b.expirationDate!));
     final nextExpiration = datedCerts
-        .where((cert) => !cert.expirationDate!.isBefore(DateTime.now()))
+        .where((cert) => !cert.expirationDate!.isBefore(_today()))
         .firstOrNull;
 
     return Scaffold(
@@ -50,6 +55,7 @@ class VisualHomePage extends StatelessWidget {
               level: currentLevel,
               serviceType: profile.serviceType,
               yearsOfService: profile.yearsOfService,
+              onTap: () => _showEditCurrentLevelSheet(context, state),
             ),
             const SizedBox(height: 12),
             _GoalCard(
@@ -58,6 +64,7 @@ class VisualHomePage extends StatelessWidget {
               completed: roadmap?.completedCount ?? 0,
               total: roadmap?.totalCount ?? 0,
               nextStep: roadmap?.nextStep?.requirement.name,
+              timelineStatus: timelinePlan?.status,
               onTap: () => context.go(AppRoutes.myPath),
             ),
             const SizedBox(height: 12),
@@ -70,6 +77,7 @@ class VisualHomePage extends StatelessWidget {
                   ? null
                   : state.certificationDisplayName(nextExpiration),
               nextExpirationDate: nextExpiration?.expirationDate,
+              nextExpirationDays: nextExpiration?.daysRemaining,
               pendingMatches: state.pendingCertMatches.length,
               onTap: () => context.go(AppRoutes.certifications),
               onReviewMatches: state.pendingCertMatches.isEmpty
@@ -84,6 +92,261 @@ class VisualHomePage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static Future<void> _showEditCurrentLevelSheet(
+    BuildContext context,
+    AppState state,
+  ) async {
+    final profile = state.profile;
+    final commonRoles = FireOpsCatalog.commonRoles
+        .where((role) => role != 'Other / Custom')
+        .toList();
+    final selectedRoles = profile.currentRoles.toSet();
+    var serviceType = profile.serviceType;
+    final yearsController = TextEditingController(
+      text: profile.yearsOfService?.toString() ?? '',
+    );
+    final customRoleController = TextEditingController();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final customRoles = selectedRoles
+                .where((role) => !commonRoles.contains(role))
+                .toList();
+
+            return SafeArea(
+              child: FractionallySizedBox(
+                heightFactor: 0.88,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    0,
+                    16,
+                    16 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Edit current level',
+                        style: Theme.of(sheetContext)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Keep this current as your role or assignment changes.',
+                        style: Theme.of(sheetContext).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: ListView(
+                          children: [
+                            Text(
+                              'Current role',
+                              style: Theme.of(sheetContext)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                ...commonRoles.map(
+                                  (role) => FilterChip(
+                                    label: Text(role),
+                                    selected: selectedRoles.contains(role),
+                                    onSelected: (selected) {
+                                      setSheetState(() {
+                                        if (selected) {
+                                          selectedRoles.add(role);
+                                        } else {
+                                          selectedRoles.remove(role);
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ),
+                                ...customRoles.map(
+                                  (role) => FilterChip(
+                                    label: Text(role),
+                                    selected: true,
+                                    onSelected: (selected) {
+                                      if (!selected) {
+                                        setSheetState(
+                                          () => selectedRoles.remove(role),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: customRoleController,
+                                    textCapitalization: TextCapitalization.words,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Custom role',
+                                      hintText: 'Example: Acting Engineer',
+                                    ),
+                                    onSubmitted: (_) => _addCustomRole(
+                                      customRoleController,
+                                      selectedRoles,
+                                      setSheetState,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: IconButton.filledTonal(
+                                    tooltip: 'Add custom role',
+                                    onPressed: () => _addCustomRole(
+                                      customRoleController,
+                                      selectedRoles,
+                                      setSheetState,
+                                    ),
+                                    icon: const Icon(Icons.add),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 18),
+                            DropdownButtonFormField<String?>(
+                              initialValue: serviceType,
+                              decoration: const InputDecoration(
+                                labelText: 'Service type',
+                              ),
+                              items: const [
+                                DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text('Not set'),
+                                ),
+                                DropdownMenuItem<String?>(
+                                  value: 'Volunteer',
+                                  child: Text('Volunteer'),
+                                ),
+                                DropdownMenuItem<String?>(
+                                  value: 'Career',
+                                  child: Text('Career'),
+                                ),
+                                DropdownMenuItem<String?>(
+                                  value: 'Combination',
+                                  child: Text('Combination'),
+                                ),
+                                DropdownMenuItem<String?>(
+                                  value: 'Paid-on-Call',
+                                  child: Text('Paid-on-Call'),
+                                ),
+                                DropdownMenuItem<String?>(
+                                  value: 'Seasonal',
+                                  child: Text('Seasonal'),
+                                ),
+                                DropdownMenuItem<String?>(
+                                  value: 'Other',
+                                  child: Text('Other'),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                setSheetState(() => serviceType = value);
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: yearsController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Years of service',
+                                hintText: 'Optional',
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 52,
+                        child: FilledButton(
+                          onPressed: selectedRoles.isEmpty
+                              ? null
+                              : () async {
+                                  final rawYears = yearsController.text.trim();
+                                  final years = rawYears.isEmpty
+                                      ? null
+                                      : int.tryParse(rawYears);
+                                  if (rawYears.isNotEmpty &&
+                                      (years == null || years < 0 || years > 80)) {
+                                    ScaffoldMessenger.of(sheetContext)
+                                        .showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Enter years of service from 0 to 80.',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  final updated = UserProfile(
+                                    currentRoles: selectedRoles.toList(),
+                                    primaryGoalId: profile.primaryGoalId,
+                                    targetDate: profile.targetDate,
+                                    careerPlan: profile.careerPlan,
+                                    yearsOfService: years,
+                                    serviceType: serviceType,
+                                    departmentName: profile.departmentName,
+                                    state: profile.state,
+                                    createdAt: profile.createdAt,
+                                    updatedAt: DateTime.now(),
+                                  );
+                                  await state.updateProfile(updated);
+                                  if (sheetContext.mounted) {
+                                    Navigator.of(sheetContext).pop();
+                                  }
+                                },
+                          child: const Text('Save current level'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    yearsController.dispose();
+    customRoleController.dispose();
+  }
+
+  static void _addCustomRole(
+    TextEditingController controller,
+    Set<String> selectedRoles,
+    StateSetter setSheetState,
+  ) {
+    final value = controller.text.trim();
+    if (value.isEmpty) return;
+    setSheetState(() {
+      selectedRoles.add(value);
+      controller.clear();
+    });
   }
 
   static Future<void> _showCertMatchSheet(
@@ -259,11 +522,13 @@ class _CurrentLevelCard extends StatelessWidget {
   final String level;
   final String? serviceType;
   final int? yearsOfService;
+  final VoidCallback onTap;
 
   const _CurrentLevelCard({
     required this.level,
     required this.serviceType,
     required this.yearsOfService,
+    required this.onTap,
   });
 
   @override
@@ -279,8 +544,10 @@ class _CurrentLevelCard extends StatelessWidget {
       eyebrow: 'CURRENT LEVEL',
       title: level,
       subtitle: detailParts.isEmpty
-          ? 'Your current fire/EMS role and experience level.'
+          ? 'Add your service type and years of experience.'
           : detailParts.join(' • '),
+      trailingLabel: 'Edit',
+      onTap: onTap,
     );
   }
 }
@@ -291,6 +558,7 @@ class _GoalCard extends StatelessWidget {
   final int completed;
   final int total;
   final String? nextStep;
+  final TimelineStatus? timelineStatus;
   final VoidCallback onTap;
 
   const _GoalCard({
@@ -299,6 +567,7 @@ class _GoalCard extends StatelessWidget {
     required this.completed,
     required this.total,
     required this.nextStep,
+    required this.timelineStatus,
     required this.onTap,
   });
 
@@ -306,6 +575,23 @@ class _GoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasGoal = goalTitle != null;
     final progress = total == 0 ? 0.0 : completed / total;
+
+    final status = switch (timelineStatus) {
+      TimelineStatus.atRisk => const _CardStatus(
+          text: 'At risk',
+          tone: _StatusTone.critical,
+        ),
+      TimelineStatus.needsAttention => const _CardStatus(
+          text: 'Needs attention',
+          tone: _StatusTone.warning,
+        ),
+      TimelineStatus.noTargetDate when hasGoal => const _CardStatus(
+          text: 'No target date',
+          tone: _StatusTone.neutral,
+        ),
+      _ => null,
+    };
+
     return _HomeCard(
       icon: Icons.flag_outlined,
       eyebrow: 'GOAL',
@@ -316,8 +602,9 @@ class _GoalCard extends StatelessWidget {
               '$completed of $total requirements complete',
             ].join(' • ')
           : 'Build a roadmap for the position or specialty you want next.',
-      detail: hasGoal && nextStep != null ? 'Next: $nextStep' : null,
+      emphasisText: hasGoal && nextStep != null ? 'Next: $nextStep' : null,
       progress: hasGoal ? progress : null,
+      status: status,
       actionLabel: hasGoal ? 'Open Roadmap' : 'Build My Path',
       onTap: onTap,
     );
@@ -331,6 +618,7 @@ class _CertificationsCard extends StatelessWidget {
   final int expired;
   final String? nextExpirationName;
   final DateTime? nextExpirationDate;
+  final int? nextExpirationDays;
   final int pendingMatches;
   final VoidCallback onTap;
   final VoidCallback? onReviewMatches;
@@ -342,6 +630,7 @@ class _CertificationsCard extends StatelessWidget {
     required this.expired,
     required this.nextExpirationName,
     required this.nextExpirationDate,
+    required this.nextExpirationDays,
     required this.pendingMatches,
     required this.onTap,
     required this.onReviewMatches,
@@ -352,16 +641,53 @@ class _CertificationsCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
+    final _CardStatus? status;
+    if (expired > 0) {
+      status = _CardStatus(
+        text: '$expired expired',
+        tone: _StatusTone.critical,
+      );
+    } else if (expiring > 0) {
+      status = _CardStatus(
+        text: '$expiring expiring',
+        tone: _StatusTone.warning,
+      );
+    } else {
+      status = null;
+    }
+
+    String detail;
+    if (expired > 0) {
+      detail = expired == 1
+          ? '1 certification is expired. Review renewal status.'
+          : '$expired certifications are expired. Review renewal status.';
+    } else if (nextExpirationName != null &&
+        nextExpirationDate != null &&
+        nextExpirationDays != null &&
+        nextExpirationDays! <= 90) {
+      final dayLabel = nextExpirationDays == 1 ? 'day' : 'days';
+      detail = '$nextExpirationName expires in $nextExpirationDays $dayLabel • '
+          '${_formatDate(nextExpirationDate!)}';
+    } else if (nextExpirationName != null && nextExpirationDate != null) {
+      detail = 'Next expiration: $nextExpirationName • '
+          '${_formatDate(nextExpirationDate!)}';
+    } else {
+      detail = total == 0
+          ? 'Add certifications to track renewal and expiration dates.'
+          : 'No certification expirations are currently on file.';
+    }
+
     return _HomeCard(
       icon: Icons.verified_outlined,
       eyebrow: 'CERTIFICATIONS',
       title: total == 0
           ? 'No certifications added yet'
           : '$total certifications tracked',
-      subtitle: 'Current $current • Expiring $expiring • Expired $expired',
-      detail: nextExpirationName == null || nextExpirationDate == null
-          ? 'Track certifications and expiration dates in one place.'
-          : 'Next expiration: $nextExpirationName • ${_formatDate(nextExpirationDate!)}',
+      subtitle: total == 0
+          ? 'Keep every credential and renewal date in one place.'
+          : 'Current $current • Expiring $expiring • Expired $expired',
+      detail: detail,
+      status: status,
       actionLabel: 'View Certifications',
       onTap: onTap,
       footer: pendingMatches == 0
@@ -416,16 +742,131 @@ class _PersonalLogCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _HomeCard(
-      icon: Icons.add_task_outlined,
-      eyebrow: 'PERSONAL LOG',
-      title: 'Build your career history as you go',
-      subtitle:
-          'Calls • Skills • Trainings • Awards • Leadership • Achievements',
-      detail:
-          'Use the daily logger for quick entries, then add detail when an experience may matter later.',
-      actionLabel: 'Open Daily Logger',
-      onTap: onTap,
+    final year = DateTime.now().year;
+    return FutureBuilder<_CareerYearSummary>(
+      future: _loadCareerYearSummary(year),
+      builder: (context, snapshot) {
+        final summary = snapshot.data;
+        final isLoading =
+            snapshot.connectionState == ConnectionState.waiting && summary == null;
+
+        final subtitle = isLoading
+            ? 'Loading this year’s activity…'
+            : summary == null || summary.total == 0
+                ? 'No $year activity logged yet.'
+                : summary.displayLine;
+
+        return _HomeCard(
+          icon: Icons.add_task_outlined,
+          eyebrow: 'PERSONAL LOG',
+          title: '$year Career Activity',
+          subtitle: subtitle,
+          detail: summary == null || summary.total == 0
+              ? 'Log calls, skills, trainings, awards, leadership, and other career milestones as they happen.'
+              : 'Keep building a record you can use later for task books, resumes, interviews, and promotions.',
+          actionLabel: 'Open Daily Logger',
+          onTap: onTap,
+        );
+      },
+    );
+  }
+}
+
+class _CareerYearSummary {
+  final int calls;
+  final int skills;
+  final int trainings;
+  final int achievements;
+
+  const _CareerYearSummary({
+    required this.calls,
+    required this.skills,
+    required this.trainings,
+    required this.achievements,
+  });
+
+  int get total => calls + skills + trainings + achievements;
+
+  String get displayLine => [
+        '$calls ${calls == 1 ? 'call' : 'calls'}',
+        '$skills ${skills == 1 ? 'skill' : 'skills'}',
+        '$trainings ${trainings == 1 ? 'training' : 'trainings'}',
+        '$achievements ${achievements == 1 ? 'achievement' : 'achievements'}',
+      ].join(' • ');
+}
+
+Future<_CareerYearSummary> _loadCareerYearSummary(int year) async {
+  final records = await CareerRecordStore().load();
+  var calls = 0;
+  var skills = 0;
+  var trainings = 0;
+  var achievements = 0;
+
+  for (final record in records.where((record) => record.date.year == year)) {
+    final count = record.repetitions < 1 ? 1 : record.repetitions;
+    switch (record.type) {
+      case CareerRecordType.operationalExperience:
+        calls += count;
+      case CareerRecordType.skill:
+        skills += count;
+      case CareerRecordType.training:
+        trainings += count;
+      case CareerRecordType.achievement:
+        achievements += count;
+      case CareerRecordType.leadership:
+      case CareerRecordType.teaching:
+      case CareerRecordType.project:
+      case CareerRecordType.education:
+      case CareerRecordType.taskBookEvidence:
+        break;
+    }
+  }
+
+  return _CareerYearSummary(
+    calls: calls,
+    skills: skills,
+    trainings: trainings,
+    achievements: achievements,
+  );
+}
+
+enum _StatusTone { warning, critical, neutral }
+
+class _CardStatus {
+  final String text;
+  final _StatusTone tone;
+
+  const _CardStatus({required this.text, required this.tone});
+}
+
+class _StatusBadge extends StatelessWidget {
+  final _CardStatus status;
+
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final (background, foreground) = switch (status.tone) {
+      _StatusTone.critical => (cs.errorContainer, cs.onErrorContainer),
+      _StatusTone.warning => (cs.secondaryContainer, cs.onSecondaryContainer),
+      _StatusTone.neutral =>
+        (cs.surfaceContainerHighest, cs.onSurfaceVariant),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        status.text,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w800,
+            ),
+      ),
     );
   }
 }
@@ -436,7 +877,10 @@ class _HomeCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String? detail;
+  final String? emphasisText;
   final double? progress;
+  final _CardStatus? status;
+  final String? trailingLabel;
   final String? actionLabel;
   final VoidCallback? onTap;
   final Widget? footer;
@@ -447,7 +891,10 @@ class _HomeCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.detail,
+    this.emphasisText,
     this.progress,
+    this.status,
+    this.trailingLabel,
     this.actionLabel,
     this.onTap,
     this.footer,
@@ -489,13 +936,20 @@ class _HomeCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      eyebrow,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.6,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            eyebrow,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                        ),
+                        if (status != null) _StatusBadge(status: status!),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -507,8 +961,20 @@ class _HomeCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onTap != null)
+              if (trailingLabel != null) ...[
+                const SizedBox(width: 8),
+                Text(
+                  trailingLabel!,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+              if (onTap != null) ...[
+                const SizedBox(width: 2),
                 Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+              ],
             ],
           ),
           const SizedBox(height: 10),
@@ -519,8 +985,34 @@ class _HomeCard extends StatelessWidget {
               height: 1.4,
             ),
           ),
+          if (emphasisText != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.arrow_forward, size: 18, color: cs.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      emphasisText!,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (detail != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 7),
             Text(
               detail!,
               style: theme.textTheme.bodySmall?.copyWith(
@@ -562,6 +1054,11 @@ class _HomeCard extends StatelessWidget {
       child: card,
     );
   }
+}
+
+DateTime _today() {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
 }
 
 String _formatMonthYear(DateTime date) {
