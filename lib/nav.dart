@@ -14,7 +14,7 @@ import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
-import 'package:firepath/pages/career/career_record_page.dart';
+import 'package:firepath/pages/career/career_record_v2_page.dart';
 import 'package:firepath/pages/career/quick_log_setup_page.dart';
 import 'package:firepath/pages/certifications/certifications_page.dart';
 import 'package:firepath/pages/resources/resources_page.dart';
@@ -72,7 +72,8 @@ class AppRouter {
                 path: AppRoutes.personalLog,
                 name: 'personal_log',
                 pageBuilder: (context, state) => const NoTransitionPage(
-                    child: CareerRecordPage()),
+                  child: CareerRecordV2Page(),
+                ),
               ),
             ],
           ),
@@ -109,7 +110,8 @@ class AppRouter {
         path: AppRoutes.personalLogLegacy,
         name: 'personal_log_legacy',
         pageBuilder: (context, state) => MaterialPage(
-            child: PersonalLogPage(prefill: state.extra as LogPrefill?)),
+          child: PersonalLogPage(prefill: state.extra as LogPrefill?),
+        ),
       ),
       GoRoute(
         path: AppRoutes.quickLogSetup,
@@ -145,14 +147,17 @@ class AppRouter {
         path: AppRoutes.careerEvidence,
         name: 'career_evidence',
         pageBuilder: (context, state) => MaterialPage(
-            child: CareerVaultPage(prefill: state.extra as EvidencePrefill?)),
+          child: CareerVaultPage(prefill: state.extra as EvidencePrefill?),
+        ),
       ),
       GoRoute(
         path: AppRoutes.qualificationTaskBook,
         name: 'qualification_task_book',
         pageBuilder: (context, state) => MaterialPage(
-            child: QualificationTaskBookPage(
-                requirement: (state.extra as Map?)?['requirement'] ?? state.extra)),
+          child: QualificationTaskBookPage(
+            requirement: (state.extra as Map?)?['requirement'] ?? state.extra,
+          ),
+        ),
       ),
       GoRoute(
         path: AppRoutes.taskDetail,
