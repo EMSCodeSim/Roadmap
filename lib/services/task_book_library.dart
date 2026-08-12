@@ -11,16 +11,61 @@ class TaskBookLibrary {
   /// For now we key off known certificationDefinitionIds + well-known titles.
   static List<TaskBookTaskDefinition> tasksForRequirement(Requirement r) {
     final defId = r.certificationDefinitionId;
-    if (defId == 'driver_operator_pumper') return _driverOperatorPumper();
+    if (defId == 'driver_operator_pumper') {
+      return _withCompanionResources(
+        _driverOperatorPumper(),
+        certificationId: 'driver_operator_pumper',
+      );
+    }
     final name = r.name.trim().toLowerCase();
     if (name.contains('driver operator') && name.contains('pumper')) {
-      return _driverOperatorPumper();
+      return _withCompanionResources(
+        _driverOperatorPumper(),
+        certificationId: 'driver_operator_pumper',
+      );
     }
     return const <TaskBookTaskDefinition>[];
   }
 
   static bool hasTasksForRequirement(Requirement r) =>
       tasksForRequirement(r).isNotEmpty;
+
+  static List<TaskBookTaskDefinition> _withCompanionResources(
+    List<TaskBookTaskDefinition> tasks, {
+    required String certificationId,
+  }) {
+    return tasks
+        .map(
+          (task) => TaskBookTaskDefinition(
+            id: task.id,
+            title: task.title,
+            section: task.section,
+            goalId: task.goalId,
+            requirementId: task.requirementId,
+            isCustom: task.isCustom,
+            fireOpsObjective: task.fireOpsObjective,
+            whatToKnow: task.whatToKnow,
+            performanceTasks: task.performanceTasks,
+            safetyPoints: task.safetyPoints,
+            commonMistakes: task.commonMistakes,
+            practiceTools: task.practiceTools,
+            resources: [
+              ...task.resources,
+              TaskBookResourceLink(
+                title: 'FireOpsSim: study, practice, and training help',
+                url:
+                    'https://fireopssim.com/taskbook-resources.html?cert=$certificationId&task=${task.id}&source=roadmap',
+                type: TaskBookTaskResourceType.fireOpsGuide,
+                issuingSource: 'FireOpsSim',
+                notes:
+                    'Free companion study material, practice tools, class finder, and official source links.',
+                fileRef: null,
+              ),
+            ],
+          ),
+        )
+        .toList(growable: false);
+  }
 
   static List<TaskBookTaskDefinition> _driverOperatorPumper() {
     const fireOps = 'FireOps Preparation Tasks';
@@ -53,13 +98,15 @@ class TaskBookLibrary {
         ],
         practiceTools: [
           TaskBookPracticeToolLink(
-              title: 'Open FirePumpSim',
-              route: '/resources?tool=firepumpsim',
-              subtitle: 'Pump operations practice scenarios'),
+            title: 'Open FirePumpSim',
+            route: '/resources?tool=firepumpsim',
+            subtitle: 'Pump operations practice scenarios',
+          ),
           TaskBookPracticeToolLink(
-              title: 'Open FireOps Calc',
-              route: '/resources?tool=fireops_calc',
-              subtitle: 'Friction loss and PDP quick math'),
+            title: 'Open FireOps Calc',
+            route: '/resources?tool=fireops_calc',
+            subtitle: 'Friction loss and PDP quick math',
+          ),
         ],
         resources: [],
       ),
@@ -119,9 +166,10 @@ class TaskBookLibrary {
         ],
         practiceTools: [
           TaskBookPracticeToolLink(
-              title: 'Practice in FirePumpSim',
-              route: '/resources?tool=firepumpsim',
-              subtitle: 'Simulated pump panel decisions'),
+            title: 'Practice in FirePumpSim',
+            route: '/resources?tool=firepumpsim',
+            subtitle: 'Simulated pump panel decisions',
+          ),
         ],
         resources: [],
       ),
@@ -153,13 +201,15 @@ class TaskBookLibrary {
         ],
         practiceTools: [
           TaskBookPracticeToolLink(
-              title: 'Hydrant Flow Calculator',
-              route: '/resources?tool=hydrant_flow',
-              subtitle: 'Estimate available flow from hydrant data'),
+            title: 'Hydrant Flow Calculator',
+            route: '/resources?tool=hydrant_flow',
+            subtitle: 'Estimate available flow from hydrant data',
+          ),
           TaskBookPracticeToolLink(
-              title: 'Open FireOps Calc',
-              route: '/resources?tool=fireops_calc',
-              subtitle: 'PDP + friction loss quick calculations'),
+            title: 'Open FireOps Calc',
+            route: '/resources?tool=fireops_calc',
+            subtitle: 'PDP + friction loss quick calculations',
+          ),
         ],
         resources: [],
       ),
@@ -201,13 +251,15 @@ class TaskBookLibrary {
         ],
         practiceTools: [
           TaskBookPracticeToolLink(
-              title: 'Practice in FirePumpSim',
-              route: '/resources?tool=firepumpsim',
-              subtitle: 'Drafting scenarios and troubleshooting'),
+            title: 'Practice in FirePumpSim',
+            route: '/resources?tool=firepumpsim',
+            subtitle: 'Drafting scenarios and troubleshooting',
+          ),
           TaskBookPracticeToolLink(
-              title: 'Open FireOps Calc',
-              route: '/resources?tool=fireops_calc',
-              subtitle: 'Friction loss + PDP for draft operations'),
+            title: 'Open FireOps Calc',
+            route: '/resources?tool=fireops_calc',
+            subtitle: 'Friction loss + PDP for draft operations',
+          ),
         ],
         resources: [],
       ),
@@ -238,9 +290,10 @@ class TaskBookLibrary {
         ],
         practiceTools: [
           TaskBookPracticeToolLink(
-              title: 'Open FireOps Calc',
-              route: '/resources?tool=fireops_calc',
-              subtitle: 'Friction loss + PDP calculator'),
+            title: 'Open FireOps Calc',
+            route: '/resources?tool=fireops_calc',
+            subtitle: 'Friction loss + PDP calculator',
+          ),
         ],
         resources: [],
       ),
@@ -270,9 +323,10 @@ class TaskBookLibrary {
         ],
         practiceTools: [
           TaskBookPracticeToolLink(
-              title: 'Practice in FirePumpSim',
-              route: '/resources?tool=firepumpsim',
-              subtitle: 'Multi-line pump ops scenarios'),
+            title: 'Practice in FirePumpSim',
+            route: '/resources?tool=firepumpsim',
+            subtitle: 'Multi-line pump ops scenarios',
+          ),
         ],
         resources: [],
       ),
@@ -296,14 +350,13 @@ class TaskBookLibrary {
         safetyPoints: [
           'Confirm device anchoring and collapse zones (incident safety).',
         ],
-        commonMistakes: [
-          'Underestimating required flow/supply needs',
-        ],
+        commonMistakes: ['Underestimating required flow/supply needs'],
         practiceTools: [
           TaskBookPracticeToolLink(
-              title: 'Open FireOps Calc',
-              route: '/resources?tool=fireops_calc',
-              subtitle: 'High flow friction loss quick checks'),
+            title: 'Open FireOps Calc',
+            route: '/resources?tool=fireops_calc',
+            subtitle: 'High flow friction loss quick checks',
+          ),
         ],
         resources: [],
       ),
@@ -324,17 +377,14 @@ class TaskBookLibrary {
           'Describe relay roles (source, intermediate, attack pumper)',
           'Demonstrate stable discharge pressure in a simple relay scenario',
         ],
-        safetyPoints: [
-          'Monitor line ratings and use relief devices per SOP.',
-        ],
-        commonMistakes: [
-          'Poor communication causing pressure spikes/drops',
-        ],
+        safetyPoints: ['Monitor line ratings and use relief devices per SOP.'],
+        commonMistakes: ['Poor communication causing pressure spikes/drops'],
         practiceTools: [
           TaskBookPracticeToolLink(
-              title: 'Practice in FirePumpSim',
-              route: '/resources?tool=firepumpsim',
-              subtitle: 'Relay pumping practice'),
+            title: 'Practice in FirePumpSim',
+            route: '/resources?tool=firepumpsim',
+            subtitle: 'Relay pumping practice',
+          ),
         ],
         resources: [],
       ),
@@ -363,9 +413,10 @@ class TaskBookLibrary {
         ],
         practiceTools: [
           TaskBookPracticeToolLink(
-              title: 'Practice in FirePumpSim',
-              route: '/resources?tool=firepumpsim',
-              subtitle: 'Troubleshooting scenarios'),
+            title: 'Practice in FirePumpSim',
+            route: '/resources?tool=firepumpsim',
+            subtitle: 'Troubleshooting scenarios',
+          ),
         ],
         resources: [],
       ),

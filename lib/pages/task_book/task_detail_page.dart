@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/models/task_book.dart';
@@ -8,6 +9,16 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
+
+Future<void> _openExternalUrl(String url) async {
+  final uri = Uri.tryParse(url);
+  if (uri == null) {
+    debugPrint('Invalid URL: $url');
+    return;
+  }
+  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!ok) debugPrint('launchUrl failed for $url');
+}
 
 class TaskDetailPage extends StatelessWidget {
   final Object? extra;
@@ -31,13 +42,25 @@ class TaskDetailPage extends StatelessWidget {
 
     final state = context.watch<AppState>();
     final status = state.taskStatusFor(
-        goalId: goalId, requirementId: requirementId, taskId: task.id);
+      goalId: goalId,
+      requirementId: requirementId,
+      taskId: task.id,
+    );
+
+    String? certificationDefinitionId;
+    final roadmap = state.roadmap;
+    if (roadmap != null) {
+      for (final item in roadmap.included) {
+        if (item.requirement.id == requirementId) {
+          certificationDefinitionId =
+              item.requirement.certificationDefinitionId;
+          break;
+        }
+      }
+    }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(task.title.toUpperCase()),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: Text(task.title.toUpperCase()), centerTitle: false),
       body: SafeArea(
         child: ListView(
           padding: AppSpacing.paddingLg,
@@ -45,14 +68,14 @@ class TaskDetailPage extends StatelessWidget {
             _StatusCard(
               status: status,
               onChanged: (next) => context.read<AppState>().setTaskStatus(
-                    goalId: goalId,
-                    requirementId: requirementId,
-                    taskId: task.id,
-                    status: next,
-                    completionSource: next == TaskBookTaskStatus.complete
-                        ? TaskBookCompletionSource.selfVerified
-                        : null,
-                  ),
+                goalId: goalId,
+                requirementId: requirementId,
+                taskId: task.id,
+                status: next,
+                completionSource: next == TaskBookTaskStatus.complete
+                    ? TaskBookCompletionSource.selfVerified
+                    : null,
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             if ((task.fireOpsObjective ?? '').trim().isNotEmpty)
@@ -87,6 +110,12 @@ class TaskDetailPage extends StatelessWidget {
               emptyText: 'No common mistakes added yet.',
             ),
             const SizedBox(height: AppSpacing.md),
+            _CompanionCard(
+              certificationDefinitionId: certificationDefinitionId,
+              taskId: task.id,
+              stateCode: state.profile.state,
+            ),
+            const SizedBox(height: AppSpacing.md),
             _PracticeCard(tools: task.practiceTools),
             const SizedBox(height: AppSpacing.md),
             _ResourcesCard(resources: task.resources),
@@ -103,14 +132,16 @@ class TaskDetailPage extends StatelessWidget {
                   tags: ['task-book', 'practice'],
                 ),
               ),
-              onAddEvidence: () => context.push(AppRoutes.careerEvidence,
-                  extra: EvidencePrefill(
-                    title: task.title,
-                    relatedGoalId: goalId,
-                    relatedRequirementId: requirementId,
-                    category: qualificationName,
-                    tags: ['task-book', 'evidence'],
-                  )),
+              onAddEvidence: () => context.push(
+                AppRoutes.careerEvidence,
+                extra: EvidencePrefill(
+                  title: task.title,
+                  relatedGoalId: goalId,
+                  relatedRequirementId: requirementId,
+                  category: qualificationName,
+                  tags: ['task-book', 'evidence'],
+                ),
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             _InfoCard(
@@ -136,18 +167,18 @@ class _StatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     String label(TaskBookTaskStatus s) => switch (s) {
-          TaskBookTaskStatus.notStarted => 'Not Started',
-          TaskBookTaskStatus.practicing => 'Practicing',
-          TaskBookTaskStatus.readyForEvaluation => 'Ready for Evaluation',
-          TaskBookTaskStatus.complete => 'Complete',
-        };
+      TaskBookTaskStatus.notStarted => 'Not Started',
+      TaskBookTaskStatus.practicing => 'Practicing',
+      TaskBookTaskStatus.readyForEvaluation => 'Ready for Evaluation',
+      TaskBookTaskStatus.complete => 'Complete',
+    };
 
     Color tone(TaskBookTaskStatus s) => switch (s) {
-          TaskBookTaskStatus.complete => FireOpsSemanticColors.completed,
-          TaskBookTaskStatus.readyForEvaluation => cs.primary,
-          TaskBookTaskStatus.practicing => cs.secondary,
-          TaskBookTaskStatus.notStarted => cs.onSurfaceVariant,
-        };
+      TaskBookTaskStatus.complete => FireOpsSemanticColors.completed,
+      TaskBookTaskStatus.readyForEvaluation => cs.primary,
+      TaskBookTaskStatus.practicing => cs.secondary,
+      TaskBookTaskStatus.notStarted => cs.onSurfaceVariant,
+    };
 
     return Container(
       padding: AppSpacing.paddingLg,
@@ -163,19 +194,20 @@ class _StatusCard extends StatelessWidget {
             children: [
               Icon(Icons.flag_outlined, color: tone(status), size: 20),
               const SizedBox(width: 8),
-              Text('STATUS',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
-                      ?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w900)),
+              Text(
+                'STATUS',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const Spacer(),
-              Text(label(status),
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
-                      ?.copyWith(fontWeight: FontWeight.w900)),
+              Text(
+                label(status),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -183,15 +215,15 @@ class _StatusCard extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: TaskBookTaskStatus.values
-                .map((s) => ChoiceChip(
-                      label: Text(label(s)),
-                      selected: s == status,
-                      onSelected: (_) => onChanged(s),
-                      labelStyle: Theme.of(context)
-                          .textTheme
-                          .labelLarge
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ))
+                .map(
+                  (s) => ChoiceChip(
+                    label: Text(label(s)),
+                    selected: s == status,
+                    onSelected: (_) => onChanged(s),
+                    labelStyle: Theme.of(context).textTheme.labelLarge
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -206,14 +238,18 @@ class _InfoCard extends StatelessWidget {
   final String title;
   final String body;
   final _CardTone tone;
-  const _InfoCard(
-      {required this.title, required this.body, required this.tone});
+  const _InfoCard({
+    required this.title,
+    required this.body,
+    required this.tone,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final bg =
-        tone == _CardTone.primary ? cs.primaryContainer : cs.surfaceContainerHighest.withValues(alpha: 0.6);
+    final bg = tone == _CardTone.primary
+        ? cs.primaryContainer
+        : cs.surfaceContainerHighest.withValues(alpha: 0.6);
     final border = tone == _CardTone.primary
         ? cs.primary.withValues(alpha: 0.18)
         : cs.outline.withValues(alpha: 0.10);
@@ -227,19 +263,20 @@ class _InfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w900)),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
           const SizedBox(height: AppSpacing.sm),
-          Text(body,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(height: 1.55)),
+          Text(
+            body,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.55),
+          ),
         ],
       ),
     );
@@ -250,8 +287,11 @@ class _ExpandableListCard extends StatelessWidget {
   final String title;
   final List<String> items;
   final String emptyText;
-  const _ExpandableListCard(
-      {required this.title, required this.items, required this.emptyText});
+  const _ExpandableListCard({
+    required this.title,
+    required this.items,
+    required this.emptyText,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -266,22 +306,30 @@ class _ExpandableListCard extends StatelessWidget {
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           initiallyExpanded: false,
-          tilePadding:
-              const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
-          childrenPadding:
-              const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, 14),
-          title: Text(title,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w900)),
+          tilePadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 6,
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            0,
+            AppSpacing.md,
+            14,
+          ),
+          title: Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
           children: [
             if (items.isEmpty)
-              Text(emptyText,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant))
+              Text(
+                emptyText,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              )
             else
               ...items.asMap().entries.map((e) {
                 final i = e.key;
@@ -296,16 +344,18 @@ class _ExpandableListCard extends StatelessWidget {
                         width: 6,
                         height: 6,
                         decoration: BoxDecoration(
-                            color: cs.primary,
-                            borderRadius: BorderRadius.circular(99)),
+                          color: cs.primary,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text(text,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(height: 1.5)),
+                        child: Text(
+                          text,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(height: 1.5),
+                        ),
                       ),
                     ],
                   ),
@@ -313,6 +363,119 @@ class _ExpandableListCard extends StatelessWidget {
               }),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CompanionCard extends StatelessWidget {
+  final String? certificationDefinitionId;
+  final String taskId;
+  final String? stateCode;
+
+  const _CompanionCard({
+    required this.certificationDefinitionId,
+    required this.taskId,
+    required this.stateCode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final cert = certificationDefinitionId?.trim();
+    final state = stateCode?.trim().toUpperCase();
+
+    final taskQuery = <String, String>{
+      'task': taskId,
+      'source': 'roadmap',
+      if (cert != null && cert.isNotEmpty) 'cert': cert,
+      if (state != null && state.isNotEmpty) 'state': state,
+    };
+    final taskUri = Uri.https(
+      'fireopssim.com',
+      '/taskbook-resources.html',
+      taskQuery,
+    );
+
+    final studyUri = cert == null || cert.isEmpty
+        ? taskUri
+        : Uri.https('fireopssim.com', '/study-guides.html', {'cert': cert});
+
+    const emsCerts = {'emt', 'aemt', 'paramedic', 'bls', 'acls', 'pals'};
+    final finderQuery = <String, String>{
+      'path': emsCerts.contains(cert) ? 'ems' : 'fire',
+      if (cert != null && cert.isNotEmpty) 'cert': cert,
+      if (state != null && state.isNotEmpty) 'state': state,
+    };
+    final finderUri = Uri.https(
+      'fireopssim.com',
+      '/school-finder.html',
+      finderQuery,
+    );
+
+    return Container(
+      padding: AppSpacing.paddingMd,
+      decoration: BoxDecoration(
+        color: cs.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.route_outlined, color: cs.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'FIREOPSSIM COMPANION',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Free study, practice tools, class-finder links, and official sources for this Task Book item.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton.icon(
+              onPressed: () => _openExternalUrl(studyUri.toString()),
+              icon: const Icon(Icons.menu_book_outlined),
+              label: const Text('Study this task'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: () => _openExternalUrl(taskUri.toString()),
+              icon: const Icon(Icons.fitness_center_outlined),
+              label: const Text('Practice / tools'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: () => _openExternalUrl(finderUri.toString()),
+              icon: const Icon(Icons.school_outlined),
+              label: const Text('Find a class'),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -327,10 +490,11 @@ class _PracticeCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     if (tools.isEmpty) {
       return _InfoCard(
-          title: 'PRACTICE',
-          body:
-              'No practice tools linked yet. You can still log practice and add evidence below.',
-          tone: _CardTone.neutral);
+        title: 'PRACTICE',
+        body:
+            'No practice tools linked yet. You can still log practice and add evidence below.',
+        tone: _CardTone.neutral,
+      );
     }
     return Container(
       padding: AppSpacing.paddingMd,
@@ -342,28 +506,35 @@ class _PracticeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('PRACTICE',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+            'PRACTICE',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: AppSpacing.sm),
-          ...tools.map((t) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: SizedBox(
-                  height: 52,
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () => context.push(AppRoutes.resources,
-                        extra: {'tool': t.route, 'title': t.title}),
-                    icon: Icon(Icons.build_outlined, color: cs.primary),
-                    label: Text(t.title),
-                    style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.lg))),
+          ...tools.map(
+            (t) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: SizedBox(
+                height: 52,
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push(
+                    AppRoutes.resources,
+                    extra: {'tool': t.route, 'title': t.title},
+                  ),
+                  icon: Icon(Icons.build_outlined, color: cs.primary),
+                  label: Text(t.title),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
                   ),
                 ),
-              )),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -378,10 +549,11 @@ class _ResourcesCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (resources.isEmpty) {
       return _InfoCard(
-          title: 'REFERENCES',
-          body:
-              'No reference links added yet. You can add department SOP links later as Task Book customization expands.',
-          tone: _CardTone.neutral);
+        title: 'REFERENCES',
+        body:
+            'No reference links added yet. You can add department SOP links later as Task Book customization expands.',
+        tone: _CardTone.neutral,
+      );
     }
     final cs = Theme.of(context).colorScheme;
     return Container(
@@ -394,48 +566,49 @@ class _ResourcesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('REFERENCES',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+            'REFERENCES',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: AppSpacing.sm),
-          ...resources.map((r) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: InkWell(
-                  onTap: r.url == null
-                      ? null
-                      : () => context.push(AppRoutes.resources, extra: {
-                          'url': r.url,
-                          'title': r.title,
-                        }),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: cs.surface,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border:
-                          Border.all(color: cs.outline.withValues(alpha: 0.10)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.link, color: cs.primary),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(r.title,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w800)),
-                        ),
-                        Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
-                      ],
+          ...resources.map(
+            (r) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: InkWell(
+                onTap: r.url == null ? null : () => _openExternalUrl(r.url!),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(
+                      color: cs.outline.withValues(alpha: 0.10),
                     ),
                   ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.link, color: cs.primary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          r.title,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+                    ],
+                  ),
                 ),
-              )),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -445,8 +618,10 @@ class _ResourcesCard extends StatelessWidget {
 class _MyRecordCard extends StatelessWidget {
   final VoidCallback onLogPractice;
   final VoidCallback onAddEvidence;
-  const _MyRecordCard(
-      {required this.onLogPractice, required this.onAddEvidence});
+  const _MyRecordCard({
+    required this.onLogPractice,
+    required this.onAddEvidence,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -461,11 +636,12 @@ class _MyRecordCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('MY RECORD',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+            'MY RECORD',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
             height: 52,
@@ -473,10 +649,15 @@ class _MyRecordCard extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onLogPractice,
               icon: Icon(Icons.add_task, color: cs.onPrimary),
-              label: Text('Log Practice', style: TextStyle(color: cs.onPrimary)),
+              label: Text(
+                'Log Practice',
+                style: TextStyle(color: cs.onPrimary),
+              ),
               style: FilledButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.lg))),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -488,17 +669,19 @@ class _MyRecordCard extends StatelessWidget {
               icon: Icon(Icons.fact_check_outlined, color: cs.primary),
               label: const Text('Add Evidence'),
               style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.lg))),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Keep entries professional and non-identifying. Do not store patient names, addresses, DOBs, or other protected information.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+              height: 1.45,
+            ),
           ),
         ],
       ),
