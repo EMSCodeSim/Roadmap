@@ -1,1 +1,0 @@
-Temporary validation marker for full UI upgrade branch. This file can be removed before merge.
