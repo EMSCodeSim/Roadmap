@@ -30,5 +30,23 @@ jobs:
       - name: Build web release
         run: flutter build web --release
 
-      - name: Build Android debug
-        run: flutter build apk --debug
+      - name: Build Android release
+        run: flutter build apk --release
+
+  ios-release:
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS release without signing
+        run: flutter build ios --release --no-codesign
