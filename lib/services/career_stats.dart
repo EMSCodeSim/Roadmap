@@ -1,5 +1,16 @@
 import 'package:firepath/models/career_record.dart';
 
+class CareerSuccessStats {
+  final int attempts;
+  final int successful;
+
+  const CareerSuccessStats({required this.attempts, required this.successful});
+
+  int get unsuccessful => attempts - successful;
+  double? get rate => attempts <= 0 ? null : successful / attempts;
+  int? get percent => rate == null ? null : (rate! * 100).round();
+}
+
 /// Shared statistics engine for Career Records.
 ///
 /// Home, Career Record, Growth, and Task Book should use this logic so totals
@@ -15,6 +26,8 @@ class CareerStats {
   final int awards;
   final int projects;
   final int taskBookUpdates;
+  final int medicalExposures;
+  final int hazardExposures;
 
   const CareerStats({
     required this.calls,
@@ -27,7 +40,11 @@ class CareerStats {
     required this.awards,
     required this.projects,
     required this.taskBookUpdates,
+    required this.medicalExposures,
+    required this.hazardExposures,
   });
+
+  int get totalExposures => medicalExposures + hazardExposures;
 
   factory CareerStats.empty() => const CareerStats(
         calls: 0,
@@ -40,6 +57,8 @@ class CareerStats {
         awards: 0,
         projects: 0,
         taskBookUpdates: 0,
+        medicalExposures: 0,
+        hazardExposures: 0,
       );
 
   factory CareerStats.fromRecords(List<CareerRecord> records) {
@@ -53,10 +72,21 @@ class CareerStats {
     var awards = 0;
     var projects = 0;
     var taskBook = 0;
+    var medicalExposures = 0;
+    var hazardExposures = 0;
 
     for (final r in records) {
       final count = r.repetitions < 1 ? 1 : r.repetitions;
       final hours = r.hours;
+
+      if (isMedicalExposureRecord(r)) {
+        medicalExposures += count;
+        continue;
+      }
+      if (isHazardExposureRecord(r)) {
+        hazardExposures += count;
+        continue;
+      }
 
       switch (r.type) {
         case CareerRecordType.operationalExperience:
@@ -96,12 +126,11 @@ class CareerStats {
       awards: awards,
       projects: projects,
       taskBookUpdates: taskBook,
+      medicalExposures: medicalExposures,
+      hazardExposures: hazardExposures,
     );
   }
 
-  /// Drive time is intentionally stored using the existing `skill` record type
-  /// for backward compatibility. A stable tracking key is preferred, with
-  /// text matching retained for older records.
   static bool isDrivingRecord(CareerRecord record) {
     final key = (record.trackingKey ?? '').toLowerCase();
     if (key == 'quick.drive_time' || key == 'fire.driver') return true;
@@ -119,6 +148,52 @@ class CareerStats {
     return hay.contains('award') ||
         hay.contains('recognition') ||
         hay.contains('commendation');
+  }
+
+  static bool isMedicalExposureRecord(CareerRecord record) {
+    final key = (record.trackingKey ?? '').toLowerCase();
+    if (key == 'safety.medical_exposure') return true;
+    final hay = '${record.title} ${record.category}'.toLowerCase();
+    return hay.contains('medical exposure') ||
+        hay.contains('blood exposure') ||
+        hay.contains('body fluid exposure');
+  }
+
+  static bool isHazardExposureRecord(CareerRecord record) {
+    final key = (record.trackingKey ?? '').toLowerCase();
+    if (key == 'safety.hazard_exposure') return true;
+    final hay = '${record.title} ${record.category}'.toLowerCase();
+    return hay.contains('hazard exposure') ||
+        hay.contains('chemical exposure') ||
+        hay.contains('smoke exposure');
+  }
+
+  static bool isExposureRecord(CareerRecord record) =>
+      isMedicalExposureRecord(record) || isHazardExposureRecord(record);
+
+  /// Returns measured success statistics for a procedure or skill.
+  ///
+  /// For a record with multiple attempts and a successful final outcome, one
+  /// attempt is counted as successful and the preceding attempts are counted
+  /// as unsuccessful. This matches common procedure logging such as an IV that
+  /// succeeds on attempt 2: 2 attempts, 1 success, 50% success rate.
+  static CareerSuccessStats successFor(
+    Iterable<CareerRecord> records, {
+    String? trackingKey,
+  }) {
+    var attempts = 0;
+    var successes = 0;
+    for (final record in records) {
+      if (trackingKey != null && record.trackingKey != trackingKey) continue;
+      final count = record.repetitions < 1 ? 1 : record.repetitions;
+      if (record.outcome == CareerRecordOutcome.successful) {
+        attempts += count;
+        successes += 1;
+      } else if (record.outcome == CareerRecordOutcome.unsuccessful) {
+        attempts += count;
+      }
+    }
+    return CareerSuccessStats(attempts: attempts, successful: successes);
   }
 
   String get trainingLabel => formatDurationHours(trainingHours);
