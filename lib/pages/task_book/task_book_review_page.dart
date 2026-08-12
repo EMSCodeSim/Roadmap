@@ -3,11 +3,26 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
+import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
-class TaskBookReviewPage extends StatelessWidget {
+class TaskBookReviewPage extends StatefulWidget {
   const TaskBookReviewPage({super.key});
+
+  @override
+  State<TaskBookReviewPage> createState() => _TaskBookReviewPageState();
+}
+
+class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
+  final TaskBookSetupStore _setupStore = TaskBookSetupStore();
+  bool _finishing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupStore.setReviewPending(true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,14 +184,21 @@ class TaskBookReviewPage extends StatelessWidget {
           child: SizedBox(
             height: 58,
             child: FilledButton.icon(
-              onPressed: () => context.go(AppRoutes.myPath),
+              onPressed: _finishing ? null : _useTaskBook,
               icon: const Icon(Icons.check_circle_outline),
-              label: const Text('Use This Task Book'),
+              label: Text(_finishing ? 'Saving…' : 'Use This Task Book'),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _useTaskBook() async {
+    setState(() => _finishing = true);
+    await _setupStore.setReviewPending(false);
+    if (!mounted) return;
+    context.go(AppRoutes.myPath);
   }
 }
 
