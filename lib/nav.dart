@@ -5,9 +5,11 @@ import 'package:firepath/pages/bootstrap_page.dart';
 import 'package:firepath/pages/shell/app_shell_page.dart';
 import 'package:firepath/pages/home/visual_home_page.dart';
 import 'package:firepath/pages/onboarding/onboarding_flow_page.dart';
-import 'package:firepath/pages/path/my_path_page.dart';
+import 'package:firepath/pages/path/goal_picker_page.dart';
+import 'package:firepath/pages/path/roadmap_entry_page.dart';
 import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
+import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/certifications/certifications_page.dart';
 import 'package:firepath/pages/resources/resources_page.dart';
@@ -23,22 +25,26 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.bootstrap,
         name: 'bootstrap',
-        pageBuilder: (context, state) => const NoTransitionPage(child: BootstrapPage()),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: BootstrapPage()),
       ),
       GoRoute(
         path: AppRoutes.onboarding,
         name: 'onboarding',
-        pageBuilder: (context, state) => const NoTransitionPage(child: OnboardingFlowPage()),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: OnboardingFlowPage()),
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) => AppShellPage(navigationShell: navigationShell),
+        builder: (context, state, navigationShell) =>
+            AppShellPage(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: AppRoutes.home,
                 name: 'home',
-                pageBuilder: (context, state) => const NoTransitionPage(child: VisualHomePage()),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: VisualHomePage()),
               ),
             ],
           ),
@@ -47,7 +53,8 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.myPath,
                 name: 'my_path',
-                pageBuilder: (context, state) => const NoTransitionPage(child: MyPathPage()),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: RoadmapEntryPage()),
               ),
             ],
           ),
@@ -56,7 +63,8 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.personalLog,
                 name: 'personal_log',
-                pageBuilder: (context, state) => const NoTransitionPage(child: PersonalLogPage()),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: PersonalLogPage()),
               ),
             ],
           ),
@@ -65,7 +73,8 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.growth,
                 name: 'growth',
-                pageBuilder: (context, state) => const NoTransitionPage(child: CareerHubPage()),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: GrowthOverviewPage()),
               ),
             ],
           ),
@@ -74,7 +83,8 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.certifications,
                 name: 'certifications',
-                pageBuilder: (context, state) => const NoTransitionPage(child: CertificationsPage()),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: CertificationsPage()),
               ),
             ],
           ),
@@ -83,37 +93,62 @@ class AppRouter {
 
       // Legacy links retained so existing bookmarks/deep links do not break.
       GoRoute(path: '/career', redirect: (context, state) => AppRoutes.growth),
-      GoRoute(path: '/career/vault', redirect: (context, state) => AppRoutes.personalLog),
+      GoRoute(
+        path: '/career/vault',
+        redirect: (context, state) => AppRoutes.personalLog,
+      ),
 
+      GoRoute(
+        path: AppRoutes.goalSetup,
+        name: 'goal_setup',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: GoalPickerPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.growthDetails,
+        name: 'growth_details',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: CareerHubPage()),
+      ),
       GoRoute(
         path: AppRoutes.careerEvidence,
         name: 'career_evidence',
-        pageBuilder: (context, state) => const MaterialPage(child: CareerVaultPage()),
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: CareerVaultPage()),
       ),
       GoRoute(
         path: AppRoutes.resources,
         name: 'resources',
-        pageBuilder: (context, state) => MaterialPage(child: ResourcesPage(extra: state.extra)),
+        pageBuilder: (context, state) =>
+            MaterialPage(child: ResourcesPage(extra: state.extra)),
       ),
       GoRoute(
         path: AppRoutes.requirementDetail,
         name: 'requirement_detail',
-        pageBuilder: (context, state) => MaterialPage(child: RequirementDetailPage(requirement: state.extra)),
+        pageBuilder: (context, state) =>
+            MaterialPage(child: RequirementDetailPage(requirement: state.extra)),
       ),
       GoRoute(
         path: AppRoutes.getStarted,
         name: 'get_started',
-        pageBuilder: (context, state) => MaterialPage(child: GetStartedPage(requirement: state.extra)),
+        pageBuilder: (context, state) =>
+            MaterialPage(child: GetStartedPage(requirement: state.extra)),
       ),
       GoRoute(
         path: '${AppRoutes.certificationDetail}/:id',
         name: 'certification_detail',
-        pageBuilder: (context, state) => MaterialPage(child: CertificationDetailPage(certId: state.pathParameters['id']!, extra: state.extra)),
+        pageBuilder: (context, state) => MaterialPage(
+          child: CertificationDetailPage(
+            certId: state.pathParameters['id']!,
+            extra: state.extra,
+          ),
+        ),
       ),
       GoRoute(
         path: AppRoutes.certificationAdd,
         name: 'certification_add',
-        pageBuilder: (context, state) => MaterialPage(child: CertificationPickerPage(extra: state.extra)),
+        pageBuilder: (context, state) =>
+            MaterialPage(child: CertificationPickerPage(extra: state.extra)),
       ),
     ],
   );
@@ -135,6 +170,8 @@ class AppRoutes {
   static const String careerEvidence = '/growth/evidence';
   static const String resources = '/resources';
 
+  static const String goalSetup = '/goal-setup';
+  static const String growthDetails = '/growth-tools';
   static const String requirementDetail = '/requirement';
   static const String getStarted = '/get-started';
   static const String certificationDetail = '/certification';
