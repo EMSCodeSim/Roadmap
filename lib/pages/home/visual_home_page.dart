@@ -16,37 +16,11 @@ class VisualHomePage extends StatelessWidget {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Column(
-                children: [
-                  _HeroBanner(onTap: () => context.go('/career')),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 98,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        _GraphicLink(
-                          imagePath: 'assets/graphics/career_vault.jpg',
-                          label: 'Personal Log',
-                          onTap: () => context.push('/career/vault'),
-                        ),
-                        const SizedBox(width: 10),
-                        _GraphicLink(
-                          imagePath: 'assets/graphics/advancement_dashboard.jpg',
-                          label: 'Advancement',
-                          onTap: () => context.go('/career'),
-                        ),
-                        const SizedBox(width: 10),
-                        _GraphicLink(
-                          imagePath: 'assets/graphics/promotion_story_bank.jpg',
-                          label: 'Story Bank',
-                          onTap: () => context.go('/career'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+              child: _CareerHeader(
+                onPath: () => context.go('/path'),
+                onLog: () => context.go('/log'),
+                onGrowth: () => context.go('/growth'),
               ),
             ),
           ),
@@ -63,72 +37,114 @@ class VisualHomePage extends StatelessWidget {
   }
 }
 
-class _HeroBanner extends StatelessWidget {
-  final VoidCallback onTap;
-  const _HeroBanner({required this.onTap});
+class _CareerHeader extends StatelessWidget {
+  final VoidCallback onPath;
+  final VoidCallback onLog;
+  final VoidCallback onGrowth;
+
+  const _CareerHeader({
+    required this.onPath,
+    required this.onLog,
+    required this.onGrowth,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: SizedBox(
-          height: 148,
-          width: double.infinity,
-          child: Image.asset(
-            'assets/graphics/professional_growth_roadmap_banner.jpg',
-            fit: BoxFit.cover,
-            alignment: Alignment.center,
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.65)),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.asset(
+              'assets/icons/career_road_icon.png',
+              width: 58,
+              height: 58,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                alignment: Alignment.center,
+                child: Icon(Icons.route, color: cs.onPrimaryContainer, size: 30),
+              ),
+            ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'FireOps Career Road',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Plan the next move. Keep the proof.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _ActionChip(icon: Icons.route_outlined, label: 'Roadmap', onTap: onPath),
+                    _ActionChip(icon: Icons.add_task_outlined, label: 'Log', onTap: onLog),
+                    _ActionChip(icon: Icons.trending_up_outlined, label: 'Growth', onTap: onGrowth),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _GraphicLink extends StatelessWidget {
-  final String imagePath;
+class _ActionChip extends StatelessWidget {
+  final IconData icon;
   final String label;
   final VoidCallback onTap;
 
-  const _GraphicLink({
-    required this.imagePath,
-    required this.label,
-    required this.onTap,
-  });
+  const _ActionChip({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: 104,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.asset(
-                  imagePath,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
-                  ),
-            ),
+            Icon(icon, size: 15, color: cs.primary),
+            const SizedBox(width: 5),
+            Text(label, style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
           ],
         ),
       ),
