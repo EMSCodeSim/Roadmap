@@ -65,7 +65,7 @@ void main() {
   });
 
   test(
-      'portfolio backup includes roadmap certifications preferences and career records envelope',
+      'portfolio backup includes roadmap certifications preferences task book state and career records envelope',
       () async {
     final state = AppState();
     await state.bootstrap();
@@ -77,13 +77,15 @@ void main() {
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
 
     expect(decoded['format'], 'fireops-career-portfolio');
-    expect(decoded['version'], 3);
+    expect(decoded['version'], 4);
     expect(decoded['profile'], isA<Map>());
     expect((decoded['certifications'] as List), isNotEmpty);
     expect((decoded['customRequirements'] as List).length,
         greaterThanOrEqualTo(4));
     expect(decoded.containsKey('pathOverrides'), isTrue);
     expect(decoded.containsKey('quickLogPreferences'), isTrue);
+    expect(decoded.containsKey('taskBookTaskProgress'), isTrue);
+    expect(decoded.containsKey('taskBookCustomTasks'), isTrue);
     expect(decoded.containsKey('records'), isTrue);
   });
 }
