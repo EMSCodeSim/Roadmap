@@ -18,6 +18,7 @@ CareerRecord _record({
   int repetitions = 1,
   String? trackingKey,
   String? relatedTaskId,
+  CareerRecordOutcome? outcome,
 }) {
   final now = DateTime(2026, 8, 12, 12);
   return CareerRecord(
@@ -38,7 +39,7 @@ CareerRecord _record({
     relatedTaskId: relatedTaskId,
     highlight: false,
     trackingKey: trackingKey,
-    outcome: null,
+    outcome: outcome,
     createdAt: now,
     updatedAt: now,
   );
@@ -92,6 +93,66 @@ void main() {
 
     expect(stats.driveHours, 2.5);
     expect(stats.skillRepetitions, 3);
+  });
+
+  test('exposures are tracked separately from incident call totals', () {
+    final records = [
+      _record(
+        id: 'call',
+        type: CareerRecordType.operationalExperience,
+        title: 'Structure fire',
+        trackingKey: 'fire.structure_fire',
+      ),
+      _record(
+        id: 'medical-exposure',
+        type: CareerRecordType.operationalExperience,
+        title: 'Medical exposure',
+        category: 'Exposure',
+        trackingKey: 'safety.medical_exposure',
+      ),
+      _record(
+        id: 'hazard-exposure',
+        type: CareerRecordType.operationalExperience,
+        title: 'Hazard exposure',
+        category: 'Exposure',
+        trackingKey: 'safety.hazard_exposure',
+      ),
+    ];
+
+    final stats = CareerStats.fromRecords(records);
+
+    expect(stats.calls, 1);
+    expect(stats.medicalExposures, 1);
+    expect(stats.hazardExposures, 1);
+    expect(stats.totalExposures, 2);
+  });
+
+  test('IV success rate uses attempts rather than treating every attempt as success', () {
+    final records = [
+      _record(
+        id: 'iv-1',
+        type: CareerRecordType.skill,
+        title: 'IV',
+        trackingKey: 'ems.iv',
+        repetitions: 2,
+        outcome: CareerRecordOutcome.successful,
+      ),
+      _record(
+        id: 'iv-2',
+        type: CareerRecordType.skill,
+        title: 'IV',
+        trackingKey: 'ems.iv',
+        repetitions: 1,
+        outcome: CareerRecordOutcome.unsuccessful,
+      ),
+    ];
+
+    final rate = CareerStats.successFor(records, trackingKey: 'ems.iv');
+
+    expect(rate.attempts, 3);
+    expect(rate.successful, 1);
+    expect(rate.unsuccessful, 2);
+    expect(rate.percent, 33);
   });
 
   test('moving a completed task back to practicing clears verification', () {
