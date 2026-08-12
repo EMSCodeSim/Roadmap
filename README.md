@@ -14,6 +14,8 @@ A simple career snapshot showing the user's current level, active goal, certific
 ### Task Book
 The active career goal becomes a Career Task Book. Major requirements such as certifications, experience, department requirements, task books, and promotion steps can open into progressively deeper preparation tasks. FireOps-created task content is preparation guidance and does not replace official department, state, or credentialing requirements.
 
+Task Book detail pages use **FireOpsSim** as the free companion resource layer. From a task, users can open study material, task-specific practice/tools, school or course-finder help, and supporting references. Stable certification and task IDs are passed to FireOpsSim so Roadmap remains focused on planning and progress while FireOpsSim can continue expanding the learning content independently.
+
 ### Quick Log
 Quick Log is designed for fast capture after a call, drill, class, shift, or career milestone. Users can record calls, skill repetitions, training time, drive time, leadership, teaching, awards, achievements, projects, education, custom activity, and Task Book progress without navigating through the full career history.
 
