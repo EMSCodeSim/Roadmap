@@ -84,7 +84,7 @@ class _GrowthOverviewPageState extends State<GrowthOverviewPage> {
                     valueText: analysis.totalRequirements == 0
                         ? 'No target'
                         : '${analysis.completedRequirements}/${analysis.totalRequirements}',
-                    detail: 'Roadmap requirements completed',
+                    detail: 'Task Book requirements completed',
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _ReadinessRow(

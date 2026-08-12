@@ -7,13 +7,15 @@ import 'package:provider/provider.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/quick_log_tracker.dart';
 import 'package:firepath/models/quick_log_template.dart';
+import 'package:firepath/models/prefill.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/quick_log_preferences_store.dart';
 import 'package:firepath/state/app_state.dart';
 
 class PersonalLogPage extends StatefulWidget {
-  const PersonalLogPage({super.key});
+  final LogPrefill? prefill;
+  const PersonalLogPage({super.key, this.prefill});
 
   @override
   State<PersonalLogPage> createState() => _PersonalLogPageState();
@@ -54,6 +56,20 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
       _config = _configFromPreferences(preferences);
       _loading = false;
     });
+
+    final prefill = widget.prefill;
+    if (prefill != null && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _openLogEditor(
+          initialTitle: prefill.title,
+          initialCategory: prefill.category,
+          relatedGoalId: prefill.relatedGoalId,
+          relatedRequirementId: prefill.relatedRequirementId,
+          initialTags: prefill.tags,
+        );
+      });
+    }
   }
 
   static QuickLogConfig _configFromPreferences(
@@ -253,12 +269,20 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
         () => _records = _records.where((e) => e.id != record.id).toList());
   }
 
-  Future<void> _openLogEditor({CareerRecord? existing}) async {
+  Future<void> _openLogEditor(
+      {CareerRecord? existing,
+      String? initialTitle,
+      String? initialCategory,
+      String? relatedGoalId,
+      String? relatedRequirementId,
+      List<String>? initialTags}) async {
     var type = existing?.type ?? CareerRecordType.operationalExperience;
     var selectedDate = existing?.date ?? DateTime.now();
     CareerRecordOutcome? outcome = existing?.outcome;
-    final title = TextEditingController(text: existing?.title ?? '');
-    final category = TextEditingController(text: existing?.category ?? '');
+    final title = TextEditingController(
+        text: existing?.title ?? (initialTitle ?? ''));
+    final category = TextEditingController(
+        text: existing?.category ?? (initialCategory ?? ''));
     final count =
         TextEditingController(text: existing?.repetitions.toString() ?? '1');
     final note = TextEditingController(text: existing?.summary ?? '');
@@ -382,6 +406,10 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                 final parsedCount = int.tryParse(count.text.trim());
                 final now = DateTime.now();
                 final cleanTitle = title.text.trim();
+                final tags = existing?.tags ??
+                    (initialTags == null || initialTags.isEmpty
+                        ? const ['quick-log', 'custom-log']
+                        : initialTags);
                 Navigator.pop(
                   dialogContext,
                   CareerRecord(
@@ -401,9 +429,10 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     repetitions: parsedCount != null && parsedCount > 0
                         ? parsedCount
                         : 1,
-                    tags: existing?.tags ?? const ['quick-log', 'custom-log'],
-                    relatedGoalId: existing?.relatedGoalId,
-                    relatedRequirementId: existing?.relatedRequirementId,
+                    tags: tags,
+                    relatedGoalId: existing?.relatedGoalId ?? relatedGoalId,
+                    relatedRequirementId:
+                        existing?.relatedRequirementId ?? relatedRequirementId,
                     highlight: existing?.highlight ?? false,
                     trackingKey:
                         existing?.trackingKey ?? _trackingKeyFor(cleanTitle),

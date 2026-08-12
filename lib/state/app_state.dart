@@ -7,6 +7,8 @@ import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/local_store.dart';
 import 'package:firepath/services/timeline_planner.dart';
+import 'package:firepath/models/task_book.dart';
+import 'package:firepath/services/task_book_store.dart';
 
 class RoadmapRequirement {
   final Requirement requirement;
@@ -336,6 +338,7 @@ class PendingCertMatch {
 
 class AppState extends ChangeNotifier {
   final LocalStore _store = LocalStore();
+  final TaskBookStore _taskBookStore = TaskBookStore();
 
   Map<String, String> _certMatchConfirmations = <String, String>{};
   final List<PendingCertMatch> _pendingCertMatches = <PendingCertMatch>[];
@@ -351,6 +354,11 @@ class AppState extends ChangeNotifier {
   final List<Requirement> _customRequirements = [];
   final List<PathRequirementOverride> _overrides = [];
 
+  // Task Book
+  final Map<String, TaskBookTaskProgress> _taskProgressByKey =
+      <String, TaskBookTaskProgress>{};
+  final List<TaskBookTaskDefinition> _customTasks = <TaskBookTaskDefinition>[];
+
   bool get bootstrapped => _bootstrapped;
   bool get onboardingComplete => _onboardingComplete;
   UserProfile get profile => _profile;
@@ -360,6 +368,11 @@ class AppState extends ChangeNotifier {
       List.unmodifiable(_customRequirements);
   List<PathRequirementOverride> get pathOverrides =>
       List.unmodifiable(_overrides);
+
+  Map<String, TaskBookTaskProgress> get taskBookProgressByKey =>
+      Map.unmodifiable(_taskProgressByKey);
+  List<TaskBookTaskDefinition> get taskBookCustomTasks =>
+      List.unmodifiable(_customTasks);
 
   List<CareerGoal> get availableGoals => FireOpsCatalog.goals();
   CareerGoal? get selectedGoal {
@@ -536,6 +549,14 @@ class AppState extends ChangeNotifier {
             })
             .whereType<PathRequirementOverride>()
             .where((o) => o.goalId.isNotEmpty && o.requirementId.isNotEmpty));
+
+       // Task Book data (task-level progress + user custom tasks).
+       _taskProgressByKey
+         ..clear()
+         ..addAll(await _taskBookStore.loadProgress());
+       _customTasks
+         ..clear()
+         ..addAll(await _taskBookStore.loadCustomTasks());
 
       // Sanitize writes back to prevent repeated decode problems.
       await _persistAll();
@@ -1334,6 +1355,103 @@ class AppState extends ChangeNotifier {
     await _store.saveCustomRequirements(
         _customRequirements.map((e) => e.toJson()).toList());
     await _store.savePathOverrides(_overrides.map((e) => e.toJson()).toList());
+    await _taskBookStore.saveProgress(_taskProgressByKey);
+    await _taskBookStore.saveCustomTasks(_customTasks);
+  }
+
+  // --- Task Book API ---
+
+  TaskBookTaskProgress? taskProgressFor(
+          {required String goalId,
+          required String requirementId,
+          required String taskId}) =>
+      _taskProgressByKey[
+          TaskBookStore.progressKey(goalId: goalId, requirementId: requirementId, taskId: taskId)];
+
+  TaskBookTaskStatus taskStatusFor(
+          {required String goalId,
+          required String requirementId,
+          required String taskId}) =>
+      taskProgressFor(goalId: goalId, requirementId: requirementId, taskId: taskId)
+          ?.status ??
+      TaskBookTaskStatus.notStarted;
+
+  Future<void> setTaskStatus({
+    required String goalId,
+    required String requirementId,
+    required String taskId,
+    required TaskBookTaskStatus status,
+    TaskBookCompletionSource? completionSource,
+  }) async {
+    final now = DateTime.now();
+    final key = TaskBookStore.progressKey(
+        goalId: goalId, requirementId: requirementId, taskId: taskId);
+    final existing = _taskProgressByKey[key];
+    final completedAt = status == TaskBookTaskStatus.complete ? now : null;
+    if (existing == null) {
+      _taskProgressByKey[key] = TaskBookTaskProgress(
+        goalId: goalId,
+        requirementId: requirementId,
+        taskId: taskId,
+        status: status,
+        completionSource: completionSource,
+        completedAt: completedAt,
+        createdAt: now,
+        updatedAt: now,
+      );
+    } else {
+      _taskProgressByKey[key] = existing.copyWith(
+        status: status,
+        completionSource: completionSource,
+        completedAt: completedAt,
+        updatedAt: now,
+      );
+    }
+    await _persistAll();
+    notifyListeners();
+  }
+
+  List<TaskBookTaskDefinition> customTasksFor(
+          {required String goalId, required String requirementId}) =>
+      _customTasks
+          .where((t) =>
+              (t.goalId ?? '').trim() == goalId &&
+              (t.requirementId ?? '').trim() == requirementId)
+          .toList();
+
+  Future<void> addCustomTask(TaskBookTaskDefinition task) async {
+    if (!task.isCustom) {
+      debugPrint(
+          'AppState.addCustomTask called with non-custom task id=${task.id}');
+      return;
+    }
+    if ((task.goalId ?? '').trim().isEmpty ||
+        (task.requirementId ?? '').trim().isEmpty ||
+        task.id.trim().isEmpty) {
+      debugPrint('AppState.addCustomTask invalid scope/id');
+      return;
+    }
+    _customTasks.add(task);
+    await _persistAll();
+    notifyListeners();
+  }
+
+  Future<void> deleteCustomTask(
+      {required String goalId,
+      required String requirementId,
+      required String taskId}) async {
+    _customTasks.removeWhere((t) =>
+        t.isCustom &&
+        t.goalId == goalId &&
+        t.requirementId == requirementId &&
+        t.id == taskId);
+
+    // Remove any progress entries tied to the deleted task.
+    final key = TaskBookStore.progressKey(
+        goalId: goalId, requirementId: requirementId, taskId: taskId);
+    _taskProgressByKey.remove(key);
+    await _persistAll();
+    notifyListeners();
   }
 }
 

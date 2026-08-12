@@ -11,6 +11,11 @@ class LocalStore {
   static const String _kPathOverrides = 'fireops.pathOverrides';
   static const String _kCertMatchConfirmations = 'fireops.certMatchConfirmations';
 
+  // Task Book (new in Career Task Book system). Kept separate so existing
+  // roadmap/path data remains intact.
+  static const String _kTaskBookTaskProgress = 'fireops.taskBook.taskProgress';
+  static const String _kTaskBookCustomTasks = 'fireops.taskBook.customTasks';
+
   Future<bool> getOnboardingComplete() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -109,4 +114,18 @@ class LocalStore {
       (await loadJsonMap(_kCertMatchConfirmations)) ?? <String, dynamic>{};
   Future<void> saveCertificationMatchConfirmations(Map<String, dynamic> json) =>
       saveJson(_kCertMatchConfirmations, json);
+
+  // --- Task Book ---
+
+  /// Map storage (key -> json) for per-task progress.
+  Future<Map<String, dynamic>> loadTaskBookTaskProgress() async =>
+      (await loadJsonMap(_kTaskBookTaskProgress)) ?? <String, dynamic>{};
+  Future<void> saveTaskBookTaskProgress(Map<String, dynamic> json) =>
+      saveJson(_kTaskBookTaskProgress, json);
+
+  /// List storage for user-created custom tasks.
+  Future<List<Map<String, dynamic>>> loadTaskBookCustomTasks() =>
+      loadJsonList(_kTaskBookCustomTasks);
+  Future<void> saveTaskBookCustomTasks(List<Map<String, dynamic>> json) =>
+      saveJson(_kTaskBookCustomTasks, json);
 }

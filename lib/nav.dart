@@ -7,6 +7,7 @@ import 'package:firepath/pages/home/visual_home_page.dart';
 import 'package:firepath/pages/onboarding/onboarding_flow_page.dart';
 import 'package:firepath/pages/path/goal_picker_page.dart';
 import 'package:firepath/pages/path/roadmap_entry_page.dart';
+import 'package:firepath/pages/task_book/task_book_entry_page.dart';
 import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
@@ -17,6 +18,9 @@ import 'package:firepath/pages/requirement/requirement_detail_page.dart';
 import 'package:firepath/pages/requirement/get_started_page.dart';
 import 'package:firepath/pages/certifications/certification_detail_page.dart';
 import 'package:firepath/pages/certifications/certification_picker_page.dart';
+import 'package:firepath/pages/task_book/qualification_task_book_page.dart';
+import 'package:firepath/pages/task_book/task_detail_page.dart';
+import 'package:firepath/models/prefill.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -54,7 +58,7 @@ class AppRouter {
                 path: AppRoutes.myPath,
                 name: 'my_path',
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: RoadmapEntryPage()),
+                    const NoTransitionPage(child: TaskBookEntryPage()),
               ),
             ],
           ),
@@ -63,8 +67,8 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.personalLog,
                 name: 'personal_log',
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: PersonalLogPage()),
+                pageBuilder: (context, state) => NoTransitionPage(
+                    child: PersonalLogPage(prefill: state.extra as LogPrefill?)),
               ),
             ],
           ),
@@ -113,8 +117,27 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.careerEvidence,
         name: 'career_evidence',
+        pageBuilder: (context, state) => MaterialPage(
+            child: CareerVaultPage(prefill: state.extra as EvidencePrefill?)),
+      ),
+      GoRoute(
+        path: AppRoutes.qualificationTaskBook,
+        name: 'qualification_task_book',
+        pageBuilder: (context, state) => MaterialPage(
+            child: QualificationTaskBookPage(requirement: (state.extra as Map?)?['requirement'] ?? state.extra)),
+      ),
+      GoRoute(
+        path: AppRoutes.taskDetail,
+        name: 'task_detail',
         pageBuilder: (context, state) =>
-            const MaterialPage(child: CareerVaultPage()),
+            MaterialPage(child: TaskDetailPage(extra: state.extra)),
+      ),
+      // Legacy Task Book customization page (old MyPath/Roadmap UI)
+      GoRoute(
+        path: AppRoutes.myPathLegacy,
+        name: 'task_book_customize',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: RoadmapEntryPage()),
       ),
       GoRoute(
         path: AppRoutes.resources,
@@ -160,6 +183,7 @@ class AppRoutes {
 
   static const String home = '/home';
   static const String myPath = '/path';
+  static const String myPathLegacy = '/task-book/customize';
   static const String personalLog = '/log';
   static const String growth = '/growth';
   static const String certifications = '/certifications';
@@ -176,4 +200,8 @@ class AppRoutes {
   static const String getStarted = '/get-started';
   static const String certificationDetail = '/certification';
   static const String certificationAdd = '/certifications/add';
+
+  // Task Book
+  static const String qualificationTaskBook = '/task-book/qualification';
+  static const String taskDetail = '/task-book/task';
 }

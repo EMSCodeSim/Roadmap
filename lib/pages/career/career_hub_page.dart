@@ -351,7 +351,7 @@ class _CareerHubPageState extends State<CareerHubPage> {
                     valueText: analysis.totalRequirements == 0
                         ? 'No target'
                         : '${analysis.completedRequirements}/${analysis.totalRequirements}',
-                    detail: 'Roadmap requirements completed for your selected path.',
+                    detail: 'Task Book requirements completed for your selected goal.',
                   ),
                   const SizedBox(height: 8),
                   _ProgressPanel(
@@ -693,7 +693,7 @@ class _QuickNavigation extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        ActionChip(avatar: const Icon(Icons.route_outlined, size: 18), label: const Text('Roadmap'), onPressed: onRoadmap),
+        ActionChip(avatar: const Icon(Icons.fact_check_outlined, size: 18), label: const Text('Task Book'), onPressed: onRoadmap),
         ActionChip(avatar: const Icon(Icons.inventory_2_outlined, size: 18), label: const Text('Career Vault'), onPressed: onVault),
         ActionChip(avatar: const Icon(Icons.description_outlined, size: 18), label: const Text('Promotion brief'), onPressed: onBrief),
         ActionChip(avatar: const Icon(Icons.verified_outlined, size: 18), label: const Text('Certifications'), onPressed: onCerts),

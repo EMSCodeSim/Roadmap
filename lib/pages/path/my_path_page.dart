@@ -20,7 +20,7 @@ class MyPathPage extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Roadmap'),
+          title: const Text('Task Book'),
           centerTitle: false,
           bottom: roadmap == null
               ? null
@@ -34,7 +34,7 @@ class MyPathPage extends StatelessWidget {
           actions: [
             if (roadmap != null)
               PopupMenuButton<String>(
-                tooltip: 'Roadmap tools',
+                tooltip: 'Task Book tools',
                 onSelected: (value) {
                   if (value == 'customize') {
                     _showCustomizeSheet(context, state, roadmap);
@@ -45,7 +45,7 @@ class MyPathPage extends StatelessWidget {
                     value: 'customize',
                     child: ListTile(
                       leading: Icon(Icons.tune),
-                      title: Text('Customize requirements'),
+                       title: Text('Customize Task Book requirements'),
                     ),
                   ),
                 ],

@@ -5,12 +5,14 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/certification.dart';
+import 'package:firepath/models/prefill.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/state/app_state.dart';
 
 class CareerVaultPage extends StatefulWidget {
-  const CareerVaultPage({super.key});
+  final EvidencePrefill? prefill;
+  const CareerVaultPage({super.key, this.prefill});
 
   @override
   State<CareerVaultPage> createState() => _CareerVaultPageState();
@@ -43,6 +45,21 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       _records = records;
       _loading = false;
     });
+
+    final prefill = widget.prefill;
+    if (prefill != null && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _openEditor(
+          initialType: CareerRecordType.taskBookEvidence,
+          initialTitle: prefill.title,
+          initialCategory: prefill.category,
+          initialRelatedGoalId: prefill.relatedGoalId,
+          initialRelatedRequirementId: prefill.relatedRequirementId,
+          initialTags: prefill.tags,
+        );
+      });
+    }
   }
 
   Future<void> _saveRecord(CareerRecord record) async {
@@ -98,7 +115,15 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     }).toList();
   }
 
-  Future<void> _openEditor({CareerRecord? existing, CareerRecordType? initialType}) async {
+  Future<void> _openEditor({
+    CareerRecord? existing,
+    CareerRecordType? initialType,
+    String? initialTitle,
+    String? initialCategory,
+    String? initialRelatedGoalId,
+    String? initialRelatedRequirementId,
+    List<String>? initialTags,
+  }) async {
     final app = context.read<AppState>();
     final roadmap = app.roadmap;
     final requirementNames = <String, String>{};
@@ -111,18 +136,22 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final now = DateTime.now();
     var type = existing?.type ?? initialType ?? CareerRecordType.skill;
     var selectedDate = existing?.date ?? now;
-    var selectedRequirementId = existing?.relatedRequirementId ?? '';
+    var selectedRequirementId = existing?.relatedRequirementId ??
+        (initialRelatedRequirementId ?? '');
     var highlight = existing?.highlight ?? false;
 
-    final title = TextEditingController(text: existing?.title ?? '');
-    final category = TextEditingController(text: existing?.category ?? '');
+    final title = TextEditingController(
+        text: existing?.title ?? (initialTitle ?? ''));
+    final category = TextEditingController(
+        text: existing?.category ?? (initialCategory ?? ''));
     final role = TextEditingController(text: existing?.roleOrAssignment ?? '');
     final summary = TextEditingController(text: existing?.summary ?? '');
     final impact = TextEditingController(text: existing?.impact ?? '');
     final evidence = TextEditingController(text: existing?.evidenceReference ?? '');
     final hours = TextEditingController(text: existing?.hours == null ? '' : _trimNumber(existing!.hours!));
     final repetitions = TextEditingController(text: existing == null ? '1' : existing.repetitions.toString());
-    final tags = TextEditingController(text: existing?.tags.join(', ') ?? '');
+    final tags = TextEditingController(
+        text: existing?.tags.join(', ') ?? (initialTags?.join(', ') ?? ''));
     final formKey = GlobalKey<FormState>();
 
     final result = await showDialog<CareerRecord>(
@@ -321,8 +350,17 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                       hours: parsedHours != null && parsedHours >= 0 ? parsedHours : null,
                       repetitions: parsedReps != null && parsedReps > 0 ? parsedReps : 1,
                       tags: cleanTags,
-                      relatedGoalId: selectedRequirementId.isEmpty ? existing?.relatedGoalId ?? app.selectedGoal?.id : app.selectedGoal?.id,
-                      relatedRequirementId: selectedRequirementId.isEmpty ? null : selectedRequirementId,
+                      relatedGoalId: selectedRequirementId.isEmpty
+                          ? (existing?.relatedGoalId ??
+                              initialRelatedGoalId ??
+                              app.selectedGoal?.id)
+                          : (existing?.relatedGoalId ??
+                              initialRelatedGoalId ??
+                              app.selectedGoal?.id),
+                      relatedRequirementId: selectedRequirementId.isEmpty
+                          ? (existing?.relatedRequirementId ??
+                              initialRelatedRequirementId)
+                          : selectedRequirementId,
                       highlight: highlight,
                       createdAt: existing?.createdAt ?? savedAt,
                       updatedAt: savedAt,
@@ -412,7 +450,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     buffer.writeln('PROFESSIONAL GROWTH & ADVANCEMENT BRIEF');
     buffer.writeln('Generated ${_formatDate(DateTime.now())}');
     if (goal != null) buffer.writeln('Target role: ${goal.title}');
-    if (roadmap != null) buffer.writeln('Roadmap progress: ${roadmap.completedCount}/${roadmap.totalCount} requirements complete');
+    if (roadmap != null) buffer.writeln('Task Book progress: ${roadmap.completedCount}/${roadmap.totalCount} requirements complete');
     buffer.writeln('Career evidence records: ${_records.length}');
     buffer.writeln('Documented training/education hours: ${_trimNumber(trainingHours)}');
     buffer.writeln();
@@ -890,7 +928,7 @@ class _RecordCard extends StatelessWidget {
                     children: [
                       if (record.hours != null) _MiniTag(text: '${_trimNumber(record.hours!)} hr'),
                       if (record.repetitions > 1) _MiniTag(text: '${record.repetitions} reps'),
-                      if (requirementName != null) _MiniTag(text: 'Roadmap: $requirementName', icon: Icons.route_outlined),
+                      if (requirementName != null) _MiniTag(text: 'Task Book: $requirementName', icon: Icons.fact_check_outlined),
                       if ((record.evidenceReference ?? '').trim().isNotEmpty) const _MiniTag(text: 'Evidence noted', icon: Icons.attach_file),
                       ...record.tags.take(4).map((tag) => _MiniTag(text: tag)),
                     ],

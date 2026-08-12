@@ -24,7 +24,7 @@ class _ResourcesPageState extends State<ResourcesPage> {
   _ResourcesMode _mode = _ResourcesMode.personalized;
   String? _requirementKey;
   Set<ResourceType> _typeFilter = {};
-  Set<String> _chipFilter = {'My Path'};
+  Set<String> _chipFilter = {'Task Book'};
 
   @override
   void initState() {
@@ -78,7 +78,7 @@ class _ResourcesPageState extends State<ResourcesPage> {
             } else {
               _chipFilter.add(c);
             }
-            if (_chipFilter.isEmpty) _chipFilter.add('My Path');
+            if (_chipFilter.isEmpty) _chipFilter.add('Task Book');
           }),
         ),
     };
@@ -142,7 +142,7 @@ class _PersonalizedResourcesView extends StatelessWidget {
           bool ok = true;
           for (final c in chips) {
             ok = ok && switch (c) {
-              'My Path' => onMyPath(),
+              'Task Book' => onMyPath(),
               'Official' => r.type == ResourceType.officialStateAgency || r.type == ResourceType.officialFederalAgency,
               'Training' => r.type == ResourceType.trainingProvider || r.type == ResourceType.courseFinder || r.type == ResourceType.collegeAcademy,
               'Study' => r.type == ResourceType.studyResource,
@@ -320,7 +320,7 @@ class _FilterChips extends StatelessWidget {
   final ValueChanged<String> onToggle;
   const _FilterChips({required this.selected, required this.onToggle});
 
-  static const _chips = ['My Path', 'Official', 'Training', 'Study', 'Practice', 'Fire', 'EMS'];
+  static const _chips = ['Task Book', 'Official', 'Training', 'Study', 'Practice', 'Fire', 'EMS'];
 
   @override
   Widget build(BuildContext context) {

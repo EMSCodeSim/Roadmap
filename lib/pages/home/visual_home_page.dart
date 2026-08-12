@@ -602,7 +602,7 @@ class _GoalCard extends StatelessWidget {
       emphasisText: hasGoal && nextStep != null ? 'Next: $nextStep' : null,
       progress: hasGoal ? progress : null,
       status: status,
-      actionLabel: hasGoal ? 'Open Roadmap' : 'Choose Goal',
+      actionLabel: hasGoal ? 'Open Task Book' : 'Choose Goal',
       onTap: onTap,
     );
   }

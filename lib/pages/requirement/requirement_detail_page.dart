@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
+import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
@@ -63,6 +64,19 @@ class RequirementDetailPage extends StatelessWidget {
                       style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
                     ),
                   ),
+                  if (TaskBookLibrary.hasTasksForRequirement(liveReq)) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    SizedBox(
+                      height: 52,
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => context.push(AppRoutes.qualificationTaskBook, extra: {'requirement': liveReq}),
+                        icon: Icon(Icons.fact_check_outlined, color: cs.primary),
+                        label: const Text('Open Qualification Task Book'),
+                        style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+                      ),
+                    ),
+                  ],
                   if (!isComplete && goalId != null) ...[
                     const SizedBox(height: AppSpacing.sm),
                     _StartThisPanel(goalId: goalId, requirement: liveReq),

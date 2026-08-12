@@ -354,7 +354,7 @@ class _WelcomeStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
-          Text('Your Fire Service Career Roadmap', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Text('Your Fire Service Career Task Book', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: AppSpacing.sm),
           Text('Answer three questions: where you are, where you’re going, and what to do next.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5)),
           const Spacer(),

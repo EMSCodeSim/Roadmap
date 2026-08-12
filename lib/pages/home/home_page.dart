@@ -39,7 +39,7 @@ class HomePage extends StatelessWidget {
       padding: AppSpacing.paddingLg,
       children: [
         if (showTopHeader) ...[
-          _TopHeader(title: 'FireOps Career Road', subtitle: 'Your Fire Service Career Roadmap'),
+          _TopHeader(title: 'FireOps Career Road', subtitle: 'Your Fire Service Career Task Book'),
           const SizedBox(height: AppSpacing.lg),
         ],
         if (state.pendingCertMatches.isNotEmpty) ...[
