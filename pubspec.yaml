@@ -2,7 +2,7 @@ name: firepath
 description: "A new Flutter project."
 publish_to: "none"
 
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.6.0
@@ -26,6 +26,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icons/career_road_icon.jpg
+    - assets/images/firefighter_shield_badge_icon_minimal_flat_red_1786483176521.png
     - assets/graphics/professional_growth_roadmap_banner.jpg
     - assets/graphics/career_vault.jpg
     - assets/graphics/advancement_dashboard.jpg
@@ -34,5 +35,5 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/icons/career_road_icon.jpg
+  image_path: assets/images/firefighter_shield_badge_icon_minimal_flat_red_1786483176521.png
   remove_alpha_ios: true
