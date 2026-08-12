@@ -7,6 +7,7 @@ import 'package:firepath/models/task_book.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/pages/career/quick_log_launcher.dart';
 
 class TaskDetailPage extends StatelessWidget {
   final Object? extra;
@@ -91,14 +92,17 @@ class TaskDetailPage extends StatelessWidget {
             _ResourcesCard(resources: task.resources),
             const SizedBox(height: AppSpacing.md),
             _MyRecordCard(
-              onLogPractice: () => context.go(AppRoutes.personalLog,
-                  extra: LogPrefill(
-                    title: task.title,
-                    category: qualificationName,
-                    relatedGoalId: goalId,
-                    relatedRequirementId: requirementId,
-                    tags: ['task-book', 'practice'],
-                  )),
+              onLogPractice: () => QuickLogLauncher.open(
+                context,
+                prefill: LogPrefill(
+                  title: task.title,
+                  category: qualificationName,
+                  relatedGoalId: goalId,
+                  relatedRequirementId: requirementId,
+                  relatedTaskId: task.id,
+                  tags: ['task-book', 'practice'],
+                ),
+              ),
               onAddEvidence: () => context.push(AppRoutes.careerEvidence,
                   extra: EvidencePrefill(
                     title: task.title,

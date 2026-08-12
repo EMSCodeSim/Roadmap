@@ -67,6 +67,7 @@ class CareerRecord {
   final List<String> tags;
   final String? relatedGoalId;
   final String? relatedRequirementId;
+  final String? relatedTaskId;
   final bool highlight;
   final String? trackingKey;
   final CareerRecordOutcome? outcome;
@@ -88,6 +89,7 @@ class CareerRecord {
     required this.tags,
     required this.relatedGoalId,
     required this.relatedRequirementId,
+    this.relatedTaskId,
     required this.highlight,
     this.trackingKey,
     this.outcome,
@@ -109,6 +111,7 @@ class CareerRecord {
     List<String>? tags,
     String? relatedGoalId,
     String? relatedRequirementId,
+    String? relatedTaskId,
     bool? highlight,
     String? trackingKey,
     CareerRecordOutcome? outcome,
@@ -120,6 +123,7 @@ class CareerRecord {
     bool clearHours = false,
     bool clearRelatedGoalId = false,
     bool clearRelatedRequirementId = false,
+    bool clearRelatedTaskId = false,
     bool clearTrackingKey = false,
     bool clearOutcome = false,
   }) {
@@ -138,6 +142,7 @@ class CareerRecord {
       tags: tags ?? this.tags,
       relatedGoalId: clearRelatedGoalId ? null : (relatedGoalId ?? this.relatedGoalId),
       relatedRequirementId: clearRelatedRequirementId ? null : (relatedRequirementId ?? this.relatedRequirementId),
+      relatedTaskId: clearRelatedTaskId ? null : (relatedTaskId ?? this.relatedTaskId),
       highlight: highlight ?? this.highlight,
       trackingKey: clearTrackingKey ? null : (trackingKey ?? this.trackingKey),
       outcome: clearOutcome ? null : (outcome ?? this.outcome),
@@ -161,6 +166,7 @@ class CareerRecord {
         'tags': tags,
         'relatedGoalId': relatedGoalId,
         'relatedRequirementId': relatedRequirementId,
+        'relatedTaskId': relatedTaskId,
         'highlight': highlight,
         'trackingKey': trackingKey,
         'outcome': outcome?.name,
@@ -210,6 +216,7 @@ class CareerRecord {
       tags: tagsRaw is List ? tagsRaw.whereType<String>().toList() : const <String>[],
       relatedGoalId: json['relatedGoalId'] as String?,
       relatedRequirementId: json['relatedRequirementId'] as String?,
+      relatedTaskId: json['relatedTaskId'] as String?,
       highlight: (json['highlight'] as bool?) ?? false,
       trackingKey: json['trackingKey'] as String?,
       outcome: parseOutcome(json['outcome']),

@@ -12,6 +12,7 @@ import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
+import 'package:firepath/pages/career/career_record_page.dart';
 import 'package:firepath/pages/certifications/certifications_page.dart';
 import 'package:firepath/pages/resources/resources_page.dart';
 import 'package:firepath/pages/requirement/requirement_detail_page.dart';
@@ -67,8 +68,8 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.personalLog,
                 name: 'personal_log',
-                pageBuilder: (context, state) => NoTransitionPage(
-                    child: PersonalLogPage(prefill: state.extra as LogPrefill?)),
+                pageBuilder: (context, state) => const NoTransitionPage(
+                    child: CareerRecordPage()),
               ),
             ],
           ),
@@ -100,6 +101,14 @@ class AppRouter {
       GoRoute(
         path: '/career/vault',
         redirect: (context, state) => AppRoutes.personalLog,
+      ),
+
+      // Legacy Personal Log UI kept for compatibility + power users.
+      GoRoute(
+        path: AppRoutes.personalLogLegacy,
+        name: 'personal_log_legacy',
+        pageBuilder: (context, state) => MaterialPage(
+            child: PersonalLogPage(prefill: state.extra as LogPrefill?)),
       ),
 
       GoRoute(
@@ -185,6 +194,7 @@ class AppRoutes {
   static const String myPath = '/path';
   static const String myPathLegacy = '/task-book/customize';
   static const String personalLog = '/log';
+  static const String personalLogLegacy = '/log/legacy';
   static const String growth = '/growth';
   static const String certifications = '/certifications';
 

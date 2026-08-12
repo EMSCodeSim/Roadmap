@@ -7,10 +7,12 @@ import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/timeline_planner.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/pages/career/quick_log_launcher.dart';
 
 class VisualHomePage extends StatelessWidget {
   const VisualHomePage({super.key});
@@ -82,9 +84,7 @@ class VisualHomePage extends StatelessWidget {
               onTap: () => context.go(AppRoutes.certifications),
             ),
             const SizedBox(height: 12),
-            _PersonalLogCard(
-              onTap: () => context.go(AppRoutes.personalLog),
-            ),
+            const _QuickLogCard(),
           ],
         ),
       ),
@@ -677,10 +677,8 @@ class _CertificationsCard extends StatelessWidget {
   }
 }
 
-class _PersonalLogCard extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _PersonalLogCard({required this.onTap});
+class _QuickLogCard extends StatelessWidget {
+  const _QuickLogCard();
 
   @override
   Widget build(BuildContext context) {
@@ -692,22 +690,23 @@ class _PersonalLogCard extends StatelessWidget {
         final isLoading =
             snapshot.connectionState == ConnectionState.waiting && summary == null;
 
-        final subtitle = isLoading
-            ? 'Loading this year’s activity…'
+        final subtitle = 'Record something you did today.';
+        final mini = isLoading
+            ? null
             : summary == null || summary.total == 0
-                ? 'No $year activity logged yet.'
+                ? null
                 : summary.displayLine;
 
         return _HomeCard(
           icon: Icons.add_task_outlined,
-          eyebrow: 'PERSONAL LOG',
-          title: '$year Career Activity',
+          eyebrow: 'QUICK LOG',
+          title: 'Quick Log',
           subtitle: subtitle,
-          detail: summary == null || summary.total == 0
-              ? 'Start building your career history.'
-              : 'Keep logging as it happens — you’ll thank yourself later.',
-          actionLabel: 'Open Daily Logger',
-          onTap: onTap,
+          detail: mini == null
+              ? 'Calls • Skills • Training • Drive Time • Leadership • Achievements'
+              : '$year  •  $mini',
+          actionLabel: '+ Log Activity',
+          onTap: () => QuickLogLauncher.open(context),
         );
       },
     );
@@ -732,43 +731,21 @@ class _CareerYearSummary {
   String get displayLine => [
         '$calls ${calls == 1 ? 'call' : 'calls'}',
         '$skills ${skills == 1 ? 'skill' : 'skills'}',
-        '$trainings ${trainings == 1 ? 'training' : 'trainings'}',
+        '$trainings ${trainings == 1 ? 'training hr' : 'training hrs'}',
         '$achievements ${achievements == 1 ? 'achievement' : 'achievements'}',
       ].join(' • ');
 }
 
 Future<_CareerYearSummary> _loadCareerYearSummary(int year) async {
   final records = await CareerRecordStore().load();
-  var calls = 0;
-  var skills = 0;
-  var trainings = 0;
-  var achievements = 0;
-
-  for (final record in records.where((record) => record.date.year == year)) {
-    final count = record.repetitions < 1 ? 1 : record.repetitions;
-    switch (record.type) {
-      case CareerRecordType.operationalExperience:
-        calls += count;
-      case CareerRecordType.skill:
-        skills += count;
-      case CareerRecordType.training:
-        trainings += count;
-      case CareerRecordType.achievement:
-        achievements += count;
-      case CareerRecordType.leadership:
-      case CareerRecordType.teaching:
-      case CareerRecordType.project:
-      case CareerRecordType.education:
-      case CareerRecordType.taskBookEvidence:
-        break;
-    }
-  }
+  final yearRecords = records.where((e) => e.date.year == year).toList();
+  final stats = CareerStats.fromRecords(yearRecords);
 
   return _CareerYearSummary(
-    calls: calls,
-    skills: skills,
-    trainings: trainings,
-    achievements: achievements,
+    calls: stats.calls,
+    skills: stats.skillRepetitions,
+    trainings: stats.trainingHours.round(),
+    achievements: stats.achievements,
   );
 }
 

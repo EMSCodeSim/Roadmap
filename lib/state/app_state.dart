@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:firepath/models/career_goal.dart';
+import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/user_profile.dart';
@@ -1360,6 +1361,45 @@ class AppState extends ChangeNotifier {
   }
 
   // --- Task Book API ---
+
+  /// Applies a saved Career Record to linked roadmap progress when it's safe.
+  ///
+  /// This updates numeric-style requirement progress (hours / repetitions), but
+  /// does **not** mark tasks "verified" or auto-complete supervisor-eval work.
+  ///
+  /// If the record is not linked to the currently active goal, this no-ops.
+  Future<void> applyLogToRequirementProgress(CareerRecord record) async {
+    final goalId = record.relatedGoalId;
+    final requirementId = record.relatedRequirementId;
+    if (goalId == null || requirementId == null) return;
+    final activeGoal = selectedGoal;
+    if (activeGoal == null || activeGoal.id != goalId) return;
+    final map = roadmap;
+    if (map == null) return;
+
+    final rr = map.all
+        .where((e) => e.requirement.id == requirementId)
+        .firstOrNull;
+    if (rr == null) return;
+    final req = rr.requirement;
+
+    final delta = record.hours ?? record.repetitions.toDouble();
+    if (delta <= 0) return;
+
+    if (req.type == RequirementType.numericProgress ||
+        req.type == RequirementType.experience ||
+        req.type == RequirementType.taskBook) {
+      final current = (req.progressCurrent ?? 0) + delta;
+      final required = req.progressRequired ?? 0;
+      await setNumericProgress(
+        goalId: goalId,
+        requirementId: requirementId,
+        current: current,
+        required: required,
+        unit: req.progressUnit,
+      );
+    }
+  }
 
   TaskBookTaskProgress? taskProgressFor(
           {required String goalId,
