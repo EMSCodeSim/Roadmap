@@ -12,7 +12,14 @@ import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  /// When true, renders only the scrollable content (no [Scaffold]/[SafeArea]).
+  /// Useful when a parent page wants to provide its own header/chrome.
+  final bool embedded;
+
+  /// When false, hides the gradient title header at the top of the list.
+  final bool showTopHeader;
+
+  const HomePage({super.key, this.embedded = false, this.showTopHeader = true});
 
   @override
   Widget build(BuildContext context) {
@@ -28,57 +35,63 @@ class HomePage extends StatelessWidget {
 
     final timelinePlan = roadmap == null ? null : CareerTimelinePlanner.build(state);
 
+    final content = ListView(
+      padding: AppSpacing.paddingLg,
+      children: [
+        if (showTopHeader) ...[
+          _TopHeader(title: 'FireOps Career Road', subtitle: 'Your Fire Service Career Roadmap'),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+        if (state.pendingCertMatches.isNotEmpty) ...[
+          _PossibleMatchBanner(onTap: () => _showCertMatchSheet(context, state)),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        if (roadmap == null) ...[
+          _EmptyHome(onChooseGoal: () => context.go(AppRoutes.onboarding)),
+          const SizedBox(height: AppSpacing.md),
+          _CertSummaryCard(
+            current: currentCount,
+            expiring: expiringCount,
+            expired: expiredCount,
+            onTap: () => context.go(AppRoutes.certifications),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+        ] else ...[
+          _CurrentGoalHeader(
+            currentLine: currentLine,
+            goalTitle: roadmap.goal.title,
+            targetReadyDate: timelinePlan?.targetReadyDate,
+            timelineStatus: timelinePlan?.status ?? TimelineStatus.noTargetDate,
+            progressLabel: '${roadmap.completedCount} of ${roadmap.totalCount} requirements complete',
+            progressValue: roadmap.percentComplete,
+            onTapGoal: () => context.go(AppRoutes.myPath),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _NextStepCard(
+            nextStepTitle: roadmap.nextStep?.requirement.name ?? 'You’re all caught up!',
+            nextStepSubtitle: roadmap.nextStep == null ? null : _whyNextStep(roadmap, roadmap.nextStep!.requirement),
+            requirement: roadmap.nextStep?.requirement,
+            onTap: roadmap.nextStep == null ? null : () => context.push(AppRoutes.requirementDetail, extra: roadmap.nextStep!.requirement),
+            primaryCta: roadmap.nextStep == null ? 'VIEW MY PATH' : _ctaLabelFor(state, roadmap, roadmap.nextStep!.requirement),
+            primaryAction: () => roadmap.nextStep == null ? context.go(AppRoutes.myPath) : _ctaAction(context, state, roadmap.nextStep!.requirement),
+            onWhyThisNext: roadmap.nextStep == null ? null : () => _showWhyNext(context, state, roadmap, roadmap.nextStep!.requirement),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _CurrentlyWorkingOnSection(roadmap: roadmap),
+          const SizedBox(height: AppSpacing.md),
+          _UpcomingTrainingSection(roadmap: roadmap),
+          const SizedBox(height: AppSpacing.md),
+          _CertAlertCard(certifications: certs, onTap: () => context.go(AppRoutes.certifications)),
+          const SizedBox(height: AppSpacing.xl),
+        ],
+      ],
+    );
+
+    if (embedded) return content;
+
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: AppSpacing.paddingLg,
-          children: [
-            _TopHeader(title: 'FireOps Career Road', subtitle: 'Your Fire Service Career Roadmap'),
-            const SizedBox(height: AppSpacing.lg),
-            if (state.pendingCertMatches.isNotEmpty) ...[
-              _PossibleMatchBanner(onTap: () => _showCertMatchSheet(context, state)),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            if (roadmap == null) ...[
-              _EmptyHome(onChooseGoal: () => context.go(AppRoutes.onboarding)),
-              const SizedBox(height: AppSpacing.md),
-              _CertSummaryCard(
-                current: currentCount,
-                expiring: expiringCount,
-                expired: expiredCount,
-                onTap: () => context.go(AppRoutes.certifications),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-            ] else ...[
-              _CurrentGoalHeader(
-                currentLine: currentLine,
-                goalTitle: roadmap.goal.title,
-                targetReadyDate: timelinePlan?.targetReadyDate,
-                timelineStatus: timelinePlan?.status ?? TimelineStatus.noTargetDate,
-                progressLabel: '${roadmap.completedCount} of ${roadmap.totalCount} requirements complete',
-                progressValue: roadmap.percentComplete,
-                onTapGoal: () => context.go(AppRoutes.myPath),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _NextStepCard(
-                nextStepTitle: roadmap.nextStep?.requirement.name ?? 'You’re all caught up!',
-                nextStepSubtitle: roadmap.nextStep == null ? null : _whyNextStep(roadmap, roadmap.nextStep!.requirement),
-                requirement: roadmap.nextStep?.requirement,
-                onTap: roadmap.nextStep == null ? null : () => context.push(AppRoutes.requirementDetail, extra: roadmap.nextStep!.requirement),
-                primaryCta: roadmap.nextStep == null ? 'VIEW MY PATH' : _ctaLabelFor(state, roadmap, roadmap.nextStep!.requirement),
-                primaryAction: () => roadmap.nextStep == null ? context.go(AppRoutes.myPath) : _ctaAction(context, state, roadmap.nextStep!.requirement),
-                onWhyThisNext: roadmap.nextStep == null ? null : () => _showWhyNext(context, state, roadmap, roadmap.nextStep!.requirement),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _CurrentlyWorkingOnSection(roadmap: roadmap),
-              const SizedBox(height: AppSpacing.md),
-              _UpcomingTrainingSection(roadmap: roadmap),
-              const SizedBox(height: AppSpacing.md),
-              _CertAlertCard(certifications: certs, onTap: () => context.go(AppRoutes.certifications)),
-              const SizedBox(height: AppSpacing.xl),
-            ],
-          ],
-        ),
+        child: content,
       ),
     );
   }
