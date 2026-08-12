@@ -119,6 +119,17 @@ class Requirement {
   final List<ResourceLink> resourceLinks;
   final int sortOrder;
 
+  /// Optional metadata for VERIFIED state requirements.
+  ///
+  /// These fields are only set when Fire Career Roadmap has a verified state
+  /// source for a requirement. If null, the requirement should NOT be
+  /// interpreted as an official state requirement.
+  final String? sourceStateCode;
+  final String? sourceTitle;
+  final String? sourceUrl;
+  final DateTime? sourceVerifiedDate;
+  final String? sourceNotes;
+
   // Timeline estimation metadata (optional).
   final int? estimatedDurationDays;
   final int? recommendedLeadTimeDays;
@@ -156,6 +167,12 @@ class Requirement {
     required this.resourceLinks,
     required this.sortOrder,
 
+    this.sourceStateCode,
+    this.sourceTitle,
+    this.sourceUrl,
+    this.sourceVerifiedDate,
+    this.sourceNotes,
+
     required this.estimatedDurationDays,
     required this.recommendedLeadTimeDays,
     required this.canRunConcurrent,
@@ -189,6 +206,12 @@ class Requirement {
     List<String>? resourceIds,
     List<ResourceLink>? resourceLinks,
     int? sortOrder,
+
+    String? sourceStateCode,
+    String? sourceTitle,
+    String? sourceUrl,
+    DateTime? sourceVerifiedDate,
+    String? sourceNotes,
     int? estimatedDurationDays,
     int? recommendedLeadTimeDays,
     bool? canRunConcurrent,
@@ -221,6 +244,12 @@ class Requirement {
       resourceIds: resourceIds ?? this.resourceIds,
       resourceLinks: resourceLinks ?? this.resourceLinks,
       sortOrder: sortOrder ?? this.sortOrder,
+
+      sourceStateCode: sourceStateCode ?? this.sourceStateCode,
+      sourceTitle: sourceTitle ?? this.sourceTitle,
+      sourceUrl: sourceUrl ?? this.sourceUrl,
+      sourceVerifiedDate: sourceVerifiedDate ?? this.sourceVerifiedDate,
+      sourceNotes: sourceNotes ?? this.sourceNotes,
 
       estimatedDurationDays: estimatedDurationDays ?? this.estimatedDurationDays,
       recommendedLeadTimeDays: recommendedLeadTimeDays ?? this.recommendedLeadTimeDays,
@@ -257,6 +286,12 @@ class Requirement {
     'resourceIds': resourceIds,
     'resourceLinks': resourceLinks.map((e) => e.toJson()).toList(),
     'sortOrder': sortOrder,
+
+    'sourceStateCode': sourceStateCode,
+    'sourceTitle': sourceTitle,
+    'sourceUrl': sourceUrl,
+    'sourceVerifiedDate': sourceVerifiedDate?.toIso8601String(),
+    'sourceNotes': sourceNotes,
     'estimatedDurationDays': estimatedDurationDays,
     'recommendedLeadTimeDays': recommendedLeadTimeDays,
     'canRunConcurrent': canRunConcurrent,
@@ -354,6 +389,12 @@ class Requirement {
       resourceIds: resIds,
       resourceLinks: links,
       sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+
+      sourceStateCode: json['sourceStateCode'] as String?,
+      sourceTitle: json['sourceTitle'] as String?,
+      sourceUrl: json['sourceUrl'] as String?,
+      sourceVerifiedDate: _dt(json['sourceVerifiedDate']),
+      sourceNotes: json['sourceNotes'] as String?,
 
       estimatedDurationDays: (json['estimatedDurationDays'] as num?)?.toInt(),
       recommendedLeadTimeDays: (json['recommendedLeadTimeDays'] as num?)?.toInt(),

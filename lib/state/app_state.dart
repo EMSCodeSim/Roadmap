@@ -6,10 +6,12 @@ import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/state_requirement_catalog.dart';
 import 'package:firepath/services/local_store.dart';
 import 'package:firepath/services/timeline_planner.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/services/task_book_store.dart';
+import 'package:firepath/services/task_book_setup_store.dart';
 
 class RoadmapRequirement {
   final Requirement requirement;
@@ -381,7 +383,45 @@ class AppState extends ChangeNotifier {
     if (id == null) return null;
     final existing =
         availableGoals.where((g) => g.id == id).cast<CareerGoal?>().firstOrNull;
-    if (existing != null) return existing;
+    if (existing != null) {
+      final stateCode = FireOpsCatalog.stateCodeFromLegacyValue(profile.state);
+      if (stateCode == null || stateCode == FireOpsCatalog.otherStateCode) {
+        return existing;
+      }
+
+      final baseById = {for (final r in existing.requirements) r.id: r};
+      final verified = StateRequirementCatalog.buildVerifiedRequirements(
+        stateCode: stateCode,
+        careerGoalId: existing.id,
+        baseRequirementById: baseById,
+      );
+      if (verified.isEmpty) return existing;
+
+      final merged = [...existing.requirements];
+      for (final r in verified) {
+        final idx = merged.indexWhere((e) => e.id == r.id);
+        if (idx >= 0) {
+          merged[idx] = r;
+        } else {
+          merged.add(r);
+        }
+      }
+      merged.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      return CareerGoal(
+        id: existing.id,
+        title: existing.title,
+        category: existing.category,
+        description: existing.description,
+        subtitle: existing.subtitle,
+        typicalPrerequisiteRoles: existing.typicalPrerequisiteRoles,
+        requirements: merged,
+        recommendedExperience: existing.recommendedExperience,
+        resourceIds: existing.resourceIds,
+        nextRoles: existing.nextRoles,
+        createdAt: existing.createdAt,
+        updatedAt: existing.updatedAt,
+      );
+    }
     if (id.startsWith('custom:')) {
       final name = id.substring('custom:'.length).trim();
       final now = DateTime.now();
@@ -506,6 +546,25 @@ class AppState extends ChangeNotifier {
       _profile = profileJson == null
           ? UserProfile.empty()
           : UserProfile.fromJson(profileJson);
+
+      // Silent migration: normalize state to a canonical code.
+      final normalizedState =
+          FireOpsCatalog.stateCodeFromLegacyValue(_profile.state);
+      if (normalizedState != _profile.state) {
+        _profile = _profile.copyWith(state: normalizedState);
+        await _persistAll();
+      }
+
+      // Keep a record for state-change detection prompts.
+      try {
+        final setup = TaskBookSetupStore();
+        final last = await setup.lastKnownState();
+        if ((last ?? '').trim().isEmpty && (normalizedState ?? '').trim().isNotEmpty) {
+          await setup.setLastKnownState(normalizedState);
+        }
+      } catch (e) {
+        debugPrint('AppState.bootstrap lastKnownState init failed: $e');
+      }
 
       final certJsonList = await _store.loadCertifications();
       _certsById.clear();
@@ -831,8 +890,26 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> updateProfile(UserProfile profile) async {
+    final before = _profile;
     _profile = profile.copyWith(updatedAt: DateTime.now());
     await _persistAll();
+
+    final oldState = FireOpsCatalog.stateCodeFromLegacyValue(before.state);
+    final newState = FireOpsCatalog.stateCodeFromLegacyValue(_profile.state);
+    if (_onboardingComplete &&
+        oldState != null &&
+        newState != null &&
+        oldState.isNotEmpty &&
+        newState.isNotEmpty &&
+        oldState != newState) {
+      try {
+        final setup = TaskBookSetupStore();
+        await setup.setLastKnownState(newState);
+        await setup.setReviewPending(true);
+      } catch (e) {
+        debugPrint('AppState.updateProfile state-change flag failed: $e');
+      }
+    }
     notifyListeners();
   }
 

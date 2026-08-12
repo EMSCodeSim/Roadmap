@@ -10,12 +10,111 @@ import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/timeline_planner.dart';
+import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
+import 'package:firepath/pages/profile/us_state_picker_sheet.dart';
 
-class VisualHomePage extends StatelessWidget {
+class VisualHomePage extends StatefulWidget {
   const VisualHomePage({super.key});
+
+  @override
+  State<VisualHomePage> createState() => _VisualHomePageState();
+}
+
+class _VisualHomePageState extends State<VisualHomePage> {
+  bool _promptQueued = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_promptQueued) return;
+    _promptQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _maybePromptForMissingState();
+    });
+  }
+
+  Future<void> _maybePromptForMissingState() async {
+    final state = context.read<AppState>();
+    if (!state.onboardingComplete) return;
+    if ((state.profile.state ?? '').trim().isNotEmpty) return;
+
+    final store = TaskBookSetupStore();
+    final dismissed = await store.missingStatePromptDismissed();
+    if (dismissed) return;
+    if (!mounted) return;
+
+    final cs = Theme.of(context).colorScheme;
+    final picked = await showModalBottomSheet<String?>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            0,
+            16,
+            16 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Help us improve your Task Book',
+                style: Theme.of(sheetContext)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'What state do you primarily work in?',
+                style: Theme.of(sheetContext)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 56,
+                child: FilledButton.icon(
+                  onPressed: () async {
+                    final value = await UsStatePickerSheet.pick(
+                      sheetContext,
+                      selectedCode: null,
+                    );
+                    if (sheetContext.mounted) sheetContext.pop(value);
+                  },
+                  icon: const Icon(Icons.public),
+                  label: const Text('Select State'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 56,
+                child: OutlinedButton(
+                  onPressed: () => sheetContext.pop(null),
+                  child: const Text('Skip for Now'),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+    await store.setMissingStatePromptDismissed(true);
+    if (picked == null) return;
+    await state.updateProfile(state.profile.copyWith(state: picked));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +157,7 @@ class VisualHomePage extends StatelessWidget {
               level: currentLevel,
               serviceType: profile.serviceType,
               yearsOfService: profile.yearsOfService,
+              stateCode: profile.state,
               onTap: () => _showEditCurrentLevelSheet(context, state),
             ),
             const SizedBox(height: 12),
@@ -101,6 +201,7 @@ class VisualHomePage extends StatelessWidget {
         .toList();
     final selectedRoles = profile.currentRoles.toSet();
     var serviceType = profile.serviceType;
+    var stateCode = profile.state;
     final yearsController = TextEditingController(
       text: profile.yearsOfService?.toString() ?? '',
     );
@@ -263,6 +364,26 @@ class VisualHomePage extends StatelessWidget {
                               },
                             ),
                             const SizedBox(height: 14),
+                            _StatePickerRow(
+                              code: stateCode,
+                              onTap: () async {
+                                final picked = await UsStatePickerSheet.pick(
+                                  sheetContext,
+                                  selectedCode: stateCode,
+                                );
+                                if (picked == null) return;
+                                if (picked != stateCode) {
+                                  ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Changing your state may change state-specific Task Book recommendations and certification requirements.'),
+                                    ),
+                                  );
+                                }
+                                setSheetState(() => stateCode = picked);
+                              },
+                            ),
+                            const SizedBox(height: 14),
                             TextField(
                               controller: yearsController,
                               keyboardType: TextInputType.number,
@@ -307,7 +428,7 @@ class VisualHomePage extends StatelessWidget {
                                     yearsOfService: years,
                                     serviceType: serviceType,
                                     departmentName: profile.departmentName,
-                                    state: profile.state,
+                                    state: stateCode,
                                     createdAt: profile.createdAt,
                                     updatedAt: DateTime.now(),
                                   );
@@ -453,6 +574,52 @@ extension _FirstOrNull<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
 }
 
+class _StatePickerRow extends StatelessWidget {
+  final String? code;
+  final VoidCallback onTap;
+  const _StatePickerRow({required this.code, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final name = FireOpsCatalog.stateNameForCode(code) ?? 'Select state';
+    return Material(
+      color: cs.surface,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: cs.outline.withValues(alpha: 0.20)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.public, color: cs.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('State', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(name, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+              Icon(Icons.expand_more, color: cs.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _GraphicHeader extends StatelessWidget {
   const _GraphicHeader();
 
@@ -518,18 +685,22 @@ class _CurrentLevelCard extends StatelessWidget {
   final String level;
   final String? serviceType;
   final int? yearsOfService;
+  final String? stateCode;
   final VoidCallback onTap;
 
   const _CurrentLevelCard({
     required this.level,
     required this.serviceType,
     required this.yearsOfService,
+    required this.stateCode,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final stateName = FireOpsCatalog.stateNameForCode(stateCode);
     final detailParts = <String>[
+      if (stateName != null && stateName.trim().isNotEmpty) stateName,
       if (serviceType != null && serviceType!.trim().isNotEmpty) serviceType!,
       if (yearsOfService != null)
         '$yearsOfService ${yearsOfService == 1 ? 'year' : 'years'}',

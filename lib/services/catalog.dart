@@ -5,14 +5,104 @@ import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/resource.dart';
 import 'package:firepath/models/certification_definition.dart';
 
+@immutable
+class UsStateOption {
+  final String code;
+  final String name;
+  const UsStateOption({required this.code, required this.name});
+}
+
+extension _FirstOrNullIterable<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
+}
+
 /// A starter, reusable dataset of *typical* fire/EMS career paths.
 ///
 /// This is intentionally NOT a legal/official source of truth.
 /// Departments and states vary.
 class FireOpsCatalog {
+  static const String otherStateCode = 'OTHER';
+
+  /// Supported state selections for the app.
+  ///
+  /// We store the selected value as a code (e.g. "CO").
+  /// Use [stateNameForCode] for display.
+  static const List<UsStateOption> usStateOptions = [
+    UsStateOption(code: 'AL', name: 'Alabama'),
+    UsStateOption(code: 'AK', name: 'Alaska'),
+    UsStateOption(code: 'AZ', name: 'Arizona'),
+    UsStateOption(code: 'AR', name: 'Arkansas'),
+    UsStateOption(code: 'CA', name: 'California'),
+    UsStateOption(code: 'CO', name: 'Colorado'),
+    UsStateOption(code: 'CT', name: 'Connecticut'),
+    UsStateOption(code: 'DE', name: 'Delaware'),
+    UsStateOption(code: 'FL', name: 'Florida'),
+    UsStateOption(code: 'GA', name: 'Georgia'),
+    UsStateOption(code: 'HI', name: 'Hawaii'),
+    UsStateOption(code: 'ID', name: 'Idaho'),
+    UsStateOption(code: 'IL', name: 'Illinois'),
+    UsStateOption(code: 'IN', name: 'Indiana'),
+    UsStateOption(code: 'IA', name: 'Iowa'),
+    UsStateOption(code: 'KS', name: 'Kansas'),
+    UsStateOption(code: 'KY', name: 'Kentucky'),
+    UsStateOption(code: 'LA', name: 'Louisiana'),
+    UsStateOption(code: 'ME', name: 'Maine'),
+    UsStateOption(code: 'MD', name: 'Maryland'),
+    UsStateOption(code: 'MA', name: 'Massachusetts'),
+    UsStateOption(code: 'MI', name: 'Michigan'),
+    UsStateOption(code: 'MN', name: 'Minnesota'),
+    UsStateOption(code: 'MS', name: 'Mississippi'),
+    UsStateOption(code: 'MO', name: 'Missouri'),
+    UsStateOption(code: 'MT', name: 'Montana'),
+    UsStateOption(code: 'NE', name: 'Nebraska'),
+    UsStateOption(code: 'NV', name: 'Nevada'),
+    UsStateOption(code: 'NH', name: 'New Hampshire'),
+    UsStateOption(code: 'NJ', name: 'New Jersey'),
+    UsStateOption(code: 'NM', name: 'New Mexico'),
+    UsStateOption(code: 'NY', name: 'New York'),
+    UsStateOption(code: 'NC', name: 'North Carolina'),
+    UsStateOption(code: 'ND', name: 'North Dakota'),
+    UsStateOption(code: 'OH', name: 'Ohio'),
+    UsStateOption(code: 'OK', name: 'Oklahoma'),
+    UsStateOption(code: 'OR', name: 'Oregon'),
+    UsStateOption(code: 'PA', name: 'Pennsylvania'),
+    UsStateOption(code: 'RI', name: 'Rhode Island'),
+    UsStateOption(code: 'SC', name: 'South Carolina'),
+    UsStateOption(code: 'SD', name: 'South Dakota'),
+    UsStateOption(code: 'TN', name: 'Tennessee'),
+    UsStateOption(code: 'TX', name: 'Texas'),
+    UsStateOption(code: 'UT', name: 'Utah'),
+    UsStateOption(code: 'VT', name: 'Vermont'),
+    UsStateOption(code: 'VA', name: 'Virginia'),
+    UsStateOption(code: 'WA', name: 'Washington'),
+    UsStateOption(code: 'WV', name: 'West Virginia'),
+    UsStateOption(code: 'WI', name: 'Wisconsin'),
+    UsStateOption(code: 'WY', name: 'Wyoming'),
+    UsStateOption(code: 'DC', name: 'District of Columbia'),
+    UsStateOption(code: otherStateCode, name: 'Other / Federal / Not Applicable'),
+  ];
+
   static const List<String> usStates = [
     'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY',
   ];
+
+  static String? stateNameForCode(String? code) {
+    if (code == null || code.trim().isEmpty) return null;
+    final normalized = code.trim().toUpperCase();
+    final match = usStateOptions.where((e) => e.code == normalized).firstOrNull;
+    return match?.name ?? normalized;
+  }
+
+  static String? stateCodeFromLegacyValue(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final v = value.trim();
+    // Back-compat: some builds stored full state names.
+    final byName = usStateOptions.where((e) => e.name.toLowerCase() == v.toLowerCase()).firstOrNull;
+    if (byName != null) return byName.code;
+    if (v.length == 2) return v.toUpperCase();
+    if (v.toLowerCase().contains('other')) return otherStateCode;
+    return v;
+  }
 
   static const List<String> commonRoles = [
     'Exploring the Fire Service',
@@ -2006,7 +2096,7 @@ class FireOpsCatalog {
           category: 'Licensure',
           priority: RequirementPriority.recommended,
           type: RequirementType.certification,
-          source: RequirementSource.stateRequirement,
+          source: RequirementSource.commonlyRequired,
           stateDependent: true,
           sortOrder: 30,
         ),
@@ -2017,7 +2107,7 @@ class FireOpsCatalog {
           category: 'Licensure',
           priority: RequirementPriority.core,
           type: RequirementType.certification,
-          source: RequirementSource.stateRequirement,
+          source: RequirementSource.commonlyRequired,
           stateDependent: true,
           sortOrder: 40,
         ),
@@ -2055,7 +2145,7 @@ class FireOpsCatalog {
           category: 'Education',
           priority: RequirementPriority.core,
           type: RequirementType.trainingCourse,
-          source: RequirementSource.stateRequirement,
+          source: RequirementSource.commonlyRequired,
           stateDependent: true,
           sortOrder: 20,
         ),
@@ -2066,7 +2156,7 @@ class FireOpsCatalog {
           category: 'Licensure',
           priority: RequirementPriority.recommended,
           type: RequirementType.certification,
-          source: RequirementSource.stateRequirement,
+          source: RequirementSource.commonlyRequired,
           stateDependent: true,
           sortOrder: 30,
         ),
@@ -2077,7 +2167,7 @@ class FireOpsCatalog {
           category: 'Licensure',
           priority: RequirementPriority.core,
           type: RequirementType.certification,
-          source: RequirementSource.stateRequirement,
+          source: RequirementSource.commonlyRequired,
           stateDependent: true,
           sortOrder: 40,
         ),
@@ -2158,7 +2248,7 @@ class FireOpsCatalog {
           category: 'Licensure',
           priority: RequirementPriority.recommended,
           type: RequirementType.certification,
-          source: RequirementSource.stateRequirement,
+          source: RequirementSource.commonlyRequired,
           stateDependent: true,
           sortOrder: 60,
         ),
@@ -2169,7 +2259,7 @@ class FireOpsCatalog {
           category: 'Licensure',
           priority: RequirementPriority.core,
           type: RequirementType.certification,
-          source: RequirementSource.stateRequirement,
+          source: RequirementSource.commonlyRequired,
           stateDependent: true,
           sortOrder: 70,
         ),
@@ -2462,7 +2552,7 @@ class FireOpsCatalog {
           category: 'Prevention',
           priority: RequirementPriority.core,
           type: RequirementType.trainingCourse,
-          source: RequirementSource.stateRequirement,
+          source: RequirementSource.commonlyRequired,
           stateDependent: true,
           sortOrder: 20,
         ),

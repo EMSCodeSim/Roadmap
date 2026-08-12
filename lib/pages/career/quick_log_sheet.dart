@@ -293,16 +293,42 @@ class _Chooser extends StatelessWidget {
           const SizedBox(height: 18),
           _SectionLabel('QUICK ACTIONS'),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: pinned
-                .map((tracker) => ActionChip(
-                      avatar: Icon(_trackerIcon(tracker.iconName), size: 18),
-                      label: Text(tracker.title),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 380;
+              final cols = isNarrow ? 2 : 3;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 2.6,
+                ),
+                itemCount: pinned.length,
+                itemBuilder: (context, index) {
+                  final tracker = pinned[index];
+                  return SizedBox(
+                    height: 56,
+                    child: FilledButton.tonalIcon(
                       onPressed: () => onPickPinned(tracker),
-                    ))
-                .toList(),
+                      icon: Icon(_trackerIcon(tracker.iconName), size: 18),
+                      label: Text(
+                        tracker.title,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ],
         if (recent.isNotEmpty) ...[

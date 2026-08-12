@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
+import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
@@ -60,6 +61,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
     final currentRole = state.profile.currentRoles.isEmpty
         ? 'Current role not set'
         : state.profile.currentRoles.join(' / ');
+    final stateName = FireOpsCatalog.stateNameForCode(state.profile.state);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Review Your Task Book')),
@@ -106,7 +108,10 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    currentRole,
+                    [
+                      currentRole,
+                      if (stateName != null && stateName.isNotEmpty) stateName,
+                    ].join(' • '),
                     style: Theme.of(context)
                         .textTheme
                         .titleSmall

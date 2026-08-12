@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/requirement.dart';
+import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
@@ -24,6 +26,21 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
     final goalId = roadmap.goal.id;
     final items = [...roadmap.all]
       ..sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
+
+    List<RoadmapRequirement> bySource(RequirementSource src) =>
+        items.where((e) => e.requirement.requirementSource == src).toList();
+
+    final stateReqs = bySource(RequirementSource.stateRequirement);
+    final deptReqs = bySource(RequirementSource.departmentRequirement);
+    final commonReqs = bySource(RequirementSource.commonlyRequired);
+    final recReqs = bySource(RequirementSource.recommended);
+
+    final grouped = <(String title, List<RoadmapRequirement> list)>[
+      if (stateReqs.isNotEmpty) ('STATE', stateReqs),
+      if (commonReqs.isNotEmpty) ('COMMON', commonReqs),
+      if (deptReqs.isNotEmpty) ('DEPARTMENT', deptReqs),
+      if (recReqs.isNotEmpty) ('RECOMMENDED', recReqs),
+    ];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Customize Task Book')),
@@ -76,69 +93,112 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 8),
-            ...items.map((item) {
-              final requirement = item.requirement;
-              final custom = requirement.id.startsWith('$goalId::');
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-                  decoration: BoxDecoration(
-                    color: item.isExcluded
-                        ? cs.surfaceContainerHighest.withValues(alpha: 0.45)
-                        : cs.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(
-                      color: cs.outline.withValues(alpha: 0.14),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              requirement.name,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              _sourceLabel(requirement),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: cs.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
+            ...grouped.expand((group) {
+              final header = Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 8),
+                child: Text(
+                  group.$1,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurfaceVariant,
                       ),
-                      if (custom)
-                        IconButton(
-                          tooltip: 'Delete custom requirement',
-                          onPressed: () => _confirmDelete(
-                            context,
-                            state,
-                            requirement.id,
-                            requirement.name,
-                          ),
-                          icon: const Icon(Icons.delete_outline),
-                        ),
-                      Switch(
-                        value: !item.isExcluded,
-                        onChanged: (enabled) => state.setRequirementExcluded(
-                          goalId: goalId,
-                          requirementId: requirement.id,
-                          excluded: !enabled,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               );
+              final cards = group.$2.map((item) {
+                final requirement = item.requirement;
+                final custom = requirement.id.startsWith('$goalId::');
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+                    decoration: BoxDecoration(
+                      color: item.isExcluded
+                          ? cs.surfaceContainerHighest.withValues(alpha: 0.45)
+                          : cs.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(
+                        color: cs.outline.withValues(alpha: 0.14),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                requirement.name,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                _sourceLabel(requirement, stateCode: state.profile.state),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: cs.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (custom)
+                          IconButton(
+                            tooltip: 'Delete custom requirement',
+                            onPressed: () => _confirmDelete(
+                              context,
+                              state,
+                              requirement.id,
+                              requirement.name,
+                            ),
+                            icon: const Icon(Icons.delete_outline),
+                          ),
+                        Switch(
+                          value: !item.isExcluded,
+                          onChanged: (enabled) async {
+                            final excluding = !enabled;
+                            if (excluding &&
+                                requirement.requirementSource ==
+                                    RequirementSource.stateRequirement) {
+                              final stateName = FireOpsCatalog.stateNameForCode(
+                                      state.profile.state) ??
+                                  'your state';
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (dialogContext) => AlertDialog(
+                                  title: const Text('Remove requirement?'),
+                                  content: Text(
+                                    'This item is listed as a $stateName requirement. Remove it from your personal Task Book?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => dialogContext.pop(false),
+                                      child: const Text('Keep Requirement'),
+                                    ),
+                                    FilledButton(
+                                      onPressed: () => dialogContext.pop(true),
+                                      child: const Text('Remove From My Task Book'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed != true) return;
+                            }
+                            await state.setRequirementExcluded(
+                              goalId: goalId,
+                              requirementId: requirement.id,
+                              excluded: excluding,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList();
+              return [header, ...cards];
             }),
           ],
         ),
@@ -150,7 +210,7 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
           child: SizedBox(
             height: 56,
             child: FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => context.pop(),
               child: const Text('Done Reviewing Requirements'),
             ),
           ),
@@ -159,13 +219,15 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
     );
   }
 
-  static String _sourceLabel(Requirement requirement) {
+  static String _sourceLabel(Requirement requirement, {required String? stateCode}) {
     final source = switch (requirement.requirementSource) {
       RequirementSource.commonlyRequired => 'Commonly required',
       RequirementSource.recommended => 'Recommended',
-      RequirementSource.stateRequirement => 'State dependent',
+      RequirementSource.stateRequirement => 'State requirement',
       RequirementSource.departmentRequirement => 'Department requirement',
     };
+    final stateName = FireOpsCatalog.stateNameForCode(stateCode);
+    final stateTail = requirement.requirementSource == RequirementSource.stateRequirement && stateName != null ? ' • $stateName' : '';
     final detail = switch (requirement.type) {
       RequirementType.numericProgress when requirement.progressRequired != null =>
         '${requirement.progressRequired!.toStringAsFixed(0)} ${requirement.progressUnit ?? ''}'.trim(),
@@ -173,7 +235,7 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
         '${requirement.experienceValue!.toStringAsFixed(0)} ${requirement.experienceUnit ?? 'years'}',
       _ => requirement.type.name,
     };
-    return '$source • $detail';
+    return '$source$stateTail • $detail';
   }
 
   static Future<void> _confirmDelete(
@@ -189,11 +251,11 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
         content: Text('$name will be removed from this custom Task Book.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () => dialogContext.pop(false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
+            onPressed: () => dialogContext.pop(true),
             child: const Text('Delete'),
           ),
         ],

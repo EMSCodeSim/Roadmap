@@ -163,7 +163,7 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
               const SizedBox(height: AppSpacing.lg),
-              SizedBox(height: 52, width: double.infinity, child: FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Got it'))),
+              SizedBox(height: 52, width: double.infinity, child: FilledButton(onPressed: () => context.pop(), child: const Text('Got it'))),
             ],
           ),
         );

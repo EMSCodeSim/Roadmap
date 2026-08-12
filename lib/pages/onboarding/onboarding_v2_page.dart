@@ -8,6 +8,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/pages/profile/us_state_picker_sheet.dart';
 
 class OnboardingV2Page extends StatefulWidget {
   const OnboardingV2Page({super.key});
@@ -161,16 +162,16 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         Row(
           children: [
             Expanded(
-              child: DropdownButtonFormField<String?>(
-                value: _state,
-                decoration: const InputDecoration(labelText: 'State'),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('Not set')),
-                  ...FireOpsCatalog.usStates.map(
-                    (value) => DropdownMenuItem(value: value, child: Text(value)),
-                  ),
-                ],
-                onChanged: (value) => setState(() => _state = value),
+              child: _StateSelectorField(
+                code: _state,
+                onTap: () async {
+                  final picked = await UsStatePickerSheet.pick(
+                    context,
+                    selectedCode: _state,
+                  );
+                  if (picked == null) return;
+                  setState(() => _state = picked);
+                },
               ),
             ),
             const SizedBox(width: 10),
@@ -372,6 +373,10 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
       _message('Choose at least one current role.');
       return;
     }
+    if (_step == 0 && !_isStateValidForSetup()) {
+      _message('Select your state to continue.');
+      return;
+    }
     if (_step < 2) {
       await _pages.nextPage(
         duration: const Duration(milliseconds: 220),
@@ -385,6 +390,12 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
       return;
     }
     await _finish();
+  }
+
+  bool _isStateValidForSetup() {
+    if (_state == null || _state!.trim().isEmpty) return false;
+    if (_state == FireOpsCatalog.otherStateCode) return true;
+    return FireOpsCatalog.usStateOptions.any((e) => e.code == _state);
   }
 
   Future<void> _back() async {
@@ -511,13 +522,13 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => dialogContext.pop(),
             child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () {
               final value = controller.text.trim();
-              if (value.isNotEmpty) Navigator.pop(dialogContext, value);
+              if (value.isNotEmpty) dialogContext.pop(value);
             },
             child: const Text('Add'),
           ),
@@ -539,5 +550,53 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
 
   void _message(String text) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+}
+
+class _StateSelectorField extends StatelessWidget {
+  final String? code;
+  final VoidCallback onTap;
+  const _StateSelectorField({required this.code, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final name = FireOpsCatalog.stateNameForCode(code);
+    final label = name ?? 'Select state';
+
+    return Material(
+      color: cs.surface,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: cs.outline.withValues(alpha: 0.20)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.public, color: cs.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('State', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(label, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+              Icon(Icons.expand_more, color: cs.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

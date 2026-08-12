@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/task_book_library.dart';
+import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
@@ -45,9 +47,29 @@ class TaskBookPage extends StatelessWidget {
   }
 }
 
-class _TaskBookBody extends StatelessWidget {
+class _TaskBookBody extends StatefulWidget {
   final String roadmapGoalId;
   const _TaskBookBody({required this.roadmapGoalId});
+
+  @override
+  State<_TaskBookBody> createState() => _TaskBookBodyState();
+}
+
+class _TaskBookBodyState extends State<_TaskBookBody> {
+  final TaskBookSetupStore _setupStore = TaskBookSetupStore();
+  bool _reviewPending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final pending = await _setupStore.isReviewPending();
+    if (!mounted) return;
+    setState(() => _reviewPending = pending);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +88,19 @@ class _TaskBookBody extends StatelessWidget {
       child: ListView(
         padding: AppSpacing.paddingLg,
         children: [
+          if (_reviewPending)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+              child: _StateChangedCard(
+                fromLabel: FireOpsCatalog.stateNameForCode(state.profile.state) ?? 'your state',
+                onReview: () => context.push(AppRoutes.taskBookReview),
+                onNotNow: () async {
+                  await _setupStore.setReviewPending(false);
+                  if (!mounted) return;
+                  setState(() => _reviewPending = false);
+                },
+              ),
+            ),
           _GoalHeader(
             goalTitle: roadmap.goal.title,
             percent: percent,
@@ -294,6 +329,72 @@ class _GoalHeader extends StatelessWidget {
   }
 }
 
+class _StateChangedCard extends StatelessWidget {
+  final String fromLabel;
+  final VoidCallback onReview;
+  final VoidCallback onNotNow;
+  const _StateChangedCard({
+    required this.fromLabel,
+    required this.onReview,
+    required this.onNotNow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: AppSpacing.paddingMd,
+      decoration: BoxDecoration(
+        color: cs.tertiaryContainer.withValues(alpha: 0.60),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.tertiary.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined, color: cs.tertiary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'STATE CHANGED',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: cs.onSurfaceVariant, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Your profile is now set to $fromLabel. State requirements may be different. Would you like Fire Career Roadmap to review your current Task Book?',
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: cs.onSurface, height: 1.45),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 56,
+            child: FilledButton(
+              onPressed: onReview,
+              child: const Text('Review Task Book'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 56,
+            child: OutlinedButton(
+              onPressed: onNotNow,
+              child: const Text('Not Now'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _NextTaskCard extends StatelessWidget {
   final String? title;
   final VoidCallback? onContinue;
@@ -489,6 +590,14 @@ class _RequirementRow extends StatelessWidget {
                             .textTheme
                             .titleSmall
                             ?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(
+                      _sourceLine(context, r, state.profile.state),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
                     if (trailing != null) ...[
                       const SizedBox(height: 2),
                       Text(trailing,
@@ -516,6 +625,16 @@ class _RequirementRow extends StatelessWidget {
       return;
     }
     context.push(AppRoutes.requirementDetail, extra: r);
+  }
+
+  static String _sourceLine(BuildContext context, Requirement r, String? profileStateCode) {
+    final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? profileStateCode);
+    return switch (r.requirementSource) {
+      RequirementSource.stateRequirement => stateName == null ? 'State requirement' : '$stateName requirement',
+      RequirementSource.departmentRequirement => 'Department requirement',
+      RequirementSource.commonlyRequired => r.stateDependent ? 'Commonly required • Verify with state/department' : 'Commonly required',
+      RequirementSource.recommended => 'Recommended',
+    };
   }
 }
 

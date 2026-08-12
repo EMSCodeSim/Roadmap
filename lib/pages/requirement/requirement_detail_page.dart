@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/task_book_library.dart';
+import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
@@ -53,6 +55,11 @@ class RequirementDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(liveReq.description, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.55)),
+                  if (liveReq.requirementSource == RequirementSource.stateRequirement)
+                    ...[
+                      const SizedBox(height: AppSpacing.md),
+                      _StateSourceBlock(requirement: liveReq, profileStateCode: state.profile.state),
+                    ],
                   const SizedBox(height: AppSpacing.md),
                   SizedBox(
                     height: 52,
@@ -220,6 +227,117 @@ class RequirementDetailPage extends StatelessWidget {
   }
 }
 
+class _StateSourceBlock extends StatelessWidget {
+  final Requirement requirement;
+  final String? profileStateCode;
+  const _StateSourceBlock({required this.requirement, required this.profileStateCode});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final stateName = FireOpsCatalog.stateNameForCode(requirement.sourceStateCode ?? profileStateCode) ?? 'State';
+    final title = (requirement.sourceTitle ?? '').trim();
+    final url = (requirement.sourceUrl ?? '').trim();
+    final hasSource = title.isNotEmpty || url.isNotEmpty;
+    final verified = requirement.sourceVerifiedDate;
+
+    return Container(
+      padding: AppSpacing.paddingMd,
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('REQUIREMENT SOURCE', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 6),
+          Text(stateName, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+          if (hasSource) ...[
+            const SizedBox(height: 4),
+            if (title.isNotEmpty)
+              Text(title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45)),
+            if (url.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showOfficialSource(context, title: title, url: url),
+                  icon: Icon(Icons.open_in_new, color: cs.primary),
+                  label: const Text('View Official Source'),
+                ),
+              ),
+            ],
+          ] else ...[
+            const SizedBox(height: 4),
+            Text(
+              'State-specific requirements have not yet been fully verified. Confirm requirements with your department or state authority.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+            ),
+          ],
+          if (verified != null) ...[
+            const SizedBox(height: 8),
+            Text('Last reviewed: ${verified.year}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+          ],
+          if ((requirement.sourceNotes ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(requirement.sourceNotes!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.45)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static Future<void> _showOfficialSource(BuildContext context, {required String title, required String url}) {
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        final cs = Theme.of(sheetContext).colorScheme;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Official State Information', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              if (title.trim().isNotEmpty)
+                Text(title, style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+              const SizedBox(height: 10),
+              SelectableText(url, style: Theme.of(sheetContext).textTheme.bodyMedium),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 56,
+                child: FilledButton.icon(
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: url));
+                    if (sheetContext.mounted) {
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(const SnackBar(content: Text('Link copied')));
+                    }
+                  },
+                  icon: Icon(Icons.copy, color: cs.onPrimary),
+                  label: Text('Copy Link', style: TextStyle(color: cs.onPrimary)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 56,
+                child: OutlinedButton(
+                  onPressed: () => sheetContext.pop(),
+                  child: const Text('Done'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _StartThisPanel extends StatelessWidget {
   final String goalId;
   final Requirement requirement;
@@ -353,7 +471,7 @@ class _StartThisPanel extends StatelessWidget {
                           location: locationCtrl.text.trim().isEmpty ? null : locationCtrl.text.trim(),
                           notes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
                         );
-                        Navigator.of(context).pop();
+                        context.pop();
                       },
                       style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
                       child: const Text('Save'),
@@ -469,7 +587,7 @@ class _StatusChoiceTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: InkWell(
-        onTap: () => Navigator.of(context).pop(value),
+        onTap: () => context.pop(value),
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Container(
           padding: AppSpacing.paddingMd,
@@ -669,10 +787,10 @@ class _NumericProgressPanel extends StatelessWidget {
                   onPressed: () {
                     final v = double.tryParse(amountCtrl.text.trim());
                     if (v == null || v <= 0) {
-                      Navigator.of(context).pop();
+                      context.pop();
                       return;
                     }
-                    Navigator.of(context).pop(v);
+                    context.pop(v);
                   },
                   style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
                   child: const Text('Add'),
@@ -801,7 +919,7 @@ class _TaskBookPanel extends StatelessWidget {
                   onPressed: () {
                     final c = int.tryParse(completedCtrl.text.trim()) ?? 0;
                     final t = int.tryParse(totalCtrl.text.trim()) ?? 0;
-                    Navigator.of(context).pop((c, t));
+                    context.pop((c, t));
                   },
                   child: const Text('Save'),
                 ),
