@@ -4,15 +4,18 @@ import 'package:go_router/go_router.dart';
 import 'package:firepath/pages/bootstrap_page.dart';
 import 'package:firepath/pages/shell/app_shell_page.dart';
 import 'package:firepath/pages/home/visual_home_page.dart';
-import 'package:firepath/pages/onboarding/onboarding_flow_page.dart';
+import 'package:firepath/pages/onboarding/onboarding_v2_page.dart';
 import 'package:firepath/pages/path/goal_picker_page.dart';
 import 'package:firepath/pages/path/roadmap_entry_page.dart';
 import 'package:firepath/pages/task_book/task_book_entry_page.dart';
+import 'package:firepath/pages/task_book/task_book_review_page.dart';
+import 'package:firepath/pages/task_book/task_book_requirements_editor_page.dart';
 import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_page.dart';
+import 'package:firepath/pages/career/quick_log_setup_page.dart';
 import 'package:firepath/pages/certifications/certifications_page.dart';
 import 'package:firepath/pages/resources/resources_page.dart';
 import 'package:firepath/pages/requirement/requirement_detail_page.dart';
@@ -37,7 +40,7 @@ class AppRouter {
         path: AppRoutes.onboarding,
         name: 'onboarding',
         pageBuilder: (context, state) =>
-            const NoTransitionPage(child: OnboardingFlowPage()),
+            const NoTransitionPage(child: OnboardingV2Page()),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -96,21 +99,36 @@ class AppRouter {
         ],
       ),
 
-      // Legacy links retained so existing bookmarks/deep links do not break.
       GoRoute(path: '/career', redirect: (context, state) => AppRoutes.growth),
       GoRoute(
         path: '/career/vault',
         redirect: (context, state) => AppRoutes.personalLog,
       ),
 
-      // Legacy Personal Log UI kept for compatibility + power users.
       GoRoute(
         path: AppRoutes.personalLogLegacy,
         name: 'personal_log_legacy',
         pageBuilder: (context, state) => MaterialPage(
             child: PersonalLogPage(prefill: state.extra as LogPrefill?)),
       ),
-
+      GoRoute(
+        path: AppRoutes.quickLogSetup,
+        name: 'quick_log_setup',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: QuickLogSetupPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.taskBookReview,
+        name: 'task_book_review',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: TaskBookReviewPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.taskBookRequirementsSetup,
+        name: 'task_book_requirements_setup',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: TaskBookRequirementsEditorPage()),
+      ),
       GoRoute(
         path: AppRoutes.goalSetup,
         name: 'goal_setup',
@@ -133,7 +151,8 @@ class AppRouter {
         path: AppRoutes.qualificationTaskBook,
         name: 'qualification_task_book',
         pageBuilder: (context, state) => MaterialPage(
-            child: QualificationTaskBookPage(requirement: (state.extra as Map?)?['requirement'] ?? state.extra)),
+            child: QualificationTaskBookPage(
+                requirement: (state.extra as Map?)?['requirement'] ?? state.extra)),
       ),
       GoRoute(
         path: AppRoutes.taskDetail,
@@ -141,7 +160,6 @@ class AppRouter {
         pageBuilder: (context, state) =>
             MaterialPage(child: TaskDetailPage(extra: state.extra)),
       ),
-      // Legacy Task Book customization page (old MyPath/Roadmap UI)
       GoRoute(
         path: AppRoutes.myPathLegacy,
         name: 'task_book_customize',
@@ -195,10 +213,10 @@ class AppRoutes {
   static const String myPathLegacy = '/task-book/customize';
   static const String personalLog = '/log';
   static const String personalLogLegacy = '/log/legacy';
+  static const String quickLogSetup = '/log/setup';
   static const String growth = '/growth';
   static const String certifications = '/certifications';
 
-  // Compatibility aliases used throughout the existing app.
   static const String career = growth;
   static const String careerVault = personalLog;
   static const String careerEvidence = '/growth/evidence';
@@ -211,7 +229,8 @@ class AppRoutes {
   static const String certificationDetail = '/certification';
   static const String certificationAdd = '/certifications/add';
 
-  // Task Book
+  static const String taskBookReview = '/task-book/review';
+  static const String taskBookRequirementsSetup = '/task-book/requirements-setup';
   static const String qualificationTaskBook = '/task-book/qualification';
   static const String taskDetail = '/task-book/task';
 }
