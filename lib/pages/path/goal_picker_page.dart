@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_goal.dart';
 import 'package:firepath/nav.dart';
+import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
@@ -222,7 +223,7 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
               ),
               child: SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 56,
                 child: FilledButton(
                   onPressed: _selectedGoalId == null || _saving
                       ? null
@@ -231,8 +232,8 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                     _saving
                         ? 'Saving…'
                         : hadGoal
-                            ? 'Update Goal'
-                            : 'Build My Path',
+                            ? 'Build & Review New Task Book'
+                            : 'Build & Review My Task Book',
                   ),
                 ),
               ),
@@ -315,8 +316,9 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
     try {
       await state.setPrimaryGoal(goalId);
       await state.setTargetReadyDate(_targetDate);
+      await TaskBookSetupStore().setReviewPending(true);
       if (!mounted) return;
-      context.go(AppRoutes.myPath);
+      context.go(AppRoutes.taskBookReview);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
