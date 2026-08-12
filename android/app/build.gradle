@@ -44,9 +44,11 @@ android {
 
     buildTypes {
         release {
-            // Local production builds use the configured upload key. CI can
-            // still validate debug builds without requiring signing secrets.
-            signingConfig = keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
+            // Never silently ship a production artifact with the debug key.
+            // When key.properties is present, use the configured Play upload key.
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.release
+            }
         }
     }
 }
