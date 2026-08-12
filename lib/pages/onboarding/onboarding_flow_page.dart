@@ -43,18 +43,21 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
   Future<void> _next() async {
     if (_step == 0) {
       await _controller.nextPage(duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+      if (!mounted) return;
       setState(() => _step = 1);
       return;
     }
 
     if (_step == 1) {
       await _controller.nextPage(duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+      if (!mounted) return;
       setState(() => _step = 2);
       return;
     }
 
     if (_step == 2) {
       await _controller.nextPage(duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+      if (!mounted) return;
       setState(() => _step = 3);
       return;
     }
@@ -119,7 +122,6 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
         await appState.completeOnboarding(profile: profile, certifications: certs);
         debugPrint('[Onboarding] Onboarding marked complete');
 
-        // Force a roadmap computation now (helps debug if something is missing)
         final roadmap = appState.roadmap;
         debugPrint(
           '[Onboarding] Roadmap computed: goal=${roadmap?.goal.title} completed=${roadmap?.completed.length} missing=${roadmap?.missing.length} percent=${roadmap == null ? 'n/a' : (roadmap.percentComplete * 100).toStringAsFixed(1)} next=${roadmap?.nextStep?.requirement.name}',
@@ -132,15 +134,19 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
         debugPrint('[Onboarding] Finish failed: $e');
         debugPrint('$st');
         if (!mounted) return;
+        setState(() => _isFinishing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text("We couldn't finish setting up your path. Please try again."),
-            action: SnackBarAction(label: 'TRY AGAIN', onPressed: () {}),
+            action: SnackBarAction(
+              label: 'TRY AGAIN',
+              onPressed: () {
+                if (!_isFinishing) _next();
+              },
+            ),
           ),
         );
-        setState(() => _isFinishing = false);
       } finally {
-        // Safety: if navigation didn’t happen (or failed), re-enable the button.
         if (mounted && _isFinishing) setState(() => _isFinishing = false);
       }
     }
@@ -149,6 +155,7 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
   Future<void> _back() async {
     if (_step == 0) return;
     await _controller.previousPage(duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
+    if (!mounted) return;
     setState(() => _step -= 1);
   }
 
@@ -179,7 +186,8 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
         );
       },
     );
-    if (result == null || result.isEmpty) return;
+    controller.dispose();
+    if (!mounted || result == null || result.isEmpty) return;
     setState(() => _selectedRoles.add(result));
   }
 
@@ -207,7 +215,8 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
         );
       },
     );
-    if (result == null || result.isEmpty) return;
+    controller.dispose();
+    if (!mounted || result == null || result.isEmpty) return;
     setState(() => _selectedCertNames.add(result));
   }
 
@@ -235,7 +244,8 @@ class _OnboardingFlowPageState extends State<OnboardingFlowPage> {
         );
       },
     );
-    if (result == null || result.isEmpty) return;
+    controller.dispose();
+    if (!mounted || result == null || result.isEmpty) return;
     setState(() => _goalId = 'custom:$result');
   }
 
