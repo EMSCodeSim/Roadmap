@@ -62,6 +62,12 @@ class EcosystemRecommendations {
     final topic = (rawTopic ?? '').trim().toLowerCase();
     if (topic.isEmpty) return null;
 
+    // Daily Focus already passes its current task and qualification through
+    // this method. Prefer a certification-aware FireOpsSim handoff whenever
+    // that context resolves to a supported fire-service training level.
+    final focusRecommendation = forDailyFocus(topic: rawTopic ?? '');
+    if (focusRecommendation != null) return focusRecommendation;
+
     if (_containsAny(topic, const [
       'friction loss',
       'hydraulic',
