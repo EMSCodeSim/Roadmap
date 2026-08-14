@@ -655,8 +655,6 @@ class _GraphicHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    // NOTE: This header intentionally avoids image assets.
-    // Image decode / missing asset issues can cause blank previews on web.
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
@@ -716,12 +714,32 @@ class _GraphicHeader extends StatelessWidget {
                       width: 1,
                     ),
                   ),
-                  child: Icon(Icons.route_outlined, color: cs.onSecondary, size: 30),
+                  child: const _RoadmapBannerIcon(),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _RoadmapBannerIcon extends StatelessWidget {
+  const _RoadmapBannerIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: Image.asset(
+        'assets/icons/Roadmap.png',
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          // If the asset is missing or fails to decode, keep the banner stable.
+          return Icon(Icons.route_outlined, color: cs.onSecondary, size: 30);
+        },
       ),
     );
   }
