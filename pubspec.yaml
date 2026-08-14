@@ -35,10 +35,10 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/icons/career_road_icon_v2.png
+  image_path: assets/icons/Roadmap.png
   remove_alpha_ios: true
   web:
     generate: true
-    image_path: assets/icons/career_road_icon_v2.png
+    image_path: assets/icons/Roadmap.png
     background_color: "#071A33"
     theme_color: "#071A33"
