@@ -14,6 +14,7 @@ import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/career_intelligence_page.dart';
+import 'package:firepath/pages/career/career_longevity_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_v2_page.dart';
 import 'package:firepath/pages/career/quick_log_setup_page.dart';
@@ -150,6 +151,12 @@ class AppRouter {
             const MaterialPage(child: CareerIntelligencePage()),
       ),
       GoRoute(
+        path: AppRoutes.careerLongevity,
+        name: 'career_longevity',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: CareerLongevityPage()),
+      ),
+      GoRoute(
         path: AppRoutes.careerEvidence,
         name: 'career_evidence',
         pageBuilder: (context, state) => MaterialPage(
@@ -237,6 +244,7 @@ class AppRoutes {
   static const String goalSetup = '/goal-setup';
   static const String growthDetails = '/growth-tools';
   static const String careerIntelligence = '/career-intelligence';
+  static const String careerLongevity = '/career-intelligence/long-term';
   static const String requirementDetail = '/requirement';
   static const String getStarted = '/get-started';
   static const String certificationDetail = '/certification';

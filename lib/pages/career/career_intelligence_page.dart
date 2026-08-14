@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_intelligence.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/state/app_state.dart';
@@ -193,6 +195,13 @@ class _CareerIntelligencePageState extends State<CareerIntelligencePage> {
                         records: _records,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 10),
+                  _ToolCard(
+                    icon: Icons.timeline_outlined,
+                    title: 'Long-Term Career Tools',
+                    description: 'Compare future career paths, review past goals, catch stale skills, build STAR interview stories, and create resume source material.',
+                    onTap: () => context.push(AppRoutes.careerLongevity),
                   ),
                   const SizedBox(height: 22),
                   Row(
