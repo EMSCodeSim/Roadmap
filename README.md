@@ -24,6 +24,9 @@ Career Road may show one understated **Recommended Tool** card when the user's c
 
 Recommendations appear below the user's actual career work, explain why the tool is useful at that moment, and open the relevant external product only when the user chooses to. If no strong match exists, no promotional card is shown. Career Road does not use rotating banners, forced interstitials, countdown promotions, or unrelated cross-promotion.
 
+### Navigation resilience
+Secondary screens use a shared safe back-navigation control. When a normal navigation stack exists, the back arrow returns to the exact previous screen. When a screen is opened directly or through a route that has no usable back stack, the same control returns to the logical parent area instead of leaving the user stranded. Examples include Task Detail → Task Book, Career Export → Career Intelligence, Daily Focus → Home, Certification Detail → Certifications, and Quick Log Setup → Log.
+
 ### Task Book
 The active career goal becomes a Career Task Book. Major requirements such as certifications, experience, department requirements, task books, and promotion steps can open into progressively deeper preparation tasks. Built-in preparation tasks preserve FireOps-authored instructional order rather than being alphabetized. FireOps-created task content is preparation guidance and does not replace official department, state, or credentialing requirements.
 
