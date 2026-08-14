@@ -25,10 +25,12 @@ jobs:
         run: python3 tools/apply_safe_back_navigation.py
       - name: Install dependencies
         run: flutter pub get
-      - name: Format changed Dart files
-        run: dart format lib/widgets/app_back_button.dart lib/pages/career lib/pages/task_book lib/pages/path lib/pages/resources lib/pages/requirement lib/pages/certifications
-      - name: Analyze navigation changes
-        run: flutter analyze lib/widgets/app_back_button.dart lib/pages/career lib/pages/task_book lib/pages/path lib/pages/resources lib/pages/requirement lib/pages/certifications
+      - name: Format navigation changes
+        run: |
+          dart format lib/widgets/app_back_button.dart
+          git diff --name-only -- 'lib/**/*.dart' | xargs -r dart format
+      - name: Analyze shared back navigation
+        run: flutter analyze lib/widgets/app_back_button.dart
       - name: Commit navigation fixes
         run: |
           if git diff --quiet; then
