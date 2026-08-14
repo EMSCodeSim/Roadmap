@@ -15,6 +15,49 @@ class EcosystemRecommendation {
 }
 
 class EcosystemRecommendations {
+  /// Builds the focused Roadmap → FireOpsSim handoff used by Daily Focus.
+  ///
+  /// Career Road owns the user's goal/task-book context. FireOpsSim receives
+  /// only the current training level/topic so it can open the matching drill
+  /// library and level-specific skill wheel. No completion state is transferred.
+  static EcosystemRecommendation? forDailyFocus({
+    required String topic,
+    String? qualification,
+    String? goal,
+  }) {
+    final context = [
+      qualification,
+      topic,
+      goal,
+    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' ');
+    final level = _fireOpsFocusLevel(context);
+    if (level == null) return null;
+
+    final cleanTopic = topic.trim();
+    final cleanGoal = goal?.trim() ?? '';
+    final query = <String, String>{
+      'source': 'roadmap',
+      'level': level,
+      if (cleanTopic.isNotEmpty) 'topic': cleanTopic,
+      if (cleanGoal.isNotEmpty) 'goal': cleanGoal,
+    };
+    final url = Uri.https(
+      'fireopssim.com',
+      '/focus-drills.html',
+      query,
+    ).toString();
+    final label = _fireOpsFocusLabel(level);
+
+    return EcosystemRecommendation(
+      product: 'FireOpsSim',
+      title: '$label Focus Drills',
+      reason:
+          'Open the FireOpsSim drill library matched to this training level. Pick a focused drill for today or spin the $label skill wheel for a random level-appropriate rep.',
+      actionLabel: 'Open Focus Drills',
+      url: url,
+    );
+  }
+
   static EcosystemRecommendation? forTopic(String? rawTopic) {
     final topic = (rawTopic ?? '').trim().toLowerCase();
     if (topic.isEmpty) return null;
@@ -102,6 +145,100 @@ class EcosystemRecommendations {
 
     return null;
   }
+
+  static String? _fireOpsFocusLevel(String rawTopic) {
+    final topic = rawTopic.trim().toLowerCase();
+    if (topic.isEmpty) return null;
+
+    // Match the most specific certification names before broad role terms.
+    if (_containsAny(topic, const [
+      'firefighter ii',
+      'firefighter 2',
+      'fire fighter 2',
+      'ff2',
+      'ff ii',
+      'firefighter i/ii',
+      'firefighter 1 2',
+    ])) {
+      return 'firefighter_2';
+    }
+    if (_containsAny(topic, const [
+      'firefighter i',
+      'firefighter 1',
+      'fire fighter 1',
+      'ff1',
+      'ff i',
+    ])) {
+      return 'firefighter_1';
+    }
+    if (_containsAny(topic, const [
+      'hazmat',
+      'hazardous materials operations',
+      'hm ops',
+    ])) {
+      return 'hazmat_ops';
+    }
+    if (_containsAny(topic, const [
+      'driver operator',
+      'driver/operator',
+      'driver / operator',
+      'pumper',
+      'pump operator',
+      'pump operations',
+      'apparatus operator',
+      'engineer',
+    ])) {
+      return 'driver_operator';
+    }
+    if (_containsAny(topic, const [
+      'fire officer 1',
+      'fire officer i',
+      'company officer',
+      'acting officer',
+      'lieutenant',
+      'fo1',
+    ])) {
+      return 'officer_1';
+    }
+    if (_containsAny(topic, const [
+      'fire instructor 1',
+      'fire instructor i',
+      'instructor 1',
+      'instructor i',
+      'training officer',
+      'fi1',
+    ])) {
+      return 'instructor_1';
+    }
+    if (_containsAny(topic, const [
+      'probation',
+      'probationary',
+      'rookie',
+      'recruit',
+      'academy',
+    ])) {
+      return 'probationary';
+    }
+    if (_containsAny(topic, const [
+      'firefighter',
+      'fireground',
+      'structural fire',
+    ])) {
+      return 'general';
+    }
+    return null;
+  }
+
+  static String _fireOpsFocusLabel(String level) => switch (level) {
+    'probationary' => 'Academy / Probation',
+    'firefighter_1' => 'Firefighter I',
+    'firefighter_2' => 'Firefighter II',
+    'hazmat_ops' => 'HazMat Operations',
+    'driver_operator' => 'Driver / Operator',
+    'officer_1' => 'Company Officer I',
+    'instructor_1' => 'Fire Instructor I',
+    _ => 'Working Firefighter',
+  };
 
   static bool _containsAny(String topic, List<String> terms) =>
       terms.any(topic.contains);
