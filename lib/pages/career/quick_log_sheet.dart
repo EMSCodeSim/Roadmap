@@ -271,6 +271,14 @@ class _Chooser extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    const primary = <(String, IconData, QuickLogMode?)>[
+      ('CALL', Icons.local_fire_department_outlined, QuickLogMode.callIncident),
+      ('TRAINING', Icons.school_outlined, QuickLogMode.training),
+      ('SKILL', Icons.handyman_outlined, QuickLogMode.skill),
+      ('DRIVE', Icons.local_shipping_outlined, QuickLogMode.driveTime),
+      ('TASK BOOK', Icons.fact_check_outlined, QuickLogMode.taskBookProgress),
+      ('CAREER', Icons.military_tech_outlined, null),
+    ];
     return ListView(
       key: const ValueKey('quick_log_chooser'),
       shrinkWrap: true,
@@ -291,6 +299,45 @@ class _Chooser extends StatelessWidget {
           const SizedBox(height: 16),
           const LinearProgressIndicator(),
         ],
+        const SizedBox(height: 18),
+        _SectionLabel('WHAT ARE YOU LOGGING?'),
+        const SizedBox(height: 8),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.8,
+          ),
+          itemCount: primary.length,
+          itemBuilder: (context, index) {
+            final item = primary[index];
+            return FilledButton.tonal(
+              onPressed: () => item.$3 == null
+                  ? _chooseCareerType(context)
+                  : onPickMode(item.$3!),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.all(14),
+                alignment: Alignment.centerLeft,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(item.$2, size: 27),
+                  const SizedBox(height: 8),
+                  Text(item.$1,
+                      style: const TextStyle(fontWeight: FontWeight.w900)),
+                ],
+              ),
+            );
+          },
+        ),
         if (pinned.isNotEmpty) ...[
           const SizedBox(height: 18),
           _SectionLabel('QUICK ACTIONS'),
@@ -347,53 +394,44 @@ class _Chooser extends StatelessWidget {
                 onTap: () => onPickRecent(record),
               )),
         ],
-        const SizedBox(height: 20),
-        _SectionLabel('WHAT ARE YOU LOGGING?'),
-        const SizedBox(height: 8),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 1.65,
-          ),
-          itemCount: QuickLogMode.values.length,
-          itemBuilder: (context, index) {
-            final mode = QuickLogMode.values[index];
-            return InkWell(
-              onTap: () => onPickMode(mode),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: cs.surface,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(mode.icon, color: cs.primary, size: 25),
-                    const SizedBox(height: 8),
-                    Text(
-                      mode.label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
       ],
     );
+  }
+
+  Future<void> _chooseCareerType(BuildContext context) async {
+    final mode = await showModalBottomSheet<QuickLogMode>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('Career activity',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 10),
+            for (final mode in const [
+              QuickLogMode.leadership,
+              QuickLogMode.teaching,
+              QuickLogMode.awardRecognition,
+              QuickLogMode.achievement,
+              QuickLogMode.project,
+              QuickLogMode.education,
+              QuickLogMode.custom,
+            ])
+              ListTile(
+                leading: Icon(mode.icon),
+                title: Text(mode.label),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pop(context, mode),
+              ),
+          ]),
+        ),
+      ),
+    );
+    if (mode != null) onPickMode(mode);
   }
 
   static String _recentSubtitle(CareerRecord record) {
@@ -421,6 +459,115 @@ class _SectionLabel extends StatelessWidget {
             ),
       );
 }
+
+class _ActivityPresetPicker extends StatelessWidget {
+  final QuickLogMode mode;
+  final ValueChanged<String> onSelected;
+  final VoidCallback onCustom;
+
+  const _ActivityPresetPicker({
+    required this.mode,
+    required this.onSelected,
+    required this.onCustom,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final choices = _presetsFor(mode);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text('Choose ${mode.label.toLowerCase()}',
+          style: Theme.of(context)
+              .textTheme
+              .titleLarge
+              ?.copyWith(fontWeight: FontWeight.w900)),
+      const SizedBox(height: 4),
+      Text('Pick the activity first. You can save after adding only the amount.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              )),
+      const SizedBox(height: 14),
+      GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 2.15,
+        ),
+        itemCount: choices.length,
+        itemBuilder: (context, index) => FilledButton.tonal(
+          onPressed: () => onSelected(choices[index]),
+          child: Text(choices[index], textAlign: TextAlign.center),
+        ),
+      ),
+      const SizedBox(height: 10),
+      OutlinedButton.icon(
+        onPressed: onCustom,
+        icon: const Icon(Icons.add),
+        label: const Text('Custom activity'),
+      ),
+    ]);
+  }
+}
+
+class _SelectedActivityCard extends StatelessWidget {
+  final String title;
+  final VoidCallback onChange;
+  const _SelectedActivityCard({required this.title, required this.onChange});
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: .18),
+          ),
+        ),
+        leading: const Icon(Icons.check_circle_outline),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        trailing: TextButton(onPressed: onChange, child: const Text('Change')),
+      );
+}
+
+List<String> _presetsFor(QuickLogMode mode) => switch (mode) {
+      QuickLogMode.callIncident => const [
+          'EMS call', 'Structure fire', 'Vehicle accident', 'Wildland fire',
+          'HazMat incident', 'Technical rescue', 'Public assist', 'Alarm response'
+        ],
+      QuickLogMode.training => const [
+          'Department training', 'Crew drill', 'Outside class', 'Online CE',
+          'Physical training', 'Live fire training', 'Company training', 'Conference'
+        ],
+      QuickLogMode.skill => const [
+          'Patient assessment', 'IV attempt', 'Airway management', 'Medication administration',
+          'Pump operations', 'Ground ladders', 'Hose advancement', 'Search and rescue'
+        ],
+      QuickLogMode.taskBookProgress => const [
+          'Task practice', 'Evaluator sign-off', 'Knowledge review', 'Scenario evaluation'
+        ],
+      QuickLogMode.leadership => const [
+          'Acting officer', 'Crew mentoring', 'Project leadership', 'Conflict resolution'
+        ],
+      QuickLogMode.teaching => const [
+          'Department class', 'Skills instruction', 'New-member mentoring', 'Public education'
+        ],
+      QuickLogMode.awardRecognition => const [
+          'Department award', 'Commendation', 'Unit citation', 'Community recognition'
+        ],
+      QuickLogMode.achievement => const [
+          'Completed task book', 'Promotion milestone', 'Probation completed', 'Career milestone'
+        ],
+      QuickLogMode.project => const [
+          'Committee work', 'Policy development', 'Equipment project', 'Training development'
+        ],
+      QuickLogMode.education => const [
+          'College course', 'Continuing education', 'Certification course', 'Leadership course'
+        ],
+      QuickLogMode.custom => const [],
+      QuickLogMode.driveTime => const [],
+    };
 
 class _DriveApparatusPicker extends StatelessWidget {
   final List<ApparatusProfile> saved;
@@ -553,6 +700,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
   bool _offRoad = false;
   bool _pumpAndRoll = false;
   bool _aerialSetup = false;
+  bool _customActivity = false;
 
   CareerRecordOutcome? _outcome;
   DateTime _date = DateTime.now();
@@ -573,6 +721,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
       _outcome = seed.outcome;
     }
     _taskLink = widget.prefill;
+    _customActivity = widget.mode == QuickLogMode.custom;
     if (widget.mode == QuickLogMode.driveTime) {
       _restoreDriveDetails(seed?.details ?? const <String, dynamic>{});
       _loadApparatus();
@@ -647,6 +796,12 @@ class _QuickLogFormState extends State<_QuickLogForm> {
 
   bool get _tracksOutcome => widget.mode == QuickLogMode.skill;
 
+  bool get _needsActivityChoice =>
+      widget.mode != QuickLogMode.driveTime &&
+      !_customActivity &&
+      _title.text.trim().isEmpty &&
+      _presetsFor(widget.mode).isNotEmpty;
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
@@ -675,7 +830,13 @@ class _QuickLogFormState extends State<_QuickLogForm> {
             ),
           ],
         ),
-        if (widget.mode == QuickLogMode.driveTime && _apparatus == null) ...[
+        if (_needsActivityChoice) ...[
+          _ActivityPresetPicker(
+            mode: widget.mode,
+            onSelected: _selectActivity,
+            onCustom: _chooseCustomActivity,
+          ),
+        ] else if (widget.mode == QuickLogMode.driveTime && _apparatus == null) ...[
           _DriveApparatusPicker(
             saved: _savedApparatus,
             onSelected: _selectApparatus,
@@ -718,14 +879,24 @@ class _QuickLogFormState extends State<_QuickLogForm> {
           const SizedBox(height: 12),
           _buildDriveFields(),
         ] else ...[
-        TextField(
-          controller: _title,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(
-            labelText: _titleLabel(widget.mode),
-            hintText: _titleHint(widget.mode),
+        if (_customActivity)
+          TextField(
+            controller: _title,
+            autofocus: true,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: _titleLabel(widget.mode),
+              hintText: _titleHint(widget.mode),
+            ),
+          )
+        else
+          _SelectedActivityCard(
+            title: _title.text,
+            onChange: () => setState(() {
+              _title.clear();
+              _category.clear();
+            }),
           ),
-        ),
         const SizedBox(height: 12),
         if (_categoryEnabled(widget.mode)) ...[
           TextField(
@@ -846,6 +1017,22 @@ class _QuickLogFormState extends State<_QuickLogForm> {
   Future<void> _loadApparatus() async {
     final saved = await _apparatusStore.load();
     if (mounted) setState(() => _savedApparatus = saved);
+  }
+
+  void _selectActivity(String activity) {
+    setState(() {
+      _title.text = activity;
+      _category.text = _defaultCategory(widget.mode);
+      _customActivity = false;
+    });
+  }
+
+  void _chooseCustomActivity() {
+    setState(() {
+      _customActivity = true;
+      _title.clear();
+      _category.text = _defaultCategory(widget.mode);
+    });
   }
 
   void _restoreDriveDetails(Map<String, dynamic> details) {
