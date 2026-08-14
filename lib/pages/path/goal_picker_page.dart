@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_goal.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
@@ -65,6 +66,8 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBackButton.toTaskBook(),
+
         title: Text(hadGoal ? 'Change Career Goal' : 'Choose Career Goal'),
       ),
       body: SafeArea(
@@ -78,18 +81,17 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                     hadGoal
                         ? 'Where do you want to go next?'
                         : 'Build your career path',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Pick the position or specialty you want to work toward. You can change this later without changing your certifications or career log.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          height: 1.5,
-                        ),
+                      color: cs.onSurfaceVariant,
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   TextField(
@@ -147,9 +149,7 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                           ),
                           child: Text(
                             category.toUpperCase(),
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge
+                            style: Theme.of(context).textTheme.labelLarge
                                 ?.copyWith(
                                   color: cs.onSurfaceVariant,
                                   fontWeight: FontWeight.w900,
@@ -181,18 +181,17 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                   const SizedBox(height: AppSpacing.xl),
                   Text(
                     'Optional target date',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     'Use a target date if you want the Timeline to help pace your plan. Leave it blank if you are exploring.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          height: 1.45,
-                        ),
+                      color: cs.onSurfaceVariant,
+                      height: 1.45,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _TargetDateCard(
@@ -216,9 +215,7 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
               decoration: BoxDecoration(
                 color: cs.surface,
                 border: Border(
-                  top: BorderSide(
-                    color: cs.outline.withValues(alpha: 0.12),
-                  ),
+                  top: BorderSide(color: cs.outline.withValues(alpha: 0.12)),
                 ),
               ),
               child: SizedBox(
@@ -232,8 +229,8 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                     _saving
                         ? 'Saving…'
                         : hadGoal
-                            ? 'Build & Review New Task Book'
-                            : 'Build & Review My Task Book',
+                        ? 'Build & Review New Task Book'
+                        : 'Build & Review My Task Book',
                   ),
                 ),
               ),
@@ -381,10 +378,9 @@ class _GoalChoiceCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w900),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -392,17 +388,17 @@ class _GoalChoiceCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                            height: 1.35,
-                          ),
+                        color: cs.onSurfaceVariant,
+                        height: 1.35,
+                      ),
                     ),
                     const SizedBox(height: 5),
                     Text(
                       category,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: cs.primary,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: cs.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                 ),
@@ -449,18 +445,17 @@ class _TargetDateCard extends StatelessWidget {
               children: [
                 Text(
                   date == null ? 'No target date' : _formatDate(date!),
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 Text(
                   date == null
                       ? 'Timeline pacing will stay optional.'
                       : 'Use this as a planning target, not a promise of promotion.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
             ),
@@ -516,19 +511,17 @@ class _NoGoalResults extends StatelessWidget {
           Text(
             query.isEmpty ? 'No goals available' : 'No goals match “$query”',
             textAlign: TextAlign.center,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Create a custom goal if your next position or specialty is unique to your department.',
             textAlign: TextAlign.center,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: cs.onSurfaceVariant),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
       ),

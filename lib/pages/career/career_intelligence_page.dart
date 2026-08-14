@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_intelligence.dart';
@@ -52,7 +53,10 @@ class _CareerIntelligencePageState extends State<CareerIntelligencePage> {
       ..sort((a, b) => b.compareTo(a));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Career Intelligence')),
+      appBar: AppBar(
+        leading: const AppBackButton.toAdvance(),
+        title: const Text('Career Intelligence'),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(

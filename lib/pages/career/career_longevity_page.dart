@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/career_longevity.dart';
 import 'package:firepath/services/career_record_store.dart';
@@ -62,7 +63,10 @@ class _CareerLongevityPageState extends State<CareerLongevityPage> {
         .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Long-Term Career Tools')),
+      appBar: AppBar(
+        leading: const AppBackButton.toCareerIntelligence(),
+        title: const Text('Long-Term Career Tools'),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -76,7 +80,8 @@ class _CareerLongevityPageState extends State<CareerLongevityPage> {
                   const SizedBox(height: 8),
                   if (readiness.isEmpty)
                     const _EmptyCard(
-                      text: 'Add certifications and career activity to compare future paths.',
+                      text:
+                          'Add certifications and career activity to compare future paths.',
                     )
                   else
                     ...readiness.map(
@@ -94,7 +99,8 @@ class _CareerLongevityPageState extends State<CareerLongevityPage> {
                   const SizedBox(height: 8),
                   if (decay.isEmpty)
                     const _EmptyCard(
-                      text: 'No documented skills are currently more than a year old.',
+                      text:
+                          'No documented skills are currently more than a year old.',
                     )
                   else
                     ...decay.map((item) => _SkillAlertCard(item: item)),
@@ -103,7 +109,8 @@ class _CareerLongevityPageState extends State<CareerLongevityPage> {
                   const SizedBox(height: 8),
                   if (archives.isEmpty)
                     const _EmptyCard(
-                      text: 'Past goals will appear here after you change career paths while keeping linked records or Task Book progress.',
+                      text:
+                          'Past goals will appear here after you change career paths while keeping linked records or Task Book progress.',
                     )
                   else
                     ...archives.map((item) => _ArchiveCard(item: item)),
@@ -112,7 +119,8 @@ class _CareerLongevityPageState extends State<CareerLongevityPage> {
                   const SizedBox(height: 8),
                   if (stories.isEmpty)
                     const _EmptyCard(
-                      text: 'Mark leadership, project, achievement, or other strong examples as career highlights to build interview stories.',
+                      text:
+                          'Mark leadership, project, achievement, or other strong examples as career highlights to build interview stories.',
                     )
                   else
                     ...stories.map(
@@ -130,7 +138,8 @@ class _CareerLongevityPageState extends State<CareerLongevityPage> {
                   _ActionCard(
                     icon: Icons.description_outlined,
                     title: 'Resume / Promotion Source Packet',
-                    text: 'Build reusable source material from your roles, credentials, training, highlights, leadership, and projects.',
+                    text:
+                        'Build reusable source material from your roles, credentials, training, highlights, leadership, and projects.',
                     button: 'Build packet',
                     onTap: () => _showText(
                       'Resume / Promotion Packet',
@@ -143,8 +152,10 @@ class _CareerLongevityPageState extends State<CareerLongevityPage> {
                   const SizedBox(height: 10),
                   Text(
                     'Readiness previews are personal planning estimates based on the information recorded in Career Road. They are not official eligibility determinations. Always verify requirements with your department, state, or certifying authority.',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.45,
+                    ),
                   ),
                 ],
               ),
@@ -200,14 +211,17 @@ class _Hero extends StatelessWidget {
       children: [
         Text(
           'Your career keeps moving.',
-          style: Theme.of(context).textTheme.headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w900),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 8),
         Text(
           'Use years of preserved data to compare future paths, notice stale skills, reopen old goals, and turn real experience into interview and resume material.',
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: cs.onSurfaceVariant, height: 1.5),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: cs.onSurfaceVariant,
+            height: 1.5,
+          ),
         ),
       ],
     ),
@@ -252,8 +266,9 @@ class _ReadinessCard extends StatelessWidget {
                   ),
                   Text(
                     '${item.score}%',
-                    style: Theme.of(context).textTheme.labelMedium
-                        ?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ],
               ),
@@ -265,14 +280,16 @@ class _ReadinessCard extends StatelessWidget {
                 children: [
                   Text(
                     item.goal.title,
-                    style: Theme.of(context).textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     '${item.completed}/${item.total} core requirements matched${active ? ' • active goal' : ''}',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -468,8 +485,9 @@ class _ActionCard extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: Theme.of(context).textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
               ),
             ),
           ],
@@ -490,8 +508,9 @@ class _EmptyCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: AppSpacing.paddingMd,
     decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest
-          .withValues(alpha: 0.55),
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
       borderRadius: BorderRadius.circular(AppRadius.lg),
     ),
     child: Text(text),

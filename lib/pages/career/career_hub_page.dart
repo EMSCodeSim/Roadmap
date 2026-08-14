@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
@@ -38,7 +39,8 @@ class _CareerHubPageState extends State<CareerHubPage> {
   }
 
   Future<void> _saveRecord(CareerRecord record) async {
-    final next = [..._records, record]..sort((a, b) => b.date.compareTo(a.date));
+    final next = [..._records, record]
+      ..sort((a, b) => b.date.compareTo(a.date));
     await _store.save(next);
     if (!mounted) return;
     setState(() => _records = next);
@@ -50,7 +52,10 @@ class _CareerHubPageState extends State<CareerHubPage> {
   }
 
   Future<void> _showBrief(AppState app) async {
-    final brief = AdvancementAnalyzer.buildPromotionBrief(app: app, records: _records);
+    final brief = AdvancementAnalyzer.buildPromotionBrief(
+      app: app,
+      records: _records,
+    );
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -60,19 +65,26 @@ class _CareerHubPageState extends State<CareerHubPage> {
           child: SingleChildScrollView(
             child: SelectableText(
               brief,
-              style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(height: 1.45),
+              style: Theme.of(
+                dialogContext,
+              ).textTheme.bodyMedium?.copyWith(height: 1.45),
             ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
           FilledButton.icon(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: brief));
               if (!dialogContext.mounted) return;
               Navigator.pop(dialogContext);
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Promotion brief copied.')));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Promotion brief copied.')),
+              );
             },
             icon: const Icon(Icons.copy_outlined),
             label: const Text('Copy brief'),
@@ -82,7 +94,10 @@ class _CareerHubPageState extends State<CareerHubPage> {
     );
   }
 
-  Future<void> _handleRecommendation(AppState app, AdvancementAnalysis analysis) async {
+  Future<void> _handleRecommendation(
+    AppState app,
+    AdvancementAnalysis analysis,
+  ) async {
     final recommendation = analysis.recommendation;
     switch (recommendation.kind) {
       case AdvancementActionKind.chooseGoal:
@@ -91,7 +106,9 @@ class _CareerHubPageState extends State<CareerHubPage> {
         return;
       case AdvancementActionKind.documentRequirement:
         final status = analysis.requirementStatuses
-            .where((item) => item.requirement.id == recommendation.requirementId)
+            .where(
+              (item) => item.requirement.id == recommendation.requirementId,
+            )
             .firstOrNull;
         await _captureEvidence(app: app, requirementStatus: status);
         return;
@@ -114,7 +131,8 @@ class _CareerHubPageState extends State<CareerHubPage> {
   }) async {
     final now = DateTime.now();
     final requirement = requirementStatus?.requirement;
-    var type = competency?.suggestedType ?? _suggestedTypeForRequirement(requirement);
+    var type =
+        competency?.suggestedType ?? _suggestedTypeForRequirement(requirement);
     var highlight = false;
 
     final title = TextEditingController(
@@ -130,7 +148,11 @@ class _CareerHubPageState extends State<CareerHubPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text(requirement != null ? 'Document roadmap evidence' : 'Add promotion example'),
+          title: Text(
+            requirement != null
+                ? 'Document roadmap evidence'
+                : 'Add promotion example',
+          ),
           content: SizedBox(
             width: 650,
             child: Form(
@@ -144,7 +166,8 @@ class _CareerHubPageState extends State<CareerHubPage> {
                       _CaptureContextBanner(
                         icon: Icons.route_outlined,
                         title: requirement.name,
-                        text: 'This record will be linked directly to your ${app.selectedGoal?.title ?? 'current'} roadmap.',
+                        text:
+                            'This record will be linked directly to your ${app.selectedGoal?.title ?? 'current'} roadmap.',
                       )
                     else if (competency != null)
                       _CaptureContextBanner(
@@ -152,19 +175,30 @@ class _CareerHubPageState extends State<CareerHubPage> {
                         title: competency.title,
                         text: competency.capturePrompt,
                       ),
-                    if (requirement != null || competency != null) const SizedBox(height: 14),
+                    if (requirement != null || competency != null)
+                      const SizedBox(height: 14),
                     Text(
                       'Write enough context that you can understand and reuse this example years from now. Do not enter patient names, addresses, DOBs, or other identifying information.',
-                      style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+                      style: Theme.of(dialogContext).textTheme.bodySmall
+                          ?.copyWith(
+                            color: Theme.of(
+                              dialogContext,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                     ),
                     const SizedBox(height: 14),
                     DropdownButtonFormField<CareerRecordType>(
                       value: type,
-                      decoration: const InputDecoration(labelText: 'Evidence type'),
+                      decoration: const InputDecoration(
+                        labelText: 'Evidence type',
+                      ),
                       items: CareerRecordType.values
-                          .map((value) => DropdownMenuItem(value: value, child: Text(value.label)))
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value.label),
+                            ),
+                          )
                           .toList(),
                       onChanged: (value) {
                         if (value != null) setDialogState(() => type = value);
@@ -176,16 +210,21 @@ class _CareerHubPageState extends State<CareerHubPage> {
                       autofocus: requirement == null,
                       decoration: const InputDecoration(
                         labelText: 'Short title',
-                        hintText: 'Led multi-company drill, resolved crew conflict, completed FO1 assignment…',
+                        hintText:
+                            'Led multi-company drill, resolved crew conflict, completed FO1 assignment…',
                       ),
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Add a short title.' : null,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? 'Add a short title.'
+                          : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: role,
                       decoration: const InputDecoration(
                         labelText: 'Your role',
-                        hintText: 'Acting officer, instructor, project lead, firefighter…',
+                        hintText:
+                            'Acting officer, instructor, project lead, firefighter…',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -195,7 +234,8 @@ class _CareerHubPageState extends State<CareerHubPage> {
                       maxLines: 5,
                       decoration: const InputDecoration(
                         labelText: 'Situation and your actions',
-                        hintText: 'What was happening, what responsibility did you have, and what did you personally do?',
+                        hintText:
+                            'What was happening, what responsibility did you have, and what did you personally do?',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -205,7 +245,8 @@ class _CareerHubPageState extends State<CareerHubPage> {
                       maxLines: 4,
                       decoration: const InputDecoration(
                         labelText: 'Result / impact',
-                        hintText: 'What changed, improved, was completed, or was learned?',
+                        hintText:
+                            'What changed, improved, was completed, or was learned?',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -213,16 +254,20 @@ class _CareerHubPageState extends State<CareerHubPage> {
                       controller: evidence,
                       decoration: const InputDecoration(
                         labelText: 'Evidence reference (optional)',
-                        hintText: 'Task-book page, evaluation, training record, award letter, project file…',
+                        hintText:
+                            'Task-book page, evaluation, training record, award letter, project file…',
                       ),
                     ),
                     const SizedBox(height: 6),
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       value: highlight,
-                      onChanged: (value) => setDialogState(() => highlight = value ?? false),
+                      onChanged: (value) =>
+                          setDialogState(() => highlight = value ?? false),
                       title: const Text('Add to promotion story bank'),
-                      subtitle: const Text('Use this when it is a strong example you may want for interviews, resumes, or performance reviews.'),
+                      subtitle: const Text(
+                        'Use this when it is a strong example you may want for interviews, resumes, or performance reviews.',
+                      ),
                     ),
                   ],
                 ),
@@ -230,7 +275,10 @@ class _CareerHubPageState extends State<CareerHubPage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
             FilledButton(
               onPressed: () {
                 if (!(formKey.currentState?.validate() ?? false)) return;
@@ -246,7 +294,10 @@ class _CareerHubPageState extends State<CareerHubPage> {
                     id: now.microsecondsSinceEpoch.toRadixString(36),
                     type: type,
                     title: title.text.trim(),
-                    category: competency?.title ?? requirement?.category ?? 'Professional development',
+                    category:
+                        competency?.title ??
+                        requirement?.category ??
+                        'Professional development',
                     date: now,
                     roleOrAssignment: _nullable(role.text),
                     summary: _nullable(summary.text),
@@ -279,7 +330,9 @@ class _CareerHubPageState extends State<CareerHubPage> {
     if (result != null) {
       await _saveRecord(result);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Career evidence saved.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Career evidence saved.')));
     }
   }
 
@@ -308,6 +361,8 @@ class _CareerHubPageState extends State<CareerHubPage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBackButton.toAdvance(),
+
         title: const Text('Growth'),
         actions: [
           IconButton(
@@ -341,7 +396,8 @@ class _CareerHubPageState extends State<CareerHubPage> {
                   const SizedBox(height: 18),
                   const _SectionHeading(
                     title: 'Promotion Readiness',
-                    subtitle: 'Four areas that make you more competitive for the next position.',
+                    subtitle:
+                        'Four areas that make you more competitive for the next position.',
                   ),
                   const SizedBox(height: 9),
                   _ProgressPanel(
@@ -351,7 +407,8 @@ class _CareerHubPageState extends State<CareerHubPage> {
                     valueText: analysis.totalRequirements == 0
                         ? 'No target'
                         : '${analysis.completedRequirements}/${analysis.totalRequirements}',
-                    detail: 'Task Book requirements completed for your selected goal.',
+                    detail:
+                        'Task Book requirements completed for your selected goal.',
                   ),
                   const SizedBox(height: 8),
                   _ProgressPanel(
@@ -361,21 +418,26 @@ class _CareerHubPageState extends State<CareerHubPage> {
                     valueText: analysis.evidenceExpected == 0
                         ? '—'
                         : '${analysis.evidenceCovered}/${analysis.evidenceExpected}',
-                    detail: 'Proof/examples linked so you can recall them later.',
+                    detail:
+                        'Proof/examples linked so you can recall them later.',
                   ),
                   const SizedBox(height: 8),
                   _ProgressPanel(
                     icon: Icons.hub_outlined,
                     label: 'Leadership / Competencies',
                     value: analysis.competencyProgress,
-                    valueText: '${analysis.supportedCompetencies}/${analysis.totalCompetencies}',
-                    detail: 'Breadth across leadership, communication, safety, projects, and more.',
+                    valueText:
+                        '${analysis.supportedCompetencies}/${analysis.totalCompetencies}',
+                    detail:
+                        'Breadth across leadership, communication, safety, projects, and more.',
                   ),
                   const SizedBox(height: 8),
                   _ProgressPanel(
                     icon: Icons.auto_stories_outlined,
                     label: 'Interview Stories',
-                    value: (analysis.storyReadyCount / 5).clamp(0.0, 1.0).toDouble(),
+                    value: (analysis.storyReadyCount / 5)
+                        .clamp(0.0, 1.0)
+                        .toDouble(),
                     valueText: '${analysis.storyReadyCount}/5+',
                     detail: 'Stories documented clearly enough to reuse later.',
                   ),
@@ -383,7 +445,12 @@ class _CareerHubPageState extends State<CareerHubPage> {
                   ExpansionTile(
                     tilePadding: EdgeInsets.zero,
                     childrenPadding: EdgeInsets.zero,
-                    title: Text('Tools', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                    title: Text(
+                      'Tools',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     children: [
                       const SizedBox(height: 8),
                       _QuickNavigation(
@@ -407,7 +474,8 @@ class _CareerHubPageState extends State<CareerHubPage> {
                     _CalloutCard(
                       icon: Icons.flag_outlined,
                       title: 'Select your next role',
-                      text: 'Once a target is selected, FireOps can compare your roadmap with your Career Vault and prioritize missing proof.',
+                      text:
+                          'Once a target is selected, FireOps can compare your roadmap with your Career Vault and prioritize missing proof.',
                       actionLabel: 'Choose roadmap',
                       onAction: () => context.go(AppRoutes.myPath),
                     )
@@ -415,22 +483,29 @@ class _CareerHubPageState extends State<CareerHubPage> {
                     const _PositiveCard(
                       icon: Icons.verified_outlined,
                       title: 'No roadmap evidence gaps identified',
-                      text: 'Your evidence-worthy roadmap items all have at least one linked career record. Keep adding strong examples as your responsibilities grow.',
+                      text:
+                          'Your evidence-worthy roadmap items all have at least one linked career record. Keep adding strong examples as your responsibilities grow.',
                     )
                   else
-                    ...analysis.evidenceGaps.take(5).map(
+                    ...analysis.evidenceGaps
+                        .take(5)
+                        .map(
                           (gap) => Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: _EvidenceGapCard(
                               status: gap,
-                              onAdd: () => _captureEvidence(app: app, requirementStatus: gap),
+                              onAdd: () => _captureEvidence(
+                                app: app,
+                                requirementStatus: gap,
+                              ),
                             ),
                           ),
                         ),
                   const SizedBox(height: 22),
                   const _SectionHeading(
                     title: 'Promotion competency map',
-                    subtitle: 'A broad officer or promotional file needs more than certificates. Build examples across the situations interview panels and supervisors commonly ask about.',
+                    subtitle:
+                        'A broad officer or promotional file needs more than certificates. Build examples across the situations interview panels and supervisors commonly ask about.',
                   ),
                   const SizedBox(height: 9),
                   ...analysis.competencies.map(
@@ -438,7 +513,8 @@ class _CareerHubPageState extends State<CareerHubPage> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: _CompetencyCard(
                         competency: competency,
-                        onCapture: () => _captureEvidence(app: app, competency: competency),
+                        onCapture: () =>
+                            _captureEvidence(app: app, competency: competency),
                       ),
                     ),
                   ),
@@ -448,10 +524,14 @@ class _CareerHubPageState extends State<CareerHubPage> {
                       const Expanded(
                         child: _SectionHeading(
                           title: 'Promotion story bank',
-                          subtitle: 'Strong examples you can reuse for interviews, resumes, evaluations, and future applications.',
+                          subtitle:
+                              'Strong examples you can reuse for interviews, resumes, evaluations, and future applications.',
                         ),
                       ),
-                      TextButton(onPressed: _openVault, child: const Text('Open Vault')),
+                      TextButton(
+                        onPressed: _openVault,
+                        child: const Text('Open Vault'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 9),
@@ -459,15 +539,20 @@ class _CareerHubPageState extends State<CareerHubPage> {
                     _CalloutCard(
                       icon: Icons.auto_stories_outlined,
                       title: 'Start collecting career stories',
-                      text: 'Document meaningful leadership decisions, projects, teaching, difficult calls, awards, and task-book work with your actions and the result.',
+                      text:
+                          'Document meaningful leadership decisions, projects, teaching, difficult calls, awards, and task-book work with your actions and the result.',
                       actionLabel: 'Add first story',
                       onAction: () => _captureEvidence(
                         app: app,
-                        competency: analysis.competencies.where((e) => e.id == 'leadership').firstOrNull,
+                        competency: analysis.competencies
+                            .where((e) => e.id == 'leadership')
+                            .firstOrNull,
                       ),
                     )
                   else
-                    ...analysis.promotionStories.take(5).map(
+                    ...analysis.promotionStories
+                        .take(5)
+                        .map(
                           (record) => Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: _StoryCard(record: record),
@@ -482,7 +567,9 @@ class _CareerHubPageState extends State<CareerHubPage> {
                     ),
                     child: Text(
                       'Professional Growth is a personal planning and memory tool. It does not determine official promotional eligibility. Verify requirements, task-book completion, credentials, and documentation with your department and credentialing bodies.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ],
@@ -529,9 +616,16 @@ class _ReadinessHero extends StatelessWidget {
                     children: [
                       Text(
                         hasGoal ? '${analysis.readinessScore}%' : '—',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                      Text('profile', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant)),
+                      Text(
+                        'profile',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -543,20 +637,29 @@ class _ReadinessHero extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    hasGoal ? 'Target: ${analysis.goalTitle}' : 'Set your advancement target',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                    hasGoal
+                        ? 'Target: ${analysis.goalTitle}'
+                        : 'Set your advancement target',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     analysis.readinessLabel,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w700),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 5),
                   Text(
                     hasGoal
                         ? 'This profile score combines roadmap completion, linked evidence, promotion competency breadth, and reusable career stories.'
                         : 'Choose Engineer, Fire Officer, Lieutenant, Captain, Instructor, or another path so FireOps can prioritize your growth.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 8),
                   TextButton.icon(
@@ -597,13 +700,29 @@ class _NextMoveCard extends StatelessWidget {
             children: [
               Icon(Icons.near_me_outlined, color: cs.onPrimaryContainer),
               const SizedBox(width: 8),
-              Text('BEST NEXT MOVE', style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800, color: cs.onPrimaryContainer)),
+              Text(
+                'BEST NEXT MOVE',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: cs.onPrimaryContainer,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 9),
-          Text(recommendation.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+          Text(
+            recommendation.title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 5),
-          Text(recommendation.reason, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+          Text(
+            recommendation.reason,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+          ),
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: onAction,
@@ -656,14 +775,29 @@ class _ProgressPanel extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700))),
-                      Text(valueText, style: const TextStyle(fontWeight: FontWeight.w800)),
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      Text(
+                        valueText,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  LinearProgressIndicator(value: value.clamp(0.0, 1.0).toDouble()),
+                  LinearProgressIndicator(
+                    value: value.clamp(0.0, 1.0).toDouble(),
+                  ),
                   const SizedBox(height: 5),
-                  Text(detail, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                  Text(
+                    detail,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
                 ],
               ),
             ),
@@ -693,10 +827,26 @@ class _QuickNavigation extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        ActionChip(avatar: const Icon(Icons.fact_check_outlined, size: 18), label: const Text('Task Book'), onPressed: onRoadmap),
-        ActionChip(avatar: const Icon(Icons.inventory_2_outlined, size: 18), label: const Text('Career Vault'), onPressed: onVault),
-        ActionChip(avatar: const Icon(Icons.description_outlined, size: 18), label: const Text('Promotion brief'), onPressed: onBrief),
-        ActionChip(avatar: const Icon(Icons.verified_outlined, size: 18), label: const Text('Certifications'), onPressed: onCerts),
+        ActionChip(
+          avatar: const Icon(Icons.fact_check_outlined, size: 18),
+          label: const Text('Task Book'),
+          onPressed: onRoadmap,
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.inventory_2_outlined, size: 18),
+          label: const Text('Career Vault'),
+          onPressed: onVault,
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.description_outlined, size: 18),
+          label: const Text('Promotion brief'),
+          onPressed: onBrief,
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.verified_outlined, size: 18),
+          label: const Text('Certifications'),
+          onPressed: onCerts,
+        ),
       ],
     );
   }
@@ -721,9 +871,20 @@ class _EvidenceGapCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(requirement.type == RequirementType.taskBook ? Icons.fact_check_outlined : Icons.attach_file_outlined, size: 20, color: cs.primary),
+                Icon(
+                  requirement.type == RequirementType.taskBook
+                      ? Icons.fact_check_outlined
+                      : Icons.attach_file_outlined,
+                  size: 20,
+                  color: cs.primary,
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: Text(requirement.name, style: const TextStyle(fontWeight: FontWeight.w700))),
+                Expanded(
+                  child: Text(
+                    requirement.name,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
                 _StatusPill(text: status.statusLabel),
               ],
             ),
@@ -734,7 +895,9 @@ class _EvidenceGapCard extends StatelessWidget {
                   : requirement.description,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
             if (status.taskBookProgress != null) ...[
               const SizedBox(height: 9),
@@ -774,16 +937,37 @@ class _CompetencyCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(competency.supported ? Icons.check_circle_outline : Icons.radio_button_unchecked, size: 20, color: competency.supported ? cs.primary : cs.onSurfaceVariant),
+                Icon(
+                  competency.supported
+                      ? Icons.check_circle_outline
+                      : Icons.radio_button_unchecked,
+                  size: 20,
+                  color: competency.supported
+                      ? cs.primary
+                      : cs.onSurfaceVariant,
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: Text(competency.title, style: const TextStyle(fontWeight: FontWeight.w700))),
-                Text('${competency.exampleCount}/${competency.targetExamples}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                Expanded(
+                  child: Text(
+                    competency.title,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Text(
+                  '${competency.exampleCount}/${competency.targetExamples}',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
               ],
             ),
             const SizedBox(height: 7),
             LinearProgressIndicator(value: competency.progress),
             const SizedBox(height: 7),
-            Text(competency.description, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+            Text(
+              competency.description,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
             if (!competency.supported) ...[
               const SizedBox(height: 6),
               Align(
@@ -810,7 +994,8 @@ class _StoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final ready = (record.roleOrAssignment ?? '').trim().isNotEmpty &&
+    final ready =
+        (record.roleOrAssignment ?? '').trim().isNotEmpty &&
         (record.summary ?? '').trim().isNotEmpty &&
         (record.impact ?? '').trim().isNotEmpty;
     return Card(
@@ -822,17 +1007,35 @@ class _StoryCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(record.highlight ? Icons.star : Icons.auto_stories_outlined, size: 20, color: cs.primary),
+                Icon(
+                  record.highlight ? Icons.star : Icons.auto_stories_outlined,
+                  size: 20,
+                  color: cs.primary,
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: Text(record.title, style: const TextStyle(fontWeight: FontWeight.w700))),
+                Expanded(
+                  child: Text(
+                    record.title,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
                 _StatusPill(text: ready ? 'Story ready' : 'Add detail'),
               ],
             ),
             const SizedBox(height: 5),
-            Text('${record.type.label} • ${_formatDate(record.date)}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+            Text(
+              '${record.type.label} • ${_formatDate(record.date)}',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
             if ((record.impact ?? '').trim().isNotEmpty) ...[
               const SizedBox(height: 7),
-              Text('Result: ${record.impact}', maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(
+                'Result: ${record.impact}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ],
         ),
@@ -846,7 +1049,11 @@ class _CaptureContextBanner extends StatelessWidget {
   final String title;
   final String text;
 
-  const _CaptureContextBanner({required this.icon, required this.title, required this.text});
+  const _CaptureContextBanner({
+    required this.icon,
+    required this.title,
+    required this.text,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -866,9 +1073,17 @@ class _CaptureContextBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 3),
-                Text(text, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                Text(
+                  text,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
               ],
             ),
           ),
@@ -889,9 +1104,19 @@ class _SectionHeading extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 2),
-        Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(
+          subtitle,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }
@@ -912,7 +1137,12 @@ class _StatusPill extends StatelessWidget {
         color: cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelSmall),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
     );
   }
 }
@@ -946,13 +1176,22 @@ class _CalloutCard extends StatelessWidget {
               children: [
                 Icon(icon, color: cs.primary),
                 const SizedBox(width: 8),
-                Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 7),
             Text(text, style: TextStyle(color: cs.onSurfaceVariant)),
             const SizedBox(height: 10),
-            TextButton.icon(onPressed: onAction, icon: const Icon(Icons.arrow_forward, size: 18), label: Text(actionLabel)),
+            TextButton.icon(
+              onPressed: onAction,
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: Text(actionLabel),
+            ),
           ],
         ),
       ),
@@ -965,7 +1204,11 @@ class _PositiveCard extends StatelessWidget {
   final String title;
   final String text;
 
-  const _PositiveCard({required this.icon, required this.title, required this.text});
+  const _PositiveCard({
+    required this.icon,
+    required this.title,
+    required this.text,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -983,7 +1226,10 @@ class _PositiveCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 4),
                   Text(text, style: TextStyle(color: cs.onSurfaceVariant)),
                 ],
@@ -1002,7 +1248,20 @@ String? _nullable(String value) {
 }
 
 String _formatDate(DateTime date) {
-  const months = <String>['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = <String>[
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   return '${months[date.month - 1]} ${date.day}, ${date.year}';
 }
 

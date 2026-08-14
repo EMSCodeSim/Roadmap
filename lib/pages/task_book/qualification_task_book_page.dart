@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/nav.dart';
@@ -24,7 +25,10 @@ class QualificationTaskBookPage extends StatelessWidget {
     final goalId = roadmap?.goal.id;
     if (goalId == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(req.name)),
+        appBar: AppBar(
+          leading: const AppBackButton.toTaskBook(),
+          title: Text(req.name),
+        ),
         body: Padding(padding: AppSpacing.paddingLg, child: _NoGoal()),
       );
     }
@@ -67,6 +71,8 @@ class QualificationTaskBookPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBackButton.toTaskBook(),
+
         title: Text(req.name.toUpperCase()),
         centerTitle: false,
         actions: [
@@ -87,8 +93,9 @@ class QualificationTaskBookPage extends StatelessWidget {
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(AppRadius.xl),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.outline
-                      .withValues(alpha: 0.14),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.14),
                 ),
               ),
               child: Column(
@@ -187,8 +194,9 @@ class QualificationTaskBookPage extends StatelessWidget {
             children: [
               Text(
                 'Add Task',
-                style: Theme.of(sheetContext).textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: AppSpacing.md),
               TextField(
@@ -343,8 +351,9 @@ class _TaskTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   task.title,
-                  style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
               Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
@@ -362,8 +371,9 @@ class _NoGoal extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Text(
       'Choose a career goal to build a Task Book.',
-      style: Theme.of(context).textTheme.bodyMedium
-          ?.copyWith(color: cs.onSurfaceVariant),
+      style: Theme.of(
+        context,
+      ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
     );
   }
 }

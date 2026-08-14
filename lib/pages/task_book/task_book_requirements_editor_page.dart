@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
@@ -18,14 +19,19 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
 
     if (roadmap == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Customize Task Book')),
+        appBar: AppBar(
+          leading: const AppBackButton.toTaskBook(),
+          title: const Text('Customize Task Book'),
+        ),
         body: const Center(child: Text('Choose a career goal first.')),
       );
     }
 
     final goalId = roadmap.goal.id;
     final items = [...roadmap.all]
-      ..sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
+      ..sort(
+        (a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder),
+      );
 
     List<RoadmapRequirement> bySource(RequirementSource src) =>
         items.where((e) => e.requirement.requirementSource == src).toList();
@@ -43,7 +49,10 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Customize Task Book')),
+      appBar: AppBar(
+        leading: const AppBackButton.toTaskBook(),
+        title: const Text('Customize Task Book'),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
@@ -59,18 +68,17 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
                 children: [
                   Text(
                     'Make this book match your department',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     'Turn off items your department does not require and add local requirements before you begin using the Task Book.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          height: 1.45,
-                        ),
+                      color: cs.onSurfaceVariant,
+                      height: 1.45,
+                    ),
                   ),
                 ],
               ),
@@ -88,9 +96,9 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
             Text(
               'REQUIREMENTS',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: cs.onSurfaceVariant,
-                  ),
+                fontWeight: FontWeight.w900,
+                color: cs.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 8),
             ...grouped.expand((group) {
@@ -99,9 +107,9 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
                 child: Text(
                   group.$1,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurfaceVariant,
-                      ),
+                    fontWeight: FontWeight.w900,
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
               );
               final cards = group.$2.map((item) {
@@ -128,17 +136,16 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
                             children: [
                               Text(
                                 requirement.name,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall
+                                style: Theme.of(context).textTheme.titleSmall
                                     ?.copyWith(fontWeight: FontWeight.w800),
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                _sourceLabel(requirement, stateCode: state.profile.state),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
+                                _sourceLabel(
+                                  requirement,
+                                  stateCode: state.profile.state,
+                                ),
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(color: cs.onSurfaceVariant),
                               ),
                             ],
@@ -162,8 +169,10 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
                             if (excluding &&
                                 requirement.requirementSource ==
                                     RequirementSource.stateRequirement) {
-                              final stateName = FireOpsCatalog.stateNameForCode(
-                                      state.profile.state) ??
+                              final stateName =
+                                  FireOpsCatalog.stateNameForCode(
+                                    state.profile.state,
+                                  ) ??
                                   'your state';
                               final confirmed = await showDialog<bool>(
                                 context: context,
@@ -179,7 +188,9 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
                                     ),
                                     FilledButton(
                                       onPressed: () => dialogContext.pop(true),
-                                      child: const Text('Remove From My Task Book'),
+                                      child: const Text(
+                                        'Remove From My Task Book',
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -219,7 +230,10 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
     );
   }
 
-  static String _sourceLabel(Requirement requirement, {required String? stateCode}) {
+  static String _sourceLabel(
+    Requirement requirement, {
+    required String? stateCode,
+  }) {
     final source = switch (requirement.requirementSource) {
       RequirementSource.commonlyRequired => 'Commonly required',
       RequirementSource.recommended => 'Recommended',
@@ -227,10 +241,16 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
       RequirementSource.departmentRequirement => 'Department requirement',
     };
     final stateName = FireOpsCatalog.stateNameForCode(stateCode);
-    final stateTail = requirement.requirementSource == RequirementSource.stateRequirement && stateName != null ? ' • $stateName' : '';
+    final stateTail =
+        requirement.requirementSource == RequirementSource.stateRequirement &&
+            stateName != null
+        ? ' • $stateName'
+        : '';
     final detail = switch (requirement.type) {
-      RequirementType.numericProgress when requirement.progressRequired != null =>
-        '${requirement.progressRequired!.toStringAsFixed(0)} ${requirement.progressUnit ?? ''}'.trim(),
+      RequirementType.numericProgress
+          when requirement.progressRequired != null =>
+        '${requirement.progressRequired!.toStringAsFixed(0)} ${requirement.progressUnit ?? ''}'
+            .trim(),
       RequirementType.experience when requirement.experienceValue != null =>
         '${requirement.experienceValue!.toStringAsFixed(0)} ${requirement.experienceUnit ?? 'years'}',
       _ => requirement.type.name,
@@ -294,9 +314,7 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
                   children: [
                     Text(
                       'Add Department Requirement',
-                      style: Theme.of(sheetContext)
-                          .textTheme
-                          .titleLarge
+                      style: Theme.of(sheetContext).textTheme.titleLarge
                           ?.copyWith(fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: 14),
@@ -363,9 +381,10 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
                           Expanded(
                             child: TextField(
                               controller: required,
-                              keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               decoration: const InputDecoration(
                                 labelText: 'Required amount',
                               ),
@@ -429,8 +448,9 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
       departmentDependent: true,
       completed: false,
       progressCurrent: type == RequirementType.numericProgress ? 0 : null,
-      progressRequired:
-          type == RequirementType.numericProgress ? (amount ?? 0) : null,
+      progressRequired: type == RequirementType.numericProgress
+          ? (amount ?? 0)
+          : null,
       progressUnit: type == RequirementType.numericProgress
           ? (cleanUnit.isEmpty ? 'hours' : cleanUnit)
           : null,

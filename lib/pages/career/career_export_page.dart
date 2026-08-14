@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/career_pdf_export.dart';
 import 'package:firepath/services/career_record_store.dart';
@@ -73,7 +74,10 @@ class _CareerExportPageState extends State<CareerExportPage> {
     final app = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Career Export Center')),
+      appBar: AppBar(
+        leading: const AppBackButton.toCareerIntelligence(),
+        title: const Text('Career Export Center'),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(

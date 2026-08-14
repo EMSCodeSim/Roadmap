@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/nav.dart';
@@ -60,7 +61,11 @@ class TaskDetailPage extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(task.title.toUpperCase()), centerTitle: false),
+      appBar: AppBar(
+        leading: const AppBackButton.toTaskBook(),
+        title: Text(task.title.toUpperCase()),
+        centerTitle: false,
+      ),
       body: SafeArea(
         child: ListView(
           padding: AppSpacing.paddingLg,
@@ -146,7 +151,8 @@ class TaskDetailPage extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             _InfoCard(
               title: 'NOTICE',
-              body: 'FireOps preparation tasks are designed to help organize training and professional development. Always verify certification and performance requirements with your department, state authority, official task book, or certifying organization.',
+              body:
+                  'FireOps preparation tasks are designed to help organize training and professional development. Always verify certification and performance requirements with your department, state authority, official task book, or certifying organization.',
               tone: _CardTone.neutral,
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -203,8 +209,9 @@ class _StatusCard extends StatelessWidget {
               const Spacer(),
               Text(
                 label(status),
-                style: Theme.of(context).textTheme.labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
             ],
           ),
@@ -271,7 +278,9 @@ class _InfoCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(
             body,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.55),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.55),
           ),
         ],
       ),
@@ -314,15 +323,17 @@ class _ExpandableListCard extends StatelessWidget {
           ),
           title: Text(
             title,
-            style: Theme.of(context).textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
           children: [
             if (items.isEmpty)
               Text(
                 emptyText,
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               )
             else
               ...items.asMap().entries.map((e) {
@@ -346,8 +357,9 @@ class _ExpandableListCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           text,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(height: 1.5),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(height: 1.5),
                         ),
                       ),
                     ],
@@ -423,8 +435,9 @@ class _CompanionCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   'FIREOPSSIM COMPANION',
-                  style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ),
             ],
@@ -432,8 +445,10 @@ class _CompanionCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Free study, practice tools, class-finder links, and official sources for this Task Book item.',
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+              height: 1.45,
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
           SizedBox(
@@ -481,7 +496,8 @@ class _PracticeCard extends StatelessWidget {
     if (tools.isEmpty) {
       return _InfoCard(
         title: 'PRACTICE',
-        body: 'No practice tools linked yet. You can still log practice and add evidence below.',
+        body:
+            'No practice tools linked yet. You can still log practice and add evidence below.',
         tone: _CardTone.neutral,
       );
     }
@@ -497,8 +513,9 @@ class _PracticeCard extends StatelessWidget {
         children: [
           Text(
             'PRACTICE',
-            style: Theme.of(context).textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppSpacing.sm),
           ...tools.map(
@@ -510,7 +527,8 @@ class _PracticeCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () {
                     final String? externalUrl = switch (t.route) {
-                      '/resources?tool=firepumpsim' => 'https://fireopssim.com/fire-pump-training-scenarios.html',
+                      '/resources?tool=firepumpsim' =>
+                        'https://fireopssim.com/fire-pump-training-scenarios.html',
                       '/resources?tool=fireops_calc' =>
                         'https://fireopssim.com/fire-pump-calculator.html',
                       '/resources?tool=hydrant_flow' =>
@@ -552,7 +570,8 @@ class _ResourcesCard extends StatelessWidget {
     if (resources.isEmpty) {
       return _InfoCard(
         title: 'REFERENCES',
-        body: 'No reference links added yet. You can add department SOP links later as Task Book customization expands.',
+        body:
+            'No reference links added yet. You can add department SOP links later as Task Book customization expands.',
         tone: _CardTone.neutral,
       );
     }
@@ -569,8 +588,9 @@ class _ResourcesCard extends StatelessWidget {
         children: [
           Text(
             'REFERENCES',
-            style: Theme.of(context).textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppSpacing.sm),
           ...resources.map(
@@ -638,8 +658,9 @@ class _MyRecordCard extends StatelessWidget {
         children: [
           Text(
             'MY RECORD',
-            style: Theme.of(context).textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
@@ -677,8 +698,10 @@ class _MyRecordCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Keep entries professional and non-identifying. Do not store patient names, addresses, DOBs, or other protected information.',
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+              height: 1.45,
+            ),
           ),
         ],
       ),

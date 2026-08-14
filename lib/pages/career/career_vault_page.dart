@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/prefill.dart';
@@ -81,10 +82,18 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete career record?'),
-        content: Text('“${record.title}” will be removed from your personal career history.'),
+        content: Text(
+          '“${record.title}” will be removed from your personal career history.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -136,22 +145,31 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final now = DateTime.now();
     var type = existing?.type ?? initialType ?? CareerRecordType.skill;
     var selectedDate = existing?.date ?? now;
-    var selectedRequirementId = existing?.relatedRequirementId ??
-        (initialRelatedRequirementId ?? '');
+    var selectedRequirementId =
+        existing?.relatedRequirementId ?? (initialRelatedRequirementId ?? '');
     var highlight = existing?.highlight ?? false;
 
     final title = TextEditingController(
-        text: existing?.title ?? (initialTitle ?? ''));
+      text: existing?.title ?? (initialTitle ?? ''),
+    );
     final category = TextEditingController(
-        text: existing?.category ?? (initialCategory ?? ''));
+      text: existing?.category ?? (initialCategory ?? ''),
+    );
     final role = TextEditingController(text: existing?.roleOrAssignment ?? '');
     final summary = TextEditingController(text: existing?.summary ?? '');
     final impact = TextEditingController(text: existing?.impact ?? '');
-    final evidence = TextEditingController(text: existing?.evidenceReference ?? '');
-    final hours = TextEditingController(text: existing?.hours == null ? '' : _trimNumber(existing!.hours!));
-    final repetitions = TextEditingController(text: existing == null ? '1' : existing.repetitions.toString());
+    final evidence = TextEditingController(
+      text: existing?.evidenceReference ?? '',
+    );
+    final hours = TextEditingController(
+      text: existing?.hours == null ? '' : _trimNumber(existing!.hours!),
+    );
+    final repetitions = TextEditingController(
+      text: existing == null ? '1' : existing.repetitions.toString(),
+    );
     final tags = TextEditingController(
-        text: existing?.tags.join(', ') ?? (initialTags?.join(', ') ?? ''));
+      text: existing?.tags.join(', ') ?? (initialTags?.join(', ') ?? ''),
+    );
     final formKey = GlobalKey<FormState>();
 
     final result = await showDialog<CareerRecord>(
@@ -159,7 +177,9 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           return AlertDialog(
-            title: Text(existing == null ? 'Add career evidence' : 'Edit career evidence'),
+            title: Text(
+              existing == null ? 'Add career evidence' : 'Edit career evidence',
+            ),
             content: SizedBox(
               width: 620,
               child: Form(
@@ -171,16 +191,26 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     children: [
                       Text(
                         'Capture enough context that this still makes sense years from now. Avoid patient names, addresses, DOBs, or other identifying information.',
-                        style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+                        style: Theme.of(dialogContext).textTheme.bodySmall
+                            ?.copyWith(
+                              color: Theme.of(
+                                dialogContext,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<CareerRecordType>(
                         value: type,
-                        decoration: const InputDecoration(labelText: 'Record type'),
+                        decoration: const InputDecoration(
+                          labelText: 'Record type',
+                        ),
                         items: CareerRecordType.values
-                            .map((value) => DropdownMenuItem(value: value, child: Text(value.label)))
+                            .map(
+                              (value) => DropdownMenuItem(
+                                value: value,
+                                child: Text(value.label),
+                              ),
+                            )
                             .toList(),
                         onChanged: (value) {
                           if (value != null) setDialogState(() => type = value);
@@ -192,9 +222,13 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                         autofocus: existing == null,
                         decoration: const InputDecoration(
                           labelText: 'What did you do?',
-                          hintText: 'Led first-due company drill, completed FO1 module, received award…',
+                          hintText:
+                              'Led first-due company drill, completed FO1 module, received award…',
                         ),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Add a short title.' : null,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                            ? 'Add a short title.'
+                            : null,
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -218,9 +252,13 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                                   firstDate: DateTime(1970),
                                   lastDate: DateTime(now.year + 10),
                                 );
-                                if (picked != null) setDialogState(() => selectedDate = picked);
+                                if (picked != null)
+                                  setDialogState(() => selectedDate = picked);
                               },
-                              icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                              icon: const Icon(
+                                Icons.calendar_today_outlined,
+                                size: 18,
+                              ),
                               label: Text(_formatDate(selectedDate)),
                             ),
                           ),
@@ -231,7 +269,8 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                         controller: role,
                         decoration: const InputDecoration(
                           labelText: 'Your role / assignment',
-                          hintText: 'Acting officer, nozzle firefighter, instructor, project lead…',
+                          hintText:
+                              'Acting officer, nozzle firefighter, instructor, project lead…',
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -241,7 +280,8 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                         maxLines: 4,
                         decoration: const InputDecoration(
                           labelText: 'What happened / what you did',
-                          hintText: 'Write the context and your actions so you can recall the example later.',
+                          hintText:
+                              'Write the context and your actions so you can recall the example later.',
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -251,7 +291,8 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                         maxLines: 4,
                         decoration: const InputDecoration(
                           labelText: 'Result / impact',
-                          hintText: 'What improved, what you learned, who benefited, or what changed?',
+                          hintText:
+                              'What improved, what you learned, who benefited, or what changed?',
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -260,8 +301,13 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                           Expanded(
                             child: TextFormField(
                               controller: hours,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: const InputDecoration(labelText: 'Hours (optional)'),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              decoration: const InputDecoration(
+                                labelText: 'Hours (optional)',
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -269,7 +315,9 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                             child: TextFormField(
                               controller: repetitions,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Repetitions / count'),
+                              decoration: const InputDecoration(
+                                labelText: 'Repetitions / count',
+                              ),
                             ),
                           ),
                         ],
@@ -277,26 +325,47 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                       const SizedBox(height: 12),
                       if (requirementNames.isNotEmpty)
                         DropdownButtonFormField<String>(
-                          value: requirementNames.containsKey(selectedRequirementId) ? selectedRequirementId : '',
+                          value:
+                              requirementNames.containsKey(
+                                selectedRequirementId,
+                              )
+                              ? selectedRequirementId
+                              : '',
                           isExpanded: true,
                           decoration: InputDecoration(
-                            labelText: 'Supports roadmap requirement (optional)',
-                            helperText: app.selectedGoal == null ? null : 'Current target: ${app.selectedGoal!.title}',
+                            labelText:
+                                'Supports roadmap requirement (optional)',
+                            helperText: app.selectedGoal == null
+                                ? null
+                                : 'Current target: ${app.selectedGoal!.title}',
                           ),
                           items: [
-                            const DropdownMenuItem(value: '', child: Text('Not linked to a requirement')),
+                            const DropdownMenuItem(
+                              value: '',
+                              child: Text('Not linked to a requirement'),
+                            ),
                             ...requirementNames.entries.map(
-                              (entry) => DropdownMenuItem(value: entry.key, child: Text(entry.value, overflow: TextOverflow.ellipsis)),
+                              (entry) => DropdownMenuItem(
+                                value: entry.key,
+                                child: Text(
+                                  entry.value,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ),
                           ],
-                          onChanged: (value) => setDialogState(() => selectedRequirementId = value ?? ''),
+                          onChanged: (value) => setDialogState(
+                            () => selectedRequirementId = value ?? '',
+                          ),
                         ),
-                      if (requirementNames.isNotEmpty) const SizedBox(height: 12),
+                      if (requirementNames.isNotEmpty)
+                        const SizedBox(height: 12),
                       TextFormField(
                         controller: evidence,
                         decoration: const InputDecoration(
                           labelText: 'Evidence reference (optional)',
-                          hintText: 'Training record, evaluation, award letter, task-book page, email…',
+                          hintText:
+                              'Training record, evaluation, award letter, task-book page, email…',
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -312,9 +381,12 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,
                         value: highlight,
-                        onChanged: (value) => setDialogState(() => highlight = value ?? false),
+                        onChanged: (value) =>
+                            setDialogState(() => highlight = value ?? false),
                         title: const Text('Use as a career highlight'),
-                        subtitle: const Text('Prioritize this record in promotion, resume, and interview summaries.'),
+                        subtitle: const Text(
+                          'Prioritize this record in promotion, resume, and interview summaries.',
+                        ),
                       ),
                     ],
                   ),
@@ -322,7 +394,10 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
               FilledButton(
                 onPressed: () {
                   if (!(formKey.currentState?.validate() ?? false)) return;
@@ -338,7 +413,9 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                   Navigator.pop(
                     dialogContext,
                     CareerRecord(
-                      id: existing?.id ?? savedAt.microsecondsSinceEpoch.toRadixString(36),
+                      id:
+                          existing?.id ??
+                          savedAt.microsecondsSinceEpoch.toRadixString(36),
                       type: type,
                       title: title.text.trim(),
                       category: category.text.trim(),
@@ -347,19 +424,23 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                       summary: _nullable(summary.text),
                       impact: _nullable(impact.text),
                       evidenceReference: _nullable(evidence.text),
-                      hours: parsedHours != null && parsedHours >= 0 ? parsedHours : null,
-                      repetitions: parsedReps != null && parsedReps > 0 ? parsedReps : 1,
+                      hours: parsedHours != null && parsedHours >= 0
+                          ? parsedHours
+                          : null,
+                      repetitions: parsedReps != null && parsedReps > 0
+                          ? parsedReps
+                          : 1,
                       tags: cleanTags,
                       relatedGoalId: selectedRequirementId.isEmpty
                           ? (existing?.relatedGoalId ??
-                              initialRelatedGoalId ??
-                              app.selectedGoal?.id)
+                                initialRelatedGoalId ??
+                                app.selectedGoal?.id)
                           : (existing?.relatedGoalId ??
-                              initialRelatedGoalId ??
-                              app.selectedGoal?.id),
+                                initialRelatedGoalId ??
+                                app.selectedGoal?.id),
                       relatedRequirementId: selectedRequirementId.isEmpty
                           ? (existing?.relatedRequirementId ??
-                              initialRelatedRequirementId)
+                                initialRelatedRequirementId)
                           : selectedRequirementId,
                       highlight: highlight,
                       createdAt: existing?.createdAt ?? savedAt,
@@ -397,16 +478,26 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         content: SizedBox(
           width: 680,
           child: SingleChildScrollView(
-            child: SelectableText(brief, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45)),
+            child: SelectableText(
+              brief,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(height: 1.45),
+            ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
           FilledButton.icon(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: brief));
               if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Career brief copied.')));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Career brief copied.')),
+              );
             },
             icon: const Icon(Icons.copy_outlined),
             label: const Text('Copy brief'),
@@ -426,33 +517,61 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       }
     }
 
-    final currentCerts = app.certifications.where((c) => c.status != CertificationStatus.expired).toList();
+    final currentCerts = app.certifications
+        .where((c) => c.status != CertificationStatus.expired)
+        .toList();
     final highlights = _records.where((e) => e.highlight).take(12).toList();
     final leadership = _records
-        .where((e) => e.type == CareerRecordType.leadership || e.type == CareerRecordType.project || e.type == CareerRecordType.teaching)
+        .where(
+          (e) =>
+              e.type == CareerRecordType.leadership ||
+              e.type == CareerRecordType.project ||
+              e.type == CareerRecordType.teaching,
+        )
         .take(10)
         .toList();
     final linked = goal == null
         ? <CareerRecord>[]
-        : _records.where((e) => e.relatedGoalId == goal.id || requirementNames.containsKey(e.relatedRequirementId)).toList();
+        : _records
+              .where(
+                (e) =>
+                    e.relatedGoalId == goal.id ||
+                    requirementNames.containsKey(e.relatedRequirementId),
+              )
+              .toList();
     final trainingHours = _records
-        .where((e) => e.type == CareerRecordType.training || e.type == CareerRecordType.education || e.type == CareerRecordType.teaching)
+        .where(
+          (e) =>
+              e.type == CareerRecordType.training ||
+              e.type == CareerRecordType.education ||
+              e.type == CareerRecordType.teaching,
+        )
         .fold<double>(0, (sum, e) => sum + (e.hours ?? 0));
 
     final skillCounts = <String, int>{};
-    for (final record in _records.where((e) => e.type == CareerRecordType.skill)) {
-      final key = record.category.trim().isEmpty ? record.title : record.category.trim();
+    for (final record in _records.where(
+      (e) => e.type == CareerRecordType.skill,
+    )) {
+      final key = record.category.trim().isEmpty
+          ? record.title
+          : record.category.trim();
       skillCounts[key] = (skillCounts[key] ?? 0) + record.repetitions;
     }
-    final topSkills = skillCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final topSkills = skillCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     final buffer = StringBuffer();
     buffer.writeln('PROFESSIONAL GROWTH & ADVANCEMENT BRIEF');
     buffer.writeln('Generated ${_formatDate(DateTime.now())}');
     if (goal != null) buffer.writeln('Target role: ${goal.title}');
-    if (roadmap != null) buffer.writeln('Task Book progress: ${roadmap.completedCount}/${roadmap.totalCount} requirements complete');
+    if (roadmap != null)
+      buffer.writeln(
+        'Task Book progress: ${roadmap.completedCount}/${roadmap.totalCount} requirements complete',
+      );
     buffer.writeln('Career evidence records: ${_records.length}');
-    buffer.writeln('Documented training/education hours: ${_trimNumber(trainingHours)}');
+    buffer.writeln(
+      'Documented training/education hours: ${_trimNumber(trainingHours)}',
+    );
     buffer.writeln();
 
     buffer.writeln('CURRENT CREDENTIALS');
@@ -460,7 +579,9 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       buffer.writeln('- No current credentials recorded.');
     } else {
       for (final cert in currentCerts.take(20)) {
-        final expires = cert.doesNotExpire || cert.expirationDate == null ? 'no expiration recorded' : 'expires ${_formatDate(cert.expirationDate!)}';
+        final expires = cert.doesNotExpire || cert.expirationDate == null
+            ? 'no expiration recorded'
+            : 'expires ${_formatDate(cert.expirationDate!)}';
         buffer.writeln('- ${app.certificationDisplayName(cert)} — $expires');
       }
     }
@@ -468,20 +589,28 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
 
     buffer.writeln('CAREER HIGHLIGHTS');
     if (highlights.isEmpty) {
-      buffer.writeln('- Mark strong records as Career Highlights to build this section.');
+      buffer.writeln(
+        '- Mark strong records as Career Highlights to build this section.',
+      );
     } else {
       for (final record in highlights) {
-        buffer.writeln('- ${_formatDate(record.date)} | ${record.title}${_briefDetail(record)}');
+        buffer.writeln(
+          '- ${_formatDate(record.date)} | ${record.title}${_briefDetail(record)}',
+        );
       }
     }
     buffer.writeln();
 
     buffer.writeln('LEADERSHIP / TEACHING / PROJECT EVIDENCE');
     if (leadership.isEmpty) {
-      buffer.writeln('- No leadership, teaching, mentoring, or project records yet.');
+      buffer.writeln(
+        '- No leadership, teaching, mentoring, or project records yet.',
+      );
     } else {
       for (final record in leadership) {
-        buffer.writeln('- ${_formatDate(record.date)} | ${record.title}${_briefDetail(record)}');
+        buffer.writeln(
+          '- ${_formatDate(record.date)} | ${record.title}${_briefDetail(record)}',
+        );
       }
     }
     buffer.writeln();
@@ -491,7 +620,9 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       buffer.writeln('- No skill repetitions recorded yet.');
     } else {
       for (final entry in topSkills.take(10)) {
-        buffer.writeln('- ${entry.key}: ${entry.value} documented repetition${entry.value == 1 ? '' : 's'}');
+        buffer.writeln(
+          '- ${entry.key}: ${entry.value} documented repetition${entry.value == 1 ? '' : 's'}',
+        );
       }
     }
 
@@ -502,22 +633,31 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         buffer.writeln('- No career records linked to this roadmap yet.');
       } else {
         for (final record in linked.take(20)) {
-          final req = record.relatedRequirementId == null ? null : requirementNames[record.relatedRequirementId!];
-          buffer.writeln('- ${req == null ? record.title : '$req — ${record.title}'}${_briefDetail(record)}');
+          final req = record.relatedRequirementId == null
+              ? null
+              : requirementNames[record.relatedRequirementId!];
+          buffer.writeln(
+            '- ${req == null ? record.title : '$req — ${record.title}'}${_briefDetail(record)}',
+          );
         }
       }
     }
 
     buffer.writeln();
-    buffer.writeln('Use this as a memory aid for promotion preparation, resumes, performance reviews, and interviews. Verify dates and details against official records when required.');
+    buffer.writeln(
+      'Use this as a memory aid for promotion preparation, resumes, performance reviews, and interviews. Verify dates and details against official records when required.',
+    );
     return buffer.toString().trim();
   }
 
   String _briefDetail(CareerRecord record) {
     final parts = <String>[];
-    if ((record.roleOrAssignment ?? '').trim().isNotEmpty) parts.add(record.roleOrAssignment!.trim());
-    if ((record.impact ?? '').trim().isNotEmpty) parts.add(record.impact!.trim());
-    if ((record.evidenceReference ?? '').trim().isNotEmpty) parts.add('Evidence: ${record.evidenceReference!.trim()}');
+    if ((record.roleOrAssignment ?? '').trim().isNotEmpty)
+      parts.add(record.roleOrAssignment!.trim());
+    if ((record.impact ?? '').trim().isNotEmpty)
+      parts.add(record.impact!.trim());
+    if ((record.evidenceReference ?? '').trim().isNotEmpty)
+      parts.add('Evidence: ${record.evidenceReference!.trim()}');
     return parts.isEmpty ? '' : ' — ${parts.join(' | ')}';
   }
 
@@ -527,13 +667,26 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final cs = Theme.of(context).colorScheme;
     final roadmap = app.roadmap;
     final goal = app.selectedGoal;
-    final currentCerts = app.certifications.where((c) => c.status == CertificationStatus.current).length;
-    final dueCerts = app.certifications.where((c) => c.status == CertificationStatus.expiringSoon).length;
-    final expiredCerts = app.certifications.where((c) => c.status == CertificationStatus.expired).length;
+    final currentCerts = app.certifications
+        .where((c) => c.status == CertificationStatus.current)
+        .length;
+    final dueCerts = app.certifications
+        .where((c) => c.status == CertificationStatus.expiringSoon)
+        .length;
+    final expiredCerts = app.certifications
+        .where((c) => c.status == CertificationStatus.expired)
+        .length;
     final trainingHours = _records
-        .where((e) => e.type == CareerRecordType.training || e.type == CareerRecordType.education || e.type == CareerRecordType.teaching)
+        .where(
+          (e) =>
+              e.type == CareerRecordType.training ||
+              e.type == CareerRecordType.education ||
+              e.type == CareerRecordType.teaching,
+        )
         .fold<double>(0, (sum, e) => sum + (e.hours ?? 0));
-    final skillReps = _records.where((e) => e.type == CareerRecordType.skill).fold<int>(0, (sum, e) => sum + e.repetitions);
+    final skillReps = _records
+        .where((e) => e.type == CareerRecordType.skill)
+        .fold<int>(0, (sum, e) => sum + e.repetitions);
     final highlights = _records.where((e) => e.highlight).length;
 
     final requirementIds = <String>{};
@@ -548,6 +701,8 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBackButton.toAdvance(),
+
         title: const Text('Career Vault'),
         actions: [
           IconButton(
@@ -584,18 +739,30 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                                 color: cs.primaryContainer,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Icon(Icons.work_history_outlined, color: cs.onPrimaryContainer),
+                              child: Icon(
+                                Icons.work_history_outlined,
+                                color: cs.onPrimaryContainer,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Build the record your future self will need', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                                  Text(
+                                    'Build the record your future self will need',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                  ),
                                   const SizedBox(height: 4),
                                   Text(
                                     'Keep skills, calls, training, leadership work, awards, projects, teaching, and task-book evidence tied to your advancement path.',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(color: cs.onSurfaceVariant),
                                   ),
                                 ],
                               ),
@@ -607,23 +774,36 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                            color: cs.surfaceContainerHighest.withValues(
+                              alpha: 0.45,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(goal == null ? 'No advancement target selected' : 'Target: ${goal.title}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                              Text(
+                                goal == null
+                                    ? 'No advancement target selected'
+                                    : 'Target: ${goal.title}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                               const SizedBox(height: 5),
                               Text(
                                 roadmap == null
                                     ? 'Choose a roadmap target to connect career evidence to specific requirements.'
                                     : '${roadmap.completedCount}/${roadmap.totalCount} requirements complete • ${coveredRequirementIds.length}/${requirementIds.length} requirements have supporting career evidence',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: cs.onSurfaceVariant),
                               ),
-                              if (roadmap != null && roadmap.totalCount > 0) ...[
+                              if (roadmap != null &&
+                                  roadmap.totalCount > 0) ...[
                                 const SizedBox(height: 10),
-                                LinearProgressIndicator(value: roadmap.percentComplete),
+                                LinearProgressIndicator(
+                                  value: roadmap.percentComplete,
+                                ),
                               ],
                             ],
                           ),
@@ -653,31 +833,86 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                const _SectionTitle(title: 'Career snapshot', subtitle: 'A long-term view across roles and departments.'),
+                const _SectionTitle(
+                  title: 'Career snapshot',
+                  subtitle: 'A long-term view across roles and departments.',
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _MetricCard(label: 'Records', value: '${_records.length}', icon: Icons.history),
-                    _MetricCard(label: 'Training hours', value: _trimNumber(trainingHours), icon: Icons.school_outlined),
-                    _MetricCard(label: 'Skill reps', value: '$skillReps', icon: Icons.handyman_outlined),
-                    _MetricCard(label: 'Career highlights', value: '$highlights', icon: Icons.star_outline),
+                    _MetricCard(
+                      label: 'Records',
+                      value: '${_records.length}',
+                      icon: Icons.history,
+                    ),
+                    _MetricCard(
+                      label: 'Training hours',
+                      value: _trimNumber(trainingHours),
+                      icon: Icons.school_outlined,
+                    ),
+                    _MetricCard(
+                      label: 'Skill reps',
+                      value: '$skillReps',
+                      icon: Icons.handyman_outlined,
+                    ),
+                    _MetricCard(
+                      label: 'Career highlights',
+                      value: '$highlights',
+                      icon: Icons.star_outline,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 18),
-                const _SectionTitle(title: 'Quick capture', subtitle: 'Log it while the details are still fresh.'),
+                const _SectionTitle(
+                  title: 'Quick capture',
+                  subtitle: 'Log it while the details are still fresh.',
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _QuickAdd(label: 'Skill', icon: Icons.handyman_outlined, onTap: () => _openEditor(initialType: CareerRecordType.skill)),
-                    _QuickAdd(label: 'Training', icon: Icons.school_outlined, onTap: () => _openEditor(initialType: CareerRecordType.training)),
-                    _QuickAdd(label: 'Leadership', icon: Icons.groups_outlined, onTap: () => _openEditor(initialType: CareerRecordType.leadership)),
-                    _QuickAdd(label: 'Award / win', icon: Icons.emoji_events_outlined, onTap: () => _openEditor(initialType: CareerRecordType.achievement)),
-                    _QuickAdd(label: 'Call / experience', icon: Icons.local_fire_department_outlined, onTap: () => _openEditor(initialType: CareerRecordType.operationalExperience)),
-                    _QuickAdd(label: 'Task book', icon: Icons.fact_check_outlined, onTap: () => _openEditor(initialType: CareerRecordType.taskBookEvidence)),
+                    _QuickAdd(
+                      label: 'Skill',
+                      icon: Icons.handyman_outlined,
+                      onTap: () =>
+                          _openEditor(initialType: CareerRecordType.skill),
+                    ),
+                    _QuickAdd(
+                      label: 'Training',
+                      icon: Icons.school_outlined,
+                      onTap: () =>
+                          _openEditor(initialType: CareerRecordType.training),
+                    ),
+                    _QuickAdd(
+                      label: 'Leadership',
+                      icon: Icons.groups_outlined,
+                      onTap: () =>
+                          _openEditor(initialType: CareerRecordType.leadership),
+                    ),
+                    _QuickAdd(
+                      label: 'Award / win',
+                      icon: Icons.emoji_events_outlined,
+                      onTap: () => _openEditor(
+                        initialType: CareerRecordType.achievement,
+                      ),
+                    ),
+                    _QuickAdd(
+                      label: 'Call / experience',
+                      icon: Icons.local_fire_department_outlined,
+                      onTap: () => _openEditor(
+                        initialType: CareerRecordType.operationalExperience,
+                      ),
+                    ),
+                    _QuickAdd(
+                      label: 'Task book',
+                      icon: Icons.fact_check_outlined,
+                      onTap: () => _openEditor(
+                        initialType: CareerRecordType.taskBookEvidence,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 18),
@@ -691,26 +926,42 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                           children: [
                             const Icon(Icons.verified_outlined),
                             const SizedBox(width: 8),
-                            Expanded(child: Text('Certification radar', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
-                            TextButton(onPressed: () => context.go(AppRoutes.certifications), child: const Text('Manage')),
+                            Expanded(
+                              child: Text(
+                                'Certification radar',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () =>
+                                  context.go(AppRoutes.certifications),
+                              child: const Text('Manage'),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '$currentCerts current • $dueCerts expiring within 90 days • $expiredCerts expired',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: cs.onSurfaceVariant),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Credentials stay in the existing certification tracker and are automatically included in your career brief.',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
                         ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
-                const _SectionTitle(title: 'Career timeline', subtitle: 'Search years of evidence by skill, project, role, tag, or year.'),
+                const _SectionTitle(
+                  title: 'Career timeline',
+                  subtitle:
+                      'Search years of evidence by skill, project, role, tag, or year.',
+                ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: _searchController,
@@ -749,7 +1000,9 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                           child: FilterChip(
                             label: Text(type.shortLabel),
                             selected: _filter == type,
-                            onSelected: (_) => setState(() => _filter = _filter == type ? null : type),
+                            onSelected: (_) => setState(
+                              () => _filter = _filter == type ? null : type,
+                            ),
                           ),
                         ),
                       ),
@@ -763,15 +1016,20 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     onAdd: () => _openEditor(),
                   )
                 else
-                  ..._filteredRecords.map((record) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _RecordCard(
-                          record: record,
-                          requirementName: _requirementName(app, record.relatedRequirementId),
-                          onEdit: () => _openEditor(existing: record),
-                          onDelete: () => _deleteRecord(record),
+                  ..._filteredRecords.map(
+                    (record) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _RecordCard(
+                        record: record,
+                        requirementName: _requirementName(
+                          app,
+                          record.relatedRequirementId,
                         ),
-                      )),
+                        onEdit: () => _openEditor(existing: record),
+                        onDelete: () => _deleteRecord(record),
+                      ),
+                    ),
+                  ),
               ],
             ),
     );
@@ -799,9 +1057,19 @@ class _SectionTitle extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 2),
-        Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(
+          subtitle,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }
@@ -812,7 +1080,11 @@ class _MetricCard extends StatelessWidget {
   final String value;
   final IconData icon;
 
-  const _MetricCard({required this.label, required this.value, required this.icon});
+  const _MetricCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -833,8 +1105,20 @@ class _MetricCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant)),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
               ],
             ),
           ),
@@ -849,7 +1133,11 @@ class _QuickAdd extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _QuickAdd({required this.label, required this.icon, required this.onTap});
+  const _QuickAdd({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -891,7 +1179,11 @@ class _RecordCard extends StatelessWidget {
                 color: cs.secondaryContainer.withValues(alpha: 0.65),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(_iconFor(record.type), size: 21, color: cs.onSecondaryContainer),
+              child: Icon(
+                _iconFor(record.type),
+                size: 21,
+                color: cs.onSecondaryContainer,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -900,36 +1192,69 @@ class _RecordCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text(record.title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700))),
-                      if (record.highlight) Icon(Icons.star, size: 18, color: cs.primary),
+                      Expanded(
+                        child: Text(
+                          record.title,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      if (record.highlight)
+                        Icon(Icons.star, size: 18, color: cs.primary),
                     ],
                   ),
                   const SizedBox(height: 3),
                   Text(
                     '${record.type.label} • ${_formatDate(record.date)}${record.category.trim().isEmpty ? '' : ' • ${record.category.trim()}'}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   if ((record.roleOrAssignment ?? '').trim().isNotEmpty) ...[
                     const SizedBox(height: 7),
-                    Text(record.roleOrAssignment!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    Text(
+                      record.roleOrAssignment!,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                   if ((record.summary ?? '').trim().isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text(record.summary!, maxLines: 3, overflow: TextOverflow.ellipsis),
+                    Text(
+                      record.summary!,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                   if ((record.impact ?? '').trim().isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text('Impact: ${record.impact!}', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: cs.onSurfaceVariant)),
+                    Text(
+                      'Impact: ${record.impact!}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: cs.onSurfaceVariant),
+                    ),
                   ],
                   const SizedBox(height: 9),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      if (record.hours != null) _MiniTag(text: '${_trimNumber(record.hours!)} hr'),
-                      if (record.repetitions > 1) _MiniTag(text: '${record.repetitions} reps'),
-                      if (requirementName != null) _MiniTag(text: 'Task Book: $requirementName', icon: Icons.fact_check_outlined),
-                      if ((record.evidenceReference ?? '').trim().isNotEmpty) const _MiniTag(text: 'Evidence noted', icon: Icons.attach_file),
+                      if (record.hours != null)
+                        _MiniTag(text: '${_trimNumber(record.hours!)} hr'),
+                      if (record.repetitions > 1)
+                        _MiniTag(text: '${record.repetitions} reps'),
+                      if (requirementName != null)
+                        _MiniTag(
+                          text: 'Task Book: $requirementName',
+                          icon: Icons.fact_check_outlined,
+                        ),
+                      if ((record.evidenceReference ?? '').trim().isNotEmpty)
+                        const _MiniTag(
+                          text: 'Evidence noted',
+                          icon: Icons.attach_file,
+                        ),
                       ...record.tags.take(4).map((tag) => _MiniTag(text: tag)),
                     ],
                   ),
@@ -943,8 +1268,20 @@ class _RecordCard extends StatelessWidget {
                 if (value == 'delete') onDelete();
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(value: 'edit', child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Edit'))),
-                PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete_outline), title: Text('Delete'))),
+                PopupMenuItem(
+                  value: 'edit',
+                  child: ListTile(
+                    leading: Icon(Icons.edit_outlined),
+                    title: Text('Edit'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: ListTile(
+                    leading: Icon(Icons.delete_outline),
+                    title: Text('Delete'),
+                  ),
+                ),
               ],
             ),
           ],
@@ -977,7 +1314,14 @@ class _MiniTag extends StatelessWidget {
             Icon(icon, size: 13, color: cs.onSurfaceVariant),
             const SizedBox(width: 4),
           ],
-          Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelSmall)),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ),
         ],
       ),
     );
@@ -998,20 +1342,37 @@ class _EmptyState extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Icon(hasRecords ? Icons.search_off : Icons.inventory_2_outlined, size: 38, color: cs.onSurfaceVariant),
+            Icon(
+              hasRecords ? Icons.search_off : Icons.inventory_2_outlined,
+              size: 38,
+              color: cs.onSurfaceVariant,
+            ),
             const SizedBox(height: 10),
-            Text(hasRecords ? 'No matching career records' : 'Start building your career history', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              hasRecords
+                  ? 'No matching career records'
+                  : 'Start building your career history',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 6),
             Text(
               hasRecords
                   ? 'Try a different search or category.'
                   : 'Record important skills, training, leadership examples, awards, projects, teaching, and operational experience as they happen.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
             if (!hasRecords) ...[
               const SizedBox(height: 14),
-              FilledButton.icon(onPressed: onAdd, icon: const Icon(Icons.add), label: const Text('Add first record')),
+              FilledButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add),
+                label: const Text('Add first record'),
+              ),
             ],
           ],
         ),
@@ -1021,19 +1382,33 @@ class _EmptyState extends StatelessWidget {
 }
 
 IconData _iconFor(CareerRecordType type) => switch (type) {
-      CareerRecordType.operationalExperience => Icons.local_fire_department_outlined,
-      CareerRecordType.skill => Icons.handyman_outlined,
-      CareerRecordType.training => Icons.school_outlined,
-      CareerRecordType.achievement => Icons.emoji_events_outlined,
-      CareerRecordType.leadership => Icons.groups_outlined,
-      CareerRecordType.teaching => Icons.record_voice_over_outlined,
-      CareerRecordType.project => Icons.assignment_outlined,
-      CareerRecordType.education => Icons.menu_book_outlined,
-      CareerRecordType.taskBookEvidence => Icons.fact_check_outlined,
-    };
+  CareerRecordType.operationalExperience =>
+    Icons.local_fire_department_outlined,
+  CareerRecordType.skill => Icons.handyman_outlined,
+  CareerRecordType.training => Icons.school_outlined,
+  CareerRecordType.achievement => Icons.emoji_events_outlined,
+  CareerRecordType.leadership => Icons.groups_outlined,
+  CareerRecordType.teaching => Icons.record_voice_over_outlined,
+  CareerRecordType.project => Icons.assignment_outlined,
+  CareerRecordType.education => Icons.menu_book_outlined,
+  CareerRecordType.taskBookEvidence => Icons.fact_check_outlined,
+};
 
 String _formatDate(DateTime date) {
-  const months = <String>['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = <String>[
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   return '${months[date.month - 1]} ${date.day}, ${date.year}';
 }
 

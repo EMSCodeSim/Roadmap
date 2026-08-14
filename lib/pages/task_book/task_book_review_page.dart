@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/services/catalog.dart';
@@ -33,7 +34,10 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
 
     if (roadmap == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Review Task Book')),
+        appBar: AppBar(
+          leading: const AppBackButton.toTaskBook(),
+          title: const Text('Review Task Book'),
+        ),
         body: SafeArea(
           child: Padding(
             padding: AppSpacing.paddingLg,
@@ -64,7 +68,10 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
     final stateName = FireOpsCatalog.stateNameForCode(state.profile.state);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Career Road')),
+      appBar: AppBar(
+        leading: const AppBackButton.toTaskBook(),
+        title: const Text('Your Career Road'),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
@@ -80,14 +87,17 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
                 children: [
                   Text(
                     'Your Career Road is ready',
-                    style: Theme.of(context).textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'We built a starting path from your current role, location, certifications, and career goal. Start with the recommended next step and refine department-specific requirements whenever you are ready.',
-                    style: Theme.of(context).textTheme.bodyMedium
-                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.5),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
@@ -108,8 +118,9 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
                       currentRole,
                       if (stateName != null && stateName.isNotEmpty) stateName,
                     ].join(' • '),
-                    style: Theme.of(context).textTheme.titleSmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 6),
@@ -117,8 +128,9 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
                   ),
                   Text(
                     roadmap.goal.title,
-                    style: Theme.of(context).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -140,7 +152,8 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
             _SetupCard(
               number: '1',
               title: 'Customize department requirements',
-              description: 'Optional: add local certifications, experience minimums, drive hours, practicals, interviews, or department task books.',
+              description:
+                  'Optional: add local certifications, experience minimums, drive hours, practicals, interviews, or department task books.',
               buttonLabel: 'Customize Later or Now',
               icon: Icons.fact_check_outlined,
               onTap: () => context.push(AppRoutes.taskBookRequirementsSetup),
@@ -154,8 +167,10 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
               ),
               child: Text(
                 'Start using your path now. You can customize Task Book requirements and Quick Log buttons later; FireOps Career Road should adapt to your department, not the other way around.',
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.45,
+                ),
               ),
             ),
           ],
@@ -202,8 +217,9 @@ class _Metric extends StatelessWidget {
       ),
       child: Text(
         '$label: $value',
-        style: Theme.of(context).textTheme.labelLarge
-            ?.copyWith(fontWeight: FontWeight.w800),
+        style: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -258,8 +274,9 @@ class _SetupCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -267,8 +284,10 @@ class _SetupCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             description,
-            style: Theme.of(context).textTheme.bodyMedium
-                ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+              height: 1.45,
+            ),
           ),
           const SizedBox(height: 14),
           SizedBox(

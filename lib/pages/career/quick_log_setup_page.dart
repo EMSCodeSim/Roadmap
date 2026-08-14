@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/quick_log_template.dart';
 import 'package:firepath/models/quick_log_tracker.dart';
@@ -42,8 +43,10 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
     for (final preset in QuickLogRolePreset.values) {
       final defaults = QuickLogCatalog.defaultsFor(preset);
       if (defaults.length == pinned.length &&
-          List.generate(defaults.length, (i) => defaults[i] == pinned[i])
-              .every((e) => e)) {
+          List.generate(
+            defaults.length,
+            (i) => defaults[i] == pinned[i],
+          ).every((e) => e)) {
         return preset;
       }
     }
@@ -70,14 +73,20 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final selected = _pinned.map(_tracker).whereType<QuickLogTracker>().toList();
+    final selected = _pinned
+        .map(_tracker)
+        .whereType<QuickLogTracker>()
+        .toList();
     final available = [
       ...QuickLogCatalog.builtIns,
       ..._customTrackers,
     ].where((tracker) => !_pinned.contains(tracker.keyName)).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Set Up Quick Log')),
+      appBar: AppBar(
+        leading: const AppBackButton.toLog(),
+        title: const Text('Set Up Quick Log'),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -95,15 +104,14 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                       children: [
                         Text(
                           'Build the buttons you actually use',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
+                          style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           'Pinned buttons appear first in Quick Log and prefill the activity name and category. Skills such as IV, IO, and advanced airway also keep success/failure tracking available.',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
                                 color: cs.onSurfaceVariant,
                                 height: 1.45,
                               ),
@@ -115,9 +123,9 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                   Text(
                     'STARTING SET',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: cs.onSurfaceVariant,
-                        ),
+                      fontWeight: FontWeight.w900,
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -142,9 +150,7 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                       Expanded(
                         child: Text(
                           'YOUR QUICK BUTTONS',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelLarge
+                          style: Theme.of(context).textTheme.labelLarge
                               ?.copyWith(
                                 fontWeight: FontWeight.w900,
                                 color: cs.onSurfaceVariant,
@@ -188,21 +194,23 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                   Text(
                     'AVAILABLE BUTTONS',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: cs.onSurfaceVariant,
-                        ),
+                      fontWeight: FontWeight.w900,
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  ...available.map((tracker) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _AvailableButtonTile(
-                          tracker: tracker,
-                          onAdd: () => setState(() {
-                            _preset = null;
-                            _pinned.add(tracker.keyName);
-                          }),
-                        ),
-                      )),
+                  ...available.map(
+                    (tracker) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _AvailableButtonTile(
+                        tracker: tracker,
+                        onAdd: () => setState(() {
+                          _preset = null;
+                          _pinned.add(tracker.keyName);
+                        }),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -406,10 +414,9 @@ class _PinnedButtonTile extends StatelessWidget {
                   tracker.tracksOutcome
                       ? '${tracker.category} • success tracking'
                       : tracker.category,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
             ),
@@ -466,10 +473,9 @@ class _AvailableButtonTile extends StatelessWidget {
                   tracker.tracksOutcome
                       ? '${tracker.category} • success tracking'
                       : tracker.category,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
             ),

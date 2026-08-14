@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/models/requirement.dart';
@@ -83,7 +84,10 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Daily Focus')),
+      appBar: AppBar(
+        leading: const AppBackButton.toHome(),
+        title: const Text('Daily Focus'),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(

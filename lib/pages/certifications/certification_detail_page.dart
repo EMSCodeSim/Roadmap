@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
@@ -12,10 +13,15 @@ import 'package:firepath/services/catalog.dart';
 class CertificationDetailPage extends StatefulWidget {
   final String certId;
   final Object? extra;
-  const CertificationDetailPage({super.key, required this.certId, required this.extra});
+  const CertificationDetailPage({
+    super.key,
+    required this.certId,
+    required this.extra,
+  });
 
   @override
-  State<CertificationDetailPage> createState() => _CertificationDetailPageState();
+  State<CertificationDetailPage> createState() =>
+      _CertificationDetailPageState();
 }
 
 class _CertificationDetailPageState extends State<CertificationDetailPage> {
@@ -46,7 +52,9 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (widget.certId != 'new') {
-      final existing = context.read<AppState>().getCertificationById(widget.certId);
+      final existing = context.read<AppState>().getCertificationById(
+        widget.certId,
+      );
       if (existing != null) {
         _cert = existing;
         _name.text = existing.name;
@@ -62,12 +70,16 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
       final extra = widget.extra;
       String? prefill;
       String? prefillDefId;
-      if (extra is Map && extra['name'] is String) prefill = extra['name'] as String;
-      if (extra is Map && extra['definitionId'] is String) prefillDefId = extra['definitionId'] as String;
+      if (extra is Map && extra['name'] is String)
+        prefill = extra['name'] as String;
+      if (extra is Map && extra['definitionId'] is String)
+        prefillDefId = extra['definitionId'] as String;
       if (prefill != null && _name.text.trim().isEmpty) {
         _name.text = prefill;
       }
-      if (prefillDefId != null && (_cert.certificationDefinitionId == null || _cert.certificationDefinitionId!.isEmpty)) {
+      if (prefillDefId != null &&
+          (_cert.certificationDefinitionId == null ||
+              _cert.certificationDefinitionId!.isEmpty)) {
         _cert = _cert.copyWith(certificationDefinitionId: prefillDefId);
       }
     }
@@ -84,14 +96,24 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
 
   Future<void> _pickIssueDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(context: context, firstDate: DateTime(1990), lastDate: DateTime(now.year + 10), initialDate: _issueDate ?? now);
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: DateTime(1990),
+      lastDate: DateTime(now.year + 10),
+      initialDate: _issueDate ?? now,
+    );
     if (picked == null) return;
     setState(() => _issueDate = picked);
   }
 
   Future<void> _pickExpirationDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(context: context, firstDate: DateTime(1990), lastDate: DateTime(now.year + 30), initialDate: _expirationDate ?? now);
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: DateTime(1990),
+      lastDate: DateTime(now.year + 30),
+      initialDate: _expirationDate ?? now,
+    );
     if (picked == null) return;
     setState(() => _expirationDate = picked);
   }
@@ -102,9 +124,18 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
     // Duplicate protection (stable ID).
     final defId = _cert.certificationDefinitionId;
     if (widget.certId == 'new' && defId != null) {
-      final existing = context.read<AppState>().certifications.where((c) => c.certificationDefinitionId == defId).toList();
+      final existing = context
+          .read<AppState>()
+          .certifications
+          .where((c) => c.certificationDefinitionId == defId)
+          .toList();
       if (existing.isNotEmpty) {
-        final picked = await _showDuplicateDialog(context, name: FireOpsCatalog.certificationById()[defId]?.displayName ?? _name.text.trim());
+        final picked = await _showDuplicateDialog(
+          context,
+          name:
+              FireOpsCatalog.certificationById()[defId]?.displayName ??
+              _name.text.trim(),
+        );
         if (picked == null) return;
         if (picked == _DuplicateChoice.updateExisting) {
           // Reuse the most recently updated record.
@@ -119,7 +150,11 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
     if (widget.certId != 'new') {
       final before = context.read<AppState>().getCertificationById(_cert.id);
       if (before != null) {
-        final changedDates = before.issueDate != _issueDate || before.expirationDate != (_doesNotExpire ? null : _expirationDate) || before.doesNotExpire != _doesNotExpire;
+        final changedDates =
+            before.issueDate != _issueDate ||
+            before.expirationDate !=
+                (_doesNotExpire ? null : _expirationDate) ||
+            before.doesNotExpire != _doesNotExpire;
         if (changedDates) {
           history = [
             ...history,
@@ -140,7 +175,9 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
     final updated = _cert.copyWith(
       name: _name.text.trim(),
       issuingOrganization: _org.text.trim().isEmpty ? null : _org.text.trim(),
-      certificationNumber: _number.text.trim().isEmpty ? null : _number.text.trim(),
+      certificationNumber: _number.text.trim().isEmpty
+          ? null
+          : _number.text.trim(),
       issueDate: _issueDate,
       expirationDate: _doesNotExpire ? null : _expirationDate,
       doesNotExpire: _doesNotExpire,
@@ -153,15 +190,21 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
     if (!mounted) return;
 
     final extra = widget.extra;
-    final completedFromGoalId = (extra is Map) ? extra['completedFromGoalId'] as String? : null;
-    final completedFromRequirementId = (extra is Map) ? extra['completedFromRequirementId'] as String? : null;
-    final shouldCelebrate = completedFromGoalId != null && completedFromRequirementId != null;
+    final completedFromGoalId = (extra is Map)
+        ? extra['completedFromGoalId'] as String?
+        : null;
+    final completedFromRequirementId = (extra is Map)
+        ? extra['completedFromRequirementId'] as String?
+        : null;
+    final shouldCelebrate =
+        completedFromGoalId != null && completedFromRequirementId != null;
 
     bool viewNext = false;
     Requirement? next;
     if (shouldCelebrate) {
       next = context.read<AppState>().roadmap?.nextStep?.requirement;
-      viewNext = (await _showNiceWork(context, updated.name, next?.name)) ?? false;
+      viewNext =
+          (await _showNiceWork(context, updated.name, next?.name)) ?? false;
     }
 
     final router = GoRouter.of(context);
@@ -174,7 +217,11 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
     }
   }
 
-  Future<bool?> _showNiceWork(BuildContext context, String completedName, String? nextName) {
+  Future<bool?> _showNiceWork(
+    BuildContext context,
+    String completedName,
+    String? nextName,
+  ) {
     return showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,
@@ -186,21 +233,49 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Nice work', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              Text(
+                'Nice work',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: AppSpacing.sm),
-              Text('$completedName completed.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
+              Text(
+                '$completedName completed.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.5,
+                ),
+              ),
               if (nextName != null) ...[
                 const SizedBox(height: AppSpacing.lg),
-                Text('YOUR NEW NEXT STEP', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w900)),
+                Text(
+                  'YOUR NEW NEXT STEP',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(nextName, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                Text(
+                  nextName,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ],
               const SizedBox(height: AppSpacing.lg),
               SizedBox(
                 height: 52,
                 child: FilledButton(
-                  onPressed: nextName == null ? null : () => Navigator.of(context).pop(true),
-                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+                  onPressed: nextName == null
+                      ? null
+                      : () => Navigator.of(context).pop(true),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
                   child: const Text('View Next Step'),
                 ),
               ),
@@ -209,7 +284,11 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
                 height: 52,
                 child: OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
                   child: const Text('Done'),
                 ),
               ),
@@ -231,13 +310,27 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Delete certification?', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              Text(
+                'Delete certification?',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: AppSpacing.sm),
-              Text('This cannot be undone.', style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                'This cannot be undone.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
               const SizedBox(height: AppSpacing.lg),
-              FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Delete'),
+              ),
               const SizedBox(height: AppSpacing.sm),
-              OutlinedButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+              OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
             ],
           ),
         );
@@ -252,22 +345,40 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final status = _cert.copyWith(
-      name: _name.text,
-      doesNotExpire: _doesNotExpire,
-      expirationDate: _expirationDate,
-      issueDate: _issueDate,
-      clearExpirationDate: _doesNotExpire,
-    ).status;
+    final status = _cert
+        .copyWith(
+          name: _name.text,
+          doesNotExpire: _doesNotExpire,
+          expirationDate: _expirationDate,
+          issueDate: _issueDate,
+          clearExpirationDate: _doesNotExpire,
+        )
+        .status;
     final (label, color, icon) = switch (status) {
-      CertificationStatus.current => ('Current', FireOpsSemanticColors.completed, Icons.check_circle),
-      CertificationStatus.expiringSoon => ('Expiring Soon', FireOpsSemanticColors.warning, Icons.warning_amber_rounded),
-      CertificationStatus.expired => ('Expired', FireOpsSemanticColors.expired, Icons.cancel),
+      CertificationStatus.current => (
+        'Current',
+        FireOpsSemanticColors.completed,
+        Icons.check_circle,
+      ),
+      CertificationStatus.expiringSoon => (
+        'Expiring Soon',
+        FireOpsSemanticColors.warning,
+        Icons.warning_amber_rounded,
+      ),
+      CertificationStatus.expired => (
+        'Expired',
+        FireOpsSemanticColors.expired,
+        Icons.cancel,
+      ),
     };
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.certId == 'new' ? 'Add Certification' : 'Certification'),
+        leading: const AppBackButton.toCertifications(),
+
+        title: Text(
+          widget.certId == 'new' ? 'Add Certification' : 'Certification',
+        ),
         actions: [
           if (widget.certId != 'new')
             IconButton(
@@ -285,34 +396,64 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
             children: [
               Container(
                 padding: AppSpacing.paddingMd,
-                decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: cs.outline.withValues(alpha: 0.14))),
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+                ),
                 child: Row(
                   children: [
                     Icon(icon, color: color),
                     const SizedBox(width: AppSpacing.md),
-                    Expanded(child: Text(label, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
               TextFormField(
                 controller: _name,
-                decoration: const InputDecoration(labelText: 'Certification name'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter a name' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Certification name',
+                ),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Enter a name' : null,
               ),
               if (_cert.certificationDefinitionId != null) ...[
                 const SizedBox(height: AppSpacing.sm),
-                _LinkedDefinitionChip(definitionId: _cert.certificationDefinitionId!),
+                _LinkedDefinitionChip(
+                  definitionId: _cert.certificationDefinitionId!,
+                ),
               ],
               const SizedBox(height: AppSpacing.md),
-              TextFormField(controller: _org, decoration: const InputDecoration(labelText: 'Issuing organization')),
+              TextFormField(
+                controller: _org,
+                decoration: const InputDecoration(
+                  labelText: 'Issuing organization',
+                ),
+              ),
               const SizedBox(height: AppSpacing.md),
-              TextFormField(controller: _number, decoration: const InputDecoration(labelText: 'Certification / license number')),
+              TextFormField(
+                controller: _number,
+                decoration: const InputDecoration(
+                  labelText: 'Certification / license number',
+                ),
+              ),
               const SizedBox(height: AppSpacing.lg),
               Row(
                 children: [
                   Expanded(
-                    child: _DateTile(label: 'Issue date', value: _issueDate, onTap: _pickIssueDate, onClear: () => setState(() => _issueDate = null)),
+                    child: _DateTile(
+                      label: 'Issue date',
+                      value: _issueDate,
+                      onTap: _pickIssueDate,
+                      onClear: () => setState(() => _issueDate = null),
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
@@ -320,7 +461,9 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
                       label: 'Expiration date',
                       value: _doesNotExpire ? null : _expirationDate,
                       onTap: _doesNotExpire ? null : _pickExpirationDate,
-                      onClear: _doesNotExpire ? null : () => setState(() => _expirationDate = null),
+                      onClear: _doesNotExpire
+                          ? null
+                          : () => setState(() => _expirationDate = null),
                     ),
                   ),
                 ],
@@ -333,13 +476,22 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
                 contentPadding: EdgeInsets.zero,
               ),
               const SizedBox(height: AppSpacing.md),
-              TextFormField(controller: _notes, decoration: const InputDecoration(labelText: 'Notes'), maxLines: 4, minLines: 3),
+              TextFormField(
+                controller: _notes,
+                decoration: const InputDecoration(labelText: 'Notes'),
+                maxLines: 4,
+                minLines: 3,
+              ),
               const SizedBox(height: AppSpacing.xl),
               SizedBox(
                 height: 52,
                 child: FilledButton(
                   onPressed: _save,
-                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
                   child: const Text('Save'),
                 ),
               ),
@@ -357,7 +509,12 @@ class _DateTile extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onClear;
 
-  const _DateTile({required this.label, required this.value, required this.onTap, required this.onClear});
+  const _DateTile({
+    required this.label,
+    required this.value,
+    required this.onTap,
+    required this.onClear,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -368,21 +525,39 @@ class _DateTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Container(
         padding: AppSpacing.paddingMd,
-        decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: cs.outline.withValues(alpha: 0.14))),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+        ),
         child: Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant)),
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(text, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    text,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ],
               ),
             ),
             if (onClear != null && value != null)
-              IconButton(onPressed: onClear, icon: const Icon(Icons.close), tooltip: 'Clear'),
+              IconButton(
+                onPressed: onClear,
+                icon: const Icon(Icons.close),
+                tooltip: 'Clear',
+              ),
           ],
         ),
       ),
@@ -390,7 +565,20 @@ class _DateTile extends StatelessWidget {
   }
 
   static String _formatDate(DateTime d) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
 }
@@ -398,7 +586,10 @@ class _DateTile extends StatelessWidget {
 enum _DuplicateChoice { updateExisting, addAnother }
 
 extension on _CertificationDetailPageState {
-  Future<_DuplicateChoice?> _showDuplicateDialog(BuildContext context, {required String name}) {
+  Future<_DuplicateChoice?> _showDuplicateDialog(
+    BuildContext context, {
+    required String name,
+  }) {
     return showModalBottomSheet<_DuplicateChoice>(
       context: context,
       showDragHandle: true,
@@ -410,15 +601,32 @@ extension on _CertificationDetailPageState {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Already added', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              Text(
+                'Already added',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: AppSpacing.sm),
-              Text('You already have $name. Some people keep multiple records (different issuers or renewals).', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
+              Text(
+                'You already have $name. Some people keep multiple records (different issuers or renewals).',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.5,
+                ),
+              ),
               const SizedBox(height: AppSpacing.lg),
               SizedBox(
                 height: 52,
                 child: FilledButton(
-                  onPressed: () => Navigator.of(context).pop(_DuplicateChoice.updateExisting),
-                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pop(_DuplicateChoice.updateExisting),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
                   child: const Text('Update Existing'),
                 ),
               ),
@@ -426,13 +634,21 @@ extension on _CertificationDetailPageState {
               SizedBox(
                 height: 52,
                 child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(_DuplicateChoice.addAnother),
-                  style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+                  onPressed: () =>
+                      Navigator.of(context).pop(_DuplicateChoice.addAnother),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
                   child: const Text('Add Another Record'),
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              TextButton(onPressed: () => Navigator.of(context).pop(null), child: const Text('Cancel')),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                child: const Text('Cancel'),
+              ),
             ],
           ),
         );
@@ -451,13 +667,23 @@ class _LinkedDefinitionChip extends StatelessWidget {
     final def = FireOpsCatalog.certificationById()[definitionId];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: cs.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(999), border: Border.all(color: cs.primary.withValues(alpha: 0.22))),
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.22)),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.link, size: 16, color: cs.primary),
           const SizedBox(width: 8),
-          Text(def?.displayName ?? definitionId, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.primary, fontWeight: FontWeight.w900)),
+          Text(
+            def?.displayName ?? definitionId,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: cs.primary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ],
       ),
     );

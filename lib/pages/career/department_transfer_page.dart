@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_goal.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/department_transfer.dart';
@@ -79,7 +80,10 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Department Transfer')),
+      appBar: AppBar(
+        leading: const AppBackButton.toCareerIntelligence(),
+        title: const Text('Department Transfer'),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(

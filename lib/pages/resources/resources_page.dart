@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/resource.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
@@ -47,16 +48,21 @@ class _ResourcesPageState extends State<ResourcesPage> {
         _requirementKey = (extra['requirementKey'] as String?)?.trim();
         final t = extra['types'];
         if (t is List) {
-          _typeFilter = t.whereType<String>().map((e) {
-            try {
-              return ResourceType.values.byName(e);
-            } catch (_) {
-              return null;
-            }
-          }).whereType<ResourceType>().toSet();
+          _typeFilter = t
+              .whereType<String>()
+              .map((e) {
+                try {
+                  return ResourceType.values.byName(e);
+                } catch (_) {
+                  return null;
+                }
+              })
+              .whereType<ResourceType>()
+              .toSet();
         }
         final preset = extra['search'] as String?;
-        if (preset != null && preset.trim().isNotEmpty) _search.text = preset.trim();
+        if (preset != null && preset.trim().isNotEmpty)
+          _search.text = preset.trim();
       }
     }
   }
@@ -65,22 +71,22 @@ class _ResourcesPageState extends State<ResourcesPage> {
   Widget build(BuildContext context) {
     return switch (_mode) {
       _ResourcesMode.requirementFilter => _RequirementResourcesView(
-          requirementKey: _requirementKey,
-          typeFilter: _typeFilter,
-          searchController: _search,
-        ),
+        requirementKey: _requirementKey,
+        typeFilter: _typeFilter,
+        searchController: _search,
+      ),
       _ResourcesMode.personalized => _PersonalizedResourcesView(
-          searchController: _search,
-          chipFilter: _chipFilter,
-          onToggleChip: (c) => setState(() {
-            if (_chipFilter.contains(c)) {
-              _chipFilter.remove(c);
-            } else {
-              _chipFilter.add(c);
-            }
-            if (_chipFilter.isEmpty) _chipFilter.add('Task Book');
-          }),
-        ),
+        searchController: _search,
+        chipFilter: _chipFilter,
+        onToggleChip: (c) => setState(() {
+          if (_chipFilter.contains(c)) {
+            _chipFilter.remove(c);
+          } else {
+            _chipFilter.add(c);
+          }
+          if (_chipFilter.isEmpty) _chipFilter.add('Task Book');
+        }),
+      ),
     };
   }
 }
@@ -90,7 +96,11 @@ class _PersonalizedResourcesView extends StatelessWidget {
   final Set<String> chipFilter;
   final ValueChanged<String> onToggleChip;
 
-  const _PersonalizedResourcesView({required this.searchController, required this.chipFilter, required this.onToggleChip});
+  const _PersonalizedResourcesView({
+    required this.searchController,
+    required this.chipFilter,
+    required this.onToggleChip,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -103,14 +113,20 @@ class _PersonalizedResourcesView extends StatelessWidget {
         final items = FireOpsCatalog.resources();
         final road = state.roadmap;
         final goalId = road?.goal.id;
-        final nextCertId = road?.nextStep?.requirement.certificationDefinitionId;
+        final nextCertId =
+            road?.nextStep?.requirement.certificationDefinitionId;
         final userState = state.profile.state;
 
         final activeRequirementIds = <String>{};
         if (road != null) {
           for (final r in road.included) {
-            final st = state.activityStatusFor(goalId: road.goal.id, requirementId: r.requirement.id);
-            if (st == RequirementActivityStatus.planning || st == RequirementActivityStatus.scheduled || st == RequirementActivityStatus.inProgress) {
+            final st = state.activityStatusFor(
+              goalId: road.goal.id,
+              requirementId: r.requirement.id,
+            );
+            if (st == RequirementActivityStatus.planning ||
+                st == RequirementActivityStatus.scheduled ||
+                st == RequirementActivityStatus.inProgress) {
               activeRequirementIds.add(r.requirement.id);
             }
           }
@@ -123,7 +139,8 @@ class _PersonalizedResourcesView extends StatelessWidget {
           final relatedNames = r.relatedCertificationDefinitionIds
               .map((id) => defs[id]?.displayName ?? id)
               .join(' ');
-          final blob = '${r.title} ${r.description} $relatedNames'.toLowerCase();
+          final blob = '${r.title} ${r.description} $relatedNames'
+              .toLowerCase();
           return blob.contains(query);
         }
 
@@ -132,73 +149,149 @@ class _PersonalizedResourcesView extends StatelessWidget {
           if (chips.isEmpty) return true;
 
           bool onMyPath() {
-            if (goalId == null && nextCertId == null && activeRequirementIds.isEmpty) return true;
-            final matchesGoal = goalId != null && r.relatedCareerGoalIds.contains(goalId);
-            final matchesNext = nextCertId != null && r.relatedCertificationDefinitionIds.contains(nextCertId);
+            if (goalId == null &&
+                nextCertId == null &&
+                activeRequirementIds.isEmpty)
+              return true;
+            final matchesGoal =
+                goalId != null && r.relatedCareerGoalIds.contains(goalId);
+            final matchesNext =
+                nextCertId != null &&
+                r.relatedCertificationDefinitionIds.contains(nextCertId);
             final matchesActive = activeRequirementIds.isNotEmpty;
             return matchesGoal || matchesNext || matchesActive;
           }
 
           bool ok = true;
           for (final c in chips) {
-            ok = ok && switch (c) {
-              'Task Book' => onMyPath(),
-              'Official' => r.type == ResourceType.officialStateAgency || r.type == ResourceType.officialFederalAgency,
-              'Training' => r.type == ResourceType.trainingProvider || r.type == ResourceType.courseFinder || r.type == ResourceType.collegeAcademy,
-              'Study' => r.type == ResourceType.studyResource,
-              'Practice' => r.type == ResourceType.practiceResource || r.type == ResourceType.fireOpsTool,
-              'Fire' => r.relatedCertificationDefinitionIds.any((e) => e.contains('fire') || e.contains('haz') || e.contains('driver_operator')),
-              'EMS' => r.relatedCertificationDefinitionIds.any((e) => e == 'emt' || e == 'aemt' || e == 'paramedic' || e == 'bls' || e == 'acls' || e == 'pals'),
-              _ => true,
-            };
+            ok =
+                ok &&
+                switch (c) {
+                  'Task Book' => onMyPath(),
+                  'Official' =>
+                    r.type == ResourceType.officialStateAgency ||
+                        r.type == ResourceType.officialFederalAgency,
+                  'Training' =>
+                    r.type == ResourceType.trainingProvider ||
+                        r.type == ResourceType.courseFinder ||
+                        r.type == ResourceType.collegeAcademy,
+                  'Study' => r.type == ResourceType.studyResource,
+                  'Practice' =>
+                    r.type == ResourceType.practiceResource ||
+                        r.type == ResourceType.fireOpsTool,
+                  'Fire' => r.relatedCertificationDefinitionIds.any(
+                    (e) =>
+                        e.contains('fire') ||
+                        e.contains('haz') ||
+                        e.contains('driver_operator'),
+                  ),
+                  'EMS' => r.relatedCertificationDefinitionIds.any(
+                    (e) =>
+                        e == 'emt' ||
+                        e == 'aemt' ||
+                        e == 'paramedic' ||
+                        e == 'bls' ||
+                        e == 'acls' ||
+                        e == 'pals',
+                  ),
+                  _ => true,
+                };
           }
           return ok;
         }
 
-        final filtered = items.where((r) => matchText(r, value.text) && matchChips(r)).toList();
+        final filtered = items
+            .where((r) => matchText(r, value.text) && matchChips(r))
+            .toList();
         filtered.sort((a, b) {
-      int score(Resource r) {
-        int s = 0;
-        if (userState != null && r.state != null && r.state == userState) s += 100;
-        if (nextCertId != null && r.relatedCertificationDefinitionIds.contains(nextCertId)) s += 60;
-        if (goalId != null && r.relatedCareerGoalIds.contains(goalId)) s += 30;
-        if (r.type == ResourceType.fireOpsTool) s += 10;
-        return -s;
-      }
+          int score(Resource r) {
+            int s = 0;
+            if (userState != null && r.state != null && r.state == userState)
+              s += 100;
+            if (nextCertId != null &&
+                r.relatedCertificationDefinitionIds.contains(nextCertId))
+              s += 60;
+            if (goalId != null && r.relatedCareerGoalIds.contains(goalId))
+              s += 30;
+            if (r.type == ResourceType.fireOpsTool) s += 10;
+            return -s;
+          }
 
-      return score(a).compareTo(score(b));
-    });
+          return score(a).compareTo(score(b));
+        });
 
-        final stateSpecific = userState == null ? <Resource>[] : filtered.where((r) => r.state == userState).toList();
-        final national = userState == null ? filtered : filtered.where((r) => r.state == null || r.state != userState).toList();
+        final stateSpecific = userState == null
+            ? <Resource>[]
+            : filtered.where((r) => r.state == userState).toList();
+        final national = userState == null
+            ? filtered
+            : filtered
+                  .where((r) => r.state == null || r.state != userState)
+                  .toList();
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Resources')),
+          appBar: AppBar(
+            leading: const AppBackButton.toHome(),
+            title: const Text('Resources'),
+          ),
           body: SafeArea(
             child: ListView(
               padding: AppSpacing.paddingLg,
               children: [
-                Text('For your path', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+                Text(
+                  'For your path',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.sm),
-                Text('Links and tools prioritized by your current role, goal, and next step.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
+                Text(
+                  'Links and tools prioritized by your current role, goal, and next step.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.md),
                 _SearchBar(controller: searchController),
                 const SizedBox(height: AppSpacing.md),
                 _FilterChips(selected: chipFilter, onToggle: onToggleChip),
                 const SizedBox(height: AppSpacing.lg),
                 if (nextCertId != null) ...[
-                  _SectionHeader(title: 'YOUR NEXT STEP', subtitle: FireOpsCatalog.certificationById()[nextCertId]?.displayName ?? ''),
+                  _SectionHeader(
+                    title: 'YOUR NEXT STEP',
+                    subtitle:
+                        FireOpsCatalog.certificationById()[nextCertId]
+                            ?.displayName ??
+                        '',
+                  ),
                   const SizedBox(height: AppSpacing.sm),
-                  ..._buildCards(context, filtered.where((r) => r.relatedCertificationDefinitionIds.contains(nextCertId)).toList(), limit: 6),
+                  ..._buildCards(
+                    context,
+                    filtered
+                        .where(
+                          (r) => r.relatedCertificationDefinitionIds.contains(
+                            nextCertId,
+                          ),
+                        )
+                        .toList(),
+                    limit: 6,
+                  ),
                   const SizedBox(height: AppSpacing.lg),
                 ],
                 if (stateSpecific.isNotEmpty) ...[
-                  _SectionHeader(title: '${userState!} RESOURCES', subtitle: 'State-specific links (when available)'),
+                  _SectionHeader(
+                    title: '${userState!} RESOURCES',
+                    subtitle: 'State-specific links (when available)',
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   ..._buildCards(context, stateSpecific, limit: 8),
                   const SizedBox(height: AppSpacing.lg),
                 ],
-                _SectionHeader(title: 'NATIONAL RESOURCES', subtitle: 'Common national organizations and tools'),
+                _SectionHeader(
+                  title: 'NATIONAL RESOURCES',
+                  subtitle: 'Common national organizations and tools',
+                ),
                 const SizedBox(height: AppSpacing.sm),
                 ..._buildCards(context, national, limit: 16),
                 const SizedBox(height: AppSpacing.xl),
@@ -210,24 +303,39 @@ class _PersonalizedResourcesView extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildCards(BuildContext context, List<Resource> list, {required int limit}) {
+  List<Widget> _buildCards(
+    BuildContext context,
+    List<Resource> list, {
+    required int limit,
+  }) {
     final trimmed = list.take(limit).toList();
     if (trimmed.isEmpty) {
       final cs = Theme.of(context).colorScheme;
       return [
         Container(
           padding: AppSpacing.paddingMd,
-          decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: cs.outline.withValues(alpha: 0.14))),
-          child: Text('No matching resources yet. More will be added over time.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+          ),
+          child: Text(
+            'No matching resources yet. More will be added over time.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+          ),
         ),
       ];
     }
 
     return trimmed
-        .map((r) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: ResourceCard(resource: r),
-            ))
+        .map(
+          (r) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: ResourceCard(resource: r),
+          ),
+        )
         .toList();
   }
 }
@@ -237,7 +345,11 @@ class _RequirementResourcesView extends StatelessWidget {
   final Set<ResourceType> typeFilter;
   final TextEditingController searchController;
 
-  const _RequirementResourcesView({required this.requirementKey, required this.typeFilter, required this.searchController});
+  const _RequirementResourcesView({
+    required this.requirementKey,
+    required this.typeFilter,
+    required this.searchController,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -251,11 +363,19 @@ class _RequirementResourcesView extends StatelessWidget {
         bool match(Resource r) {
           final q = value.text.trim().toLowerCase();
           final defs = FireOpsCatalog.certificationById();
-          final relatedNames = r.relatedCertificationDefinitionIds.map((id) => defs[id]?.displayName ?? id).join(' ');
-          final blob = '${r.title} ${r.description} $relatedNames'.toLowerCase();
-          final keyOk = key == null || key.isEmpty ? true : r.relatedCertificationDefinitionIds.contains(key) || blob.contains(key.toLowerCase());
+          final relatedNames = r.relatedCertificationDefinitionIds
+              .map((id) => defs[id]?.displayName ?? id)
+              .join(' ');
+          final blob = '${r.title} ${r.description} $relatedNames'
+              .toLowerCase();
+          final keyOk = key == null || key.isEmpty
+              ? true
+              : r.relatedCertificationDefinitionIds.contains(key) ||
+                    blob.contains(key.toLowerCase());
           final qOk = q.isEmpty ? true : blob.contains(q);
-          final typeOk = typeFilter.isEmpty ? true : typeFilter.contains(r.type);
+          final typeOk = typeFilter.isEmpty
+              ? true
+              : typeFilter.contains(r.type);
           return keyOk && qOk && typeOk;
         }
 
@@ -267,18 +387,37 @@ class _RequirementResourcesView extends StatelessWidget {
 
         final title = key == null || key.isEmpty ? 'Resources' : key;
         return Scaffold(
-          appBar: AppBar(title: Text(title)),
+          appBar: AppBar(
+            leading: const AppBackButton.toHome(),
+            title: Text(title),
+          ),
           body: SafeArea(
             child: ListView(
               padding: AppSpacing.paddingLg,
               children: [
-                Text('Filtered resources', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+                Text(
+                  'Filtered resources',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.sm),
-                Text('Training, official requirements, study, and practice links for this requirement.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
+                Text(
+                  'Training, official requirements, study, and practice links for this requirement.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.md),
                 _SearchBar(controller: searchController),
                 const SizedBox(height: AppSpacing.lg),
-                ...filtered.map((r) => Padding(padding: const EdgeInsets.only(bottom: AppSpacing.sm), child: ResourceCard(resource: r))),
+                ...filtered.map(
+                  (r) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: ResourceCard(resource: r),
+                  ),
+                ),
               ],
             ),
           ),
@@ -320,7 +459,15 @@ class _FilterChips extends StatelessWidget {
   final ValueChanged<String> onToggle;
   const _FilterChips({required this.selected, required this.onToggle});
 
-  static const _chips = ['Task Book', 'Official', 'Training', 'Study', 'Practice', 'Fire', 'EMS'];
+  static const _chips = [
+    'Task Book',
+    'Official',
+    'Training',
+    'Study',
+    'Practice',
+    'Fire',
+    'EMS',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -336,7 +483,13 @@ class _FilterChips extends StatelessWidget {
           final isOn = selected.contains(label);
           return FilterChip(
             selected: isOn,
-            label: Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: isOn ? cs.onPrimaryContainer : cs.onSurfaceVariant, fontWeight: FontWeight.w700)),
+            label: Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: isOn ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             onSelected: (_) => onToggle(label),
             showCheckmark: false,
             selectedColor: cs.primaryContainer,
@@ -361,9 +514,20 @@ class _SectionHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w900)),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(subtitle, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+        Text(
+          subtitle,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+        ),
       ],
     );
   }
@@ -379,13 +543,20 @@ class ResourceCard extends StatelessWidget {
     final url = resource.url;
     return Container(
       padding: AppSpacing.paddingMd,
-      decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: cs.outline.withValues(alpha: 0.14))),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+      ),
       child: Row(
         children: [
           Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(AppRadius.md)),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
             child: Icon(_iconFor(resource.type), color: cs.onSurfaceVariant),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -393,16 +564,31 @@ class ResourceCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(resource.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                Text(
+                  resource.title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(resource.description, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
+                Text(
+                  resource.description,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
           FilledButton(
             onPressed: url == null ? null : () => _openUrl(url),
-            style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+            ),
             child: const Text('Open'),
           ),
         ],
@@ -412,9 +598,11 @@ class ResourceCard extends StatelessWidget {
 
   static IconData _iconFor(ResourceType t) {
     return switch (t) {
-      ResourceType.officialStateAgency || ResourceType.officialFederalAgency => Icons.verified_outlined,
+      ResourceType.officialStateAgency ||
+      ResourceType.officialFederalAgency => Icons.verified_outlined,
       ResourceType.credentialingOrganization => Icons.badge_outlined,
-      ResourceType.trainingProvider || ResourceType.courseFinder => Icons.school,
+      ResourceType.trainingProvider ||
+      ResourceType.courseFinder => Icons.school,
       ResourceType.collegeAcademy => Icons.account_balance_outlined,
       ResourceType.professionalOrganization => Icons.groups_2_outlined,
       ResourceType.studyResource => Icons.menu_book,

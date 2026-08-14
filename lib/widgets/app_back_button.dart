@@ -16,9 +16,9 @@ class AppBackButton extends StatelessWidget {
   const AppBackButton.toLog({super.key}) : fallbackRoute = '/log';
   const AppBackButton.toAdvance({super.key}) : fallbackRoute = '/growth';
   const AppBackButton.toCareerIntelligence({super.key})
-      : fallbackRoute = '/career-intelligence';
+    : fallbackRoute = '/career-intelligence';
   const AppBackButton.toCertifications({super.key})
-      : fallbackRoute = '/certifications';
+    : fallbackRoute = '/certifications';
 
   void _handleBack(BuildContext context) {
     final router = GoRouter.of(context);
