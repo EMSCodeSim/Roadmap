@@ -9,7 +9,7 @@ The product loop is:
 **PLAN → WORK → RECORD → PROVE → ADVANCE**
 
 ### Home
-A simple career snapshot showing the user's current level, active goal, certification health, and a fast Quick Log entry point.
+The home screen is a career decision dashboard, not just a tracker. **Career Readiness** leads the experience with the user's active goal, mapped-requirement completion percentage, target date, timeline health, and a **Next Best Step** that points to the highest-priority incomplete requirement. Users can jump directly into the Task Book or log progress, with current level, certification health, and Quick Log still available below.
 
 ### Task Book
 The active career goal becomes a Career Task Book. Major requirements such as certifications, experience, department requirements, task books, and promotion steps can open into progressively deeper preparation tasks. FireOps-created task content is preparation guidance and does not replace official department, state, or credentialing requirements.
