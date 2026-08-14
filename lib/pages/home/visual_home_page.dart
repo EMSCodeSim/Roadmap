@@ -9,8 +9,6 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/services/catalog.dart';
-import 'package:firepath/services/ecosystem_recommendations.dart';
-import 'package:firepath/widgets/ecosystem_recommendation_card.dart';
 import 'package:firepath/services/timeline_planner.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/state/app_state.dart';
@@ -122,87 +120,52 @@ class _VisualHomePageState extends State<VisualHomePage> {
     final state = context.watch<AppState>();
     final roadmap = state.roadmap;
     final profile = state.profile;
-    final certs = state.certifications;
     final timelinePlan = roadmap == null
         ? null
         : CareerTimelinePlanner.build(state);
 
-    final currentLevel = profile.currentRoles.isEmpty
-        ? 'Set your current level'
-        : profile.currentRoles.join(' / ');
-
-    final currentCount = certs
-        .where((cert) => cert.status == CertificationStatus.current)
-        .length;
-    final expiringCount = certs
-        .where((cert) => cert.status == CertificationStatus.expiringSoon)
-        .length;
-    final expiredCount = certs
-        .where((cert) => cert.status == CertificationStatus.expired)
-        .length;
-
-    final datedCerts =
-        certs
-            .where((cert) => !cert.doesNotExpire && cert.expirationDate != null)
-            .toList()
-          ..sort((a, b) => a.expirationDate!.compareTo(b.expirationDate!));
-    final nextExpiration = datedCerts
-        .where((cert) => !cert.expirationDate!.isBefore(_today()))
-        .firstOrNull;
-    final ecosystemRecommendation = EcosystemRecommendations.forTopic(
-      roadmap?.nextStep?.requirement.name,
-    );
-
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
-          children: [
-            const _GraphicHeader(),
-            const SizedBox(height: 14),
-            _CareerCommandCard(
-              goalTitle: roadmap?.goal.title,
-              targetDate: profile.careerPlan.targetDate,
-              completed: roadmap?.completedCount ?? 0,
-              total: roadmap?.totalCount ?? 0,
-              nextStep: roadmap?.nextStep?.requirement.name,
-              timelineStatus: timelinePlan?.status,
-              onOpenTaskBook: () => context.go(AppRoutes.myPath),
-              onQuickLog: () => QuickLogLauncher.open(context),
-            ),
-            const SizedBox(height: 12),
-            const _DailyFocusCard(),
-            if (ecosystemRecommendation != null) ...[
-              const SizedBox(height: 12),
-              EcosystemRecommendationCard(
-                recommendation: ecosystemRecommendation,
-                compact: true,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxHeight < 690;
+            return Padding(
+              padding: EdgeInsets.fromLTRB(14, compact ? 8 : 12, 14, 10),
+              child: Column(
+                children: [
+                  _GraphicHeader(compact: compact),
+                  SizedBox(height: compact ? 8 : 12),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, cardSpace) => FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          width: cardSpace.maxWidth,
+                          child: _CareerCommandCard(
+                            goalTitle: roadmap?.goal.title,
+                            targetDate: profile.careerPlan.targetDate,
+                            completed: roadmap?.completedCount ?? 0,
+                            total: roadmap?.totalCount ?? 0,
+                            nextStep: roadmap?.nextStep?.requirement.name,
+                            timelineStatus: timelinePlan?.status,
+                            onOpenTaskBook: () => context.go(AppRoutes.myPath),
+                            onQuickLog: () => QuickLogLauncher.open(context),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: compact ? 8 : 12),
+                  _HomeActionRow(
+                    compact: compact,
+                    onDailyFocus: () => context.push(AppRoutes.dailyFocus),
+                    onQuickLog: () => QuickLogLauncher.open(context),
+                  ),
+                ],
               ),
-            ],
-            const SizedBox(height: 12),
-            _CurrentLevelCard(
-              level: currentLevel,
-              serviceType: profile.serviceType,
-              yearsOfService: profile.yearsOfService,
-              stateCode: profile.state,
-              onTap: () => _showEditCurrentLevelSheet(context, state),
-            ),
-            const SizedBox(height: 12),
-            _CertificationsCard(
-              total: certs.length,
-              current: currentCount,
-              expiring: expiringCount,
-              expired: expiredCount,
-              nextExpirationName: nextExpiration == null
-                  ? null
-                  : state.certificationDisplayName(nextExpiration),
-              nextExpirationDate: nextExpiration?.expirationDate,
-              nextExpirationDays: nextExpiration?.daysRemaining,
-              onTap: () => context.go(AppRoutes.certifications),
-            ),
-            const SizedBox(height: 12),
-            const _QuickLogCard(),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -649,13 +612,15 @@ class _StatePickerRow extends StatelessWidget {
 }
 
 class _GraphicHeader extends StatelessWidget {
-  const _GraphicHeader();
+  final bool compact;
+  const _GraphicHeader({required this.compact});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
     return Container(
+      height: compact ? 86 : 106,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(
@@ -666,17 +631,37 @@ class _GraphicHeader extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: AspectRatio(
-          aspectRatio: 2.45,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
+        child: Stack(
+          children: [
+            Positioned(right: -28, top: -40, child: Container(
+              width: 130, height: 130,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                color: cs.onSecondary.withValues(alpha: .07)),
+            )),
+            Positioned(right: 48, bottom: -52, child: Container(
+              width: 105, height: 105,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                color: cs.primary.withValues(alpha: .18)),
+            )),
+            Padding(
+              padding: EdgeInsets.fromLTRB(18, compact ? 12 : 16, 12, compact ? 12 : 16),
+              child: Row(children: [
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: cs.onSecondary.withValues(alpha: .12),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text('YOUR FIRE SERVICE CAREER',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onSecondary, fontWeight: FontWeight.w900,
+                          letterSpacing: .65)),
+                    ),
+                    const SizedBox(height: 5),
                       Text(
                         'Fire Career Roadmap',
                         maxLines: 1,
@@ -687,25 +672,20 @@ class _GraphicHeader extends StatelessWidget {
                           letterSpacing: 0.2,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'PLAN → WORK → RECORD → PROVE → ADVANCE',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: cs.onSecondary.withValues(alpha: 0.85),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
+                    if (!compact) ...[
+                      const SizedBox(height: 4),
+                      Text('PLAN  •  WORK  •  RECORD  •  ADVANCE',
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onSecondary.withValues(alpha: .82),
+                          fontWeight: FontWeight.w800, letterSpacing: .35)),
                     ],
-
-                  ),
-                ),
-                const SizedBox(width: 12),
+                  ],
+                )),
+                const SizedBox(width: 10),
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: compact ? 64 : 78,
+                  height: compact ? 64 : 78,
                   decoration: BoxDecoration(
                     color: cs.surface.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(16),
@@ -716,9 +696,9 @@ class _GraphicHeader extends StatelessWidget {
                   ),
                   child: const _RoadmapBannerIcon(),
                 ),
-              ],
+              ]),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -734,12 +714,131 @@ class _RoadmapBannerIcon extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(10),
       child: Image.asset(
-        'assets/icons/Roadmap.png',
+        'assets/icons/career_road_icon_v2.png',
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
           // If the asset is missing or fails to decode, keep the banner stable.
           return Icon(Icons.route_outlined, color: cs.onSecondary, size: 30);
         },
+      ),
+    );
+  }
+}
+
+class _HomeActionRow extends StatelessWidget {
+  final bool compact;
+  final VoidCallback onDailyFocus;
+  final VoidCallback onQuickLog;
+
+  const _HomeActionRow({
+    required this.compact,
+    required this.onDailyFocus,
+    required this.onQuickLog,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: compact ? 76 : 90,
+      child: Row(
+        children: [
+          Expanded(
+            child: _HomeActionTile(
+              icon: Icons.bolt_outlined,
+              label: 'TODAY',
+              detail: compact ? 'Daily focus' : 'Choose a focused session',
+              onTap: onDailyFocus,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _HomeActionTile(
+              icon: Icons.add_task_outlined,
+              label: 'QUICK LOG',
+              detail: compact ? 'Record progress' : 'Capture what you did',
+              onTap: onQuickLog,
+              emphasized: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String detail;
+  final VoidCallback onTap;
+  final bool emphasized;
+
+  const _HomeActionTile({
+    required this.icon,
+    required this.label,
+    required this.detail,
+    required this.onTap,
+    this.emphasized = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: emphasized ? cs.primaryContainer : cs.surface,
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border: Border.all(
+              color: emphasized
+                  ? cs.primary.withValues(alpha: .25)
+                  : cs.outline.withValues(alpha: .14),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: emphasized
+                      ? cs.primary.withValues(alpha: .12)
+                      : cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(icon, color: cs.primary),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: cs.primary,
+                              fontWeight: FontWeight.w900,
+                            )),
+                    const SizedBox(height: 2),
+                    Text(detail,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            )),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }
