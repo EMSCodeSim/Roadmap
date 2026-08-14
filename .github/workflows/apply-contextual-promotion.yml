@@ -1,0 +1,42 @@
+name: Apply contextual promotion integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/apply_contextual_promotion.py'
+      - '.github/workflows/apply-contextual-promotion.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-contextual-promotion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Apply integration
+        run: python3 tools/apply_contextual_promotion.py
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Format changed Dart files
+        run: dart format lib/pages/home/visual_home_page.dart lib/pages/career/daily_focus_page.dart lib/services/ecosystem_recommendations.dart lib/widgets/ecosystem_recommendation_card.dart
+      - name: Analyze contextual promotion
+        run: flutter analyze lib/services/ecosystem_recommendations.dart lib/widgets/ecosystem_recommendation_card.dart lib/pages/career/daily_focus_page.dart
+      - name: Commit contextual promotion
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/pages/home/visual_home_page.dart lib/pages/career/daily_focus_page.dart lib/services/ecosystem_recommendations.dart lib/widgets/ecosystem_recommendation_card.dart
+          git commit -m "Add non-invasive contextual ecosystem promotion"
+          git push origin main
