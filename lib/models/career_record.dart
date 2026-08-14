@@ -71,6 +71,10 @@ class CareerRecord {
   final bool highlight;
   final String? trackingKey;
   final CareerRecordOutcome? outcome;
+  /// Structured, category-specific values (for example drive miles, response
+  /// mode, transport status, or tender gallons). Kept optional so records
+  /// created by earlier app versions remain fully compatible.
+  final Map<String, dynamic> details;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -93,6 +97,7 @@ class CareerRecord {
     required this.highlight,
     this.trackingKey,
     this.outcome,
+    this.details = const <String, dynamic>{},
     required this.createdAt,
     required this.updatedAt,
   });
@@ -115,6 +120,7 @@ class CareerRecord {
     bool? highlight,
     String? trackingKey,
     CareerRecordOutcome? outcome,
+    Map<String, dynamic>? details,
     DateTime? updatedAt,
     bool clearRoleOrAssignment = false,
     bool clearSummary = false,
@@ -146,6 +152,7 @@ class CareerRecord {
       highlight: highlight ?? this.highlight,
       trackingKey: clearTrackingKey ? null : (trackingKey ?? this.trackingKey),
       outcome: clearOutcome ? null : (outcome ?? this.outcome),
+      details: details ?? this.details,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -170,6 +177,7 @@ class CareerRecord {
         'highlight': highlight,
         'trackingKey': trackingKey,
         'outcome': outcome?.name,
+        'details': details,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
       };
@@ -220,6 +228,9 @@ class CareerRecord {
       highlight: (json['highlight'] as bool?) ?? false,
       trackingKey: json['trackingKey'] as String?,
       outcome: parseOutcome(json['outcome']),
+      details: json['details'] is Map
+          ? Map<String, dynamic>.from(json['details'] as Map)
+          : const <String, dynamic>{},
       createdAt: createdAt,
       updatedAt: parseDate(json['updatedAt'], createdAt),
     );

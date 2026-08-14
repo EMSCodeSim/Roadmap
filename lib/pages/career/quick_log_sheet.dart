@@ -4,12 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/models/apparatus_profile.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/models/quick_log_template.dart';
 import 'package:firepath/models/quick_log_tracker.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/apparatus_profile_store.dart';
 import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/services/quick_log_preferences_store.dart';
 import 'package:firepath/services/task_book_library.dart';
@@ -348,45 +350,48 @@ class _Chooser extends StatelessWidget {
         const SizedBox(height: 20),
         _SectionLabel('WHAT ARE YOU LOGGING?'),
         const SizedBox(height: 8),
-        ...QuickLogMode.values.map((mode) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: InkWell(
-                onTap: () => onPickMode(mode),
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                child: Container(
-                  padding: const EdgeInsets.all(13),
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border:
-                        Border.all(color: cs.outline.withValues(alpha: 0.14)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: cs.primaryContainer,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(mode.icon, color: cs.onPrimaryContainer),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(mode.label,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w800)),
-                      ),
-                      const Icon(Icons.chevron_right),
-                    ],
-                  ),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.65,
+          ),
+          itemCount: QuickLogMode.values.length,
+          itemBuilder: (context, index) {
+            final mode = QuickLogMode.values[index];
+            return InkWell(
+              onTap: () => onPickMode(mode),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(mode.icon, color: cs.primary, size: 25),
+                    const SizedBox(height: 8),
+                    Text(
+                      mode.label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                  ],
                 ),
               ),
-            )),
+            );
+          },
+        ),
       ],
     );
   }
@@ -417,6 +422,93 @@ class _SectionLabel extends StatelessWidget {
       );
 }
 
+class _DriveApparatusPicker extends StatelessWidget {
+  final List<ApparatusProfile> saved;
+  final ValueChanged<ApparatusProfile> onSelected;
+  final VoidCallback onCustom;
+
+  const _DriveApparatusPicker({required this.saved, required this.onSelected, required this.onCustom});
+
+  @override
+  Widget build(BuildContext context) {
+    final defaults = ApparatusKind.values
+        .where((kind) => kind != ApparatusKind.custom)
+        .map((kind) => ApparatusProfile(id: 'default.${kind.name}', name: kind.label, kind: kind));
+    final choices = [...saved, ...defaults];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const _SectionLabel('SELECT APPARATUS'),
+      const SizedBox(height: 8),
+      GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2, childAspectRatio: 2.5, crossAxisSpacing: 10, mainAxisSpacing: 10),
+        itemCount: choices.length,
+        itemBuilder: (context, index) {
+          final profile = choices[index];
+          return FilledButton.tonalIcon(
+            onPressed: () => onSelected(profile),
+            icon: Icon(_apparatusIcon(profile.kind), size: 19),
+            label: Text(profile.name, overflow: TextOverflow.ellipsis),
+          );
+        },
+      ),
+      const SizedBox(height: 8),
+      OutlinedButton.icon(onPressed: onCustom, icon: const Icon(Icons.add), label: const Text('Add custom apparatus')),
+    ]);
+  }
+}
+
+class _SelectedApparatusCard extends StatelessWidget {
+  final ApparatusProfile profile;
+  final VoidCallback onChange;
+  const _SelectedApparatusCard({required this.profile, required this.onChange});
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: .18))),
+        leading: Icon(_apparatusIcon(profile.kind)),
+        title: Text(profile.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+        subtitle: Text(profile.kind.label),
+        trailing: TextButton(onPressed: onChange, child: const Text('Change')),
+      );
+}
+
+class _ToggleWrap extends StatelessWidget {
+  final List<Widget> children;
+  const _ToggleWrap({required this.children});
+  @override
+  Widget build(BuildContext context) => Wrap(spacing: 8, runSpacing: 8, children: children);
+}
+
+class _DriveToggle extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final ValueChanged<bool> onChanged;
+  const _DriveToggle(this.label, this.selected, this.onChanged);
+  @override
+  Widget build(BuildContext context) => FilterChip(
+        selected: selected,
+        onSelected: onChanged,
+        avatar: Icon(selected ? Icons.check : Icons.add, size: 17),
+        label: Text(label),
+      );
+}
+
+IconData _apparatusIcon(ApparatusKind kind) => switch (kind) {
+      ApparatusKind.medic => Icons.medical_services_outlined,
+      ApparatusKind.engine => Icons.local_fire_department_outlined,
+      ApparatusKind.brush => Icons.terrain_outlined,
+      ApparatusKind.tender => Icons.water_drop_outlined,
+      ApparatusKind.truck => Icons.fire_truck_outlined,
+      ApparatusKind.rescue => Icons.health_and_safety_outlined,
+      ApparatusKind.command => Icons.campaign_outlined,
+      ApparatusKind.custom => Icons.local_shipping_outlined,
+    };
+
 class _QuickLogForm extends StatefulWidget {
   final QuickLogMode mode;
   final LogPrefill? prefill;
@@ -437,12 +529,30 @@ class _QuickLogForm extends StatefulWidget {
 }
 
 class _QuickLogFormState extends State<_QuickLogForm> {
+  final _apparatusStore = ApparatusProfileStore();
   final _title = TextEditingController();
   final _category = TextEditingController();
   final _note = TextEditingController();
   final _role = TextEditingController();
   final _hours = TextEditingController();
   final _reps = TextEditingController(text: '1');
+  final _startMiles = TextEditingController();
+  final _endMiles = TextEditingController();
+  final _gallons = TextEditingController();
+  final _cycles = TextEditingController();
+
+  List<ApparatusProfile> _savedApparatus = const [];
+  ApparatusProfile? _apparatus;
+  bool _emergent = false;
+  bool _patientTransport = false;
+  bool _returnEmergent = false;
+  bool _backing = false;
+  bool _spotter = false;
+  bool _evaluated = false;
+  bool _pumpOperations = false;
+  bool _offRoad = false;
+  bool _pumpAndRoll = false;
+  bool _aerialSetup = false;
 
   CareerRecordOutcome? _outcome;
   DateTime _date = DateTime.now();
@@ -463,6 +573,10 @@ class _QuickLogFormState extends State<_QuickLogForm> {
       _outcome = seed.outcome;
     }
     _taskLink = widget.prefill;
+    if (widget.mode == QuickLogMode.driveTime) {
+      _restoreDriveDetails(seed?.details ?? const <String, dynamic>{});
+      _loadApparatus();
+    }
     if ((widget.prefill?.title ?? '').trim().isNotEmpty) {
       _title.text = widget.prefill!.title;
     }
@@ -479,6 +593,10 @@ class _QuickLogFormState extends State<_QuickLogForm> {
     _role.dispose();
     _hours.dispose();
     _reps.dispose();
+    _startMiles.dispose();
+    _endMiles.dispose();
+    _gallons.dispose();
+    _cycles.dispose();
     super.dispose();
   }
 
@@ -557,6 +675,21 @@ class _QuickLogFormState extends State<_QuickLogForm> {
             ),
           ],
         ),
+        if (widget.mode == QuickLogMode.driveTime && _apparatus == null) ...[
+          _DriveApparatusPicker(
+            saved: _savedApparatus,
+            onSelected: _selectApparatus,
+            onCustom: _createCustomApparatus,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Choose the rig first. The log will show only fields that apply.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 12),
+        ] else ...[
         if (widget.mode == QuickLogMode.taskBookProgress || _taskLink != null) ...[
           const SizedBox(height: 8),
           _TaskBookLinkCard(
@@ -577,6 +710,14 @@ class _QuickLogFormState extends State<_QuickLogForm> {
           ),
         ],
         const SizedBox(height: 10),
+        if (widget.mode == QuickLogMode.driveTime) ...[
+          _SelectedApparatusCard(
+            profile: _apparatus!,
+            onChange: () => setState(() => _apparatus = null),
+          ),
+          const SizedBox(height: 12),
+          _buildDriveFields(),
+        ] else ...[
         TextField(
           controller: _title,
           textCapitalization: TextCapitalization.sentences,
@@ -645,6 +786,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
           ),
           const SizedBox(height: 12),
         ],
+        ],
         InkWell(
           onTap: _saving ? null : _pickDate,
           borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -689,11 +831,144 @@ class _QuickLogFormState extends State<_QuickLogForm> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.check_circle),
-            label: Text(_saving ? 'Saving…' : 'Save'),
+            label: Text(_saving
+                ? 'Saving…'
+                : widget.mode == QuickLogMode.driveTime
+                    ? 'Save Drive Log'
+                    : 'Save'),
           ),
         ),
+        ],
       ],
     );
+  }
+
+  Future<void> _loadApparatus() async {
+    final saved = await _apparatusStore.load();
+    if (mounted) setState(() => _savedApparatus = saved);
+  }
+
+  void _restoreDriveDetails(Map<String, dynamic> details) {
+    final kindName = details['apparatusKind'] as String?;
+    final name = details['apparatusName'] as String?;
+    if (kindName != null && name != null) {
+      ApparatusKind kind = ApparatusKind.custom;
+      try { kind = ApparatusKind.values.byName(kindName); } catch (_) {}
+      _apparatus = ApparatusProfile(id: 'repeat', name: name, kind: kind);
+    }
+    _startMiles.text = '${details['startMiles'] ?? ''}';
+    _endMiles.text = '${details['endMiles'] ?? ''}';
+    _gallons.text = '${details['gallonsMoved'] ?? ''}';
+    _cycles.text = '${details['shuttleCycles'] ?? ''}';
+    _emergent = details['emergent'] == true;
+    _patientTransport = details['patientTransport'] == true;
+    _returnEmergent = details['returnEmergent'] == true;
+    _backing = details['backing'] == true;
+    _spotter = details['spotter'] == true;
+    _evaluated = details['evaluated'] == true;
+    _pumpOperations = details['pumpOperations'] == true;
+    _offRoad = details['offRoad'] == true;
+    _pumpAndRoll = details['pumpAndRoll'] == true;
+    _aerialSetup = details['aerialSetup'] == true;
+  }
+
+  void _selectApparatus(ApparatusProfile profile) {
+    setState(() {
+      _apparatus = profile;
+      _title.text = '${profile.name} driving';
+      _category.text = profile.kind.label;
+    });
+  }
+
+  Future<void> _createCustomApparatus() async {
+    final name = TextEditingController();
+    ApparatusKind kind = ApparatusKind.custom;
+    final profile = await showDialog<ApparatusProfile>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add apparatus'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: name, autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(labelText: 'Unit name', hintText: 'Medic 184')),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<ApparatusKind>(
+              value: kind,
+              decoration: const InputDecoration(labelText: 'Apparatus type'),
+              items: ApparatusKind.values.map((item) =>
+                DropdownMenuItem(value: item, child: Text(item.label))).toList(),
+              onChanged: (value) => setDialogState(() => kind = value ?? kind),
+            ),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(onPressed: () {
+              if (name.text.trim().isEmpty) return;
+              final now = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+              Navigator.pop(dialogContext, ApparatusProfile(id: now, name: name.text.trim(), kind: kind));
+            }, child: const Text('Save apparatus')),
+          ],
+        ),
+      ),
+    );
+    name.dispose();
+    if (profile == null || !mounted) return;
+    final updated = [..._savedApparatus, profile];
+    await _apparatusStore.save(updated);
+    if (!mounted) return;
+    setState(() => _savedApparatus = updated);
+    _selectApparatus(profile);
+  }
+
+  Widget _buildDriveFields() {
+    final kind = _apparatus!.kind;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Expanded(child: TextField(controller: _startMiles,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(labelText: 'Starting miles'))),
+        const SizedBox(width: 10),
+        Expanded(child: TextField(controller: _endMiles,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(labelText: 'Ending miles'))),
+      ]),
+      const SizedBox(height: 12),
+      TextField(controller: _hours,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: const InputDecoration(labelText: 'Drive time (hours)', hintText: '0.75')),
+      const SizedBox(height: 12),
+      _SectionLabel('ACTIVITY'),
+      const SizedBox(height: 6),
+      _ToggleWrap(children: [
+        _DriveToggle('Emergent response', _emergent, (v) => setState(() => _emergent = v)),
+        _DriveToggle('Backing performed', _backing, (v) => setState(() => _backing = v)),
+        _DriveToggle('Spotter used', _spotter, (v) => setState(() => _spotter = v)),
+        _DriveToggle('Evaluated drive', _evaluated, (v) => setState(() => _evaluated = v)),
+        if (kind == ApparatusKind.medic) ...[
+          _DriveToggle('Patient transported', _patientTransport, (v) => setState(() => _patientTransport = v)),
+          _DriveToggle('Return emergent', _returnEmergent, (v) => setState(() => _returnEmergent = v)),
+        ],
+        if (kind == ApparatusKind.engine)
+          _DriveToggle('Pump operations', _pumpOperations, (v) => setState(() => _pumpOperations = v)),
+        if (kind == ApparatusKind.brush) ...[
+          _DriveToggle('Off-road driving', _offRoad, (v) => setState(() => _offRoad = v)),
+          _DriveToggle('Pump-and-roll', _pumpAndRoll, (v) => setState(() => _pumpAndRoll = v)),
+        ],
+        if (kind == ApparatusKind.truck)
+          _DriveToggle('Aerial setup', _aerialSetup, (v) => setState(() => _aerialSetup = v)),
+      ]),
+      if (kind == ApparatusKind.tender) ...[
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: TextField(controller: _gallons, keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Gallons moved'))),
+          const SizedBox(width: 10),
+          Expanded(child: TextField(controller: _cycles, keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Shuttle cycles'))),
+        ]),
+      ],
+    ]);
   }
 
   Future<void> _pickDate() async {
@@ -829,6 +1104,10 @@ class _QuickLogFormState extends State<_QuickLogForm> {
   }
 
   CareerRecord? _buildRecord(AppState state) {
+    if (widget.mode == QuickLogMode.driveTime && _apparatus == null) {
+      _message('Choose an apparatus before saving.');
+      return null;
+    }
     final title = _title.text.trim();
     if (title.isEmpty) {
       _message('Add a title before saving.');
@@ -860,6 +1139,15 @@ class _QuickLogFormState extends State<_QuickLogForm> {
       tags.add('task-book-progress-applied');
     }
 
+    final driveDetails = widget.mode == QuickLogMode.driveTime
+        ? _driveDetails()
+        : (widget.seed?.details ?? const <String, dynamic>{});
+    if (widget.mode == QuickLogMode.driveTime) {
+      tags.add('apparatus:${_apparatus!.kind.name}');
+      if (_emergent) tags.add('emergent');
+      if (_patientTransport) tags.add('patient-transport');
+    }
+
     return CareerRecord(
       id: now.microsecondsSinceEpoch.toRadixString(36),
       type: _recordType,
@@ -882,9 +1170,38 @@ class _QuickLogFormState extends State<_QuickLogForm> {
       highlight: false,
       trackingKey: widget.seed?.trackingKey ?? _trackingKey(widget.mode),
       outcome: _outcome,
+      details: driveDetails,
       createdAt: now,
       updatedAt: now,
     );
+  }
+
+  Map<String, dynamic> _driveDetails() {
+    final start = double.tryParse(_startMiles.text.trim());
+    final end = double.tryParse(_endMiles.text.trim());
+    final details = <String, dynamic>{
+      'apparatusId': _apparatus!.id,
+      'apparatusName': _apparatus!.name,
+      'apparatusKind': _apparatus!.kind.name,
+      if (start != null) 'startMiles': start,
+      if (end != null) 'endMiles': end,
+      if (start != null && end != null && end >= start) 'totalMiles': end - start,
+      'emergent': _emergent,
+      'patientTransport': _patientTransport,
+      'returnEmergent': _returnEmergent,
+      'backing': _backing,
+      'spotter': _spotter,
+      'evaluated': _evaluated,
+      'pumpOperations': _pumpOperations,
+      'offRoad': _offRoad,
+      'pumpAndRoll': _pumpAndRoll,
+      'aerialSetup': _aerialSetup,
+    };
+    final gallons = double.tryParse(_gallons.text.trim());
+    final cycles = int.tryParse(_cycles.text.trim());
+    if (gallons != null) details['gallonsMoved'] = gallons;
+    if (cycles != null) details['shuttleCycles'] = cycles;
+    return details;
   }
 
   Future<bool> _applyTaskBookProgress(
