@@ -1,0 +1,44 @@
+name: Apply first-run UX upgrade
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-first-run-ux-upgrade.yml'
+      - 'tools/apply_first_run_ux_upgrade.py'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-ux-upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Apply UX upgrade
+        run: python3 tools/apply_first_run_ux_upgrade.py
+
+      - name: Format changed Dart files
+        run: dart format lib/pages/onboarding/onboarding_v2_page.dart lib/pages/task_book/task_book_review_page.dart lib/pages/task_book/qualification_task_book_page.dart lib/pages/task_book/task_book_page.dart lib/pages/task_book/task_detail_page.dart lib/pages/career/growth_overview_page.dart lib/pages/shell/app_shell_page.dart
+
+      - name: Commit UX upgrade
+        run: |
+          if git diff --quiet; then
+            echo "No UX changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/pages/onboarding/onboarding_v2_page.dart lib/pages/task_book/task_book_review_page.dart lib/pages/task_book/qualification_task_book_page.dart lib/pages/task_book/task_book_page.dart lib/pages/task_book/task_detail_page.dart lib/pages/career/growth_overview_page.dart lib/pages/shell/app_shell_page.dart
+          git commit -m "Simplify first run and strengthen career loop"
+          git push origin main
