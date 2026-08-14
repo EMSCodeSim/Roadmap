@@ -19,6 +19,11 @@ The home screen is a career decision dashboard, not just a tracker. **Career Rea
 
 A Daily Focus session can open directly into the relevant preparation task and ends with **Record What I Did**, pre-linked to the same career goal, requirement, and task. This closes the daily loop between planning, practice, and the long-term Career Record instead of making users organize the same activity twice.
 
+### Contextual ecosystem recommendations
+Career Road may show one understated **Recommended Tool** card when the user's current Next Best Step clearly matches another FireOps or EMSCodeSim product. Recommendations are contextual rather than generic advertising: fireground hydraulics can point to FireOps Calc, pump-operator work to FirePumpSim, EMS development to EMSCodeSim, and officer/instructor/HazMat development to FireOpsSim.
+
+Recommendations appear below the user's actual career work, explain why the tool is useful at that moment, and open the relevant external product only when the user chooses to. If no strong match exists, no promotional card is shown. Career Road does not use rotating banners, forced interstitials, countdown promotions, or unrelated cross-promotion.
+
 ### Task Book
 The active career goal becomes a Career Task Book. Major requirements such as certifications, experience, department requirements, task books, and promotion steps can open into progressively deeper preparation tasks. Built-in preparation tasks preserve FireOps-authored instructional order rather than being alphabetized. FireOps-created task content is preparation guidance and does not replace official department, state, or credentialing requirements.
 
