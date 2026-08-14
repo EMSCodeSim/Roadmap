@@ -1,0 +1,38 @@
+name: Apply Career Readiness home update
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-career-readiness-home.yml'
+      - 'tools/apply_career_readiness_home.py'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-career-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Apply Career Readiness home update
+        run: python3 tools/apply_career_readiness_home.py
+
+      - name: Format home page
+        run: dart format lib/pages/home/visual_home_page.dart
+
+      - name: Commit Career Readiness home update
+        run: |
+          if git diff --quiet; then
+            echo "No Career Readiness changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/pages/home/visual_home_page.dart
+          git commit -m "Make Career Readiness the home screen focus"
+          git push origin main
