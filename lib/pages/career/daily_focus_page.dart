@@ -9,6 +9,8 @@ import 'package:firepath/models/task_book.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/ecosystem_recommendations.dart';
+import 'package:firepath/widgets/ecosystem_recommendation_card.dart';
 import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
@@ -75,6 +77,9 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
     final recentHours = recent.fold<double>(
       0,
       (sum, record) => sum + (record.hours ?? 0),
+    );
+    final ecosystemRecommendation = EcosystemRecommendations.forTopic(
+      [task?.title, next?.name].whereType<String>().join(' '),
     );
 
     return Scaffold(
@@ -144,6 +149,13 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
                       ),
                     ),
                   ),
+                if (ecosystemRecommendation != null) ...[
+                  const SizedBox(height: 12),
+                  EcosystemRecommendationCard(
+                    recommendation: ecosystemRecommendation,
+                    compact: true,
+                  ),
+                ],
               ],
             ),
     );

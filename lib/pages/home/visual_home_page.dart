@@ -9,6 +9,8 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/ecosystem_recommendations.dart';
+import 'package:firepath/widgets/ecosystem_recommendation_card.dart';
 import 'package:firepath/services/timeline_planner.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/state/app_state.dart';
@@ -147,6 +149,9 @@ class _VisualHomePageState extends State<VisualHomePage> {
     final nextExpiration = datedCerts
         .where((cert) => !cert.expirationDate!.isBefore(_today()))
         .firstOrNull;
+    final ecosystemRecommendation = EcosystemRecommendations.forTopic(
+      roadmap?.nextStep?.requirement.name,
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -167,6 +172,13 @@ class _VisualHomePageState extends State<VisualHomePage> {
             ),
             const SizedBox(height: 12),
             const _DailyFocusCard(),
+            if (ecosystemRecommendation != null) ...[
+              const SizedBox(height: 12),
+              EcosystemRecommendationCard(
+                recommendation: ecosystemRecommendation,
+                compact: true,
+              ),
+            ],
             const SizedBox(height: 12),
             _CurrentLevelCard(
               level: currentLevel,
