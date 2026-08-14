@@ -230,7 +230,7 @@ class EcosystemRecommendations {
       'fireground',
       'structural fire',
     ])) {
-      return 'general';
+      return 'firefighter_2';
     }
     return null;
   }
