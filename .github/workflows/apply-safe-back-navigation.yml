@@ -1,0 +1,42 @@
+name: Apply safe back navigation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/apply_safe_back_navigation.py'
+      - '.github/workflows/apply-safe-back-navigation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-safe-back-navigation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Apply navigation fixes
+        run: python3 tools/apply_safe_back_navigation.py
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Format changed Dart files
+        run: dart format lib/widgets/app_back_button.dart lib/pages/career lib/pages/task_book lib/pages/path lib/pages/resources lib/pages/requirement lib/pages/certifications
+      - name: Analyze navigation changes
+        run: flutter analyze lib/widgets/app_back_button.dart lib/pages/career lib/pages/task_book lib/pages/path lib/pages/resources lib/pages/requirement lib/pages/certifications
+      - name: Commit navigation fixes
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/widgets/app_back_button.dart lib/pages/career lib/pages/task_book lib/pages/path lib/pages/resources lib/pages/requirement lib/pages/certifications
+          git commit -m "Fix stranded secondary-screen navigation"
+          git push origin main
