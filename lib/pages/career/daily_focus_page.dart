@@ -17,18 +17,18 @@ enum DailyFocusMode { fifteen, thirty, sixty, crew }
 
 extension DailyFocusModeX on DailyFocusMode {
   String get label => switch (this) {
-        DailyFocusMode.fifteen => '15 min',
-        DailyFocusMode.thirty => '30 min',
-        DailyFocusMode.sixty => '1 hour',
-        DailyFocusMode.crew => 'Crew drill',
-      };
+    DailyFocusMode.fifteen => '15 min',
+    DailyFocusMode.thirty => '30 min',
+    DailyFocusMode.sixty => '1 hour',
+    DailyFocusMode.crew => 'Crew drill',
+  };
 
   IconData get icon => switch (this) {
-        DailyFocusMode.fifteen => Icons.timer_outlined,
-        DailyFocusMode.thirty => Icons.schedule_outlined,
-        DailyFocusMode.sixty => Icons.hourglass_bottom_outlined,
-        DailyFocusMode.crew => Icons.groups_2_outlined,
-      };
+    DailyFocusMode.fifteen => Icons.timer_outlined,
+    DailyFocusMode.thirty => Icons.schedule_outlined,
+    DailyFocusMode.sixty => Icons.hourglass_bottom_outlined,
+    DailyFocusMode.crew => Icons.groups_2_outlined,
+  };
 }
 
 class DailyFocusPage extends StatefulWidget {
@@ -93,9 +93,9 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
                 Text(
                   'HOW MUCH TIME DO YOU HAVE?',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    fontWeight: FontWeight.w900,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Wrap(
@@ -124,14 +124,14 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
                     onOpenTask: task == null
                         ? () => context.go(AppRoutes.myPath)
                         : () => context.push(
-                              AppRoutes.taskDetail,
-                              extra: {
-                                'goalId': goalId,
-                                'requirementId': next.id,
-                                'qualificationName': next.name,
-                                'task': task,
-                              },
-                            ),
+                            AppRoutes.taskDetail,
+                            extra: {
+                              'goalId': goalId,
+                              'requirementId': next.id,
+                              'qualificationName': next.name,
+                              'task': task,
+                            },
+                          ),
                     onRecord: () => QuickLogLauncher.open(
                       context,
                       prefill: LogPrefill(
@@ -195,9 +195,9 @@ class _Hero extends StatelessWidget {
         children: [
           Text(
             'Make today count.',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 6),
           Text(
@@ -205,9 +205,9 @@ class _Hero extends StatelessWidget {
                 ? 'Choose a career goal and FireOps will turn spare time into focused career progress.'
                 : 'Focused on $goal. Pick the time you have and work the next meaningful step.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.45,
-                ),
+              color: cs.onSurfaceVariant,
+              height: 1.45,
+            ),
           ),
           const SizedBox(height: 14),
           Row(
@@ -233,24 +233,26 @@ class _MiniMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: .72),
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: .72),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(value,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      )),
-              Text(label, style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ),
-        ),
-      );
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
+    ),
+  );
 }
 
 class _FocusPlan extends StatelessWidget {
@@ -284,24 +286,26 @@ class _FocusPlan extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('TODAY’S FOCUS',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: cs.primary,
-                  )),
+          Text(
+            'TODAY’S FOCUS',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: cs.primary,
+            ),
+          ),
           const SizedBox(height: 6),
           Text(
             task?.title ?? requirement.name,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 4),
           Text(
             'Moves you toward ${requirement.name}.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           ...steps.indexed.map(
@@ -313,15 +317,19 @@ class _FocusPlan extends StatelessWidget {
                   CircleAvatar(
                     radius: 14,
                     backgroundColor: cs.primaryContainer,
-                    child: Text('${entry.$1 + 1}',
-                        style: const TextStyle(fontWeight: FontWeight.w900)),
+                    child: Text(
+                      '${entry.$1 + 1}',
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(entry.$2,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              height: 1.4,
-                            )),
+                    child: Text(
+                      entry.$2,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(height: 1.4),
+                    ),
                   ),
                 ],
               ),
@@ -334,7 +342,9 @@ class _FocusPlan extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onOpenTask,
               icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(task == null ? 'Open Task Book' : 'Start Focus Session'),
+              label: Text(
+                task == null ? 'Open Task Book' : 'Start Focus Session',
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -363,29 +373,29 @@ class _FocusPlan extends StatelessWidget {
 
     return switch (mode) {
       DailyFocusMode.fifteen => [
-          'Learn: ${first(know, 'Review the requirement and identify the key knowledge you need next.')}',
-          'Recall: explain the key point without looking at the reference.',
-          'Record: log the session while it is fresh.',
-        ],
+        'Learn: ${first(know, 'Review the requirement and identify the key knowledge you need next.')}',
+        'Recall: explain the key point without looking at the reference.',
+        'Record: log the session while it is fresh.',
+      ],
       DailyFocusMode.thirty => [
-          'Learn: ${first(know, 'Review the next requirement and its success criteria.')}',
-          'Practice: ${first(perform, 'Perform a focused practice repetition or scenario.')}',
-          'Debrief one thing that went well and one thing to improve.',
-          'Record the practice in Career Road.',
-        ],
+        'Learn: ${first(know, 'Review the next requirement and its success criteria.')}',
+        'Practice: ${first(perform, 'Perform a focused practice repetition or scenario.')}',
+        'Debrief one thing that went well and one thing to improve.',
+        'Record the practice in Career Road.',
+      ],
       DailyFocusMode.sixty => [
-          'Learn: ${first(know, 'Review the knowledge behind this requirement.')}',
-          'Practice: ${first(perform, 'Complete a deliberate practice repetition.')}',
-          'Advance: ${second(perform, 'Repeat the skill with a harder condition or less prompting.')}',
-          'Debrief and capture evidence, hours, repetitions, or a career highlight.',
-        ],
+        'Learn: ${first(know, 'Review the knowledge behind this requirement.')}',
+        'Practice: ${first(perform, 'Complete a deliberate practice repetition.')}',
+        'Advance: ${second(perform, 'Repeat the skill with a harder condition or less prompting.')}',
+        'Debrief and capture evidence, hours, repetitions, or a career highlight.',
+      ],
       DailyFocusMode.crew => [
-          'Brief the crew on the objective: ${task?.fireOpsObjective ?? requirement.name}.',
-          'Run: ${first(perform, 'Build a short scenario around the requirement and rotate roles.')}',
-          'Safety focus: ${first(safety, 'Use department SOPs and an appropriate safety briefing.')}',
-          'Crew debrief: identify one strength, one gap, and the next repetition.',
-          'Record the drill and link it to this Task Book requirement.',
-        ],
+        'Brief the crew on the objective: ${task?.fireOpsObjective ?? requirement.name}.',
+        'Run: ${first(perform, 'Build a short scenario around the requirement and rotate roles.')}',
+        'Safety focus: ${first(safety, 'Use department SOPs and an appropriate safety briefing.')}',
+        'Crew debrief: identify one strength, one gap, and the next repetition.',
+        'Record the drill and link it to this Task Book requirement.',
+      ],
     };
   }
 }
@@ -396,26 +406,28 @@ class _EmptyFocus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: AppSpacing.paddingLg,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Choose a career direction',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      )),
-              const SizedBox(height: 8),
-              const Text(
-                'Daily Focus uses your active Career Road to recommend work that actually moves you forward.',
-              ),
-              const SizedBox(height: 14),
-              FilledButton(
-                onPressed: onChooseGoal,
-                child: const Text('Open Task Book'),
-              ),
-            ],
+    child: Padding(
+      padding: AppSpacing.paddingLg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Choose a career direction',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
-        ),
-      );
+          const SizedBox(height: 8),
+          const Text(
+            'Daily Focus uses your active Career Road to recommend work that actually moves you forward.',
+          ),
+          const SizedBox(height: 14),
+          FilledButton(
+            onPressed: onChooseGoal,
+            child: const Text('Open Task Book'),
+          ),
+        ],
+      ),
+    ),
+  );
 }

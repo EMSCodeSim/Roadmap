@@ -67,14 +67,17 @@ class _VisualHomePageState extends State<VisualHomePage> {
             children: [
               Text(
                 'Help us improve your Task Book',
-                style: Theme.of(sheetContext).textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 6),
               Text(
                 'What state do you primarily work in?',
-                style: Theme.of(sheetContext).textTheme.bodyMedium
-                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+                style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.45,
+                ),
               ),
               const SizedBox(height: 14),
               SizedBox(
@@ -162,6 +165,8 @@ class _VisualHomePageState extends State<VisualHomePage> {
               onOpenTaskBook: () => context.go(AppRoutes.myPath),
               onQuickLog: () => QuickLogLauncher.open(context),
             ),
+            const SizedBox(height: 12),
+            const _DailyFocusCard(),
             const SizedBox(height: 12),
             _CurrentLevelCard(
               level: currentLevel,
@@ -370,14 +375,15 @@ class _VisualHomePageState extends State<VisualHomePage> {
                                 );
                                 if (picked == null) return;
                                 if (picked != stateCode) {
-                                  ScaffoldMessenger.of(sheetContext)
-                                      .showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Changing your state may change state-specific Task Book recommendations and certification requirements.',
-                                          ),
-                                        ),
-                                      );
+                                  ScaffoldMessenger.of(
+                                    sheetContext,
+                                  ).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Changing your state may change state-specific Task Book recommendations and certification requirements.',
+                                      ),
+                                    ),
+                                  );
                                 }
                                 setSheetState(() => stateCode = picked);
                               },
@@ -410,14 +416,15 @@ class _VisualHomePageState extends State<VisualHomePage> {
                                       (years == null ||
                                           years < 0 ||
                                           years > 80)) {
-                                    ScaffoldMessenger.of(sheetContext)
-                                        .showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Enter years of service from 0 to 80.',
-                                            ),
-                                          ),
-                                        );
+                                    ScaffoldMessenger.of(
+                                      sheetContext,
+                                    ).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Enter years of service from 0 to 80.',
+                                        ),
+                                      ),
+                                    );
                                     return;
                                   }
 
@@ -488,8 +495,9 @@ class _VisualHomePageState extends State<VisualHomePage> {
               children: [
                 Text(
                   'Review certification matches',
-                  style: Theme.of(sheetContext).textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(
+                    sheetContext,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -612,8 +620,9 @@ class _StatePickerRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       name,
-                      style: Theme.of(context).textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                 ),
@@ -683,6 +692,68 @@ class _GraphicHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DailyFocusCard extends StatelessWidget {
+  const _DailyFocusCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surface,
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.dailyFocus),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        child: Container(
+          padding: AppSpacing.paddingLg,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                child: Icon(Icons.bolt_outlined, color: cs.primary),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'WHAT CAN I WORK ON TODAY?',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Pick 15 min, 30 min, 1 hour, or a crew drill. Career Road builds the session around your Next Best Step.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -766,12 +837,18 @@ class _CareerCommandCard extends StatelessWidget {
     };
 
     final guidance = switch (timelineStatus) {
-      TimelineStatus.atRisk => 'Your target date is getting tight. Focus on the next requirement before adding lower-priority work.',
-      TimelineStatus.needsAttention => 'Your plan is still reachable, but completing the next requirement will keep your timeline healthy.',
-      _ when hasGoal && nextStep != null => 'This is the highest-priority incomplete requirement on your current career road.',
-      _ when hasGoal && total > 0 && completed >= total => 'You have completed the requirements currently mapped to this goal. Review your record and choose what comes next.',
-      _ when hasGoal => 'Open your Task Book to review requirements and choose the best next action.',
-      _ => 'Choose where you want to go next and FireOps will turn that goal into an actionable Task Book.',
+      TimelineStatus.atRisk =>
+        'Your target date is getting tight. Focus on the next requirement before adding lower-priority work.',
+      TimelineStatus.needsAttention =>
+        'Your plan is still reachable, but completing the next requirement will keep your timeline healthy.',
+      _ when hasGoal && nextStep != null =>
+        'This is the highest-priority incomplete requirement on your current career road.',
+      _ when hasGoal && total > 0 && completed >= total =>
+        'You have completed the requirements currently mapped to this goal. Review your record and choose what comes next.',
+      _ when hasGoal =>
+        'Open your Task Book to review requirements and choose the best next action.',
+      _ =>
+        'Choose where you want to go next and FireOps will turn that goal into an actionable Task Book.',
     };
 
     return Container(
@@ -1212,8 +1289,10 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         status.text,
-        style: Theme.of(context).textTheme.labelSmall
-            ?.copyWith(color: foreground, fontWeight: FontWeight.w800),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
