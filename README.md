@@ -39,6 +39,26 @@ The **Annual Career Review** converts a selected year into a copyable summary of
 
 The **Promotion Portfolio** combines long-term career totals with the advancement engine's credential status, readiness score, evidence gaps, competency map, and strongest promotion stories so years of logging become useful during interviews, annual evaluations, applications, and promotional preparation.
 
+**Long-Term Career Tools** add multi-path readiness comparisons, retained past-goal / Task Book history, year-over-year activity trends, stale-skill refresh signals, STAR interview-story preparation, and resume source material.
+
+### Career Export Center
+The Career Export Center converts locally stored career data into professionally formatted PDF documents using US letter-sized layouts. Users can optionally save a local export identity (name, email, phone, and city/state) that is used only in generated documents.
+
+Available exports include:
+
+- **Professional Resume** — concise role, credential, accomplishment, leadership, teaching, project, and professional-development summary.
+- **Promotion Packet** — advancement readiness, evidence gaps, competency support, credentials, and interview-story bank.
+- **Career Portfolio** — fuller long-term career history with totals, highlights, credentials, readiness, and development priorities.
+
+PDFs can be previewed/printed or shared using the platform print/share workflow. Users should review generated documents before submitting them for employment, promotion, or official use.
+
+### Department Transfer
+Department Transfer keeps a prospective agency comparison separate from the user's active Career Road. A user can name a target department, choose a typical career path as a starting point, import that path's typical requirements, and then add or edit local department-specific requirements.
+
+Career Road compares those requirements against current credentials, retained Task Book/path progress, and Career Record evidence. It shows estimated overlap, likely transferable items, and gaps that should be verified with the receiving department. Users may manually mark a requirement as equivalent or accepted when they have confirmed that externally. A professional transfer-readiness PDF can also be generated and shared.
+
+A match is a planning signal only. The receiving department, state authority, or credentialing body determines what actually transfers, what must be repeated, and which supporting documents are acceptable.
+
 ### Certifications
 Certifications is the credential wallet. Current, expiring, and expired credentials are tracked in one place and matching credentials automatically satisfy applicable Career Task Book requirements.
 
