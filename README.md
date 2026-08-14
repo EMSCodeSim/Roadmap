@@ -8,13 +8,18 @@ The product loop is:
 
 **PLAN → WORK → RECORD → PROVE → ADVANCE**
 
+### First run
+New users answer three practical questions: where they are now, which certifications they already hold, and where they want to go next. FireOps Career Road then builds a starting Career Road and shows the result before asking for any optional department customization. Quick Log uses sensible defaults; users can personalize it later after they understand how they actually use the app.
+
 ### Home
 The home screen is a career decision dashboard, not just a tracker. **Career Readiness** leads the experience with the user's active goal, mapped-requirement completion percentage, target date, timeline health, and a **Next Best Step** that points to the highest-priority incomplete requirement. Users can jump directly into the Task Book or log progress, with current level, certification health, and Quick Log still available below.
 
 ### Task Book
-The active career goal becomes a Career Task Book. Major requirements such as certifications, experience, department requirements, task books, and promotion steps can open into progressively deeper preparation tasks. FireOps-created task content is preparation guidance and does not replace official department, state, or credentialing requirements.
+The active career goal becomes a Career Task Book. Major requirements such as certifications, experience, department requirements, task books, and promotion steps can open into progressively deeper preparation tasks. Built-in preparation tasks preserve FireOps-authored instructional order rather than being alphabetized. FireOps-created task content is preparation guidance and does not replace official department, state, or credentialing requirements.
 
-Task Book detail pages use **FireOpsSim** as the free companion resource layer. From a task, users can open study material, task-specific practice/tools, school or course-finder help, and supporting references. Stable certification and task IDs are passed to FireOpsSim so Roadmap remains focused on planning and progress while FireOpsSim can continue expanding the learning content independently.
+Task Book detail pages use a consistent **Learn → Practice → Record** loop. FireOpsSim supplies free study material, task-specific practice/tools, school or course-finder help, and supporting references. Stable certification and task IDs are passed to FireOpsSim so Roadmap remains focused on planning and progress while FireOpsSim can continue expanding the learning content independently.
+
+Task status distinguishes personal preparation from official verification. A user may mark a preparation task **Self-completed**, while future department workflows can separately support supervisor verification.
 
 ### Quick Log
 Quick Log is designed for fast capture after a call, drill, class, shift, or career milestone. Users can record calls, skill repetitions, training time, drive time, leadership, teaching, awards, achievements, projects, education, custom activity, and Task Book progress without navigating through the full career history.
@@ -24,8 +29,8 @@ When a Quick Log entry is linked to a measurable Task Book requirement, eligible
 ### Career Record
 The Log tab is the organized long-term record of what the user has done. It supports current-year and career views, search, activity filters, statistics, edit/delete controls, and Task Book-linked history.
 
-### Growth
-Growth turns the user's current goal and preserved career evidence into advancement preparation. It includes a prioritized Best Next Move, readiness dimensions, evidence gaps, competency development, promotion stories, and deeper professional-growth tools.
+### Advance
+Advance turns the user's current goal and preserved career evidence into advancement preparation. It uses the same **Next Best Step** language as Home and the Task Book, then adds readiness dimensions, evidence gaps, competency development, promotion stories, and deeper professional-growth tools.
 
 ### Certifications
 Certifications is the credential wallet. Current, expiring, and expired credentials are tracked in one place and matching credentials automatically satisfy applicable Career Task Book requirements.
