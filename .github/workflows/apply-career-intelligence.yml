@@ -1,0 +1,49 @@
+name: Apply Career Intelligence integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-career-intelligence.yml'
+      - 'tools/apply_career_intelligence.py'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-career-intelligence:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Apply Career Intelligence integration
+        run: python3 tools/apply_career_intelligence.py
+
+      - name: Format changed Dart files
+        run: dart format lib/nav.dart lib/pages/career/growth_overview_page.dart lib/pages/career/career_intelligence_page.dart lib/services/career_intelligence.dart
+
+      - name: Analyze changed experience
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-warnings --no-fatal-infos
+
+      - name: Commit Career Intelligence
+        run: |
+          if git diff --quiet; then
+            echo "No Career Intelligence changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/nav.dart lib/pages/career/growth_overview_page.dart lib/pages/career/career_intelligence_page.dart lib/services/career_intelligence.dart
+          git commit -m "Add Career Intelligence and annual review"
+          git push origin main
