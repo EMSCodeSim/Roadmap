@@ -64,7 +64,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
     final stateName = FireOpsCatalog.stateNameForCode(state.profile.state);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Review Your Task Book')),
+      appBar: AppBar(title: const Text('Your Career Road')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
@@ -79,19 +79,15 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Your Task Book is ready to review',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
+                    'Your Career Road is ready',
+                    style: Theme.of(context).textTheme.headlineSmall
                         ?.copyWith(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Before you start using it, make it match your department. Remove requirements that do not apply and add local requirements, hours, practicals, or department task books.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          height: 1.5,
-                        ),
+                    'We built a starting path from your current role, location, certifications, and career goal. Start with the recommended next step and refine department-specific requirements whenever you are ready.',
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.5),
                   ),
                 ],
               ),
@@ -112,9 +108,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
                       currentRole,
                       if (stateName != null && stateName.isNotEmpty) stateName,
                     ].join(' • '),
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
+                    style: Theme.of(context).textTheme.titleSmall
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const Padding(
@@ -123,9 +117,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
                   ),
                   Text(
                     roadmap.goal.title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
+                    style: Theme.of(context).textTheme.titleLarge
                         ?.copyWith(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 12),
@@ -147,22 +139,11 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
             const SizedBox(height: 18),
             _SetupCard(
               number: '1',
-              title: 'Review requirements',
-              description:
-                  'Turn off anything your department does not require. Add local certifications, experience minimums, drive hours, practicals, interviews, or department task books.',
-              buttonLabel: 'Customize Task Book',
+              title: 'Customize department requirements',
+              description: 'Optional: add local certifications, experience minimums, drive hours, practicals, interviews, or department task books.',
+              buttonLabel: 'Customize Later or Now',
               icon: Icons.fact_check_outlined,
               onTap: () => context.push(AppRoutes.taskBookRequirementsSetup),
-            ),
-            const SizedBox(height: 12),
-            _SetupCard(
-              number: '2',
-              title: 'Set up Quick Log',
-              description:
-                  'Choose the buttons you want at the top of Quick Log. Pinned buttons prefill common activity details so routine logging stays fast.',
-              buttonLabel: 'Set Up Quick Log',
-              icon: Icons.add_task_outlined,
-              onTap: () => context.push(AppRoutes.quickLogSetup),
             ),
             const SizedBox(height: 18),
             Container(
@@ -172,11 +153,9 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
               child: Text(
-                'You can change Task Book requirements and Quick Log buttons later. Fire Career Roadmap should match your department—not force your department to match the app.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      height: 1.45,
-                    ),
+                'Start using your path now. You can customize Task Book requirements and Quick Log buttons later; FireOps Career Road should adapt to your department, not the other way around.',
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
               ),
             ),
           ],
@@ -191,7 +170,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
             child: FilledButton.icon(
               onPressed: _finishing ? null : _useTaskBook,
               icon: const Icon(Icons.check_circle_outline),
-              label: Text(_finishing ? 'Saving…' : 'Use This Task Book'),
+              label: Text(_finishing ? 'Saving…' : 'Start My Career Road'),
             ),
           ),
         ),
@@ -203,7 +182,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
     setState(() => _finishing = true);
     await _setupStore.setReviewPending(false);
     if (!mounted) return;
-    context.go(AppRoutes.myPath);
+    context.go(AppRoutes.home);
   }
 }
 
@@ -223,9 +202,7 @@ class _Metric extends StatelessWidget {
       ),
       child: Text(
         '$label: $value',
-        style: Theme.of(context)
-            .textTheme
-            .labelLarge
+        style: Theme.of(context).textTheme.labelLarge
             ?.copyWith(fontWeight: FontWeight.w800),
       ),
     );
@@ -281,9 +258,7 @@ class _SetupCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
+                  style: Theme.of(context).textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ),
@@ -292,10 +267,8 @@ class _SetupCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             description,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.45,
-                ),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
           ),
           const SizedBox(height: 14),
           SizedBox(

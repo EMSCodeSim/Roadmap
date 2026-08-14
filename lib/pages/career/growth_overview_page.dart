@@ -64,17 +64,14 @@ class _GrowthOverviewPageState extends State<GrowthOverviewPage> {
                   const SizedBox(height: AppSpacing.xl),
                   Text(
                     'Promotion Readiness',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
+                    style: Theme.of(context).textTheme.titleLarge
                         ?.copyWith(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     'A simple snapshot of the four areas that support your next move.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _ReadinessRow(
@@ -124,10 +121,8 @@ class _GrowthOverviewPageState extends State<GrowthOverviewPage> {
                   const SizedBox(height: AppSpacing.md),
                   Text(
                     'Growth is a personal preparation tool. Always verify promotional and credential requirements with your department, state, or certifying authority.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          height: 1.45,
-                        ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
                   ),
                 ],
               ),
@@ -154,10 +149,7 @@ class _GrowthHero extends StatelessWidget {
   final AdvancementAnalysis analysis;
   final VoidCallback onGoal;
 
-  const _GrowthHero({
-    required this.analysis,
-    required this.onGoal,
-  });
+  const _GrowthHero({required this.analysis, required this.onGoal});
 
   @override
   Widget build(BuildContext context) {
@@ -191,9 +183,7 @@ class _GrowthHero extends StatelessWidget {
                 ),
                 Text(
                   hasGoal ? '${analysis.readinessScore}%' : '—',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
+                  style: Theme.of(context).textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ],
@@ -208,18 +198,16 @@ class _GrowthHero extends StatelessWidget {
                   hasGoal
                       ? analysis.goalTitle!
                       : 'Choose your next career goal',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
+                  style: Theme.of(context).textTheme.titleLarge
                       ?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   analysis.readinessLabel,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: cs.primary,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    color: cs.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 7),
                 TextButton.icon(
@@ -270,30 +258,26 @@ class _BestNextMoveCard extends StatelessWidget {
               Icon(Icons.near_me_outlined, color: cs.onPrimaryContainer),
               const SizedBox(width: AppSpacing.sm),
               Text(
-                'BEST NEXT MOVE',
+                'NEXT BEST STEP',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: cs.onPrimaryContainer,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.4,
-                    ),
+                  color: cs.onPrimaryContainer,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.4,
+                ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             recommendation.title,
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
+            style: Theme.of(context).textTheme.titleLarge
                 ?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 5),
           Text(
             recommendation.reason,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.45,
-                ),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
           ),
           const SizedBox(height: AppSpacing.md),
           SizedBox(
@@ -358,17 +342,13 @@ class _ReadinessRow extends StatelessWidget {
                     Expanded(
                       child: Text(
                         label,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
+                        style: Theme.of(context).textTheme.titleSmall
                             ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ),
                     Text(
                       valueText,
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelLarge
+                      style: Theme.of(context).textTheme.labelLarge
                           ?.copyWith(fontWeight: FontWeight.w900),
                     ),
                   ],
@@ -385,9 +365,8 @@ class _ReadinessRow extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   detail,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
             ),
@@ -422,17 +401,14 @@ class _GrowthToolsCard extends StatelessWidget {
         children: [
           Text(
             'Growth Tools',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
+            style: Theme.of(context).textTheme.titleMedium
                 ?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 3),
           Text(
             'Use these when you want to go deeper than the snapshot above.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: AppSpacing.sm),
           ListTile(

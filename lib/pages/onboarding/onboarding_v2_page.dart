@@ -65,11 +65,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
               child: PageView(
                 controller: _pages,
                 physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _currentStep(),
-                  _certStep(),
-                  _goalStep(),
-                ],
+                children: [_currentStep(), _certStep(), _goalStep()],
               ),
             ),
             Padding(
@@ -83,8 +79,8 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                     _saving
                         ? 'Building Task Book…'
                         : _step == 2
-                            ? 'Build My Task Book'
-                            : 'Continue',
+                        ? 'Build My Task Book'
+                        : 'Continue',
                   ),
                 ),
               ),
@@ -105,18 +101,14 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
       children: [
         Text(
           'Where are you now?',
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall
+          style: Theme.of(context).textTheme.headlineSmall
               ?.copyWith(fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 6),
         Text(
-          'Choose your current role. This gives Fire Career Roadmap the right starting point.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.45,
-              ),
+          'Choose your current role. This gives FireOps Career Road the right starting point.',
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
         ),
         const SizedBox(height: 16),
         Wrap(
@@ -152,7 +144,10 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
             DropdownMenuItem(value: 'Volunteer', child: Text('Volunteer')),
             DropdownMenuItem(value: 'Career', child: Text('Career')),
             DropdownMenuItem(value: 'Combination', child: Text('Combination')),
-            DropdownMenuItem(value: 'Paid-on-Call', child: Text('Paid-on-Call')),
+            DropdownMenuItem(
+              value: 'Paid-on-Call',
+              child: Text('Paid-on-Call'),
+            ),
             DropdownMenuItem(value: 'Seasonal', child: Text('Seasonal')),
             DropdownMenuItem(value: 'Other', child: Text('Other')),
           ],
@@ -179,7 +174,9 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
               child: TextField(
                 controller: _years,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Years of service'),
+                decoration: const InputDecoration(
+                  labelText: 'Years of service',
+                ),
               ),
             ),
           ],
@@ -203,17 +200,14 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
             children: [
               Text(
                 'What do you already have?',
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall
+                style: Theme.of(context).textTheme.headlineSmall
                     ?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 6),
               Text(
                 'Select current certifications. You can add expiration dates later.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 14),
               TextField(
@@ -271,18 +265,14 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
       children: [
         Text(
           'Where do you want to go?',
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall
+          style: Theme.of(context).textTheme.headlineSmall
               ?.copyWith(fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 6),
         Text(
-          'Choose your next goal. The app will build a Task Book, then let you review and customize it before you use it.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.45,
-              ),
+          'Choose your next goal. FireOps Career Road will build your starting Task Book. You can customize department-specific requirements later.',
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
         ),
         const SizedBox(height: 14),
         SizedBox(
@@ -328,17 +318,13 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                           children: [
                             Text(
                               goal.title,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
+                              style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w800),
                             ),
                             if ((goal.subtitle ?? '').isNotEmpty)
                               Text(
                                 goal.subtitle!,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(color: cs.onSurfaceVariant),
                               ),
                           ],
@@ -458,9 +444,9 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
       }).toList();
 
       await context.read<AppState>().completeOnboarding(
-            profile: profile,
-            certifications: certifications,
-          );
+        profile: profile,
+        certifications: certifications,
+      );
       if (!mounted) return;
       context.go(AppRoutes.taskBookReview);
     } catch (_) {
@@ -586,9 +572,19 @@ class _StateSelectorField extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('State', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w800)),
+                    Text(
+                      'State',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(label, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
                   ],
                 ),
               ),

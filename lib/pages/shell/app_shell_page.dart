@@ -57,7 +57,7 @@ class AppShellPage extends StatelessWidget {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.trending_up_outlined),
                   activeIcon: Icon(Icons.trending_up),
-                  label: 'Growth',
+                  label: 'Advance',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.verified_outlined),

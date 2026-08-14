@@ -40,7 +40,8 @@ class TaskBookPage extends StatelessWidget {
           ? Padding(
               padding: AppSpacing.paddingLg,
               child: _NoGoalEmpty(
-                  onChooseGoal: () => context.go(AppRoutes.goalSetup)),
+                onChooseGoal: () => context.go(AppRoutes.goalSetup),
+              ),
             )
           : _TaskBookBody(roadmapGoalId: roadmap.goal.id),
     );
@@ -92,7 +93,9 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.lg),
               child: _StateChangedCard(
-                fromLabel: FireOpsCatalog.stateNameForCode(state.profile.state) ?? 'your state',
+                fromLabel:
+                    FireOpsCatalog.stateNameForCode(state.profile.state) ??
+                    'your state',
                 onReview: () => context.push(AppRoutes.taskBookReview),
                 onNotNow: () async {
                   await _setupStore.setReviewPending(false);
@@ -116,17 +119,19 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
                 : () => _openRequirement(context, state, next),
           ),
           const SizedBox(height: AppSpacing.xl),
-          ...sections.map((s) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                child: _TaskBookSectionCard(
-                  title: s.title,
-                  items: s.items,
-                  goalId: roadmap.goal.id,
-                  defaultCollapsed: s.completedCount == s.items.length &&
-                      s.items.isNotEmpty,
-                  subtitle: s.subtitle,
-                ),
-              )),
+          ...sections.map(
+            (s) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+              child: _TaskBookSectionCard(
+                title: s.title,
+                items: s.items,
+                goalId: roadmap.goal.id,
+                defaultCollapsed:
+                    s.completedCount == s.items.length && s.items.isNotEmpty,
+                subtitle: s.subtitle,
+              ),
+            ),
+          ),
           Container(
             padding: AppSpacing.paddingMd,
             decoration: BoxDecoration(
@@ -135,9 +140,7 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
             ),
             child: Text(
               'FireOps preparation tasks are designed to help organize training and professional development. Always verify certification and performance requirements with your department, state authority, official task book, or certifying organization.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
+              style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
             ),
           ),
@@ -148,10 +151,12 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
   }
 
   static void _openRequirement(
-      BuildContext context, AppState state, Requirement r) {
+    BuildContext context,
+    AppState state,
+    Requirement r,
+  ) {
     if (TaskBookLibrary.hasTasksForRequirement(r)) {
-      context.push(AppRoutes.qualificationTaskBook,
-          extra: {'requirement': r});
+      context.push(AppRoutes.qualificationTaskBook, extra: {'requirement': r});
       return;
     }
     context.push(AppRoutes.requirementDetail, extra: r);
@@ -165,14 +170,18 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
 
     for (final item in included) {
       final r = item.requirement;
-      final isPromo = r.type == RequirementType.promotionalTest ||
+      final isPromo =
+          r.type == RequirementType.promotionalTest ||
           r.type == RequirementType.interview ||
           r.type == RequirementType.practical;
       final isExperience =
-          r.type == RequirementType.experience || r.type == RequirementType.numericProgress;
-      final isDept = r.requirementSource == RequirementSource.departmentRequirement ||
+          r.type == RequirementType.experience ||
+          r.type == RequirementType.numericProgress;
+      final isDept =
+          r.requirementSource == RequirementSource.departmentRequirement ||
           r.priority == RequirementPriority.department;
-      final isQualification = r.type == RequirementType.certification ||
+      final isQualification =
+          r.type == RequirementType.certification ||
           r.type == RequirementType.trainingCourse ||
           r.type == RequirementType.course ||
           r.type == RequirementType.education;
@@ -196,25 +205,29 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
 
     return [
       _SectionDef(
-          title: 'QUALIFICATIONS',
-          subtitle: 'Certifications, courses, and key credentials',
-          items: quals,
-          completedCount: completedCount(quals)),
+        title: 'QUALIFICATIONS',
+        subtitle: 'Certifications, courses, and key credentials',
+        items: quals,
+        completedCount: completedCount(quals),
+      ),
       _SectionDef(
-          title: 'EXPERIENCE',
-          subtitle: 'Time-in-role, hours, and measurable progress',
-          items: experience,
-          completedCount: completedCount(experience)),
+        title: 'EXPERIENCE',
+        subtitle: 'Time-in-role, hours, and measurable progress',
+        items: experience,
+        completedCount: completedCount(experience),
+      ),
       _SectionDef(
-          title: 'DEPARTMENT REQUIREMENTS',
-          subtitle: 'Local SOP, department task books, and internal steps',
-          items: dept,
-          completedCount: completedCount(dept)),
+        title: 'DEPARTMENT REQUIREMENTS',
+        subtitle: 'Local SOP, department task books, and internal steps',
+        items: dept,
+        completedCount: completedCount(dept),
+      ),
       _SectionDef(
-          title: 'PROMOTION PROCESS',
-          subtitle: 'Written tests, practicals, interview prep',
-          items: promo,
-          completedCount: completedCount(promo)),
+        title: 'PROMOTION PROCESS',
+        subtitle: 'Written tests, practicals, interview prep',
+        items: promo,
+        completedCount: completedCount(promo),
+      ),
     ];
   }
 }
@@ -224,11 +237,12 @@ class _SectionDef {
   final String subtitle;
   final List<RoadmapRequirement> items;
   final int completedCount;
-  const _SectionDef(
-      {required this.title,
-      required this.subtitle,
-      required this.items,
-      required this.completedCount});
+  const _SectionDef({
+    required this.title,
+    required this.subtitle,
+    required this.items,
+    required this.completedCount,
+  });
 }
 
 class _GoalHeader extends StatelessWidget {
@@ -238,12 +252,13 @@ class _GoalHeader extends StatelessWidget {
   final int total;
   final DateTime? targetDate;
 
-  const _GoalHeader(
-      {required this.goalTitle,
-      required this.percent,
-      required this.completed,
-      required this.total,
-      required this.targetDate});
+  const _GoalHeader({
+    required this.goalTitle,
+    required this.percent,
+    required this.completed,
+    required this.total,
+    required this.targetDate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -258,49 +273,51 @@ class _GoalHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('CAREER TASK BOOK',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w900)),
+          Text(
+            'CAREER TASK BOOK',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
           const SizedBox(height: AppSpacing.xs),
-          Text(goalTitle,
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+            goalTitle,
+            style: Theme.of(context).textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
-                child: Text('$percent% Ready',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w900)),
+                child: Text(
+                  '$percent% Ready',
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
               ),
               if (targetDate != null)
-                Text('Target: ${_fmtMonthYear(targetDate!)}',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant)),
+                Text(
+                  'Target: ${_fmtMonthYear(targetDate!)}',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
+                ),
             ],
           ),
           const SizedBox(height: 6),
-          Text('$completed of $total requirements complete',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: cs.onSurfaceVariant)),
+          Text(
+            '$completed of $total requirements complete',
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: cs.onSurfaceVariant),
+          ),
           const SizedBox(height: AppSpacing.sm),
           ClipRRect(
             borderRadius: BorderRadius.circular(99),
             child: LinearProgressIndicator(
               value: (percent / 100).clamp(0, 1),
-              backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+              backgroundColor: cs.surfaceContainerHighest.withValues(
+                alpha: 0.6,
+              ),
               valueColor: AlwaysStoppedAnimation(cs.primary),
               minHeight: 10,
             ),
@@ -323,7 +340,7 @@ class _GoalHeader extends StatelessWidget {
       'Sep',
       'Oct',
       'Nov',
-      'Dec'
+      'Dec',
     ];
     return '${months[d.month - 1]} ${d.year}';
   }
@@ -360,7 +377,9 @@ class _StateChangedCard extends StatelessWidget {
                 child: Text(
                   'STATE CHANGED',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: cs.onSurfaceVariant, fontWeight: FontWeight.w900),
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -368,9 +387,7 @@ class _StateChangedCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Your profile is now set to $fromLabel. State requirements may be different. Would you like Fire Career Roadmap to review your current Task Book?',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
+            style: Theme.of(context).textTheme.bodyMedium
                 ?.copyWith(color: cs.onSurface, height: 1.45),
           ),
           const SizedBox(height: 12),
@@ -413,19 +430,19 @@ class _NextTaskCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('NEXT TASK',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w900)),
+          Text(
+            'NEXT BEST STEP',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
           const SizedBox(height: AppSpacing.xs),
-          Text(title ?? 'You’re caught up',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+            title ?? 'You’re caught up',
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: AppSpacing.md),
           SizedBox(
             height: 52,
@@ -433,8 +450,10 @@ class _NextTaskCard extends StatelessWidget {
             child: FilledButton(
               onPressed: onContinue,
               style: FilledButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.lg))),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
               child: Text(title == null ? 'Review Task Book' : 'Continue Task'),
             ),
           ),
@@ -451,20 +470,22 @@ class _TaskBookSectionCard extends StatelessWidget {
   final String goalId;
   final bool defaultCollapsed;
 
-  const _TaskBookSectionCard(
-      {required this.title,
-      required this.subtitle,
-      required this.items,
-      required this.goalId,
-      required this.defaultCollapsed});
+  const _TaskBookSectionCard({
+    required this.title,
+    required this.subtitle,
+    required this.items,
+    required this.goalId,
+    required this.defaultCollapsed,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final completed = items.where((e) => e.isComplete).length;
     final total = items.length;
-    final pct =
-        total <= 0 ? 0.0 : ((completed / total).clamp(0, 1) as num).toDouble();
+    final pct = total <= 0
+        ? 0.0
+        : ((completed / total).clamp(0, 1) as num).toDouble();
 
     return Container(
       decoration: BoxDecoration(
@@ -476,38 +497,44 @@ class _TaskBookSectionCard extends StatelessWidget {
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           initiallyExpanded: !defaultCollapsed,
-          tilePadding:
-              const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+          tilePadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 6,
+          ),
           childrenPadding: const EdgeInsets.fromLTRB(
-              AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+            AppSpacing.md,
+            0,
+            AppSpacing.md,
+            AppSpacing.md,
+          ),
           title: Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w900)),
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
                     const SizedBox(height: 2),
-                    Text(subtitle,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: cs.onSurfaceVariant)),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 10),
-              Text('$completed/$total',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
-                      ?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: cs.onSurfaceVariant)),
+              Text(
+                '$completed/$total',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
           subtitle: Padding(
@@ -517,8 +544,9 @@ class _TaskBookSectionCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: pct,
                 minHeight: 8,
-                backgroundColor:
-                    cs.surfaceContainerHighest.withValues(alpha: 0.6),
+                backgroundColor: cs.surfaceContainerHighest.withValues(
+                  alpha: 0.6,
+                ),
                 valueColor: AlwaysStoppedAnimation(cs.primary),
               ),
             ),
@@ -527,11 +555,11 @@ class _TaskBookSectionCard extends StatelessWidget {
             if (items.isEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.sm),
-                child: Text('No items yet.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant)),
+                child: Text(
+                  'No items yet.',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
+                ),
               )
             else
               ...items.map((item) => _RequirementRow(item: item)),
@@ -552,8 +580,9 @@ class _RequirementRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final r = item.requirement;
     final icon = item.isComplete ? Icons.check_circle : Icons.circle_outlined;
-    final color =
-        item.isComplete ? FireOpsSemanticColors.completed : cs.onSurfaceVariant;
+    final color = item.isComplete
+        ? FireOpsSemanticColors.completed
+        : cs.onSurfaceVariant;
 
     String? trailing;
     if (r.type == RequirementType.numericProgress &&
@@ -570,8 +599,10 @@ class _RequirementRow extends StatelessWidget {
         onTap: () => _open(context, state, r),
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 12,
+          ),
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -585,26 +616,24 @@ class _RequirementRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(r.name,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w800)),
+                    Text(
+                      r.name,
+                      style: Theme.of(context).textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       _sourceLine(context, r, state.profile.state),
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
+                      style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: cs.onSurfaceVariant),
                     ),
                     if (trailing != null) ...[
                       const SizedBox(height: 2),
-                      Text(trailing,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: cs.onSurfaceVariant)),
+                      Text(
+                        trailing,
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
                     ],
                   ],
                 ),
@@ -620,19 +649,28 @@ class _RequirementRow extends StatelessWidget {
 
   static void _open(BuildContext context, AppState state, Requirement r) {
     if (TaskBookLibrary.hasTasksForRequirement(r)) {
-      context.push(AppRoutes.qualificationTaskBook,
-          extra: {'requirement': r});
+      context.push(AppRoutes.qualificationTaskBook, extra: {'requirement': r});
       return;
     }
     context.push(AppRoutes.requirementDetail, extra: r);
   }
 
-  static String _sourceLine(BuildContext context, Requirement r, String? profileStateCode) {
-    final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? profileStateCode);
+  static String _sourceLine(
+    BuildContext context,
+    Requirement r,
+    String? profileStateCode,
+  ) {
+    final stateName = FireOpsCatalog.stateNameForCode(
+      r.sourceStateCode ?? profileStateCode,
+    );
     return switch (r.requirementSource) {
-      RequirementSource.stateRequirement => stateName == null ? 'State requirement' : '$stateName requirement',
+      RequirementSource.stateRequirement =>
+        stateName == null ? 'State requirement' : '$stateName requirement',
       RequirementSource.departmentRequirement => 'Department requirement',
-      RequirementSource.commonlyRequired => r.stateDependent ? 'Commonly required • Verify with state/department' : 'Commonly required',
+      RequirementSource.commonlyRequired =>
+        r.stateDependent
+            ? 'Commonly required • Verify with state/department'
+            : 'Commonly required',
       RequirementSource.recommended => 'Recommended',
     };
   }
@@ -648,23 +686,22 @@ class _NoGoalEmpty extends StatelessWidget {
     return Container(
       padding: AppSpacing.paddingLg,
       decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          border: Border.all(color: cs.outline.withValues(alpha: 0.14))),
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('CHOOSE YOUR NEXT CAREER GOAL',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+            'CHOOSE YOUR NEXT CAREER GOAL',
+            style: Theme.of(context).textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             'FireOps will build a Career Task Book showing the qualifications, experience, tasks, and development steps that can help you prepare.',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
+            style: Theme.of(context).textTheme.bodyMedium
                 ?.copyWith(color: cs.onSurfaceVariant, height: 1.5),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -672,7 +709,9 @@ class _NoGoalEmpty extends StatelessWidget {
             height: 52,
             width: double.infinity,
             child: FilledButton(
-                onPressed: onChooseGoal, child: const Text('Choose Goal')),
+              onPressed: onChooseGoal,
+              child: const Text('Choose Goal'),
+            ),
           ),
         ],
       ),

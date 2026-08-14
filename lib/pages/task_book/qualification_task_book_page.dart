@@ -25,10 +25,7 @@ class QualificationTaskBookPage extends StatelessWidget {
     if (goalId == null) {
       return Scaffold(
         appBar: AppBar(title: Text(req.name)),
-        body: Padding(
-          padding: AppSpacing.paddingLg,
-          child: _NoGoal(),
-        ),
+        body: Padding(padding: AppSpacing.paddingLg, child: _NoGoal()),
       );
     }
 
@@ -51,16 +48,22 @@ class QualificationTaskBookPage extends StatelessWidget {
       });
 
     int completedCount() => tasks
-        .where((t) =>
-            state.taskStatusFor(
-                goalId: goalId, requirementId: req.id, taskId: t.id) ==
-            TaskBookTaskStatus.complete)
+        .where(
+          (t) =>
+              state.taskStatusFor(
+                goalId: goalId,
+                requirementId: req.id,
+                taskId: t.id,
+              ) ==
+              TaskBookTaskStatus.complete,
+        )
         .length;
 
     final completed = completedCount();
     final total = tasks.length;
-    final pct =
-        total <= 0 ? 0.0 : ((completed / total).clamp(0, 1) as num).toDouble();
+    final pct = total <= 0
+        ? 0.0
+        : ((completed / total).clamp(0, 1) as num).toDouble();
 
     return Scaffold(
       appBar: AppBar(
@@ -84,10 +87,9 @@ class QualificationTaskBookPage extends StatelessWidget {
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(AppRadius.xl),
                 border: Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .outline
-                        .withValues(alpha: 0.14)),
+                  color: Theme.of(context).colorScheme.outline
+                      .withValues(alpha: 0.14),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,20 +97,18 @@ class QualificationTaskBookPage extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text('${(pct * 100).round()}% Complete',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w900)),
+                        child: Text(
+                          'PREPARATION TASKS  •  ${(pct * 100).round()}% Complete',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
                       ),
-                      Text('$completed of $total tasks',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant)),
+                      Text(
+                        '$completed of $total tasks',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -122,7 +122,8 @@ class QualificationTaskBookPage extends StatelessWidget {
                           .surfaceContainerHighest
                           .withValues(alpha: 0.6),
                       valueColor: AlwaysStoppedAnimation(
-                          Theme.of(context).colorScheme.primary),
+                        Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                   ),
                 ],
@@ -130,19 +131,24 @@ class QualificationTaskBookPage extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.lg),
             ...orderedSections.expand((section) {
-              final items = grouped[section]!..sort((a, b) => a.title.compareTo(b.title));
+              final items = grouped[section]!;
               return [
-                Text(section,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelLarge
-                        ?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant)),
+                Text(
+                  section,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.sm),
-                ...items.map((t) => _TaskTile(goalId: goalId, requirementId: req.id, qualificationName: req.name, task: t)),
+                ...items.map(
+                  (t) => _TaskTile(
+                    goalId: goalId,
+                    requirementId: req.id,
+                    qualificationName: req.name,
+                    task: t,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.lg),
               ];
             }).toList(),
@@ -152,8 +158,11 @@ class QualificationTaskBookPage extends StatelessWidget {
     );
   }
 
-  Future<void> _addTask(BuildContext context,
-      {required String goalId, required Requirement req}) async {
+  Future<void> _addTask(
+    BuildContext context, {
+    required String goalId,
+    required Requirement req,
+  }) async {
     final cs = Theme.of(context).colorScheme;
     final titleCtrl = TextEditingController();
     final sectionCtrl = TextEditingController(text: 'PERFORMANCE');
@@ -167,34 +176,39 @@ class QualificationTaskBookPage extends StatelessWidget {
         final insets = MediaQuery.viewInsetsOf(sheetContext);
         return Padding(
           padding: EdgeInsets.only(
-              left: AppSpacing.md,
-              right: AppSpacing.md,
-              top: AppSpacing.sm,
-              bottom: insets.bottom + AppSpacing.lg),
+            left: AppSpacing.md,
+            right: AppSpacing.md,
+            top: AppSpacing.sm,
+            bottom: insets.bottom + AppSpacing.lg,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Add Task',
-                  style: Theme.of(sheetContext)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w900)),
+              Text(
+                'Add Task',
+                style: Theme.of(sheetContext).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: AppSpacing.md),
               TextField(
-                  controller: titleCtrl,
-                  decoration: const InputDecoration(labelText: 'Task title')),
+                controller: titleCtrl,
+                decoration: const InputDecoration(labelText: 'Task title'),
+              ),
               const SizedBox(height: AppSpacing.sm),
               TextField(
-                  controller: sectionCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Section (e.g., KNOWLEDGE)')),
+                controller: sectionCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Section (e.g., KNOWLEDGE)',
+                ),
+              ),
               const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: objectiveCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'Objective (optional)',
-                    hintText: 'FireOps Preparation Task objective'),
+                  labelText: 'Objective (optional)',
+                  hintText: 'FireOps Preparation Task objective',
+                ),
                 minLines: 2,
                 maxLines: 4,
               ),
@@ -234,13 +248,15 @@ class QualificationTaskBookPage extends StatelessWidget {
                     );
                   },
                   style: FilledButton.styleFrom(
-                      backgroundColor: cs.primary,
-                      foregroundColor: cs.onPrimary,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.lg))),
+                    backgroundColor: cs.primary,
+                    foregroundColor: cs.onPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
                   child: const Text('Add Task'),
                 ),
-              )
+              ),
             ],
           ),
         );
@@ -261,40 +277,60 @@ class _TaskTile extends StatelessWidget {
   final String requirementId;
   final String qualificationName;
   final TaskBookTaskDefinition task;
-  const _TaskTile(
-      {required this.goalId,
-      required this.requirementId,
-      required this.qualificationName,
-      required this.task});
+  const _TaskTile({
+    required this.goalId,
+    required this.requirementId,
+    required this.qualificationName,
+    required this.task,
+  });
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
     final status = state.taskStatusFor(
-        goalId: goalId, requirementId: requirementId, taskId: task.id);
+      goalId: goalId,
+      requirementId: requirementId,
+      taskId: task.id,
+    );
 
     final (icon, color) = switch (status) {
-      TaskBookTaskStatus.complete =>
-        (Icons.check_circle, FireOpsSemanticColors.completed),
-      TaskBookTaskStatus.readyForEvaluation => (Icons.verified_outlined, cs.primary),
-      TaskBookTaskStatus.practicing => (Icons.play_circle_outline, cs.secondary),
-      TaskBookTaskStatus.notStarted => (Icons.circle_outlined, cs.onSurfaceVariant),
+      TaskBookTaskStatus.complete => (
+        Icons.check_circle,
+        FireOpsSemanticColors.completed,
+      ),
+      TaskBookTaskStatus.readyForEvaluation => (
+        Icons.verified_outlined,
+        cs.primary,
+      ),
+      TaskBookTaskStatus.practicing => (
+        Icons.play_circle_outline,
+        cs.secondary,
+      ),
+      TaskBookTaskStatus.notStarted => (
+        Icons.circle_outlined,
+        cs.onSurfaceVariant,
+      ),
     };
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: InkWell(
-        onTap: () => context.push(AppRoutes.taskDetail, extra: {
-          'goalId': goalId,
-          'requirementId': requirementId,
-          'qualificationName': qualificationName,
-          'task': task,
-        }),
+        onTap: () => context.push(
+          AppRoutes.taskDetail,
+          extra: {
+            'goalId': goalId,
+            'requirementId': requirementId,
+            'qualificationName': qualificationName,
+            'task': task,
+          },
+        ),
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 14,
+          ),
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -305,11 +341,11 @@ class _TaskTile extends StatelessWidget {
               Icon(icon, color: color),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: Text(task.title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w800)),
+                child: Text(
+                  task.title,
+                  style: Theme.of(context).textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
               ),
               Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
             ],
@@ -324,10 +360,10 @@ class _NoGoal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Text('Choose a career goal to build a Task Book.',
-        style: Theme.of(context)
-            .textTheme
-            .bodyMedium
-            ?.copyWith(color: cs.onSurfaceVariant));
+    return Text(
+      'Choose a career goal to build a Task Book.',
+      style: Theme.of(context).textTheme.bodyMedium
+          ?.copyWith(color: cs.onSurfaceVariant),
+    );
   }
 }
