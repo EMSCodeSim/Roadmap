@@ -1,0 +1,40 @@
+name: Apply Daily Focus integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/apply_daily_focus_integration.py'
+      - '.github/workflows/apply-daily-focus.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-daily-focus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Apply integration
+        run: python3 tools/apply_daily_focus_integration.py
+      - name: Format changed Dart files
+        run: dart format lib/nav.dart lib/pages/home/visual_home_page.dart lib/pages/career/daily_focus_page.dart
+      - name: Analyze Daily Focus
+        run: flutter analyze lib/nav.dart lib/pages/home/visual_home_page.dart lib/pages/career/daily_focus_page.dart
+      - name: Commit Daily Focus
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/nav.dart lib/pages/home/visual_home_page.dart lib/pages/career/daily_focus_page.dart
+          git commit -m "Add Daily Focus daily-use loop"
+          git push origin main
