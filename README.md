@@ -14,6 +14,11 @@ New users answer three practical questions: where they are now, which certificat
 ### Home
 The home screen is a career decision dashboard, not just a tracker. **Career Readiness** leads the experience with the user's active goal, mapped-requirement completion percentage, target date, timeline health, and a **Next Best Step** that points to the highest-priority incomplete requirement. Users can jump directly into the Task Book or log progress, with current level, certification health, and Quick Log still available below.
 
+### Daily Focus
+**Daily Focus** turns the current Next Best Step into a practical work session based on the time the user actually has: **15 minutes, 30 minutes, 1 hour, or a Crew Drill**. It selects the next unfinished preparation task when one exists, builds a Learn / Practice / Debrief / Record session around that work, and shows seven-day activity and documented-hour momentum.
+
+A Daily Focus session can open directly into the relevant preparation task and ends with **Record What I Did**, pre-linked to the same career goal, requirement, and task. This closes the daily loop between planning, practice, and the long-term Career Record instead of making users organize the same activity twice.
+
 ### Task Book
 The active career goal becomes a Career Task Book. Major requirements such as certifications, experience, department requirements, task books, and promotion steps can open into progressively deeper preparation tasks. Built-in preparation tasks preserve FireOps-authored instructional order rather than being alphabetized. FireOps-created task content is preparation guidance and does not replace official department, state, or credentialing requirements.
 
