@@ -32,6 +32,13 @@ The Log tab is the organized long-term record of what the user has done. It supp
 ### Advance
 Advance turns the user's current goal and preserved career evidence into advancement preparation. It uses the same **Next Best Step** language as Home and the Task Book, then adds readiness dimensions, evidence gaps, competency development, promotion stories, and deeper professional-growth tools.
 
+### Career Intelligence
+Career Intelligence is the long-term interpretation layer for users who have months or years of Career Record history. It summarizes total documented activity, years of history, hours, and marked highlights; identifies the user's strongest documented career area and a professional-development gap; and surfaces a chronological career-highlights timeline.
+
+The **Annual Career Review** converts a selected year into a copyable summary of activity by area, documented hours, highlights, strengths, development opportunities, active-goal readiness, and the recommended next move for the following year.
+
+The **Promotion Portfolio** combines long-term career totals with the advancement engine's credential status, readiness score, evidence gaps, competency map, and strongest promotion stories so years of logging become useful during interviews, annual evaluations, applications, and promotional preparation.
+
 ### Certifications
 Certifications is the credential wallet. Current, expiring, and expired credentials are tracked in one place and matching credentials automatically satisfy applicable Career Task Book requirements.
 
