@@ -628,6 +628,26 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Permanently clears local app data and returns this live state object to
+  /// the same condition as a first launch.
+  Future<bool> resetApp() async {
+    final cleared = await _store.resetAppData();
+    if (!cleared) return false;
+
+    _onboardingComplete = false;
+    _profile = UserProfile.empty();
+    _certsById.clear();
+    _customRequirements.clear();
+    _overrides.clear();
+    _taskProgressByKey.clear();
+    _customTasks.clear();
+    _certMatchConfirmations.clear();
+    _pendingCertMatches.clear();
+    _bootstrapped = true;
+    notifyListeners();
+    return true;
+  }
+
   Future<void> _migrateCertifications() async {
     _pendingCertMatches.clear();
     if (_certsById.isEmpty) return;

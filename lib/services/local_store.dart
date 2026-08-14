@@ -91,6 +91,24 @@ class LocalStore {
     }
   }
 
+  /// Removes every FireOps-owned preference, including dynamically named
+  /// yearly career-record segments. Other preferences on the device are left
+  /// untouched.
+  Future<bool> resetAppData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((key) => key.startsWith('fireops.'));
+      var success = true;
+      for (final key in keys) {
+        if (!await prefs.remove(key)) success = false;
+      }
+      return success;
+    } catch (e) {
+      debugPrint('LocalStore.resetAppData failed: $e');
+      return false;
+    }
+  }
+
   Future<Map<String, dynamic>?> loadProfile() => loadJsonMap(_kProfile);
   Future<void> saveProfile(Map<String, dynamic> json) => saveJson(_kProfile, json);
 

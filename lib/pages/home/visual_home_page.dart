@@ -133,7 +133,10 @@ class _VisualHomePageState extends State<VisualHomePage> {
               padding: EdgeInsets.fromLTRB(14, compact ? 8 : 12, 14, 10),
               child: Column(
                 children: [
-                  _GraphicHeader(compact: compact),
+                  _GraphicHeader(
+                    compact: compact,
+                    onSettings: () => context.push(AppRoutes.settings),
+                  ),
                   SizedBox(height: compact ? 8 : 12),
                   Expanded(
                     child: LayoutBuilder(
@@ -613,7 +616,8 @@ class _StatePickerRow extends StatelessWidget {
 
 class _GraphicHeader extends StatelessWidget {
   final bool compact;
-  const _GraphicHeader({required this.compact});
+  final VoidCallback onSettings;
+  const _GraphicHeader({required this.compact, required this.onSettings});
 
   @override
   Widget build(BuildContext context) {
@@ -682,7 +686,16 @@ class _GraphicHeader extends StatelessWidget {
                     ],
                   ],
                 )),
-                const SizedBox(width: 10),
+                IconButton(
+                  onPressed: onSettings,
+                  tooltip: 'Settings',
+                  style: IconButton.styleFrom(
+                    foregroundColor: cs.onSecondary,
+                    backgroundColor: cs.onSecondary.withValues(alpha: .10),
+                  ),
+                  icon: const Icon(Icons.settings_outlined),
+                ),
+                const SizedBox(width: 8),
                 Container(
                   width: compact ? 64 : 78,
                   height: compact ? 64 : 78,

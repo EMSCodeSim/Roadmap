@@ -23,6 +23,7 @@ import 'package:firepath/pages/career/career_record_v2_page.dart';
 import 'package:firepath/pages/career/quick_log_setup_page.dart';
 import 'package:firepath/pages/certifications/certifications_page.dart';
 import 'package:firepath/pages/resources/resources_page.dart';
+import 'package:firepath/pages/settings/settings_page.dart';
 import 'package:firepath/pages/requirement/requirement_detail_page.dart';
 import 'package:firepath/pages/requirement/get_started_page.dart';
 import 'package:firepath/pages/certifications/certification_detail_page.dart';
@@ -102,6 +103,13 @@ class AppRouter {
             ],
           ),
         ],
+      ),
+
+      GoRoute(
+        path: AppRoutes.settings,
+        name: 'settings',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: SettingsPage()),
       ),
 
       GoRoute(path: '/career', redirect: (context, state) => AppRoutes.growth),
@@ -256,6 +264,7 @@ class AppRoutes {
   static const String quickLogSetup = '/log/setup';
   static const String growth = '/growth';
   static const String certifications = '/certifications';
+  static const String settings = '/settings';
 
   static const String career = growth;
   static const String careerVault = personalLog;
