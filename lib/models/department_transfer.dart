@@ -9,13 +9,13 @@ enum TransferRequirementKind {
 
 extension TransferRequirementKindX on TransferRequirementKind {
   String get label => switch (this) {
-        TransferRequirementKind.certification => 'Certification',
-        TransferRequirementKind.experience => 'Experience',
-        TransferRequirementKind.taskBook => 'Task book',
-        TransferRequirementKind.education => 'Education',
-        TransferRequirementKind.practical => 'Practical / process',
-        TransferRequirementKind.other => 'Other',
-      };
+    TransferRequirementKind.certification => 'Certification',
+    TransferRequirementKind.experience => 'Experience',
+    TransferRequirementKind.taskBook => 'Task book',
+    TransferRequirementKind.education => 'Education',
+    TransferRequirementKind.practical => 'Practical / process',
+    TransferRequirementKind.other => 'Other',
+  };
 }
 
 class DepartmentTransferRequirement {
@@ -61,14 +61,14 @@ class DepartmentTransferRequirement {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'kind': kind.name,
-        'certificationDefinitionId': certificationDefinitionId,
-        'keywords': keywords,
-        'manuallySatisfied': manuallySatisfied,
-        'notes': notes,
-      };
+    'id': id,
+    'title': title,
+    'kind': kind.name,
+    'certificationDefinitionId': certificationDefinitionId,
+    'keywords': keywords,
+    'manuallySatisfied': manuallySatisfied,
+    'notes': notes,
+  };
 
   factory DepartmentTransferRequirement.fromJson(Map<String, dynamic> json) {
     TransferRequirementKind parseKind(dynamic value) {
@@ -85,7 +85,8 @@ class DepartmentTransferRequirement {
       title: (json['title'] as String?) ?? '',
       kind: parseKind(json['kind']),
       certificationDefinitionId: json['certificationDefinitionId'] as String?,
-      keywords: (json['keywords'] as List?)?.whereType<String>().toList() ?? const [],
+      keywords:
+          (json['keywords'] as List?)?.whereType<String>().toList() ?? const [],
       manuallySatisfied: (json['manuallySatisfied'] as bool?) ?? false,
       notes: json['notes'] as String?,
     );
@@ -132,7 +133,9 @@ class DepartmentTransferPlan {
   }) {
     return DepartmentTransferPlan(
       departmentName: departmentName ?? this.departmentName,
-      targetGoalId: clearTargetGoalId ? null : (targetGoalId ?? this.targetGoalId),
+      targetGoalId: clearTargetGoalId
+          ? null
+          : (targetGoalId ?? this.targetGoalId),
       targetRole: clearTargetRole ? null : (targetRole ?? this.targetRole),
       requirements: requirements ?? this.requirements,
       createdAt: createdAt,
@@ -141,13 +144,13 @@ class DepartmentTransferPlan {
   }
 
   Map<String, dynamic> toJson() => {
-        'departmentName': departmentName,
-        'targetGoalId': targetGoalId,
-        'targetRole': targetRole,
-        'requirements': requirements.map((e) => e.toJson()).toList(),
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'departmentName': departmentName,
+    'targetGoalId': targetGoalId,
+    'targetRole': targetRole,
+    'requirements': requirements.map((e) => e.toJson()).toList(),
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
   factory DepartmentTransferPlan.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic value, DateTime fallback) =>
@@ -158,11 +161,14 @@ class DepartmentTransferPlan {
       departmentName: (json['departmentName'] as String?) ?? '',
       targetGoalId: json['targetGoalId'] as String?,
       targetRole: json['targetRole'] as String?,
-      requirements: (json['requirements'] as List?)
+      requirements:
+          (json['requirements'] as List?)
               ?.whereType<Map>()
-              .map((e) => DepartmentTransferRequirement.fromJson(
-                    Map<String, dynamic>.from(e),
-                  ))
+              .map(
+                (e) => DepartmentTransferRequirement.fromJson(
+                  Map<String, dynamic>.from(e),
+                ),
+              )
               .toList() ??
           const [],
       createdAt: created,

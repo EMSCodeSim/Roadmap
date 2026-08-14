@@ -155,7 +155,8 @@ class _CareerIntelligencePageState extends State<CareerIntelligencePage> {
                   _ToolCard(
                     icon: Icons.calendar_month_outlined,
                     title: 'Annual Career Review',
-                    description: 'Turn one year of work into a clean summary of activity, highlights, strengths, and next-year priorities.',
+                    description:
+                        'Turn one year of work into a clean summary of activity, highlights, strengths, and next-year priorities.',
                     trailing: years.isEmpty
                         ? null
                         : DropdownButton<int>(
@@ -187,7 +188,8 @@ class _CareerIntelligencePageState extends State<CareerIntelligencePage> {
                   _ToolCard(
                     icon: Icons.workspace_premium_outlined,
                     title: 'Promotion Portfolio',
-                    description: 'Build a promotion-ready snapshot from your credentials, evidence gaps, competencies, and strongest career stories.',
+                    description:
+                        'Build a promotion-ready snapshot from your credentials, evidence gaps, competencies, and strongest career stories.',
                     onTap: () => _showText(
                       title: 'Promotion Portfolio',
                       text: CareerIntelligence.buildPromotionPortfolio(
@@ -200,8 +202,25 @@ class _CareerIntelligencePageState extends State<CareerIntelligencePage> {
                   _ToolCard(
                     icon: Icons.timeline_outlined,
                     title: 'Long-Term Career Tools',
-                    description: 'Compare future career paths, review past goals, catch stale skills, build STAR interview stories, and create resume source material.',
+                    description:
+                        'Compare future career paths, review past goals, catch stale skills, build STAR interview stories, and create resume source material.',
                     onTap: () => context.push(AppRoutes.careerLongevity),
+                  ),
+                  const SizedBox(height: 10),
+                  _ToolCard(
+                    icon: Icons.picture_as_pdf_outlined,
+                    title: 'Career Export Center',
+                    description:
+                        'Create polished resume, promotion packet, and full career portfolio PDFs from your saved career record.',
+                    onTap: () => context.push(AppRoutes.careerExport),
+                  ),
+                  const SizedBox(height: 10),
+                  _ToolCard(
+                    icon: Icons.compare_arrows_outlined,
+                    title: 'Department Transfer',
+                    description:
+                        'Compare another department’s requirements against your existing credentials, Task Book history, and career evidence without changing your active path.',
+                    onTap: () => context.push(AppRoutes.departmentTransfer),
                   ),
                   const SizedBox(height: 22),
                   Row(
@@ -218,8 +237,9 @@ class _CareerIntelligencePageState extends State<CareerIntelligencePage> {
                       ),
                       Text(
                         'timeline',
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: cs.onSurfaceVariant),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -228,7 +248,8 @@ class _CareerIntelligencePageState extends State<CareerIntelligencePage> {
                     _InsightCard(
                       icon: Icons.auto_awesome_outlined,
                       title: 'No highlights yet',
-                      text: 'Mark important leadership examples, achievements, projects, and meaningful career moments so they remain easy to find years later.',
+                      text:
+                          'Mark important leadership examples, achievements, projects, and meaningful career moments so they remain easy to find years later.',
                     )
                   else
                     ...snapshot.highlights
@@ -237,8 +258,10 @@ class _CareerIntelligencePageState extends State<CareerIntelligencePage> {
                   const SizedBox(height: 12),
                   Text(
                     'Career Intelligence is a personal professional-development aid. It does not replace official department personnel, training, credential, or promotional records.',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.45,
+                    ),
                   ),
                 ],
               ),
@@ -256,8 +279,9 @@ class _CareerIntelligencePageState extends State<CareerIntelligencePage> {
           child: SingleChildScrollView(
             child: SelectableText(
               text,
-              style: Theme.of(dialogContext).textTheme.bodyMedium
-                  ?.copyWith(height: 1.5),
+              style: Theme.of(
+                dialogContext,
+              ).textTheme.bodyMedium?.copyWith(height: 1.5),
             ),
           ),
         ),
@@ -313,13 +337,15 @@ class _MetricCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             value,
-            style: Theme.of(context).textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: cs.onSurfaceVariant),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
       ),
@@ -358,14 +384,17 @@ class _InsightCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   text,
-                  style: Theme.of(context).textTheme.bodyMedium
-                      ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),
@@ -415,14 +444,17 @@ class _ToolCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w900),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       description,
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.4,
+                      ),
                     ),
                   ],
                 ),
@@ -475,22 +507,25 @@ class _TimelineItem extends StatelessWidget {
               children: [
                 Text(
                   '${record.date.month}/${record.date.day}/${record.date.year}',
-                  style: Theme.of(context).textTheme.labelSmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   record.title,
-                  style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 if ((record.impact ?? '').trim().isNotEmpty)
                   Text(
                     record.impact!.trim(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
               ],
             ),

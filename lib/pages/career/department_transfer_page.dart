@@ -102,9 +102,9 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                       Text(
                         'Compare another department’s requirements against the credentials, Task Book history, and career evidence you already have. Your current Career Road is not changed.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: cs.onSurfaceVariant,
-                              height: 1.45,
-                            ),
+                          color: cs.onSurfaceVariant,
+                          height: 1.45,
+                        ),
                       ),
                     ],
                   ),
@@ -122,20 +122,28 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _plan.targetGoalId,
-                  decoration: const InputDecoration(labelText: 'Target role / path'),
+                  initialValue: _plan.targetGoalId,
+                  decoration: const InputDecoration(
+                    labelText: 'Target role / path',
+                  ),
                   items: app.availableGoals
-                      .map((goal) => DropdownMenuItem(
-                            value: goal.id,
-                            child: Text(goal.title),
-                          ))
+                      .map(
+                        (goal) => DropdownMenuItem(
+                          value: goal.id,
+                          child: Text(goal.title),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) async {
-                    final goal = app.availableGoals.where((g) => g.id == value).firstOrNull;
-                    await _save(_plan.copyWith(
-                      targetGoalId: value,
-                      targetRole: goal?.title,
-                    ));
+                    final goal = app.availableGoals
+                        .where((g) => g.id == value)
+                        .firstOrNull;
+                    await _save(
+                      _plan.copyWith(
+                        targetGoalId: value,
+                        targetRole: goal?.title,
+                      ),
+                    );
                   },
                 ),
                 const SizedBox(height: 8),
@@ -146,7 +154,9 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                         ? null
                         : () => _importTypical(app),
                     icon: const Icon(Icons.playlist_add_check_outlined),
-                    label: const Text('Load typical requirements for this path'),
+                    label: const Text(
+                      'Load typical requirements for this path',
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -158,9 +168,9 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                       child: Text(
                         'TARGET REQUIREMENTS',
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: cs.onSurfaceVariant,
-                              fontWeight: FontWeight.w900,
-                            ),
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                     TextButton.icon(
@@ -174,7 +184,8 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                   _InfoCard(
                     icon: Icons.rule_folder_outlined,
                     title: 'Add the receiving department’s requirements',
-                    text: 'Start from a typical FireOps path, then add or edit local certifications, experience, task books, education, practicals, and promotional steps.',
+                    text:
+                        'Start from a typical FireOps path, then add or edit local certifications, experience, task books, education, practicals, and promotional steps.',
                   )
                 else
                   ...evaluation.items.map(
@@ -192,7 +203,8 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                 _InfoCard(
                   icon: Icons.verified_user_outlined,
                   title: 'What this comparison means',
-                  text: 'A match means Career Road found a current credential, related record, retained progress, or a user-confirmed equivalent. It does not mean the receiving department has accepted it.',
+                  text:
+                      'A match means Career Road found a current credential, related record, retained progress, or a user-confirmed equivalent. It does not mean the receiving department has accepted it.',
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -239,10 +251,7 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
         merged.add(item);
       }
     }
-    await _save(_plan.copyWith(
-      targetRole: goal.title,
-      requirements: merged,
-    ));
+    await _save(_plan.copyWith(targetRole: goal.title, requirements: merged));
   }
 
   Future<void> _addRequirement() async {
@@ -251,7 +260,9 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
     await _save(_plan.copyWith(requirements: [..._plan.requirements, created]));
   }
 
-  Future<void> _editRequirement(DepartmentTransferRequirement requirement) async {
+  Future<void> _editRequirement(
+    DepartmentTransferRequirement requirement,
+  ) async {
     final edited = await _requirementDialog(requirement);
     if (edited == null) return;
     final next = _plan.requirements
@@ -270,7 +281,9 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text(existing == null ? 'Add requirement' : 'Edit requirement'),
+          title: Text(
+            existing == null ? 'Add requirement' : 'Edit requirement',
+          ),
           content: SizedBox(
             width: 560,
             child: Column(
@@ -286,13 +299,15 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<TransferRequirementKind>(
-                  value: kind,
+                  initialValue: kind,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: TransferRequirementKind.values
-                      .map((value) => DropdownMenuItem(
-                            value: value,
-                            child: Text(value.label),
-                          ))
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(value.label),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) {
                     if (value != null) setDialogState(() => kind = value);
@@ -318,7 +333,8 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
             FilledButton(
               onPressed: () {
                 if (title.text.trim().isEmpty) return;
-                final id = existing?.id ??
+                final id =
+                    existing?.id ??
                     'custom:${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
                 Navigator.pop(
                   dialogContext,
@@ -347,17 +363,21 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
 
   Future<void> _toggleManual(DepartmentTransferRequirement requirement) async {
     final next = _plan.requirements
-        .map((item) => item.id == requirement.id
-            ? item.copyWith(manuallySatisfied: !item.manuallySatisfied)
-            : item)
+        .map(
+          (item) => item.id == requirement.id
+              ? item.copyWith(manuallySatisfied: !item.manuallySatisfied)
+              : item,
+        )
         .toList();
     await _save(_plan.copyWith(requirements: next));
   }
 
   Future<void> _deleteRequirement(String id) async {
-    await _save(_plan.copyWith(
-      requirements: _plan.requirements.where((e) => e.id != id).toList(),
-    ));
+    await _save(
+      _plan.copyWith(
+        requirements: _plan.requirements.where((e) => e.id != id).toList(),
+      ),
+    );
   }
 
   Future<void> _previewPdf(
@@ -425,8 +445,9 @@ class _ReadinessHero extends StatelessWidget {
                 ),
                 Text(
                   '$percent%',
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ],
             ),
@@ -438,16 +459,17 @@ class _ReadinessHero extends StatelessWidget {
               children: [
                 Text(
                   'Estimated requirement overlap',
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${evaluation.satisfiedCount} of ${evaluation.totalCount} entered requirements have likely supporting evidence.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        height: 1.4,
-                      ),
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -487,15 +509,18 @@ class _RequirementCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                item.satisfied ? Icons.check_circle : Icons.radio_button_unchecked,
+                item.satisfied
+                    ? Icons.check_circle
+                    : Icons.radio_button_unchecked,
                 color: item.satisfied ? cs.primary : cs.onSurfaceVariant,
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   item.requirement.title,
-                  style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ),
               PopupMenuButton<String>(
@@ -514,27 +539,31 @@ class _RequirementCard extends StatelessWidget {
           Text(
             item.requirement.kind.label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 5),
           Text(
             item.reason,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.4,
-                ),
+              color: cs.onSurfaceVariant,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 6),
           TextButton.icon(
             onPressed: onToggleManual,
-            icon: Icon(item.requirement.manuallySatisfied
-                ? Icons.undo
-                : Icons.verified_outlined),
-            label: Text(item.requirement.manuallySatisfied
-                ? 'Remove manual match'
-                : 'Mark equivalent / accepted'),
+            icon: Icon(
+              item.requirement.manuallySatisfied
+                  ? Icons.undo
+                  : Icons.verified_outlined,
+            ),
+            label: Text(
+              item.requirement.manuallySatisfied
+                  ? 'Remove manual match'
+                  : 'Mark equivalent / accepted',
+            ),
           ),
         ],
       ),
@@ -572,16 +601,17 @@ class _InfoCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   text,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        height: 1.4,
-                      ),
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),

@@ -51,11 +51,11 @@ class _CareerExportPageState extends State<CareerExportPage> {
   }
 
   CareerExportIdentity get _identity => CareerExportIdentity(
-        name: _name.text.trim(),
-        email: _email.text.trim(),
-        phone: _phone.text.trim(),
-        location: _location.text.trim(),
-      );
+    name: _name.text.trim(),
+    email: _email.text.trim(),
+    phone: _phone.text.trim(),
+    location: _location.text.trim(),
+  );
 
   Future<void> _saveIdentity() => _identityStore.save(_identity);
 
@@ -97,9 +97,9 @@ class _CareerExportPageState extends State<CareerExportPage> {
                       Text(
                         'Generate a polished career portfolio, promotion packet, or resume from the information you have already preserved in Career Road.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: cs.onSurfaceVariant,
-                              height: 1.45,
-                            ),
+                          color: cs.onSurfaceVariant,
+                          height: 1.45,
+                        ),
                       ),
                     ],
                   ),
@@ -108,9 +108,9 @@ class _CareerExportPageState extends State<CareerExportPage> {
                 Text(
                   'EXPORT IDENTITY',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -118,7 +118,9 @@ class _CareerExportPageState extends State<CareerExportPage> {
                   decoration: BoxDecoration(
                     color: cs.surface,
                     borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: cs.outline.withValues(alpha: .14)),
+                    border: Border.all(
+                      color: cs.outline.withValues(alpha: .14),
+                    ),
                   ),
                   child: Column(
                     children: [
@@ -167,15 +169,16 @@ class _CareerExportPageState extends State<CareerExportPage> {
                 Text(
                   'PDF EXPORTS',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 _ExportCard(
                   icon: Icons.badge_outlined,
                   title: 'Professional Resume',
-                  description: 'A concise resume built from roles, credentials, accomplishments, leadership, teaching, projects, and professional development.',
+                  description:
+                      'A concise resume built from roles, credentials, accomplishments, leadership, teaching, projects, and professional development.',
                   onPreview: _working ? null : () => _previewResume(app),
                   onShare: _working ? null : () => _shareResume(app),
                 ),
@@ -183,7 +186,8 @@ class _CareerExportPageState extends State<CareerExportPage> {
                 _ExportCard(
                   icon: Icons.workspace_premium_outlined,
                   title: 'Promotion Packet',
-                  description: 'Readiness, evidence gaps, competencies, credentials, and your strongest interview stories in a promotion-focused packet.',
+                  description:
+                      'Readiness, evidence gaps, competencies, credentials, and your strongest interview stories in a promotion-focused packet.',
                   onPreview: _working ? null : () => _previewPromotion(app),
                   onShare: _working ? null : () => _sharePromotion(app),
                 ),
@@ -191,7 +195,8 @@ class _CareerExportPageState extends State<CareerExportPage> {
                 _ExportCard(
                   icon: Icons.auto_stories_outlined,
                   title: 'Career Portfolio',
-                  description: 'A fuller professional history with career totals, credentials, highlights, advancement readiness, and development priorities.',
+                  description:
+                      'A fuller professional history with career totals, credentials, highlights, advancement readiness, and development priorities.',
                   onPreview: _working ? null : () => _previewPortfolio(app),
                   onShare: _working ? null : () => _sharePortfolio(app),
                 ),
@@ -199,9 +204,9 @@ class _CareerExportPageState extends State<CareerExportPage> {
                 Text(
                   'Exports are generated from your locally stored Career Road information. Review every document before using it for an application, promotion process, or official record.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        height: 1.45,
-                      ),
+                    color: cs.onSurfaceVariant,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),
@@ -219,64 +224,73 @@ class _CareerExportPageState extends State<CareerExportPage> {
   }
 
   Future<void> _previewResume(AppState app) => _run(() async {
-        await Printing.layoutPdf(
-          name: 'FireOps_Professional_Resume.pdf',
-          onLayout: (_) => CareerPdfExport.buildResume(
-            app: app,
-            records: _records,
-            identity: _identity,
-          ),
-        );
-      });
+    await Printing.layoutPdf(
+      name: 'FireOps_Professional_Resume.pdf',
+      onLayout: (_) => CareerPdfExport.buildResume(
+        app: app,
+        records: _records,
+        identity: _identity,
+      ),
+    );
+  });
 
   Future<void> _shareResume(AppState app) => _run(() async {
-        final bytes = await CareerPdfExport.buildResume(
-          app: app,
-          records: _records,
-          identity: _identity,
-        );
-        await Printing.sharePdf(bytes: bytes, filename: 'FireOps_Professional_Resume.pdf');
-      });
+    final bytes = await CareerPdfExport.buildResume(
+      app: app,
+      records: _records,
+      identity: _identity,
+    );
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'FireOps_Professional_Resume.pdf',
+    );
+  });
 
   Future<void> _previewPromotion(AppState app) => _run(() async {
-        await Printing.layoutPdf(
-          name: 'FireOps_Promotion_Packet.pdf',
-          onLayout: (_) => CareerPdfExport.buildPromotionPacket(
-            app: app,
-            records: _records,
-            identity: _identity,
-          ),
-        );
-      });
+    await Printing.layoutPdf(
+      name: 'FireOps_Promotion_Packet.pdf',
+      onLayout: (_) => CareerPdfExport.buildPromotionPacket(
+        app: app,
+        records: _records,
+        identity: _identity,
+      ),
+    );
+  });
 
   Future<void> _sharePromotion(AppState app) => _run(() async {
-        final bytes = await CareerPdfExport.buildPromotionPacket(
-          app: app,
-          records: _records,
-          identity: _identity,
-        );
-        await Printing.sharePdf(bytes: bytes, filename: 'FireOps_Promotion_Packet.pdf');
-      });
+    final bytes = await CareerPdfExport.buildPromotionPacket(
+      app: app,
+      records: _records,
+      identity: _identity,
+    );
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'FireOps_Promotion_Packet.pdf',
+    );
+  });
 
   Future<void> _previewPortfolio(AppState app) => _run(() async {
-        await Printing.layoutPdf(
-          name: 'FireOps_Career_Portfolio.pdf',
-          onLayout: (_) => CareerPdfExport.buildCareerPortfolio(
-            app: app,
-            records: _records,
-            identity: _identity,
-          ),
-        );
-      });
+    await Printing.layoutPdf(
+      name: 'FireOps_Career_Portfolio.pdf',
+      onLayout: (_) => CareerPdfExport.buildCareerPortfolio(
+        app: app,
+        records: _records,
+        identity: _identity,
+      ),
+    );
+  });
 
   Future<void> _sharePortfolio(AppState app) => _run(() async {
-        final bytes = await CareerPdfExport.buildCareerPortfolio(
-          app: app,
-          records: _records,
-          identity: _identity,
-        );
-        await Printing.sharePdf(bytes: bytes, filename: 'FireOps_Career_Portfolio.pdf');
-      });
+    final bytes = await CareerPdfExport.buildCareerPortfolio(
+      app: app,
+      records: _records,
+      identity: _identity,
+    );
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'FireOps_Career_Portfolio.pdf',
+    );
+  });
 }
 
 class _ExportCard extends StatelessWidget {
@@ -314,8 +328,9 @@ class _ExportCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -324,9 +339,9 @@ class _ExportCard extends StatelessWidget {
           Text(
             description,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.4,
-                ),
+              color: cs.onSurfaceVariant,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 12),
           Row(

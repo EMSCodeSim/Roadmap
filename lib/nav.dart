@@ -15,6 +15,8 @@ import 'package:firepath/pages/career/career_vault_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/career_intelligence_page.dart';
 import 'package:firepath/pages/career/career_longevity_page.dart';
+import 'package:firepath/pages/career/career_export_page.dart';
+import 'package:firepath/pages/career/department_transfer_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_v2_page.dart';
 import 'package:firepath/pages/career/quick_log_setup_page.dart';
@@ -157,6 +159,18 @@ class AppRouter {
             const MaterialPage(child: CareerLongevityPage()),
       ),
       GoRoute(
+        path: AppRoutes.careerExport,
+        name: 'career_export',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: CareerExportPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.departmentTransfer,
+        name: 'department_transfer',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: DepartmentTransferPage()),
+      ),
+      GoRoute(
         path: AppRoutes.careerEvidence,
         name: 'career_evidence',
         pageBuilder: (context, state) => MaterialPage(
@@ -245,6 +259,9 @@ class AppRoutes {
   static const String growthDetails = '/growth-tools';
   static const String careerIntelligence = '/career-intelligence';
   static const String careerLongevity = '/career-intelligence/long-term';
+  static const String careerExport = '/career-intelligence/export';
+  static const String departmentTransfer =
+      '/career-intelligence/department-transfer';
   static const String requirementDetail = '/requirement';
   static const String getStarted = '/get-started';
   static const String certificationDetail = '/certification';
