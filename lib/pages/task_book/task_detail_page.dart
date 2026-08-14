@@ -169,7 +169,7 @@ class _StatusCard extends StatelessWidget {
       TaskBookTaskStatus.notStarted => 'Not Started',
       TaskBookTaskStatus.practicing => 'Practicing',
       TaskBookTaskStatus.readyForEvaluation => 'Ready for Evaluation',
-      TaskBookTaskStatus.complete => 'Self-completed',
+      TaskBookTaskStatus.complete => 'Complete',
     };
 
     Color tone(TaskBookTaskStatus s) => switch (s) {
@@ -271,8 +271,7 @@ class _InfoCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(
             body,
-            style: Theme.of(context).textTheme.bodyMedium
-                ?.copyWith(height: 1.55),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.55),
           ),
         ],
       ),
@@ -443,7 +442,7 @@ class _CompanionCard extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: () => _openExternalUrl(studyUri.toString()),
               icon: const Icon(Icons.menu_book_outlined),
-              label: const Text('Learn'),
+              label: const Text('Study this task'),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -453,7 +452,7 @@ class _CompanionCard extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: () => _openExternalUrl(taskUri.toString()),
               icon: const Icon(Icons.fitness_center_outlined),
-              label: const Text('Practice'),
+              label: const Text('Practice / tools'),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),

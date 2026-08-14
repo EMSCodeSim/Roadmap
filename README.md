@@ -31,6 +31,8 @@ Task Book detail pages use a consistent **Learn → Practice → Record** loop. 
 
 Task status distinguishes personal preparation from official verification. A user may mark a preparation task **Self-completed**, while future department workflows can separately support supervisor verification.
 
+Task Book detail pages use **FireOpsSim** as the free companion resource layer. From a task, users can open study material, task-specific practice/tools, school or course-finder help, and supporting references. Stable certification and task IDs are passed to FireOpsSim so Roadmap remains focused on planning and progress while FireOpsSim can continue expanding the learning content independently.
+
 ### Quick Log
 Quick Log is designed for fast capture after a call, drill, class, shift, or career milestone. Users can record calls, skill repetitions, training time, drive time, leadership, teaching, awards, achievements, projects, education, custom activity, and Task Book progress without navigating through the full career history.
 

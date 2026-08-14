@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 
@@ -121,8 +122,8 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                   onSubmitted: (_) => _save(_plan),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _plan.targetGoalId,
+                DropdownButtonFormField<String?>(
+                  value: _plan.targetGoalId,
                   decoration: const InputDecoration(
                     labelText: 'Target role / path',
                   ),
@@ -299,7 +300,7 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<TransferRequirementKind>(
-                  initialValue: kind,
+                  value: kind,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: TransferRequirementKind.values
                       .map(
@@ -327,7 +328,7 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () => dialogContext.pop(),
               child: const Text('Cancel'),
             ),
             FilledButton(
@@ -336,8 +337,7 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                 final id =
                     existing?.id ??
                     'custom:${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
-                Navigator.pop(
-                  dialogContext,
+                dialogContext.pop(
                   DepartmentTransferRequirement(
                     id: id,
                     title: title.text.trim(),

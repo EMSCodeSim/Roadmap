@@ -654,56 +654,74 @@ class _GraphicHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: Stack(
-        children: [
-          AspectRatio(
-            aspectRatio: 2.25,
-            child: Image.asset(
-              'assets/graphics/career_road_bannejpg',
-              width: double.infinity,
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-              errorBuilder: (_, __, ___) => Container(
-                color: FireOpsSemanticColors.headerDark,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.route_outlined,
-                  color: Colors.white,
-                  size: 52,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 12,
-            bottom: 12,
-            child: Container(
-              width: 58,
-              height: 58,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: cs.surface.withValues(alpha: 0.94),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(
-                    blurRadius: 12,
-                    offset: Offset(0, 4),
-                    color: Color(0x33000000),
+
+    // NOTE: This header intentionally avoids image assets.
+    // Image decode / missing asset issues can cause blank previews on web.
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: [FireOpsSemanticColors.headerDark, cs.secondary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: AspectRatio(
+          aspectRatio: 2.45,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Fire Career Roadmap',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: cs.onSecondary,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'PLAN → WORK → RECORD → PROVE → ADVANCE',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: cs.onSecondary.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ],
+
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/icons/career_road_icon_v2.png',
-                  fit: BoxFit.cover,
                 ),
-              ),
+                const SizedBox(width: 12),
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: cs.surface.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: cs.onSecondary.withValues(alpha: 0.20),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(Icons.route_outlined, color: cs.onSecondary, size: 30),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
