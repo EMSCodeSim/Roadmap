@@ -15,7 +15,6 @@ TARGETS = {
     'lib/pages/career/career_vault_page.dart': 'toAdvance',
     'lib/pages/task_book/qualification_task_book_page.dart': 'toTaskBook',
     'lib/pages/task_book/task_detail_page.dart': 'toTaskBook',
-    'lib/pages/path/roadmap_entry_page.dart': 'toTaskBook',
     'lib/pages/resources/resources_page.dart': 'toHome',
     'lib/pages/requirement/requirement_detail_page.dart': 'toTaskBook',
     'lib/pages/requirement/get_started_page.dart': 'toTaskBook',
@@ -34,15 +33,16 @@ for file_name, destination in TARGETS.items():
     text = path.read_text()
     changed = False
 
+    if 'appBar: AppBar(' not in text:
+        print(f'{file_name}: no AppBar found, skipped')
+        continue
+
     if IMPORT not in text:
-        # Keep package imports together, immediately before the first local
-        # firepath import if possible.
         marker = "import 'package:firepath/"
         idx = text.find(marker)
         if idx >= 0:
             text = text[:idx] + IMPORT + text[idx:]
         else:
-            # Fallback: append after imports.
             last_import = text.rfind("import '")
             end = text.find('\n', last_import)
             text = text[:end + 1] + IMPORT + text[end + 1:]
@@ -52,12 +52,12 @@ for file_name, destination in TARGETS.items():
         'appBar: AppBar(\n'
         f'        leading: const AppBackButton.{destination}(),\n'
     )
-    if 'appBar: AppBar(' in text:
+    if f'leading: const AppBackButton.{destination}(),' not in text:
         text = text.replace('appBar: AppBar(', replacement)
         changed = True
-    else:
-        print(f'{file_name}: no AppBar found')
 
     if changed:
         path.write_text(text)
         print(f'{file_name}: patched')
+    else:
+        print(f'{file_name}: already patched')
