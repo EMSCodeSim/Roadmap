@@ -62,3 +62,35 @@ replacement = """                  _ToolCard(
                   const SizedBox(height: 22),
 """
 replace_once('lib/pages/career/career_intelligence_page.dart', anchor, replacement)
+
+replace_once(
+    'lib/pages/career/department_transfer_page.dart',
+    '                  value: _plan.targetGoalId,\n',
+    '                  initialValue: _plan.targetGoalId,\n',
+)
+replace_once(
+    'lib/pages/career/department_transfer_page.dart',
+    '                  value: kind,\n',
+    '                  initialValue: kind,\n',
+)
+
+replace_once(
+    'lib/services/department_transfer_service.dart',
+    "    if (raw == null || raw.trim().isEmpty) return DepartmentTransferPlan.empty();\n",
+    "    if (raw == null || raw.trim().isEmpty) {\n      return DepartmentTransferPlan.empty();\n    }\n",
+)
+replace_once(
+    'lib/services/department_transfer_service.dart',
+    "          if (wantedId != null && cert.certificationDefinitionId == wantedId) return true;\n",
+    "          if (wantedId != null && cert.certificationDefinitionId == wantedId) {\n            return true;\n          }\n",
+)
+replace_once(
+    'lib/services/department_transfer_service.dart',
+    "    if ((plan.targetRole ?? '').trim().isNotEmpty) buffer.writeln('Target role: ${plan.targetRole}');\n",
+    "    if ((plan.targetRole ?? '').trim().isNotEmpty) {\n      buffer.writeln('Target role: ${plan.targetRole}');\n    }\n",
+)
+replace_once(
+    'lib/services/department_transfer_service.dart',
+    "      if (def != null) values.addAll([def.displayName, if (def.shortName != null) def.shortName!, ...def.aliases]);\n",
+    "      if (def != null) {\n        values.addAll([def.displayName, if (def.shortName != null) def.shortName!, ...def.aliases]);\n      }\n",
+)
