@@ -13,6 +13,7 @@ import 'package:firepath/pages/task_book/task_book_requirements_editor_page.dart
 import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
+import 'package:firepath/pages/career/career_intelligence_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_v2_page.dart';
 import 'package:firepath/pages/career/quick_log_setup_page.dart';
@@ -71,9 +72,8 @@ class AppRouter {
               GoRoute(
                 path: AppRoutes.personalLog,
                 name: 'personal_log',
-                pageBuilder: (context, state) => const NoTransitionPage(
-                  child: CareerRecordV2Page(),
-                ),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: CareerRecordV2Page()),
               ),
             ],
           ),
@@ -144,6 +144,12 @@ class AppRouter {
             const MaterialPage(child: CareerHubPage()),
       ),
       GoRoute(
+        path: AppRoutes.careerIntelligence,
+        name: 'career_intelligence',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: CareerIntelligencePage()),
+      ),
+      GoRoute(
         path: AppRoutes.careerEvidence,
         name: 'career_evidence',
         pageBuilder: (context, state) => MaterialPage(
@@ -180,8 +186,9 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.requirementDetail,
         name: 'requirement_detail',
-        pageBuilder: (context, state) =>
-            MaterialPage(child: RequirementDetailPage(requirement: state.extra)),
+        pageBuilder: (context, state) => MaterialPage(
+          child: RequirementDetailPage(requirement: state.extra),
+        ),
       ),
       GoRoute(
         path: AppRoutes.getStarted,
@@ -229,13 +236,15 @@ class AppRoutes {
 
   static const String goalSetup = '/goal-setup';
   static const String growthDetails = '/growth-tools';
+  static const String careerIntelligence = '/career-intelligence';
   static const String requirementDetail = '/requirement';
   static const String getStarted = '/get-started';
   static const String certificationDetail = '/certification';
   static const String certificationAdd = '/certifications/add';
 
   static const String taskBookReview = '/task-book/review';
-  static const String taskBookRequirementsSetup = '/task-book/requirements-setup';
+  static const String taskBookRequirementsSetup =
+      '/task-book/requirements-setup';
   static const String qualificationTaskBook = '/task-book/qualification';
   static const String taskDetail = '/task-book/task';
 }

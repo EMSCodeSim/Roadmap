@@ -44,7 +44,7 @@ class _GrowthOverviewPageState extends State<GrowthOverviewPage> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Growth')),
+      appBar: AppBar(title: const Text('Advance')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -114,6 +114,8 @@ class _GrowthOverviewPageState extends State<GrowthOverviewPage> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   _GrowthToolsCard(
+                    onIntelligence: () =>
+                        context.push(AppRoutes.careerIntelligence),
                     onDetailedGrowth: () =>
                         context.push(AppRoutes.growthDetails),
                     onEvidence: () => context.push(AppRoutes.careerEvidence),
@@ -378,10 +380,12 @@ class _ReadinessRow extends StatelessWidget {
 }
 
 class _GrowthToolsCard extends StatelessWidget {
+  final VoidCallback onIntelligence;
   final VoidCallback onDetailedGrowth;
   final VoidCallback onEvidence;
 
   const _GrowthToolsCard({
+    required this.onIntelligence,
     required this.onDetailedGrowth,
     required this.onEvidence,
   });
@@ -411,6 +415,17 @@ class _GrowthToolsCard extends StatelessWidget {
                 ?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: AppSpacing.sm),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.auto_graph_outlined),
+            title: const Text('Career Intelligence'),
+            subtitle: const Text(
+              'Annual review, promotion portfolio, career patterns, and highlights',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: onIntelligence,
+          ),
+          const Divider(height: 1),
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.insights_outlined),

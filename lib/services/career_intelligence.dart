@@ -57,23 +57,35 @@ class CareerIntelligence {
     final activeAreas = areas.where((area) => area.count > 0).toList()
       ..sort((a, b) => b.count.compareTo(a.count));
 
-    final growthAreas = areas
-        .where((area) => area.type == CareerRecordType.leadership || area.type == CareerRecordType.teaching || area.type == CareerRecordType.project || area.type == CareerRecordType.achievement)
-        .toList()
-      ..sort((a, b) => a.count.compareTo(b.count));
+    final growthAreas =
+        areas
+            .where(
+              (area) =>
+                  area.type == CareerRecordType.leadership ||
+                  area.type == CareerRecordType.teaching ||
+                  area.type == CareerRecordType.project ||
+                  area.type == CareerRecordType.achievement,
+            )
+            .toList()
+          ..sort((a, b) => a.count.compareTo(b.count));
 
     final years = records.map((e) => e.date.year).toSet();
     final highlights = records.where((record) {
       if (record.highlight) return true;
-      if (record.type == CareerRecordType.achievement || record.type == CareerRecordType.project) return true;
+      if (record.type == CareerRecordType.achievement ||
+          record.type == CareerRecordType.project)
+        return true;
       return (record.impact ?? '').trim().isNotEmpty &&
-          (record.type == CareerRecordType.leadership || record.type == CareerRecordType.teaching);
-    }).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+          (record.type == CareerRecordType.leadership ||
+              record.type == CareerRecordType.teaching);
+    }).toList()..sort((a, b) => b.date.compareTo(a.date));
 
     return CareerIntelligenceSnapshot(
       totalRecords: records.length,
-      totalHours: records.fold<double>(0, (sum, item) => sum + (item.hours ?? 0)),
+      totalHours: records.fold<double>(
+        0,
+        (sum, item) => sum + (item.hours ?? 0),
+      ),
       highlightCount: records.where((e) => e.highlight).length,
       yearsDocumented: years.length,
       strongestArea: activeAreas.isEmpty ? null : activeAreas.first,
@@ -99,14 +111,18 @@ class CareerIntelligence {
     buffer.writeln('YEAR AT A GLANCE');
     buffer.writeln('- ${snapshot.totalRecords} documented activities');
     if (snapshot.totalHours > 0) {
-      buffer.writeln('- ${snapshot.totalHours.toStringAsFixed(1)} documented hours');
+      buffer.writeln(
+        '- ${snapshot.totalHours.toStringAsFixed(1)} documented hours',
+      );
     }
     buffer.writeln('- ${snapshot.highlightCount} marked career highlights');
     if (app.selectedGoal != null) {
       buffer.writeln('- Active career goal: ${app.selectedGoal!.title}');
       final roadmap = app.roadmap;
       if (roadmap != null) {
-        buffer.writeln('- Current goal readiness: ${(roadmap.percentComplete * 100).round()}%');
+        buffer.writeln(
+          '- Current goal readiness: ${(roadmap.percentComplete * 100).round()}%',
+        );
       }
     }
     buffer.writeln();
@@ -118,7 +134,9 @@ class CareerIntelligence {
       buffer.writeln('- No activities documented for this year.');
     } else {
       for (final area in nonZero) {
-        final hours = area.hours > 0 ? ' • ${area.hours.toStringAsFixed(1)} hr' : '';
+        final hours = area.hours > 0
+            ? ' • ${area.hours.toStringAsFixed(1)} hr'
+            : '';
         buffer.writeln('- ${area.type.label}: ${area.count}$hours');
       }
     }
@@ -127,31 +145,43 @@ class CareerIntelligence {
     buffer.writeln('CAREER HIGHLIGHTS');
     final highlights = snapshot.highlights.take(8).toList();
     if (highlights.isEmpty) {
-      buffer.writeln('- No highlights marked yet. Add important achievements, leadership examples, projects, and meaningful teaching moments as they happen.');
+      buffer.writeln(
+        '- No highlights marked yet. Add important achievements, leadership examples, projects, and meaningful teaching moments as they happen.',
+      );
     } else {
       for (final record in highlights) {
         final impact = (record.impact ?? '').trim();
-        buffer.writeln('- ${_fmt(record.date)} — ${record.title}${impact.isEmpty ? '' : ' | $impact'}');
+        buffer.writeln(
+          '- ${_fmt(record.date)} — ${record.title}${impact.isEmpty ? '' : ' | $impact'}',
+        );
       }
     }
     buffer.writeln();
 
     if (snapshot.strongestArea != null) {
       buffer.writeln('STRENGTH SIGNAL');
-      buffer.writeln('- Your most documented area this year was ${snapshot.strongestArea!.type.label.toLowerCase()} with ${snapshot.strongestArea!.count} entries.');
+      buffer.writeln(
+        '- Your most documented area this year was ${snapshot.strongestArea!.type.label.toLowerCase()} with ${snapshot.strongestArea!.count} entries.',
+      );
       buffer.writeln();
     }
     if (snapshot.developmentGap != null) {
       buffer.writeln('DEVELOPMENT OPPORTUNITY');
-      buffer.writeln('- Your professional-growth record has relatively little ${snapshot.developmentGap!.type.label.toLowerCase()} evidence. Consider intentionally capturing examples in this area next year.');
+      buffer.writeln(
+        '- Your professional-growth record has relatively little ${snapshot.developmentGap!.type.label.toLowerCase()} evidence. Consider intentionally capturing examples in this area next year.',
+      );
       buffer.writeln();
     }
 
     buffer.writeln('NEXT YEAR');
     final advancement = AdvancementAnalyzer.analyze(app: app, records: records);
-    buffer.writeln('- ${advancement.recommendation.title}: ${advancement.recommendation.reason}');
+    buffer.writeln(
+      '- ${advancement.recommendation.title}: ${advancement.recommendation.reason}',
+    );
     buffer.writeln();
-    buffer.writeln('This review is a personal career-development summary. Verify official training, credential, promotional, and personnel records with the appropriate department or certifying authority.');
+    buffer.writeln(
+      'This review is a personal career-development summary. Verify official training, credential, promotional, and personnel records with the appropriate department or certifying authority.',
+    );
     return buffer.toString().trim();
   }
 
@@ -160,16 +190,25 @@ class CareerIntelligence {
     required List<CareerRecord> records,
   }) {
     final snapshot = analyze(records);
-    final base = AdvancementAnalyzer.buildPromotionBrief(app: app, records: records);
+    final base = AdvancementAnalyzer.buildPromotionBrief(
+      app: app,
+      records: records,
+    );
     final buffer = StringBuffer();
     buffer.writeln('CAREER PORTFOLIO SNAPSHOT');
-    buffer.writeln('- ${snapshot.totalRecords} documented career activities across ${snapshot.yearsDocumented} year${snapshot.yearsDocumented == 1 ? '' : 's'}');
+    buffer.writeln(
+      '- ${snapshot.totalRecords} documented career activities across ${snapshot.yearsDocumented} year${snapshot.yearsDocumented == 1 ? '' : 's'}',
+    );
     if (snapshot.totalHours > 0) {
-      buffer.writeln('- ${snapshot.totalHours.toStringAsFixed(1)} documented hours');
+      buffer.writeln(
+        '- ${snapshot.totalHours.toStringAsFixed(1)} documented hours',
+      );
     }
     buffer.writeln('- ${snapshot.highlightCount} marked career highlights');
     if (snapshot.strongestArea != null) {
-      buffer.writeln('- Strongest documented area: ${snapshot.strongestArea!.type.label} (${snapshot.strongestArea!.count} records)');
+      buffer.writeln(
+        '- Strongest documented area: ${snapshot.strongestArea!.type.label} (${snapshot.strongestArea!.count} records)',
+      );
     }
     buffer.writeln();
     buffer.writeln(base);
