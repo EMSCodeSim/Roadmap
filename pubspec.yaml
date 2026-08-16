@@ -30,7 +30,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icons/career_road_icon_v2.png
-    - assets/graphics/career_road_bannejpg
+    - assets/graphics/career_road_banner.jpg
+    - assets/graphics/career_road_banner_v2.png
 
 flutter_launcher_icons:
   android: true
