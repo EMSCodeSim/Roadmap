@@ -26,3 +26,16 @@ This upgrade focuses on daily usability and long-term career record reliability.
 
 ## Branding and assets
 The one-time branch upgrade workflow repairs generated Android/iOS/web launcher assets, replaces corrupted graphic files with clean branded versions, and removes leftover Dreamflow/default platform naming before merge.
+
+---
+
+## Architecture Foundations + Habit Loop (2026-08)
+
+See `README_ARCHITECTURE_HABIT_UPGRADE.md` for the full write-up.
+
+Summary:
+- Domain models (`Roadmap`, `PathRequirementOverride`, etc.) extracted from `AppState` into `lib/models/roadmap_models.dart`.
+- Shared widgets: `StatusPill`, `ProgressRing`, `SectionHeader`.
+- `NotificationPreferencesStore` scaffolding for future Daily Focus / cert-expiry reminders.
+- `AppState` is thinner; domain logic is now independently testable.
+
