@@ -3,9 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
+import 'package:firepath/services/notification_preferences_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
+import 'package:firepath/widgets/section_header.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -16,10 +18,34 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _resetting = false;
+  final _notificationStore = NotificationPreferencesStore();
+  NotificationPreferences? _notifications;
+  bool _loadingNotifications = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    final prefs = await _notificationStore.load();
+    if (!mounted) return;
+    setState(() {
+      _notifications = prefs;
+      _loadingNotifications = false;
+    });
+  }
+
+  Future<void> _updateNotifications(NotificationPreferences next) async {
+    setState(() => _notifications = next);
+    await _notificationStore.save(next);
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final notifications = _notifications;
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton.toHome(),
@@ -32,20 +58,69 @@ class _SettingsPageState extends State<SettingsPage> {
             _SettingsSection(
               title: 'APP',
               children: [
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: const Text('About Fire Career Roadmap'),
-                  subtitle: const Text('Career planning and professional record'),
-                  trailing: const Text('1.1.1'),
+                const ListTile(
+                  leading: Icon(Icons.info_outline),
+                  title: Text('About Fire Career Roadmap'),
+                  subtitle: Text('Career planning and professional record'),
+                  trailing: Text('1.1.1'),
                 ),
               ],
             ),
             const SizedBox(height: 18),
-            Text('DATA & PRIVACY',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w900,
-                    )),
+            const SectionHeader(
+              title: 'Reminders',
+              subtitle:
+                  'Preferences only for now. Device notifications will use these toggles in a later release.',
+            ),
+            const SizedBox(height: 8),
+            if (_loadingNotifications || notifications == null)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 18),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else
+              _SettingsSection(
+                title: 'NOTIFICATION PREFERENCES',
+                children: [
+                  SwitchListTile(
+                    secondary: const Icon(Icons.bolt_outlined),
+                    title: const Text('Daily Focus reminders'),
+                    subtitle: const Text('Nudge you to work the next step'),
+                    value: notifications.dailyFocusReminders,
+                    onChanged: (value) => _updateNotifications(
+                      notifications.copyWith(dailyFocusReminders: value),
+                    ),
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.verified_outlined),
+                    title: const Text('Certification expiry alerts'),
+                    subtitle: const Text('Warn before credentials lapse'),
+                    value: notifications.certificationExpiryAlerts,
+                    onChanged: (value) => _updateNotifications(
+                      notifications.copyWith(
+                        certificationExpiryAlerts: value,
+                      ),
+                    ),
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.event_outlined),
+                    title: const Text('Target-date risk alerts'),
+                    subtitle: const Text('Flag when the timeline gets tight'),
+                    value: notifications.targetDateRiskAlerts,
+                    onChanged: (value) => _updateNotifications(
+                      notifications.copyWith(targetDateRiskAlerts: value),
+                    ),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 18),
+            Text(
+              'DATA & PRIVACY',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
@@ -56,11 +131,13 @@ class _SettingsPageState extends State<SettingsPage> {
               child: ListTile(
                 contentPadding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
                 leading: Icon(Icons.restart_alt, color: cs.error),
-                title: Text('Reset app',
-                    style: TextStyle(
-                      color: cs.error,
-                      fontWeight: FontWeight.w900,
-                    )),
+                title: Text(
+                  'Reset app',
+                  style: TextStyle(
+                    color: cs.error,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
                 subtitle: const Text(
                   'Erase local career data and return to first-time setup.',
                 ),
@@ -115,7 +192,10 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        icon: Icon(Icons.delete_forever, color: Theme.of(context).colorScheme.error),
+        icon: Icon(
+          Icons.delete_forever,
+          color: Theme.of(context).colorScheme.error,
+        ),
         title: const Text('Final confirmation'),
         content: const Text(
           'This action cannot be undone. The app will reopen at first-time setup.',
@@ -147,7 +227,9 @@ class _SettingsPageState extends State<SettingsPage> {
     }
     setState(() => _resetting = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('The app could not be fully reset. Please try again.')),
+      const SnackBar(
+        content: Text('The app could not be fully reset. Please try again.'),
+      ),
     );
   }
 }
@@ -160,21 +242,26 @@ class _SettingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(title,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          title,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: cs.onSurfaceVariant,
                 fontWeight: FontWeight.w900,
-              )),
-      const SizedBox(height: 8),
-      Container(
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          border: Border.all(color: cs.outline.withValues(alpha: .14)),
+              ),
         ),
-        child: Column(children: children),
-      ),
-    ]);
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border: Border.all(color: cs.outline.withValues(alpha: .14)),
+          ),
+          child: Column(children: children),
+        ),
+      ],
+    );
   }
 }

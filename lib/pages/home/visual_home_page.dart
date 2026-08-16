@@ -15,6 +15,7 @@ import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/pages/profile/us_state_picker_sheet.dart';
+import 'package:firepath/widgets/progress_ring.dart';
 
 class VisualHomePage extends StatefulWidget {
   const VisualHomePage({super.key});
@@ -900,7 +901,7 @@ class _DailyFocusCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Pick 15 min, 30 min, 1 hour, or a crew drill. Career Road builds the session around your Next Best Step.',
+                      'Pick 15 min, 30 min, 1 hour, or a crew drill. Career Road builds a Learn → Practice → Record session around your Next Best Step.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: cs.onSurfaceVariant,
                         height: 1.4,
@@ -1068,22 +1069,11 @@ class _CareerCommandCard extends StatelessWidget {
                 ),
               ),
               if (hasGoal)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 11,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '$readiness%',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: cs.onPrimaryContainer,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+                ProgressRing(
+                  progress: progress,
+                  size: 52,
+                  strokeWidth: 5,
+                  centerLabel: '$readiness%',
                 ),
             ],
           ),

@@ -10,6 +10,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/services/advancement_analyzer.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/state/app_state.dart';
+import 'package:firepath/widgets/status_pill.dart';
 
 class CareerHubPage extends StatefulWidget {
   const CareerHubPage({super.key});
@@ -885,7 +886,7 @@ class _EvidenceGapCard extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
-                _StatusPill(text: status.statusLabel),
+                StatusPill(text: status.statusLabel),
               ],
             ),
             const SizedBox(height: 6),
@@ -1019,7 +1020,7 @@ class _StoryCard extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
-                _StatusPill(text: ready ? 'Story ready' : 'Add detail'),
+                StatusPill(text: ready ? 'Story ready' : 'Add detail'),
               ],
             ),
             const SizedBox(height: 5),
@@ -1118,31 +1119,6 @@ class _SectionHeading extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  final String text;
-
-  const _StatusPill({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 155),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.labelSmall,
-      ),
     );
   }
 }

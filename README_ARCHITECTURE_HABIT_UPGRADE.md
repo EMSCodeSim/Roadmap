@@ -14,12 +14,12 @@ The following types previously lived inside `lib/state/app_state.dart` and are n
 - `Roadmap` (including `nextStep` / progress helpers)
 - `PendingCertMatch`
 
-**New file:** `lib/models/roadmap_models.dart`
+**File:** `lib/models/roadmap_models.dart`
 
-`AppState` now imports these models instead of defining them. This makes the domain reusable by services, PDF export, tests, and future controllers without depending on the full `ChangeNotifier`.
+`AppState` imports and re-exports these models so existing `import '.../app_state.dart'` call sites keep working while services and unit tests can depend on the domain layer directly.
 
 ### 2. Shared UI primitives
-Three small, reusable widgets were added so large pages stop re-implementing the same patterns:
+Reusable widgets so large pages stop re-implementing the same patterns:
 
 | Widget | Purpose |
 |--------|---------|
@@ -32,6 +32,8 @@ Three small, reusable widgets were added so large pages stop re-implementing the
 - `lib/widgets/progress_ring.dart`
 - `lib/widgets/section_header.dart`
 
+`VisualHomePage` Career Readiness now uses `ProgressRing`. Advance hub status chips use `StatusPill`.
+
 ### 3. Notification preferences scaffold
 `NotificationPreferencesStore` stores local toggles for:
 
@@ -39,39 +41,42 @@ Three small, reusable widgets were added so large pages stop re-implementing the
 - Certification expiry alerts
 - Target-date risk alerts
 
-No OS notification permission or scheduling is wired yet. This is the data layer only so a later upgrade can add `flutter_local_notifications` without another data-model change.
+Settings exposes these toggles. OS notification permission/scheduling is still not wired — this is the data layer so a later upgrade can add `flutter_local_notifications` without another model change.
 
 **File:** `lib/services/notification_preferences_store.dart`
 
 ### 4. Daily Focus copy clarity
-Visual Home Daily Focus helper text now explicitly names the session loop: **Learn → Practice → Record**.
+Visual Home Daily Focus helper text explicitly names the session loop: **Learn → Practice → Record**.
+
+### 5. Legacy page cleanup
+Removed unused parallel implementations that were no longer routed:
+
+- `lib/pages/home/home_page.dart`
+- `lib/pages/onboarding/onboarding_flow_page.dart`
+- `lib/pages/shell/app_shell_v2_page.dart`
+- `lib/pages/career/career_record_page.dart`
+
+### 6. Banner asset filename fix
+Renamed the corrupted `career_road_bannejpg` asset to `career_road_banner.jpg` and registered both banner assets in `pubspec.yaml`.
 
 ## Why this matters
 
 - `AppState` dropped from ~1,600 lines toward a thinner coordinator role.
-- Domain logic can be unit-tested without UI or `ChangeNotifier`.
+- Domain logic can be unit-tested without UI or `ChangeNotifier` (`test/roadmap_models_test.dart`).
 - Future work (Riverpod/Bloc split, Isar/Drift migration, real local notifications) has cleaner seams.
 - UI consistency improves as pages adopt the shared widgets.
 
-## How to apply
-
-```bash
-python3 tools/apply_architecture_habit_upgrade.py
-dart format lib/models/roadmap_models.dart lib/state/app_state.dart lib/widgets lib/services/notification_preferences_store.dart
-flutter analyze
-flutter test
-```
-
 ## Follow-on work (recommended next upgrades)
 
-1. Adopt `ProgressRing` + `StatusPill` on `VisualHomePage` Career Readiness and Cert cards.
-2. Split remaining AppState responsibilities into focused controllers (`ProfileController`, `CertificationsController`, `TaskBookController`, `CareerRecordController`).
-3. Move `FireOpsCatalog` static data into JSON/YAML assets.
-4. Wire `flutter_local_notifications` on top of `NotificationPreferencesStore`.
-5. Expand widget tests around `Roadmap.nextStep` and the Daily Focus → Record path.
+1. Split remaining AppState responsibilities into focused controllers (`ProfileController`, `CertificationsController`, `TaskBookController`, `CareerRecordController`).
+2. Move `FireOpsCatalog` static data into JSON/YAML assets.
+3. Wire `flutter_local_notifications` on top of `NotificationPreferencesStore`.
+4. Expand widget tests around the Daily Focus → Record path.
+5. Retire remaining legacy log routes (`/log/legacy`, vault/hub duplicates) once product confirms no deep-link dependency.
 
 ## Compatibility
 
 - No portfolio schema change.
 - No SharedPreferences key changes except the new optional notification preference keys.
 - Existing backups and task-book progress remain valid.
+- `AppState` still re-exports roadmap models for backwards-compatible imports.
