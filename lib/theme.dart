@@ -147,9 +147,30 @@ class DarkModeColors {
 /// Semantic colors used across FireOps Path UI (status + header)
 class FireOpsSemanticColors {
   static const headerDark = Color(0xFF0B1A24);
-  static const completed = Color(0xFF2E7D32);
-  static const warning = Color(0xFFFFA000);
-  static const expired = Color(0xFFD32F2F);
+
+  // Status semantics used across Task Book + Certs.
+  // Keep these consistent so status is instantly readable.
+  static const current = Color(0xFF1B5E20); // deep green
+  static const expiring = Color(0xFFF59E0B); // amber
+  static const expired = Color(0xFFB91C1C); // red
+  static const complete = Color(0xFF166534); // green (slightly different from current)
+
+  // Back-compat (older references)
+  static const completed = complete;
+  static const warning = expiring;
+}
+
+/// Shared card styling tokens.
+///
+/// Prefer using `Card` (Theme.cardTheme) for most containers. When a widget
+/// needs a manual decoration (e.g., Material+InkWell), keep its radius/border
+/// aligned to these constants.
+class AppCardTokens {
+  static const double borderAlpha = 0.14;
+  static const double subtleBorderAlpha = 0.10;
+  static const double toneBorderAlpha = 0.28;
+  static const EdgeInsets padding = AppSpacing.paddingMd;
+  static const double radius = AppRadius.lg;
 }
 
 /// Font size constants
@@ -205,9 +226,9 @@ ThemeData get lightTheme => ThemeData(
   cardTheme: CardThemeData(
     elevation: 0,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppCardTokens.radius),
       side: BorderSide(
-        color: LightModeColors.lightOutline.withValues(alpha: 0.2),
+        color: LightModeColors.lightOutline.withValues(alpha: AppCardTokens.borderAlpha),
         width: 1,
       ),
     ),
@@ -246,9 +267,9 @@ ThemeData get darkTheme => ThemeData(
   cardTheme: CardThemeData(
     elevation: 0,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppCardTokens.radius),
       side: BorderSide(
-        color: DarkModeColors.darkOutline.withValues(alpha: 0.2),
+        color: DarkModeColors.darkOutline.withValues(alpha: AppCardTokens.borderAlpha),
         width: 1,
       ),
     ),

@@ -10,11 +10,13 @@ import 'package:firepath/models/quick_log_template.dart';
 import 'package:firepath/models/quick_log_tracker.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/task_book.dart';
+import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/apparatus_profile_store.dart';
 import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/services/quick_log_preferences_store.dart';
 import 'package:firepath/services/task_book_library.dart';
+import 'package:firepath/services/quick_log_path_suggester.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
@@ -84,13 +86,17 @@ class _QuickLogSheetState extends State<QuickLogSheet> {
     pinnedKeys: QuickLogCatalog.defaultsFor(QuickLogRolePreset.firefighter),
     customTrackers: const <QuickLogTracker>[],
   );
+  List<String> _quickActionKeys =
+      QuickLogPreferencesStore.defaultQuickActionKeys;
   bool _loading = true;
   QuickLogMode? _mode;
   CareerRecord? _seed;
+  LogPrefill? _activePrefill;
 
   @override
   void initState() {
     super.initState();
+    _activePrefill = widget.prefill;
     _init();
   }
 
@@ -102,16 +108,36 @@ class _QuickLogSheetState extends State<QuickLogSheet> {
       if (!mounted) return;
       setState(() {
         _config = _configFromPreferences(preferences);
+        _quickActionKeys = preferences.quickActionKeys.isEmpty
+            ? QuickLogPreferencesStore.defaultQuickActionKeys
+            : preferences.quickActionKeys;
         _records = records;
         _loading = false;
-        if (widget.prefill?.relatedRequirementId != null ||
-            widget.prefill?.relatedTaskId != null) {
-          _mode = QuickLogMode.taskBookProgress;
-        }
+        _applyPrefillAutoSelection();
       });
     } catch (e) {
       debugPrint('QuickLog init failed: $e');
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _applyPrefillAutoSelection() {
+    final prefill = _activePrefill;
+    if (prefill == null) return;
+
+    // If a trackerKey is supplied, jump directly to that template.
+    final key = prefill.trackerKey;
+    if (key != null && key.trim().isNotEmpty) {
+      final tracker = QuickLogCatalog.byKey(key.trim(), _config.customTrackers);
+      if (tracker != null) {
+        _openPinnedTracker(tracker);
+        return;
+      }
+    }
+
+    // Otherwise, if we're linked to a requirement/task, default to Task Book mode.
+    if (prefill.relatedRequirementId != null || prefill.relatedTaskId != null) {
+      _mode = QuickLogMode.taskBookProgress;
     }
   }
 
@@ -153,6 +179,8 @@ class _QuickLogSheetState extends State<QuickLogSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final state = context.watch<AppState>();
+    final pathSuggestions = QuickLogPathSuggester.suggestionsFor(state);
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: AnimatedSwitcher(
@@ -162,6 +190,14 @@ class _QuickLogSheetState extends State<QuickLogSheet> {
                 loading: _loading,
                 pinned: _pinnedTrackers,
                 recent: _recentRecords,
+                quickActionKeys: _quickActionKeys,
+                pathSuggestions: pathSuggestions,
+                onPickSuggestion: (suggestion) => setState(() {
+                  _activePrefill = suggestion.prefill;
+                  _seed = null;
+                  _mode = null;
+                  _applyPrefillAutoSelection();
+                }),
                 onPickMode: (mode) => setState(() {
                   _seed = null;
                   _mode = mode;
@@ -171,7 +207,7 @@ class _QuickLogSheetState extends State<QuickLogSheet> {
               )
             : _QuickLogForm(
                 mode: _mode!,
-                prefill: widget.prefill,
+                prefill: _activePrefill,
                 seed: _seed,
                 onBack: () => setState(() {
                   _seed = null;
@@ -255,6 +291,9 @@ class _Chooser extends StatelessWidget {
   final bool loading;
   final List<QuickLogTracker> pinned;
   final List<CareerRecord> recent;
+  final List<String> quickActionKeys;
+  final List<QuickLogPathSuggestion> pathSuggestions;
+  final ValueChanged<QuickLogPathSuggestion> onPickSuggestion;
   final ValueChanged<QuickLogMode> onPickMode;
   final ValueChanged<QuickLogTracker> onPickPinned;
   final ValueChanged<CareerRecord> onPickRecent;
@@ -263,22 +302,28 @@ class _Chooser extends StatelessWidget {
     required this.loading,
     required this.pinned,
     required this.recent,
+    required this.quickActionKeys,
+    required this.pathSuggestions,
+    required this.onPickSuggestion,
     required this.onPickMode,
     required this.onPickPinned,
     required this.onPickRecent,
   });
 
+  static const List<(String, String, IconData, QuickLogMode?)>
+      _defaultQuickActions = <(String, String, IconData, QuickLogMode?)>[
+    ('call', 'CALL', Icons.local_fire_department_outlined, QuickLogMode.callIncident),
+    ('training', 'TRAINING', Icons.school_outlined, QuickLogMode.training),
+    ('skill', 'SKILL', Icons.handyman_outlined, QuickLogMode.skill),
+    ('drive', 'DRIVE', Icons.local_shipping_outlined, QuickLogMode.driveTime),
+    ('task_book', 'TASK BOOK', Icons.fact_check_outlined, QuickLogMode.taskBookProgress),
+    ('career', 'CAREER', Icons.military_tech_outlined, null),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    const primary = <(String, IconData, QuickLogMode?)>[
-      ('CALL', Icons.local_fire_department_outlined, QuickLogMode.callIncident),
-      ('TRAINING', Icons.school_outlined, QuickLogMode.training),
-      ('SKILL', Icons.handyman_outlined, QuickLogMode.skill),
-      ('DRIVE', Icons.local_shipping_outlined, QuickLogMode.driveTime),
-      ('TASK BOOK', Icons.fact_check_outlined, QuickLogMode.taskBookProgress),
-      ('CAREER', Icons.military_tech_outlined, null),
-    ];
+    final primary = _resolveQuickActions(quickActionKeys);
     return ListView(
       key: const ValueKey('quick_log_chooser'),
       shrinkWrap: true,
@@ -300,6 +345,49 @@ class _Chooser extends StatelessWidget {
           const LinearProgressIndicator(),
         ],
         const SizedBox(height: 18),
+        if (pathSuggestions.isNotEmpty) ...[
+          _SectionLabel('NEXT UP — ONE TAP'),
+          const SizedBox(height: 8),
+          ...pathSuggestions.map(
+            (s) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: FilledButton.tonalIcon(
+                onPressed: () => onPickSuggestion(s),
+                icon: Icon(s.icon, size: 18),
+                label: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      s.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                style: FilledButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  alignment: Alignment.centerLeft,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         _SectionLabel('WHAT ARE YOU LOGGING?'),
         const SizedBox(height: 8),
         GridView.builder(
@@ -315,9 +403,9 @@ class _Chooser extends StatelessWidget {
           itemBuilder: (context, index) {
             final item = primary[index];
             return FilledButton.tonal(
-              onPressed: () => item.$3 == null
+              onPressed: () => item.$4 == null
                   ? _chooseCareerType(context)
-                  : onPickMode(item.$3!),
+                  : onPickMode(item.$4!),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.all(14),
                 alignment: Alignment.centerLeft,
@@ -329,9 +417,9 @@ class _Chooser extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(item.$2, size: 27),
+                  Icon(item.$3, size: 27),
                   const SizedBox(height: 8),
-                  Text(item.$1,
+                  Text(item.$2,
                       style: const TextStyle(fontWeight: FontWeight.w900)),
                 ],
               ),
@@ -398,6 +486,20 @@ class _Chooser extends StatelessWidget {
     );
   }
 
+  static List<(String, String, IconData, QuickLogMode?)> _resolveQuickActions(
+      List<String> keys) {
+    final lookup = {
+      for (final item in _defaultQuickActions) item.$1: item,
+    };
+    final resolved = <(String, String, IconData, QuickLogMode?)>[];
+    for (final key in keys) {
+      final item = lookup[key];
+      if (item != null) resolved.add(item);
+    }
+    if (resolved.isNotEmpty) return resolved;
+    return _defaultQuickActions;
+  }
+
   Future<void> _chooseCareerType(BuildContext context) async {
     final mode = await showModalBottomSheet<QuickLogMode>(
       context: context,
@@ -425,7 +527,7 @@ class _Chooser extends StatelessWidget {
                 leading: Icon(mode.icon),
                 title: Text(mode.label),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.pop(context, mode),
+                onTap: () => context.pop(mode),
               ),
           ]),
         ),
@@ -767,12 +869,8 @@ class _QuickLogFormState extends State<_QuickLogForm> {
   Requirement? _linkedRequirement(AppState state) {
     final id = _taskLink?.relatedRequirementId;
     final goalId = _taskLink?.relatedGoalId;
-    final roadmap = state.roadmap;
-    if (id == null || goalId == null || roadmap?.goal.id != goalId) return null;
-    return roadmap!.all
-        .where((item) => item.requirement.id == id)
-        .map((item) => item.requirement)
-        .firstOrNull;
+    if (id == null || goalId == null) return null;
+    return _resolveRequirement(state, goalId: goalId, requirementId: id);
   }
 
   bool _usesHours(AppState state) {
@@ -1178,26 +1276,30 @@ class _QuickLogFormState extends State<_QuickLogForm> {
   Future<void> _chooseTaskBookTarget() async {
     final state = context.read<AppState>();
     final roadmap = state.roadmap;
-    if (roadmap == null) {
-      _message('Choose a career goal before linking Task Book progress.');
+    final activeCustom = state.activeCustomTaskBook;
+
+    // Respect whichever Task Book is active.
+    final (goalId, goalTitle, orderedRequirements) = activeCustom != null
+        ? (
+            activeCustom.pseudoGoalId,
+            activeCustom.name,
+            _orderCustomRequirements(state, goalId: activeCustom.pseudoGoalId, requirements: activeCustom.requirements),
+          )
+        : (roadmap == null
+            ? (null, null, null)
+            : (roadmap.goal.id, roadmap.goal.title, _orderRoadmapRequirements(roadmap)));
+
+    if (goalId == null || goalTitle == null || orderedRequirements == null) {
+      _message('Choose a career goal (or activate a custom Task Book) before linking progress.');
       return;
     }
 
     final choices = <_TaskChoice>[];
-    final ordered = <RoadmapRequirement>[
-      if (roadmap.nextStep != null) roadmap.nextStep!,
-      ...roadmap.missing.where(
-          (item) => item.requirement.id != roadmap.nextStep?.requirement.id),
-    ];
 
-    for (final item in ordered) {
-      final requirement = item.requirement;
+    for (final requirement in orderedRequirements) {
       final tasks = [
         ...TaskBookLibrary.tasksForRequirement(requirement),
-        ...state.customTasksFor(
-          goalId: roadmap.goal.id,
-          requirementId: requirement.id,
-        ),
+        ...state.customTasksFor(goalId: goalId, requirementId: requirement.id),
       ];
       if (tasks.isEmpty) {
         choices.add(_TaskChoice(
@@ -1206,7 +1308,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
           prefill: LogPrefill(
             title: requirement.name,
             category: requirement.name,
-            relatedGoalId: roadmap.goal.id,
+            relatedGoalId: goalId,
             relatedRequirementId: requirement.id,
             relatedTaskId: null,
             tags: const ['task-book', 'progress'],
@@ -1215,11 +1317,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
         continue;
       }
       for (final task in tasks) {
-        final status = state.taskStatusFor(
-          goalId: roadmap.goal.id,
-          requirementId: requirement.id,
-          taskId: task.id,
-        );
+        final status = state.taskStatusFor(goalId: goalId, requirementId: requirement.id, taskId: task.id);
         if (status == TaskBookTaskStatus.complete) continue;
         choices.add(_TaskChoice(
           title: task.title,
@@ -1227,7 +1325,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
           prefill: LogPrefill(
             title: task.title,
             category: requirement.name,
-            relatedGoalId: roadmap.goal.id,
+            relatedGoalId: goalId,
             relatedRequirementId: requirement.id,
             relatedTaskId: task.id,
             tags: const ['task-book', 'practice'],
@@ -1242,7 +1340,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (sheetContext) => _TaskPickerSheet(
-        goalTitle: roadmap.goal.title,
+        goalTitle: goalTitle,
         choices: choices,
       ),
     );
@@ -1260,6 +1358,11 @@ class _QuickLogFormState extends State<_QuickLogForm> {
     setState(() => _saving = true);
 
     try {
+      final messenger = ScaffoldMessenger.of(context);
+      final router = GoRouter.of(context);
+      final linkedRequirement = _linkedRequirement(state);
+      final linkedTarget = _resolveLinkedTarget(state, record);
+
       final saved = await widget.onSaveRecord(record);
       if (!saved) {
         _message('This entry could not be saved. Your existing record was not changed.');
@@ -1274,11 +1377,41 @@ class _QuickLogFormState extends State<_QuickLogForm> {
       }
 
       if (!mounted) return;
-      final suffix = taskBookUpdated ? ' • Task Book updated' : '';
-      ScaffoldMessenger.of(context).showSnackBar(
+      final progressBlurb = _progressBlurb(
+        requirement: linkedRequirement,
+        record: record,
+        taskBookUpdated: taskBookUpdated,
+      );
+      messenger.showSnackBar(
         SnackBar(
-          content: Text('Saved: ${record.title}$suffix'),
+          content: Text(progressBlurb),
           behavior: SnackBarBehavior.floating,
+          action: linkedTarget == null
+              ? null
+              : SnackBarAction(
+                  label: linkedTarget.isTask ? 'Task' : 'Requirement',
+                  onPressed: () {
+                    if (linkedTarget.isTask) {
+                      router.push(
+                        AppRoutes.taskDetail,
+                        extra: {
+                          'goalId': linkedTarget.goalId,
+                          'requirementId': linkedTarget.requirementId,
+                          'qualificationName': linkedTarget.qualificationName,
+                          'task': linkedTarget.task,
+                        },
+                      );
+                      return;
+                    }
+                    router.push(
+                      AppRoutes.requirementDetail,
+                      extra: {
+                        'requirement': linkedTarget.requirement,
+                        'goalId': linkedTarget.goalId,
+                      },
+                    );
+                  },
+                ),
         ),
       );
       context.pop();
@@ -1288,6 +1421,29 @@ class _QuickLogFormState extends State<_QuickLogForm> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  static String _progressBlurb({
+    required Requirement? requirement,
+    required CareerRecord record,
+    required bool taskBookUpdated,
+  }) {
+    final base = 'Saved: ${record.title}';
+    if (requirement == null) return base;
+
+    if (requirement.type == RequirementType.numericProgress) {
+      final unit = (requirement.progressUnit ?? '').trim();
+      final delta = record.hours ?? record.repetitions.toDouble();
+      final amount = unit.toLowerCase().contains('hour')
+          ? '${delta.toStringAsFixed(1)}h'
+          : delta.toStringAsFixed(delta % 1 == 0 ? 0 : 1);
+      final suffix = unit.isEmpty ? '' : ' $unit';
+      return '$base • +$amount$suffix toward ${requirement.name}';
+    }
+
+    return taskBookUpdated
+        ? '$base • Task Book advanced for ${requirement.name}'
+        : '$base • Linked to ${requirement.name}';
   }
 
   CareerRecord? _buildRecord(AppState state) {
@@ -1396,8 +1552,18 @@ class _QuickLogFormState extends State<_QuickLogForm> {
     final goalId = record.relatedGoalId;
     final requirementId = record.relatedRequirementId;
     if (goalId == null || requirementId == null) return false;
+
+    // For Career Road, validate the goal match. For custom Task Books, the goalId
+    // is a pseudoGoalId and does not correspond to roadmap.goal.id.
     final roadmap = state.roadmap;
-    if (roadmap == null || roadmap.goal.id != goalId) return false;
+    if (roadmap != null && goalId == roadmap.goal.id) {
+      // ok
+    } else if (state.customTaskBooks.any((b) => b.pseudoGoalId == goalId)) {
+      // ok
+    } else {
+      // Unknown goal context.
+      return false;
+    }
 
     var changed = false;
     final taskId = record.relatedTaskId;
@@ -1418,10 +1584,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
       }
     }
 
-    final requirement = roadmap.all
-        .where((item) => item.requirement.id == requirementId)
-        .map((item) => item.requirement)
-        .firstOrNull;
+    final requirement = _resolveRequirement(state, goalId: goalId, requirementId: requirementId);
     if (requirement?.type == RequirementType.numericProgress &&
         requirement!.progressRequired != null &&
         requirement.progressRequired! > 0) {
@@ -1439,6 +1602,97 @@ class _QuickLogFormState extends State<_QuickLogForm> {
     }
 
     return changed;
+  }
+
+  static List<Requirement> _orderRoadmapRequirements(Roadmap roadmap) {
+    final ordered = <RoadmapRequirement>[
+      if (roadmap.nextStep != null) roadmap.nextStep!,
+      ...roadmap.missing.where((item) => item.requirement.id != roadmap.nextStep?.requirement.id),
+    ];
+    return ordered.map((e) => e.requirement).toList();
+  }
+
+  static List<Requirement> _orderCustomRequirements(
+    AppState state, {
+    required String goalId,
+    required List<Requirement> requirements,
+  }) {
+    final out = <Requirement>[];
+    for (final r in requirements) {
+      final o = state.taskBookController.getOverride(goalId, r.id);
+      final complete = (o?.completed ?? r.completed) == true;
+      if (!complete) out.add(r);
+    }
+    for (final r in requirements) {
+      final o = state.taskBookController.getOverride(goalId, r.id);
+      final complete = (o?.completed ?? r.completed) == true;
+      if (complete) out.add(r);
+    }
+    return out;
+  }
+
+  static Requirement? _resolveRequirement(
+    AppState state, {
+    required String goalId,
+    required String requirementId,
+  }) {
+    final roadmap = state.roadmap;
+    if (roadmap != null && roadmap.goal.id == goalId) {
+      return roadmap.all
+          .where((item) => item.requirement.id == requirementId)
+          .map((item) => item.requirement)
+          .firstOrNull;
+    }
+    final custom = state.customTaskBooks.where((b) => b.pseudoGoalId == goalId).firstOrNull;
+    if (custom != null) {
+      return custom.requirements.where((r) => r.id == requirementId).firstOrNull;
+    }
+    return null;
+  }
+
+  _LinkedTarget? _resolveLinkedTarget(AppState state, CareerRecord record) {
+    final goalId = record.relatedGoalId;
+    final requirementId = record.relatedRequirementId;
+    if (goalId == null || requirementId == null) return null;
+    final requirement = _resolveRequirement(state, goalId: goalId, requirementId: requirementId);
+    if (requirement == null) return null;
+
+    final taskId = record.relatedTaskId;
+    if (taskId == null || taskId.trim().isEmpty) {
+      return _LinkedTarget.requirement(
+        goalId: goalId,
+        requirementId: requirementId,
+        requirement: requirement,
+      );
+    }
+
+    final task = _resolveTaskDefinition(state, goalId: goalId, requirement: requirement, taskId: taskId);
+    if (task == null) {
+      return _LinkedTarget.requirement(goalId: goalId, requirementId: requirementId, requirement: requirement);
+    }
+    return _LinkedTarget.task(
+      goalId: goalId,
+      requirementId: requirementId,
+      requirement: requirement,
+      task: task,
+      qualificationName: record.category,
+    );
+  }
+
+  static TaskBookTaskDefinition? _resolveTaskDefinition(
+    AppState state, {
+    required String goalId,
+    required Requirement requirement,
+    required String taskId,
+  }) {
+    final tasks = <TaskBookTaskDefinition>[
+      ...TaskBookLibrary.tasksForRequirement(requirement),
+      ...state.customTasksFor(goalId: goalId, requirementId: requirement.id),
+    ];
+    for (final t in tasks) {
+      if (t.id == taskId) return t;
+    }
+    return null;
   }
 
   void _message(String text) {
@@ -1721,4 +1975,48 @@ IconData _trackerIcon(String name) => switch (name) {
 
 extension _FirstOrNull<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
+}
+
+class _LinkedTarget {
+  final String goalId;
+  final String requirementId;
+  final Requirement requirement;
+  final TaskBookTaskDefinition? task;
+  final String? qualificationName;
+
+  bool get isTask => task != null;
+
+  const _LinkedTarget._({
+    required this.goalId,
+    required this.requirementId,
+    required this.requirement,
+    required this.task,
+    required this.qualificationName,
+  });
+
+  factory _LinkedTarget.requirement({
+    required String goalId,
+    required String requirementId,
+    required Requirement requirement,
+  }) => _LinkedTarget._(
+        goalId: goalId,
+        requirementId: requirementId,
+        requirement: requirement,
+        task: null,
+        qualificationName: null,
+      );
+
+  factory _LinkedTarget.task({
+    required String goalId,
+    required String requirementId,
+    required Requirement requirement,
+    required TaskBookTaskDefinition task,
+    required String? qualificationName,
+  }) => _LinkedTarget._(
+        goalId: goalId,
+        requirementId: requirementId,
+        requirement: requirement,
+        task: task,
+        qualificationName: qualificationName,
+      );
 }

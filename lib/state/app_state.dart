@@ -1,5 +1,9 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:firepath/controllers/career_record_controller.dart';
+import 'package:firepath/controllers/certification_controller.dart';
+import 'package:firepath/controllers/profile_controller.dart';
+import 'package:firepath/controllers/task_book_controller.dart';
 import 'package:firepath/models/career_goal.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/certification.dart';
@@ -7,117 +11,51 @@ import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/roadmap_models.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/services/catalog.dart';
-import 'package:firepath/services/state_requirement_catalog.dart';
 import 'package:firepath/services/local_store.dart';
 import 'package:firepath/services/timeline_planner.dart';
 import 'package:firepath/models/task_book.dart';
-import 'package:firepath/services/task_book_store.dart';
+import 'package:firepath/models/custom_task_book.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
 
 export 'package:firepath/models/roadmap_models.dart';
 
 class AppState extends ChangeNotifier {
+  AppState()
+      : profileController = ProfileController(),
+        certificationController = CertificationController(),
+        taskBookController = TaskBookController(),
+        careerRecordController = CareerRecordController() {
+    profileController.addListener(notifyListeners);
+    certificationController.addListener(notifyListeners);
+    taskBookController.addListener(notifyListeners);
+    careerRecordController.addListener(notifyListeners);
+  }
+
   final LocalStore _store = LocalStore();
-  final TaskBookStore _taskBookStore = TaskBookStore();
 
-  Map<String, String> _certMatchConfirmations = <String, String>{};
-  final List<PendingCertMatch> _pendingCertMatches = <PendingCertMatch>[];
-
-  List<PendingCertMatch> get pendingCertMatches =>
-      List.unmodifiable(_pendingCertMatches);
+  final ProfileController profileController;
+  final CertificationController certificationController;
+  final TaskBookController taskBookController;
+  final CareerRecordController careerRecordController;
 
   bool _bootstrapped = false;
-  bool _onboardingComplete = false;
-
-  UserProfile _profile = UserProfile.empty();
-  final Map<String, Certification> _certsById = {};
-  final List<Requirement> _customRequirements = [];
-  final List<PathRequirementOverride> _overrides = [];
-
-  // Task Book
-  final Map<String, TaskBookTaskProgress> _taskProgressByKey =
-      <String, TaskBookTaskProgress>{};
-  final List<TaskBookTaskDefinition> _customTasks = <TaskBookTaskDefinition>[];
 
   bool get bootstrapped => _bootstrapped;
-  bool get onboardingComplete => _onboardingComplete;
-  UserProfile get profile => _profile;
-  List<Certification> get certifications => _certsById.values.toList()
-    ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-  List<Requirement> get customRequirements =>
-      List.unmodifiable(_customRequirements);
-  List<PathRequirementOverride> get pathOverrides =>
-      List.unmodifiable(_overrides);
+  bool get onboardingComplete => profileController.onboardingComplete;
+  UserProfile get profile => profileController.profile;
+  List<Certification> get certifications => certificationController.certifications;
+  List<PendingCertMatch> get pendingCertMatches => certificationController.pendingCertMatches;
+  List<Requirement> get customRequirements => taskBookController.customRequirements;
+  List<PathRequirementOverride> get pathOverrides => taskBookController.pathOverrides;
+  Map<String, TaskBookTaskProgress> get taskBookProgressByKey => taskBookController.taskBookProgressByKey;
+  List<TaskBookTaskDefinition> get taskBookCustomTasks => taskBookController.taskBookCustomTasks;
+  List<CustomTaskBook> get customTaskBooks => taskBookController.customTaskBooks;
+  String? get activeTaskBookId => taskBookController.activeTaskBookId;
+  CustomTaskBook? get activeCustomTaskBook => taskBookController.activeCustomTaskBook;
 
-  Map<String, TaskBookTaskProgress> get taskBookProgressByKey =>
-      Map.unmodifiable(_taskProgressByKey);
-  List<TaskBookTaskDefinition> get taskBookCustomTasks =>
-      List.unmodifiable(_customTasks);
-
-  List<CareerGoal> get availableGoals => FireOpsCatalog.goals();
+  List<CareerGoal> get availableGoals => profileController.availableGoals;
   CareerGoal? get selectedGoal {
-    final id = profile.primaryGoalId;
-    if (id == null) return null;
-    final existing =
-        availableGoals.where((g) => g.id == id).cast<CareerGoal?>().firstOrNull;
-    if (existing != null) {
-      final stateCode = FireOpsCatalog.stateCodeFromLegacyValue(profile.state);
-      if (stateCode == null || stateCode == FireOpsCatalog.otherStateCode) {
-        return existing;
-      }
-
-      final baseById = {for (final r in existing.requirements) r.id: r};
-      final verified = StateRequirementCatalog.buildVerifiedRequirements(
-        stateCode: stateCode,
-        careerGoalId: existing.id,
-        baseRequirementById: baseById,
-      );
-      if (verified.isEmpty) return existing;
-
-      final merged = [...existing.requirements];
-      for (final r in verified) {
-        final idx = merged.indexWhere((e) => e.id == r.id);
-        if (idx >= 0) {
-          merged[idx] = r;
-        } else {
-          merged.add(r);
-        }
-      }
-      merged.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-      return CareerGoal(
-        id: existing.id,
-        title: existing.title,
-        category: existing.category,
-        description: existing.description,
-        subtitle: existing.subtitle,
-        typicalPrerequisiteRoles: existing.typicalPrerequisiteRoles,
-        requirements: merged,
-        recommendedExperience: existing.recommendedExperience,
-        resourceIds: existing.resourceIds,
-        nextRoles: existing.nextRoles,
-        createdAt: existing.createdAt,
-        updatedAt: existing.updatedAt,
-      );
-    }
-    if (id.startsWith('custom:')) {
-      final name = id.substring('custom:'.length).trim();
-      final now = DateTime.now();
-      return CareerGoal(
-        id: id,
-        title: name.isEmpty ? 'Custom Goal' : name,
-        category: 'Custom',
-        description: 'A custom goal you created.',
-        subtitle: null,
-        typicalPrerequisiteRoles: const [],
-        requirements: const [],
-        recommendedExperience: const [],
-        resourceIds: const [],
-        nextRoles: const [],
-        createdAt: now,
-        updatedAt: now,
-      );
-    }
-    return null;
+    return profileController.selectedGoalResolved();
   }
 
   Roadmap? get roadmap {
@@ -144,13 +82,13 @@ class AppState extends ChangeNotifier {
           };
       if (rank(next) < rank(current)) certStatusByDefId[defId] = next;
     }
-    final goalCustom = _customRequirements
+    final goalCustom = customRequirements
         .where((r) => r.id.startsWith('${goal.id}::'))
         .toList();
     final allReqsRaw = [...goal.requirements, ...goalCustom];
 
     final overrideByReqId = {
-      for (final o in _overrides
+      for (final o in pathOverrides
           .where((o) => o.goalId == goal.id && o.requirementId.isNotEmpty))
         o.requirementId: o,
     };
@@ -211,31 +149,16 @@ class AppState extends ChangeNotifier {
 
   Future<void> bootstrap() async {
     try {
-      _onboardingComplete = await _store.getOnboardingComplete();
-
-      final confirmationsRaw =
-          await _store.loadCertificationMatchConfirmations();
-      _certMatchConfirmations = confirmationsRaw
-          .map((k, v) => MapEntry(k, (v as String?) ?? ''))
-          .cast<String, String>();
-
-      final profileJson = await _store.loadProfile();
-      _profile = profileJson == null
-          ? UserProfile.empty()
-          : UserProfile.fromJson(profileJson);
-
-      // Silent migration: normalize state to a canonical code.
-      final normalizedState =
-          FireOpsCatalog.stateCodeFromLegacyValue(_profile.state);
-      if (normalizedState != _profile.state) {
-        _profile = _profile.copyWith(state: normalizedState);
-        await _persistAll();
-      }
+      await profileController.bootstrap();
 
       // Keep a record for state-change detection prompts.
+      // (Preserved behavior; the controller also attempts this, but we keep this
+      // as a belt-and-suspenders guard for legacy devices.)
       try {
         final setup = TaskBookSetupStore();
         final last = await setup.lastKnownState();
+        final normalizedState =
+            FireOpsCatalog.stateCodeFromLegacyValue(profile.state);
         if ((last ?? '').trim().isEmpty && (normalizedState ?? '').trim().isNotEmpty) {
           await setup.setLastKnownState(normalizedState);
         }
@@ -243,57 +166,14 @@ class AppState extends ChangeNotifier {
         debugPrint('AppState.bootstrap lastKnownState init failed: $e');
       }
 
-      final certJsonList = await _store.loadCertifications();
-      _certsById.clear();
-      for (final m in certJsonList) {
-        try {
-          final cert = Certification.fromJson(m);
-          if (cert.id.isNotEmpty) _certsById[cert.id] = cert;
-        } catch (e) {
-          debugPrint('Skipping invalid certification entry: $e');
-        }
-      }
-
-      // Silent migration: try to map existing certifications to stable definition IDs.
-      await _migrateCertifications();
+      await certificationController.bootstrap();
 
       assert(() {
         FireOpsCatalog.validateCatalog();
         return true;
       }());
 
-      final reqJsonList = await _store.loadCustomRequirements();
-      _customRequirements
-        ..clear()
-        ..addAll(reqJsonList.map((e) {
-          try {
-            return Requirement.fromJson(e);
-          } catch (_) {
-            return null;
-          }
-        }).whereType<Requirement>());
-
-      final overridesJson = await _store.loadPathOverrides();
-      _overrides
-        ..clear()
-        ..addAll(overridesJson
-            .map((e) {
-              try {
-                return PathRequirementOverride.fromJson(e);
-              } catch (_) {
-                return null;
-              }
-            })
-            .whereType<PathRequirementOverride>()
-            .where((o) => o.goalId.isNotEmpty && o.requirementId.isNotEmpty));
-
-       // Task Book data (task-level progress + user custom tasks).
-       _taskProgressByKey
-         ..clear()
-         ..addAll(await _taskBookStore.loadProgress());
-       _customTasks
-         ..clear()
-         ..addAll(await _taskBookStore.loadCustomTasks());
+      await taskBookController.bootstrap();
 
       // Sanitize writes back to prevent repeated decode problems.
       await _persistAll();
@@ -311,134 +191,43 @@ class AppState extends ChangeNotifier {
     final cleared = await _store.resetAppData();
     if (!cleared) return false;
 
-    _onboardingComplete = false;
-    _profile = UserProfile.empty();
-    _certsById.clear();
-    _customRequirements.clear();
-    _overrides.clear();
-    _taskProgressByKey.clear();
-    _customTasks.clear();
-    _certMatchConfirmations.clear();
-    _pendingCertMatches.clear();
+    await profileController.setOnboardingComplete(false);
+    await profileController.setProfile(UserProfile.empty());
+    await certificationController.replaceAll(const []);
+    await taskBookController.bootstrap();
     _bootstrapped = true;
     notifyListeners();
     return true;
   }
 
-  Future<void> _migrateCertifications() async {
-    _pendingCertMatches.clear();
-    if (_certsById.isEmpty) return;
-
-    final updated = <String, Certification>{};
-    bool changed = false;
-
-    for (final entry in _certsById.entries) {
-      final cert = entry.value;
-      if (cert.certificationDefinitionId != null &&
-          cert.certificationDefinitionId!.isNotEmpty) {
-        updated[entry.key] = cert;
-        continue;
-      }
-
-      final normalized = FireOpsCatalog.normalizeCertificationText(cert.name);
-      final confirmed = _certMatchConfirmations[normalized];
-      if (confirmed != null) {
-        if (confirmed.isEmpty) {
-          updated[entry.key] = cert; // user said "no match"
-        } else {
-          updated[entry.key] = cert.copyWith(
-              certificationDefinitionId: confirmed, updatedAt: DateTime.now());
-          changed = true;
-        }
-        continue;
-      }
-
-      final direct = FireOpsCatalog.matchCertificationDefinitionId(cert.name);
-      if (direct != null) {
-        updated[entry.key] = cert.copyWith(
-            certificationDefinitionId: direct, updatedAt: DateTime.now());
-        changed = true;
-        continue;
-      }
-
-      // If we can't confidently match, keep as-is but allow later user confirmation.
-      final suggestion = _suggestDefinitionId(cert.name);
-      if (suggestion != null) {
-        _pendingCertMatches.add(PendingCertMatch(
-            certId: cert.id,
-            userText: cert.name,
-            suggestedDefinitionId: suggestion));
-      }
-      updated[entry.key] = cert;
-    }
-
-    if (changed) {
-      _certsById
-        ..clear()
-        ..addAll(updated);
-    }
-  }
-
-  String? _suggestDefinitionId(String userText) {
-    // Conservative: if normalization matches exactly one display/alias after stripping common prefixes.
-    final norm = FireOpsCatalog.normalizeCertificationText(userText);
-    if (norm.isEmpty) return null;
-
-    final defs = FireOpsCatalog.certificationDefinitions();
-    final matches = <String>[];
-    for (final d in defs) {
-      final aliasNorms = <String>{
-        FireOpsCatalog.normalizeCertificationText(d.displayName),
-        if (d.shortName != null)
-          FireOpsCatalog.normalizeCertificationText(d.shortName!),
-        ...d.aliases.map(FireOpsCatalog.normalizeCertificationText),
-      };
-      if (aliasNorms.any((a) => a == norm)) {
-        matches.add(d.id);
-      }
-    }
-    if (matches.length == 1) return matches.first;
-    return null;
-  }
-
   Future<void> confirmCertificationMatch(
-      {required String userText,
-      required String suggestedDefinitionId,
-      required bool accepted}) async {
-    final norm = FireOpsCatalog.normalizeCertificationText(userText);
-    _certMatchConfirmations[norm] = accepted ? suggestedDefinitionId : '';
-    await _store.saveCertificationMatchConfirmations(_certMatchConfirmations);
+          {required String userText,
+          required String suggestedDefinitionId,
+          required bool accepted}) =>
+      certificationController.confirmMatch(
+          userText: userText,
+          suggestedDefinitionId: suggestedDefinitionId,
+          accepted: accepted);
 
-    if (accepted) {
-      final id = suggestedDefinitionId;
-      for (final k in _certsById.keys.toList()) {
-        final c = _certsById[k]!;
-        if (c.certificationDefinitionId == null &&
-            FireOpsCatalog.normalizeCertificationText(c.name) == norm) {
-          _certsById[k] = c.copyWith(
-              certificationDefinitionId: id, updatedAt: DateTime.now());
-        }
-      }
-      await _persistAll();
-    }
+  String certificationDisplayName(Certification c) =>
+      certificationController.displayName(c);
 
-    _pendingCertMatches.removeWhere(
-        (m) => FireOpsCatalog.normalizeCertificationText(m.userText) == norm);
-    notifyListeners();
-  }
-
-  String certificationDisplayName(Certification c) {
-    final defId = c.certificationDefinitionId;
-    if (defId != null) {
-      final def = FireOpsCatalog.certificationById()[defId];
-      if (def != null) return def.displayName;
-    }
-    return c.name;
+  /// Rebuilds/prunes Task Book bookkeeping after a state change.
+  ///
+  /// The requirement list itself is derived dynamically from the selected goal
+  /// + current profile state + custom/department requirements. This “rebuild”
+  /// cleans up stale overrides that reference requirements that no longer
+  /// apply under the new state.
+  Future<void> rebuildTaskBookForCurrentState() async {
+    final r = roadmap;
+    if (r == null) return;
+    final keep = r.all.map((e) => e.requirement.id).where((e) => e.trim().isNotEmpty).toSet();
+    await taskBookController.pruneOverridesForGoal(goalId: r.goal.id, keepRequirementIds: keep);
   }
 
   void _ensureCustomGoalStarterRequirements(String? goalId) {
     if (goalId == null || !goalId.startsWith('custom:')) return;
-    if (_customRequirements.any((r) => r.id.startsWith('$goalId::'))) return;
+    if (customRequirements.any((r) => r.id.startsWith('$goalId::'))) return;
 
     final now = DateTime.now();
     Requirement starter({
@@ -485,7 +274,8 @@ class AppState extends ChangeNotifier {
       );
     }
 
-    _customRequirements.addAll([
+    // Fire-and-forget; AppState callers already await persistence actions.
+    final starters = <Requirement>[
       starter(
         suffix: 'define_eligibility',
         name: 'Define eligibility requirements',
@@ -526,266 +316,241 @@ class AppState extends ChangeNotifier {
         sortOrder: 40,
         timelineCategory: TimelineCategory.promotionalPreparation,
       ),
-    ]);
+    ];
+
+    for (final r in starters) {
+      // Intentionally not awaited to avoid turning this helper into async.
+      taskBookController.addDepartmentRequirement(goalId: goalId, requirement: r);
+    }
   }
 
   Future<void> completeOnboarding(
       {required UserProfile profile,
       required List<Certification> certifications}) async {
-    _profile = profile.copyWith(updatedAt: DateTime.now());
-    _certsById
-      ..clear()
-      ..addEntries(
-          certifications.where((c) => c.name.trim().isNotEmpty).map((c) {
-        final mapped = c.certificationDefinitionId == null
-            ? FireOpsCatalog.matchCertificationDefinitionId(c.name)
-            : c.certificationDefinitionId;
-        return MapEntry(
-            c.id,
-            c.copyWith(
-                certificationDefinitionId: mapped, updatedAt: DateTime.now()));
-      }));
-    _onboardingComplete = true;
-    _ensureCustomGoalStarterRequirements(_profile.primaryGoalId);
-    await _store.setOnboardingComplete(true);
+    await profileController.setProfile(profile);
+    await certificationController.replaceAll(
+      certifications
+          .where((c) => c.name.trim().isNotEmpty)
+          .map((c) {
+            final mapped = c.certificationDefinitionId == null
+                ? FireOpsCatalog.matchCertificationDefinitionId(c.name)
+                : c.certificationDefinitionId;
+            return c.copyWith(
+                certificationDefinitionId: mapped, updatedAt: DateTime.now());
+          })
+          .toList(),
+    );
+    await profileController.setOnboardingComplete(true);
+    _ensureCustomGoalStarterRequirements(profileController.profile.primaryGoalId);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> setPrimaryGoal(String goalId) async {
-    final now = DateTime.now();
-    final existingPlan = _profile.careerPlan;
-    final shouldResetStart = existingPlan.goalId != goalId;
-    final plan = existingPlan.copyWith(
-      goalId: goalId,
-      startDate: shouldResetStart ? now : existingPlan.startDate,
-      timelineEnabled: existingPlan.targetDate != null,
-      timelineStatus: existingPlan.targetDate == null
-          ? TimelineStatus.noTargetDate
-          : existingPlan.timelineStatus,
-    );
-    _profile = _profile.copyWith(
-        primaryGoalId: goalId, careerPlan: plan, updatedAt: now);
+    await profileController.setPrimaryGoal(goalId);
     _ensureCustomGoalStarterRequirements(goalId);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> setTargetReadyDate(DateTime? targetDate) async {
-    final now = DateTime.now();
-    final plan = _profile.careerPlan.copyWith(
-      targetDate: targetDate,
-      timelineEnabled: targetDate != null,
-      timelineStatus: targetDate == null
-          ? TimelineStatus.noTargetDate
-          : _profile.careerPlan.timelineStatus,
-      clearTargetDate: targetDate == null,
-    );
-    _profile = _profile.copyWith(careerPlan: plan, updatedAt: now);
+    await profileController.setTargetReadyDate(targetDate);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> updateProfile(UserProfile profile) async {
-    final before = _profile;
-    _profile = profile.copyWith(updatedAt: DateTime.now());
+    await profileController.updateProfile(profile);
     await _persistAll();
-
-    final oldState = FireOpsCatalog.stateCodeFromLegacyValue(before.state);
-    final newState = FireOpsCatalog.stateCodeFromLegacyValue(_profile.state);
-    if (_onboardingComplete &&
-        oldState != null &&
-        newState != null &&
-        oldState.isNotEmpty &&
-        newState.isNotEmpty &&
-        oldState != newState) {
-      try {
-        final setup = TaskBookSetupStore();
-        await setup.setLastKnownState(newState);
-        await setup.setReviewPending(true);
-      } catch (e) {
-        debugPrint('AppState.updateProfile state-change flag failed: $e');
-      }
-    }
-    notifyListeners();
   }
 
   Future<void> setCurrentRoles(List<String> roles) async {
-    _profile =
-        _profile.copyWith(currentRoles: roles, updatedAt: DateTime.now());
+    await profileController.setCurrentRoles(roles);
     await _persistAll();
-    notifyListeners();
   }
 
-  Certification? getCertificationById(String id) => _certsById[id];
+  Certification? getCertificationById(String id) =>
+      certificationController.getById(id);
 
   Future<void> upsertCertification(Certification cert) async {
-    _certsById[cert.id] = cert.copyWith(updatedAt: DateTime.now());
+    await certificationController.upsert(cert);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> deleteCertification(String id) async {
-    _certsById.remove(id);
+    await certificationController.delete(id);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> addDepartmentRequirement(
       {required String goalId, required Requirement requirement}) async {
-    final now = DateTime.now();
-    final saved = requirement.copyWith(updatedAt: now);
-    _customRequirements.add(saved);
+    await taskBookController.addDepartmentRequirement(
+        goalId: goalId, requirement: requirement);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> updateCustomRequirement(Requirement requirement) async {
-    final idx = _customRequirements.indexWhere((e) => e.id == requirement.id);
-    if (idx < 0) return;
-    _customRequirements[idx] = requirement.copyWith(updatedAt: DateTime.now());
+    await taskBookController.updateCustomRequirement(requirement);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> deleteCustomRequirement(String requirementId) async {
-    _customRequirements.removeWhere((e) => e.id == requirementId);
+    await taskBookController.deleteCustomRequirement(requirementId);
     await _persistAll();
-    notifyListeners();
   }
 
   PathRequirementOverride? getOverride(String goalId, String requirementId) {
-    return _overrides
-        .where((o) => o.goalId == goalId && o.requirementId == requirementId)
-        .firstOrNull;
+    return taskBookController.getOverride(goalId, requirementId);
   }
 
   RequirementActivityStatus activityStatusFor(
       {required String goalId, required String requirementId}) {
-    final o = getOverride(goalId, requirementId);
-    return o?.activityStatus ?? RequirementActivityStatus.notStarted;
+    return taskBookController.activityStatusFor(
+        goalId: goalId, requirementId: requirementId);
   }
 
   TrainingSchedule? scheduleFor(
           {required String goalId, required String requirementId}) =>
-      getOverride(goalId, requirementId)?.schedule;
+      taskBookController.scheduleFor(goalId: goalId, requirementId: requirementId);
 
   (int completed, int total)? taskBookProgressFor(
       {required String goalId, required String requirementId}) {
-    final o = getOverride(goalId, requirementId);
-    final c = o?.taskBookCompletedItems;
-    final t = o?.taskBookTotalItems;
-    if (c == null || t == null || t <= 0) return null;
-    return (c, t);
+    return taskBookController.taskBookProgressFor(
+        goalId: goalId, requirementId: requirementId);
   }
 
   List<ResourceLink> userResourceLinksFor(
           {required String goalId, required String requirementId}) =>
-      getOverride(goalId, requirementId)?.userResourceLinks ??
-      const <ResourceLink>[];
+      taskBookController.userResourceLinksFor(
+          goalId: goalId, requirementId: requirementId);
+
+  List<RequirementPlanStep> planStepsFor(
+          {required String goalId, required String requirementId}) =>
+      taskBookController.planStepsFor(goalId: goalId, requirementId: requirementId);
+
+  List<RequirementSubTask> subTasksFor(
+          {required String goalId, required String requirementId}) =>
+      taskBookController.subTasksFor(goalId: goalId, requirementId: requirementId);
 
   Future<void> addUserResourceLink(
       {required String goalId,
       required String requirementId,
       required ResourceLink link}) async {
-    final idx = _overrides.indexWhere(
-        (o) => o.goalId == goalId && o.requirementId == requirementId);
-    if (idx >= 0) {
-      final next = [..._overrides[idx].userResourceLinks, link];
-      _overrides[idx] = _overrides[idx].copyWith(userResourceLinks: next);
-    } else {
-      _overrides.add(
-        PathRequirementOverride(
-          goalId: goalId,
-          requirementId: requirementId,
-          excluded: false,
-          completed: null,
-          overrideExperienceValue: null,
-          overrideProgressCurrent: null,
-          overrideProgressRequired: null,
-          overrideProgressUnit: null,
-          activityStatus: null,
-          schedule: null,
-          taskBookCompletedItems: null,
-          taskBookTotalItems: null,
-          suggestedStartDate: null,
-          suggestedCompletionDate: null,
-          removedFromTimeline: false,
-          userResourceLinks: [link],
-        ),
-      );
-    }
+    await taskBookController.addUserResourceLink(
+        goalId: goalId, requirementId: requirementId, link: link);
     await _persistAll();
-    notifyListeners();
+  }
+
+  Future<void> upsertPlanStep({
+    required String goalId,
+    required String requirementId,
+    required RequirementPlanStep step,
+  }) async {
+    await taskBookController.upsertPlanStep(
+      goalId: goalId,
+      requirementId: requirementId,
+      step: step,
+    );
+    await _persistAll();
+  }
+
+  Future<void> setPlanStepDone({
+    required String goalId,
+    required String requirementId,
+    required String stepId,
+    required bool done,
+  }) async {
+    await taskBookController.setPlanStepDone(
+      goalId: goalId,
+      requirementId: requirementId,
+      stepId: stepId,
+      done: done,
+    );
+    await _persistAll();
+  }
+
+  Future<void> deletePlanStep({
+    required String goalId,
+    required String requirementId,
+    required String stepId,
+  }) async {
+    await taskBookController.deletePlanStep(
+      goalId: goalId,
+      requirementId: requirementId,
+      stepId: stepId,
+    );
+    await _persistAll();
+  }
+
+  Future<void> reorderPlanSteps({
+    required String goalId,
+    required String requirementId,
+    required int oldIndex,
+    required int newIndex,
+  }) async {
+    await taskBookController.reorderPlanSteps(
+      goalId: goalId,
+      requirementId: requirementId,
+      oldIndex: oldIndex,
+      newIndex: newIndex,
+    );
+    await _persistAll();
+  }
+
+  Future<void> upsertSubTask({
+    required String goalId,
+    required String requirementId,
+    required RequirementSubTask subTask,
+  }) async {
+    await taskBookController.upsertSubTask(
+      goalId: goalId,
+      requirementId: requirementId,
+      subTask: subTask,
+    );
+    await _persistAll();
+  }
+
+  Future<void> setSubTaskDone({
+    required String goalId,
+    required String requirementId,
+    required String subTaskId,
+    required bool done,
+  }) async {
+    await taskBookController.setSubTaskDone(
+      goalId: goalId,
+      requirementId: requirementId,
+      subTaskId: subTaskId,
+      done: done,
+    );
+    await _persistAll();
+  }
+
+  Future<void> deleteSubTask({
+    required String goalId,
+    required String requirementId,
+    required String subTaskId,
+  }) async {
+    await taskBookController.deleteSubTask(
+      goalId: goalId,
+      requirementId: requirementId,
+      subTaskId: subTaskId,
+    );
+    await _persistAll();
   }
 
   Future<void> setRequirementActivityStatus(
       {required String goalId,
       required String requirementId,
       required RequirementActivityStatus status}) async {
-    final idx = _overrides.indexWhere(
-        (o) => o.goalId == goalId && o.requirementId == requirementId);
-    if (idx >= 0) {
-      _overrides[idx] = _overrides[idx].copyWith(activityStatus: status);
-    } else {
-      _overrides.add(
-        PathRequirementOverride(
-          goalId: goalId,
-          requirementId: requirementId,
-          excluded: false,
-          completed: null,
-          overrideExperienceValue: null,
-          overrideProgressCurrent: null,
-          overrideProgressRequired: null,
-          overrideProgressUnit: null,
-          activityStatus: status,
-          schedule: null,
-          taskBookCompletedItems: null,
-          taskBookTotalItems: null,
-          suggestedStartDate: null,
-          suggestedCompletionDate: null,
-          removedFromTimeline: false,
-          userResourceLinks: const [],
-        ),
-      );
-    }
+    await taskBookController.setRequirementActivityStatus(
+        goalId: goalId, requirementId: requirementId, status: status);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> setRequirementSchedule(
       {required String goalId,
       required String requirementId,
       required TrainingSchedule? schedule}) async {
-    final idx = _overrides.indexWhere(
-        (o) => o.goalId == goalId && o.requirementId == requirementId);
-    if (idx >= 0) {
-      _overrides[idx] = _overrides[idx]
-          .copyWith(schedule: schedule, clearSchedule: schedule == null);
-    } else {
-      _overrides.add(
-        PathRequirementOverride(
-          goalId: goalId,
-          requirementId: requirementId,
-          excluded: false,
-          completed: null,
-          overrideExperienceValue: null,
-          overrideProgressCurrent: null,
-          overrideProgressRequired: null,
-          overrideProgressUnit: null,
-          activityStatus: null,
-          schedule: schedule,
-          taskBookCompletedItems: null,
-          taskBookTotalItems: null,
-          suggestedStartDate: null,
-          suggestedCompletionDate: null,
-          removedFromTimeline: false,
-          userResourceLinks: const [],
-        ),
-      );
-    }
+    await taskBookController.setRequirementSchedule(
+        goalId: goalId, requirementId: requirementId, schedule: schedule);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> setTaskBookProgress(
@@ -793,174 +558,50 @@ class AppState extends ChangeNotifier {
       required String requirementId,
       required int completedItems,
       required int totalItems}) async {
-    final idx = _overrides.indexWhere(
-        (o) => o.goalId == goalId && o.requirementId == requirementId);
-    if (idx >= 0) {
-      _overrides[idx] = _overrides[idx].copyWith(
-          taskBookCompletedItems: completedItems,
-          taskBookTotalItems: totalItems);
-    } else {
-      _overrides.add(
-        PathRequirementOverride(
-          goalId: goalId,
-          requirementId: requirementId,
-          excluded: false,
-          completed: null,
-          overrideExperienceValue: null,
-          overrideProgressCurrent: null,
-          overrideProgressRequired: null,
-          overrideProgressUnit: null,
-          activityStatus: null,
-          schedule: null,
-          taskBookCompletedItems: completedItems,
-          taskBookTotalItems: totalItems,
-          suggestedStartDate: null,
-          suggestedCompletionDate: null,
-          removedFromTimeline: false,
-          userResourceLinks: const [],
-        ),
-      );
-    }
+    await taskBookController.setTaskBookProgress(
+        goalId: goalId,
+        requirementId: requirementId,
+        completedItems: completedItems,
+        totalItems: totalItems);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> setRequirementExcluded(
       {required String goalId,
       required String requirementId,
       required bool excluded}) async {
-    final idx = _overrides.indexWhere(
-        (o) => o.goalId == goalId && o.requirementId == requirementId);
-    if (idx >= 0) {
-      _overrides[idx] = _overrides[idx].copyWith(excluded: excluded);
-    } else {
-      _overrides.add(
-        PathRequirementOverride(
-          goalId: goalId,
-          requirementId: requirementId,
-          excluded: excluded,
-          completed: null,
-          overrideExperienceValue: null,
-          overrideProgressCurrent: null,
-          overrideProgressRequired: null,
-          overrideProgressUnit: null,
-          activityStatus: null,
-          schedule: null,
-          taskBookCompletedItems: null,
-          taskBookTotalItems: null,
-          suggestedStartDate: null,
-          suggestedCompletionDate: null,
-          removedFromTimeline: false,
-          userResourceLinks: const [],
-        ),
-      );
-    }
+    await taskBookController.setRequirementExcluded(
+        goalId: goalId, requirementId: requirementId, excluded: excluded);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> setExperienceMinimum(
       {required String goalId,
       required String requirementId,
       required double years}) async {
-    final idx = _overrides.indexWhere(
-        (o) => o.goalId == goalId && o.requirementId == requirementId);
-    if (idx >= 0) {
-      _overrides[idx] =
-          _overrides[idx].copyWith(overrideExperienceValue: years);
-    } else {
-      _overrides.add(
-        PathRequirementOverride(
-          goalId: goalId,
-          requirementId: requirementId,
-          excluded: false,
-          completed: null,
-          overrideExperienceValue: years,
-          overrideProgressCurrent: null,
-          overrideProgressRequired: null,
-          overrideProgressUnit: null,
-          activityStatus: null,
-          schedule: null,
-          taskBookCompletedItems: null,
-          taskBookTotalItems: null,
-          suggestedStartDate: null,
-          suggestedCompletionDate: null,
-          removedFromTimeline: false,
-          userResourceLinks: const [],
-        ),
-      );
-    }
+    await taskBookController.setExperienceMinimum(
+        goalId: goalId, requirementId: requirementId, years: years);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> setNumericRequired(
       {required String goalId,
       required String requirementId,
       required double requiredValue}) async {
-    final idx = _overrides.indexWhere(
-        (o) => o.goalId == goalId && o.requirementId == requirementId);
-    if (idx >= 0) {
-      _overrides[idx] =
-          _overrides[idx].copyWith(overrideProgressRequired: requiredValue);
-    } else {
-      _overrides.add(
-        PathRequirementOverride(
-          goalId: goalId,
-          requirementId: requirementId,
-          excluded: false,
-          completed: null,
-          overrideExperienceValue: null,
-          overrideProgressCurrent: null,
-          overrideProgressRequired: requiredValue,
-          overrideProgressUnit: null,
-          activityStatus: null,
-          schedule: null,
-          taskBookCompletedItems: null,
-          taskBookTotalItems: null,
-          suggestedStartDate: null,
-          suggestedCompletionDate: null,
-          removedFromTimeline: false,
-          userResourceLinks: const [],
-        ),
-      );
-    }
+    await taskBookController.setNumericRequired(
+        goalId: goalId,
+        requirementId: requirementId,
+        requiredValue: requiredValue);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> setRequirementCompleted(
       {required String goalId,
       required String requirementId,
       required bool completed}) async {
-    final idx = _overrides.indexWhere(
-        (o) => o.goalId == goalId && o.requirementId == requirementId);
-    if (idx >= 0) {
-      _overrides[idx] = _overrides[idx].copyWith(completed: completed);
-    } else {
-      _overrides.add(
-        PathRequirementOverride(
-          goalId: goalId,
-          requirementId: requirementId,
-          excluded: false,
-          completed: completed,
-          overrideExperienceValue: null,
-          overrideProgressCurrent: null,
-          overrideProgressRequired: null,
-          overrideProgressUnit: null,
-          activityStatus: null,
-          schedule: null,
-          taskBookCompletedItems: null,
-          taskBookTotalItems: null,
-          suggestedStartDate: null,
-          suggestedCompletionDate: null,
-          removedFromTimeline: false,
-          userResourceLinks: const [],
-        ),
-      );
-    }
+    await taskBookController.setRequirementCompleted(
+        goalId: goalId, requirementId: requirementId, completed: completed);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> setNumericProgress(
@@ -969,169 +610,65 @@ class AppState extends ChangeNotifier {
       required double current,
       required double required,
       String? unit}) async {
-    final idx = _overrides.indexWhere(
-        (o) => o.goalId == goalId && o.requirementId == requirementId);
-    if (idx >= 0) {
-      _overrides[idx] = _overrides[idx].copyWith(
-          overrideProgressCurrent: current,
-          overrideProgressRequired: required,
-          overrideProgressUnit: unit);
-    } else {
-      _overrides.add(
-        PathRequirementOverride(
-          goalId: goalId,
-          requirementId: requirementId,
-          excluded: false,
-          completed: null,
-          overrideExperienceValue: null,
-          overrideProgressCurrent: current,
-          overrideProgressRequired: required,
-          overrideProgressUnit: unit,
-          activityStatus: null,
-          schedule: null,
-          taskBookCompletedItems: null,
-          taskBookTotalItems: null,
-          suggestedStartDate: null,
-          suggestedCompletionDate: null,
-          removedFromTimeline: false,
-          userResourceLinks: const [],
-        ),
-      );
-    }
+    await taskBookController.setNumericProgress(
+        goalId: goalId,
+        requirementId: requirementId,
+        current: current,
+        required: required,
+        unit: unit);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> moveTimelineEarlier(
       {required String goalId, required String requirementId}) async {
-    final now = DateTime.now();
-    final existing = getOverride(goalId, requirementId);
-    final base =
-        existing?.suggestedStartDate ?? existing?.schedule?.startDate ?? now;
-    final shifted = base.subtract(const Duration(days: 90));
-    await _setTimelineOverride(
-        goalId: goalId,
-        requirementId: requirementId,
-        suggestedStartDate: DateTime(shifted.year, shifted.month, 1),
-        removed: false);
+    await taskBookController.moveTimelineEarlier(
+        goalId: goalId, requirementId: requirementId);
+    await _persistAll();
   }
 
   Future<void> moveTimelineLater(
       {required String goalId, required String requirementId}) async {
-    final now = DateTime.now();
-    final existing = getOverride(goalId, requirementId);
-    final base =
-        existing?.suggestedStartDate ?? existing?.schedule?.startDate ?? now;
-    final shifted = base.add(const Duration(days: 90));
-    await _setTimelineOverride(
-        goalId: goalId,
-        requirementId: requirementId,
-        suggestedStartDate: DateTime(shifted.year, shifted.month, 1),
-        removed: false);
+    await taskBookController.moveTimelineLater(
+        goalId: goalId, requirementId: requirementId);
+    await _persistAll();
   }
 
   Future<void> removeFromTimeline(
       {required String goalId, required String requirementId}) async {
-    await _setTimelineOverride(
-        goalId: goalId,
-        requirementId: requirementId,
-        suggestedStartDate: null,
-        removed: true,
-        clearSuggestedDates: true);
+    await taskBookController.removeFromTimeline(
+        goalId: goalId, requirementId: requirementId);
+    await _persistAll();
   }
 
   Future<void> clearTimelineOverride(
       {required String goalId, required String requirementId}) async {
-    await _setTimelineOverride(
-        goalId: goalId,
-        requirementId: requirementId,
-        suggestedStartDate: null,
-        removed: false,
-        clearSuggestedDates: true);
-  }
-
-  Future<void> _setTimelineOverride({
-    required String goalId,
-    required String requirementId,
-    required DateTime? suggestedStartDate,
-    required bool removed,
-    bool clearSuggestedDates = false,
-  }) async {
-    final idx = _overrides.indexWhere(
-        (o) => o.goalId == goalId && o.requirementId == requirementId);
-    if (idx >= 0) {
-      _overrides[idx] = _overrides[idx].copyWith(
-        suggestedStartDate: suggestedStartDate,
-        removedFromTimeline: removed,
-        clearSuggestedDates: clearSuggestedDates,
-      );
-    } else {
-      _overrides.add(
-        PathRequirementOverride(
-          goalId: goalId,
-          requirementId: requirementId,
-          excluded: false,
-          completed: null,
-          overrideExperienceValue: null,
-          overrideProgressCurrent: null,
-          overrideProgressRequired: null,
-          overrideProgressUnit: null,
-          activityStatus: null,
-          schedule: null,
-          taskBookCompletedItems: null,
-          taskBookTotalItems: null,
-          suggestedStartDate: suggestedStartDate,
-          suggestedCompletionDate: null,
-          removedFromTimeline: removed,
-          userResourceLinks: const [],
-        ),
-      );
-    }
+    await taskBookController.clearTimelineOverride(
+        goalId: goalId, requirementId: requirementId);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> toggleCustomRequirementComplete(
       String requirementId, bool complete) async {
-    final idx = _customRequirements.indexWhere((e) => e.id == requirementId);
-    if (idx < 0) return;
-    _customRequirements[idx] = _customRequirements[idx]
-        .copyWith(completed: complete, updatedAt: DateTime.now());
+    await taskBookController.toggleCustomRequirementComplete(
+        requirementId, complete);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> updateNumericProgress(String requirementId,
       {required double current, required double required}) async {
-    final idx = _customRequirements.indexWhere((e) => e.id == requirementId);
-    if (idx < 0) return;
-    _customRequirements[idx] = _customRequirements[idx].copyWith(
-        progressCurrent: current,
-        progressRequired: required,
-        updatedAt: DateTime.now());
+    await taskBookController.updateNumericProgress(requirementId,
+        current: current, required: required);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> _persistAll() async {
     try {
       final estimated = CareerTimelinePlanner.estimateStatus(this);
-      if (_profile.careerPlan.timelineStatus != estimated) {
-        _profile = _profile.copyWith(
-            careerPlan: _profile.careerPlan.copyWith(timelineStatus: estimated),
-            updatedAt: DateTime.now());
-      }
+      await profileController.setTimelineStatusIfDifferent(estimated);
     } catch (e) {
       debugPrint('Timeline status estimation failed: $e');
     }
-    await _store.saveProfile(_profile.toJson());
-    await _store
-        .saveCertifications(_certsById.values.map((e) => e.toJson()).toList());
-    await _store.saveCustomRequirements(
-        _customRequirements.map((e) => e.toJson()).toList());
-    await _store.savePathOverrides(_overrides.map((e) => e.toJson()).toList());
-    await _taskBookStore.saveProgress(_taskProgressByKey);
-    await _taskBookStore.saveCustomTasks(_customTasks);
+    // Domain controllers persist their own sub-stores.
   }
 
   // --- Task Book API ---
@@ -1151,9 +688,8 @@ class AppState extends ChangeNotifier {
     final map = roadmap;
     if (map == null) return;
 
-    final rr = map.all
-        .where((e) => e.requirement.id == requirementId)
-        .firstOrNull;
+    final matches = map.all.where((e) => e.requirement.id == requirementId);
+    final rr = matches.isEmpty ? null : matches.first;
     if (rr == null) return;
     final req = rr.requirement;
 
@@ -1179,16 +715,15 @@ class AppState extends ChangeNotifier {
           {required String goalId,
           required String requirementId,
           required String taskId}) =>
-      _taskProgressByKey[
-          TaskBookStore.progressKey(goalId: goalId, requirementId: requirementId, taskId: taskId)];
+      taskBookController.taskProgressFor(
+          goalId: goalId, requirementId: requirementId, taskId: taskId);
 
   TaskBookTaskStatus taskStatusFor(
           {required String goalId,
           required String requirementId,
           required String taskId}) =>
-      taskProgressFor(goalId: goalId, requirementId: requirementId, taskId: taskId)
-          ?.status ??
-      TaskBookTaskStatus.notStarted;
+      taskBookController.taskStatusFor(
+          goalId: goalId, requirementId: requirementId, taskId: taskId);
 
   Future<void> setTaskStatus({
     required String goalId,
@@ -1197,78 +732,31 @@ class AppState extends ChangeNotifier {
     required TaskBookTaskStatus status,
     TaskBookCompletionSource? completionSource,
   }) async {
-    final now = DateTime.now();
-    final key = TaskBookStore.progressKey(
-        goalId: goalId, requirementId: requirementId, taskId: taskId);
-    final existing = _taskProgressByKey[key];
-    final completedAt = status == TaskBookTaskStatus.complete ? now : null;
-    if (existing == null) {
-      _taskProgressByKey[key] = TaskBookTaskProgress(
-        goalId: goalId,
-        requirementId: requirementId,
-        taskId: taskId,
-        status: status,
-        completionSource: completionSource,
-        completedAt: completedAt,
-        createdAt: now,
-        updatedAt: now,
-      );
-    } else {
-      _taskProgressByKey[key] = existing.copyWith(
-        status: status,
-        completionSource: completionSource,
-        completedAt: completedAt,
-        updatedAt: now,
-      );
-    }
+    await taskBookController.setTaskStatus(
+      goalId: goalId,
+      requirementId: requirementId,
+      taskId: taskId,
+      status: status,
+      completionSource: completionSource,
+    );
     await _persistAll();
-    notifyListeners();
   }
 
   List<TaskBookTaskDefinition> customTasksFor(
           {required String goalId, required String requirementId}) =>
-      _customTasks
-          .where((t) =>
-              (t.goalId ?? '').trim() == goalId &&
-              (t.requirementId ?? '').trim() == requirementId)
-          .toList();
+      taskBookController.customTasksFor(goalId: goalId, requirementId: requirementId);
 
   Future<void> addCustomTask(TaskBookTaskDefinition task) async {
-    if (!task.isCustom) {
-      debugPrint(
-          'AppState.addCustomTask called with non-custom task id=${task.id}');
-      return;
-    }
-    if ((task.goalId ?? '').trim().isEmpty ||
-        (task.requirementId ?? '').trim().isEmpty ||
-        task.id.trim().isEmpty) {
-      debugPrint('AppState.addCustomTask invalid scope/id');
-      return;
-    }
-    _customTasks.add(task);
+    await taskBookController.addCustomTask(task);
     await _persistAll();
-    notifyListeners();
   }
 
   Future<void> deleteCustomTask(
       {required String goalId,
       required String requirementId,
       required String taskId}) async {
-    _customTasks.removeWhere((t) =>
-        t.isCustom &&
-        t.goalId == goalId &&
-        t.requirementId == requirementId &&
-        t.id == taskId);
-
-    // Remove any progress entries tied to the deleted task.
-    final key = TaskBookStore.progressKey(
+    await taskBookController.deleteCustomTask(
         goalId: goalId, requirementId: requirementId, taskId: taskId);
-    _taskProgressByKey.remove(key);
     await _persistAll();
-    notifyListeners();
   }
-}
-
-extension<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }

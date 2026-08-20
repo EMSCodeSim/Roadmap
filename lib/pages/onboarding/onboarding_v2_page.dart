@@ -17,6 +17,304 @@ class OnboardingV2Page extends StatefulWidget {
   State<OnboardingV2Page> createState() => _OnboardingV2PageState();
 }
 
+class OnboardingHero extends StatelessWidget {
+  const OnboardingHero({
+    super.key,
+    required this.headline,
+    required this.supporting,
+    required this.progressValue,
+    this.progressLabel,
+  });
+
+  final String headline;
+  final String supporting;
+  final double progressValue;
+  final String? progressLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            cs.primaryContainer.withValues(alpha: 0.85),
+            cs.secondaryContainer.withValues(alpha: 0.55),
+          ],
+        ),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: cs.surface.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+                ),
+                child: Icon(Icons.local_fire_department, color: cs.onSurface),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  headline,
+                  style: t.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    height: 1.12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            supporting,
+            style: t.bodyMedium
+                ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progressValue.clamp(0, 1),
+              minHeight: 9,
+              backgroundColor: cs.surface.withValues(alpha: 0.35),
+              valueColor: AlwaysStoppedAnimation(cs.primary),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.bolt, size: 16, color: cs.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  progressLabel ?? 'Step 1 takes under a minute for most users.',
+                  style: t.labelLarge?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class OnboardingBullet {
+  const OnboardingBullet({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+}
+
+class OnboardingWhyThisMattersCard extends StatelessWidget {
+  const OnboardingWhyThisMattersCard({
+    super.key,
+    required this.title,
+    required this.bullets,
+    required this.footer,
+  });
+
+  final String title;
+  final List<OnboardingBullet> bullets;
+  final String footer;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: cs.secondaryContainer.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.info_outline, color: cs.onSecondaryContainer),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...bullets.map(
+              (b) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerHighest
+                            .withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: cs.outline.withValues(alpha: 0.12)),
+                      ),
+                      child: Icon(b.icon, color: cs.onSurfaceVariant, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            b.title,
+                            style: t.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            b.detail,
+                            style: t.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.check_circle_outline,
+                      size: 20, color: cs.onPrimaryContainer),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      footer,
+                      style: t.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TightBulletRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String detail;
+  const _TightBulletRow({required this.icon, required this.title, required this.detail});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
+          ),
+          child: Icon(icon, size: 18, color: cs.onSurfaceVariant),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: t.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 1),
+              Text(detail, style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OnboardingSectionHeader extends StatelessWidget {
+  const _OnboardingSectionHeader({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context)
+              .textTheme
+              .titleLarge
+              ?.copyWith(fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
+        ),
+      ],
+    );
+  }
+}
+
 class _OnboardingV2PageState extends State<OnboardingV2Page> {
   final PageController _pages = PageController();
   final Set<String> _roles = {};
@@ -25,6 +323,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
   final TextEditingController _certSearch = TextEditingController();
 
   int _step = 0;
+  static const int _totalSteps = 4;
   String? _serviceType;
   String? _state;
   String? _goalId;
@@ -41,6 +340,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         leading: _step == 0
@@ -50,11 +350,26 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 onPressed: _back,
                 icon: const Icon(Icons.arrow_back),
               ),
-        title: const Text('Career Setup'),
+        title: Text(
+          switch (_step) {
+            0 => 'Welcome',
+            1 => 'Career Setup',
+            2 => 'Certifications',
+            _ => 'Career Goal',
+          },
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: Center(child: Text('${_step + 1}/3')),
+            child: Center(
+              child: Text(
+                'Step ${_step + 1} of $_totalSteps',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
           ),
         ],
       ),
@@ -65,7 +380,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
               child: PageView(
                 controller: _pages,
                 physics: const NeverScrollableScrollPhysics(),
-                children: [_currentStep(), _certStep(), _goalStep()],
+                children: [_instructionsStep(), _currentSituationStep(), _certStep(), _goalStep()],
               ),
             ),
             Padding(
@@ -77,9 +392,11 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                   onPressed: _saving ? null : _next,
                   child: Text(
                     _saving
-                        ? 'Building Task Book…'
-                        : _step == 2
-                        ? 'Build My Task Book'
+                        ? 'Building your path…'
+                        : _step == 3
+                        ? 'Build my Task Book'
+                        : _step == 0
+                        ? 'Continue — Build My Path'
                         : 'Continue',
                   ),
                 ),
@@ -91,95 +408,212 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
     );
   }
 
-  Widget _currentStep() {
+  Widget _instructionsStep() {
+    final cs = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final content = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            OnboardingHero(
+              headline: 'Your path. Built fast.',
+              supporting:
+                  'A 60-second setup to generate your Firefighter Roadmap + Task Book—based on your role, state, and current certs.',
+              progressValue: 1 / _totalSteps,
+              progressLabel: 'Step 1 of $_totalSteps · About 1 minute',
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'In this quick setup, you’ll get:',
+                      style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 10),
+                    _TightBulletRow(
+                      icon: Icons.check_circle_outline,
+                      title: 'A staged plan to Next Level',
+                      detail: 'Prereqs → certs → training → hours → sign-offs → promo prep.',
+                    ),
+                    const SizedBox(height: 10),
+                    _TightBulletRow(
+                      icon: Icons.bolt,
+                      title: 'Fast “make progress” logging',
+                      detail: 'Quick Logs suggested from what you actually need next.',
+                    ),
+                    const SizedBox(height: 10),
+                    _TightBulletRow(
+                      icon: Icons.public,
+                      title: 'State-aware links & labels',
+                      detail: 'Clear “Required in [State]” vs “Common recommendation”.',
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'You can change anything later—role, state, certs, and department requirements.',
+                      style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.arrow_forward, size: 18, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Next up: pick your current level / role.',
+                      style: t.labelLarge?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+
+        return SingleChildScrollView(
+          // Tight scroll region (only engages on small devices).
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight - 20),
+            child: content,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _currentSituationStep() {
     final cs = Theme.of(context).colorScheme;
     final commonRoles = FireOpsCatalog.commonRoles
         .where((role) => !role.toLowerCase().contains('custom'))
         .toList();
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 30),
       children: [
-        Text(
-          'Where are you now?',
-          style: Theme.of(context).textTheme.headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Choose your current role. This gives FireOps Career Road the right starting point.',
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            ...commonRoles.map(
-              (role) => FilterChip(
-                label: Text(role),
-                selected: _roles.contains(role),
-                onSelected: (selected) => setState(() {
-                  if (selected) {
-                    _roles.add(role);
-                  } else {
-                    _roles.remove(role);
-                  }
-                }),
-              ),
-            ),
-            ActionChip(
-              avatar: const Icon(Icons.add, size: 18),
-              label: const Text('Custom role'),
-              onPressed: _addCustomRole,
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        DropdownButtonFormField<String?>(
-          value: _serviceType,
-          decoration: const InputDecoration(labelText: 'Service type'),
-          items: const [
-            DropdownMenuItem(value: null, child: Text('Not set')),
-            DropdownMenuItem(value: 'Volunteer', child: Text('Volunteer')),
-            DropdownMenuItem(value: 'Career', child: Text('Career')),
-            DropdownMenuItem(value: 'Combination', child: Text('Combination')),
-            DropdownMenuItem(
-              value: 'Paid-on-Call',
-              child: Text('Paid-on-Call'),
-            ),
-            DropdownMenuItem(value: 'Seasonal', child: Text('Seasonal')),
-            DropdownMenuItem(value: 'Other', child: Text('Other')),
-          ],
-          onChanged: (value) => setState(() => _serviceType = value),
+        OnboardingHero(
+          headline: 'Where are you starting from?',
+          supporting:
+              'This sets the right starting point, state resources, and what counts as “next up.”',
+          progressValue: 2 / _totalSteps,
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _StateSelectorField(
-                code: _state,
-                onTap: () async {
-                  final picked = await UsStatePickerSheet.pick(
-                    context,
-                    selectedCode: _state,
-                  );
-                  if (picked == null) return;
-                  setState(() => _state = picked);
-                },
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextField(
-                controller: _years,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Years of service',
+        _OnboardingSectionHeader(
+          title: 'Your current level',
+          subtitle: 'Quick setup. You can change anything later.',
+        ),
+        const SizedBox(height: 10),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Current role(s)',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
                 ),
-              ),
+                const SizedBox(height: 6),
+                Text(
+                  'Pick one or more. This drives your roadmap + suggested Quick Logs.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.35,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ...commonRoles.map(
+                      (role) => FilterChip(
+                        label: Text(role),
+                        selected: _roles.contains(role),
+                        onSelected: (selected) => setState(() {
+                          if (selected) {
+                            _roles.add(role);
+                          } else {
+                            _roles.remove(role);
+                          }
+                        }),
+                      ),
+                    ),
+                    ActionChip(
+                      avatar: Icon(Icons.add, size: 18, color: cs.primary),
+                      label: const Text('Add role'),
+                      onPressed: _addCustomRole,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String?>(
+                  value: _serviceType,
+                  decoration: const InputDecoration(
+                    labelText: 'Service type',
+                    hintText: 'Volunteer, Career, Combination…',
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('Not set')),
+                    DropdownMenuItem(value: 'Volunteer', child: Text('Volunteer')),
+                    DropdownMenuItem(value: 'Career', child: Text('Career')),
+                    DropdownMenuItem(value: 'Combination', child: Text('Combination')),
+                    DropdownMenuItem(value: 'Paid-on-Call', child: Text('Paid-on-Call')),
+                    DropdownMenuItem(value: 'Seasonal', child: Text('Seasonal')),
+                    DropdownMenuItem(value: 'Other', child: Text('Other')),
+                  ],
+                  onChanged: (value) => setState(() => _serviceType = value),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StateSelectorField(
+                        code: _state,
+                        onTap: () async {
+                          final picked = await UsStatePickerSheet.pick(
+                            context,
+                            selectedCode: _state,
+                          );
+                          if (picked == null) return;
+                          setState(() => _state = picked);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _years,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Years of service',
+                          hintText: '0+',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ],
     );
@@ -205,7 +639,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Select current certifications. You can add expiration dates later.',
+                'Select the certs you already hold. Add expiration dates later.',
                 style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: cs.onSurfaceVariant),
               ),
@@ -215,7 +649,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.search),
-                  hintText: 'Search certifications',
+                  hintText: 'Search certs',
                 ),
               ),
               const SizedBox(height: 10),
@@ -224,7 +658,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 child: OutlinedButton.icon(
                   onPressed: _addCustomCert,
                   icon: const Icon(Icons.add),
-                  label: const Text('Add Custom Certification'),
+                  label: const Text('Add custom cert'),
                 ),
               ),
             ],
@@ -270,7 +704,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Choose your next goal. FireOps Career Road will build your starting Task Book. You can customize department-specific requirements later.',
+          'Choose your Next Level. Firefighter Roadmap will build your starting Task Book. You can add department requirements later.',
           style: Theme.of(context).textTheme.bodyMedium
               ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
         ),
@@ -280,7 +714,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           child: OutlinedButton.icon(
             onPressed: _addCustomGoal,
             icon: const Icon(Icons.add),
-            label: const Text('Create Custom Goal'),
+            label: const Text('Add custom goal'),
           ),
         ),
         const SizedBox(height: 10),
@@ -355,15 +789,15 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
   }
 
   Future<void> _next() async {
-    if (_step == 0 && _roles.isEmpty) {
+    if (_step == 1 && _roles.isEmpty) {
       _message('Choose at least one current role.');
       return;
     }
-    if (_step == 0 && !_isStateValidForSetup()) {
+    if (_step == 1 && !_isStateValidForSetup()) {
       _message('Select your state to continue.');
       return;
     }
-    if (_step < 2) {
+    if (_step < _totalSteps - 1) {
       await _pages.nextPage(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,

@@ -12,6 +12,8 @@ class LocalStore {
   static const String _kCertMatchConfirmations = 'fireops.certMatchConfirmations';
   static const String _kTaskBookTaskProgress = 'fireops.taskBook.taskProgress';
   static const String _kTaskBookCustomTasks = 'fireops.taskBook.customTasks';
+  static const String _kTaskBookCustomBooks = 'fireops.taskBook.customBooks.v1';
+  static const String _kTaskBookActiveBook = 'fireops.taskBook.activeBook.v1';
 
   Future<bool> getOnboardingComplete() async {
     try {
@@ -141,4 +143,14 @@ class LocalStore {
       loadJsonList(_kTaskBookCustomTasks);
   Future<bool> saveTaskBookCustomTasks(List<Map<String, dynamic>> json) =>
       saveJsonChecked(_kTaskBookCustomTasks, json);
+
+  Future<List<Map<String, dynamic>>> loadTaskBookCustomBooks() =>
+      loadJsonList(_kTaskBookCustomBooks);
+  Future<bool> saveTaskBookCustomBooks(List<Map<String, dynamic>> json) =>
+      saveJsonChecked(_kTaskBookCustomBooks, json);
+
+  Future<Map<String, dynamic>?> loadTaskBookActiveBook() =>
+      loadJsonMap(_kTaskBookActiveBook);
+  Future<bool> saveTaskBookActiveBook(Map<String, dynamic> json) =>
+      saveJsonChecked(_kTaskBookActiveBook, json);
 }

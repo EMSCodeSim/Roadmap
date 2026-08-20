@@ -130,7 +130,7 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                   OutlinedButton.icon(
                     onPressed: _createCustomGoal,
                     icon: const Icon(Icons.add),
-                    label: const Text('Create Custom Goal'),
+                    label: const Text('Add custom goal'),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(50),
                     ),
@@ -229,8 +229,8 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                     _saving
                         ? 'Saving…'
                         : hadGoal
-                        ? 'Build & Review New Task Book'
-                        : 'Build & Review My Task Book',
+                        ? 'Build & review Task Book'
+                        : 'Build & review Task Book',
                   ),
                 ),
               ),
@@ -247,7 +247,7 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Create Custom Goal'),
+          title: const Text('Add custom goal'),
           content: TextField(
             controller: controller,
             autofocus: true,

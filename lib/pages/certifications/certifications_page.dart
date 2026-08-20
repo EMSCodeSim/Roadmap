@@ -7,6 +7,9 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
+import 'package:firepath/widgets/certification_renewal_tile.dart';
+import 'package:firepath/widgets/calm_empty_state.dart';
 
 enum _CertFilter { all, current, expiring, expired }
 
@@ -35,52 +38,41 @@ class _CertSummaryHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: AppSpacing.paddingMd,
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$total Certifications',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$current Current • $expiring Expiring • $expired Expired',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ],
+    return Card(
+      child: Padding(
+        padding: AppCardTokens.padding,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$total Certs',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    '$current Current • $expiring Expiring • $expired Expired',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          SizedBox(
-            height: 44,
-            child: FilledButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: const Text('Add'),
-              style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
+            const SizedBox(width: AppSpacing.md),
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add),
+                label: const Text('Add cert'),
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppCardTokens.radius)),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -93,41 +85,18 @@ class _CertEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Icon(
-          Icons.verified_outlined,
-          size: 44,
-          color: cs.primary,
+    return CalmEmptyState(
+      icon: Icons.verified_outlined,
+      title: 'Start your cert record',
+      message: 'Add the certs you already hold. We’ll track renewals and keep your Task Book accurate.',
+      primaryAction: SizedBox(
+        height: 52,
+        child: FilledButton.icon(
+          onPressed: onAdd,
+          icon: const Icon(Icons.add),
+          label: const Text('Add cert'),
         ),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          'Start your credential record',
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          'Add the certifications you already hold and FireOps will help track renewals and career requirements.',
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: cs.onSurfaceVariant, height: 1.5),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        SizedBox(
-          height: 52,
-          child: FilledButton(
-            onPressed: onAdd,
-            child: const Text('Add Certification'),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -147,7 +116,7 @@ class _FilteredEmptyState extends StatelessWidget {
     final (title, detail, icon) = switch (filter) {
       _CertFilter.current => (
           'No current certifications',
-          'None of your tracked certifications are currently in this status.',
+          'Add certs you currently hold to track renewals.',
           Icons.verified_outlined,
         ),
       _CertFilter.expiring => (
@@ -157,12 +126,12 @@ class _FilteredEmptyState extends StatelessWidget {
         ),
       _CertFilter.expired => (
           'No expired certifications',
-          'All tracked certifications are clear of the expired list.',
+          'Good to go — no expired certs on file.',
           Icons.check_circle_outline,
         ),
       _CertFilter.all => (
           'No certifications found',
-          'Try another filter.',
+          'Try another filter or clear your search.',
           Icons.search_off_outlined,
         ),
     };
@@ -195,7 +164,7 @@ class _FilteredEmptyState extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             OutlinedButton(
               onPressed: onShowAll,
-              child: const Text('Show all certifications'),
+              child: const Text('Show all certs'),
             ),
           ],
         ),
@@ -218,14 +187,14 @@ class _CertMatchBanner extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Material(
       color: cs.tertiaryContainer.withValues(alpha: 0.62),
-      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderRadius: BorderRadius.circular(AppCardTokens.radius),
       child: InkWell(
         onTap: onReview,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderRadius: BorderRadius.circular(AppCardTokens.radius),
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
-            vertical: 12,
+            vertical: AppSpacing.sm,
           ),
           child: Row(
             children: [
@@ -329,7 +298,7 @@ class _CertificationsPageState extends State<CertificationsPage> {
       });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Certifications')),
+      appBar: const FirefighterRoadmapAppBar(subtitle: 'Certs'),
       body: SafeArea(
         child: total == 0
             ? Center(
@@ -411,104 +380,103 @@ class _CertificationsPageState extends State<CertificationsPage> {
                             itemCount: sorted.length,
                             itemBuilder: (context, index) {
                               final cert = sorted[index];
-                              final status = cert.status;
-                              final (label, color, icon) = switch (status) {
-                                CertificationStatus.current => (
-                                    'Current',
-                                    FireOpsSemanticColors.completed,
-                                    Icons.check_circle,
-                                  ),
-                                CertificationStatus.expiringSoon => (
-                                    'Expiring Soon',
-                                    FireOpsSemanticColors.warning,
-                                    Icons.warning_amber_rounded,
-                                  ),
-                                CertificationStatus.expired => (
-                                    'Expired',
-                                    FireOpsSemanticColors.expired,
-                                    Icons.cancel,
-                                  ),
-                              };
+
+                              final displayName =
+                                  state.certificationDisplayName(cert);
 
                               final expirationText = cert.doesNotExpire
                                   ? 'Does not expire'
                                   : cert.expirationDate == null
                                       ? 'No expiration date'
                                       : 'Expires ${_formatDate(cert.expirationDate!)}';
-                              final organization =
-                                  (cert.issuingOrganization ?? '').trim();
+
+                              final isUrgent = cert.status !=
+                                  CertificationStatus.current;
 
                               return Padding(
-                                padding: const EdgeInsets.only(
-                                  bottom: AppSpacing.sm,
-                                ),
-                                child: InkWell(
-                                  onTap: () => context.push(
-                                    '${AppRoutes.certificationDetail}/${cert.id}',
-                                  ),
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.lg),
-                                  child: Container(
-                                    padding: AppSpacing.paddingMd,
-                                    decoration: BoxDecoration(
-                                      color: cs.surface,
-                                      borderRadius:
-                                          BorderRadius.circular(AppRadius.lg),
-                                      border: Border.all(
-                                        color: cs.outline
-                                            .withValues(alpha: 0.14),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(icon, color: color),
-                                        const SizedBox(width: AppSpacing.md),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                padding:
+                                    const EdgeInsets.only(bottom: AppSpacing.sm),
+                                child: isUrgent
+                                    ? CertificationRenewalTile.fromCert(
+                                        cert: cert,
+                                        displayName: displayName,
+                                        onOpen: () => context.push(
+                                          '${AppRoutes.certificationDetail}/${cert.id}',
+                                        ),
+                                        onRenew: () => context.push(
+                                          '${AppRoutes.certificationDetail}/${cert.id}',
+                                          extra: const {
+                                            'focus': 'renewal',
+                                          },
+                                        ),
+                                      )
+                                    : InkWell(
+                                        onTap: () => context.push(
+                                          '${AppRoutes.certificationDetail}/${cert.id}',
+                                        ),
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.lg),
+                                        child: Container(
+                                          padding: AppSpacing.paddingMd,
+                                          decoration: BoxDecoration(
+                                            color: cs.surface,
+                                            borderRadius:
+                                                BorderRadius.circular(AppRadius.lg),
+                                            border: Border.all(
+                                              color: cs.outline
+                                                  .withValues(alpha: 0.14),
+                                            ),
+                                          ),
+                                          child: Row(
                                             children: [
-                                              Text(
-                                                state.certificationDisplayName(
-                                                  cert,
+                                              const Icon(
+                                                Icons.check_circle,
+                                                color:
+                                                    FireOpsSemanticColors.completed,
+                                              ),
+                                              const SizedBox(
+                                                  width: AppSpacing.md),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      displayName,
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleMedium
+                                                          ?.copyWith(
+                                                            fontWeight:
+                                                                FontWeight.w900,
+                                                          ),
+                                                    ),
+                                                    const SizedBox(height: 3),
+                                                    Text(
+                                                      expirationText,
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall
+                                                          ?.copyWith(
+                                                            color: cs
+                                                                .onSurfaceVariant,
+                                                            height: 1.35,
+                                                          ),
+                                                    ),
+                                                  ],
                                                 ),
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleMedium
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                    ),
                                               ),
-                                              const SizedBox(height: 3),
-                                              Text(
-                                                [
-                                                  if (organization.isNotEmpty)
-                                                    organization,
-                                                  label,
-                                                  expirationText,
-                                                ].join(' • '),
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodySmall
-                                                    ?.copyWith(
-                                                      color:
-                                                          cs.onSurfaceVariant,
-                                                      height: 1.35,
-                                                    ),
-                                              ),
+                                              const SizedBox(
+                                                  width: AppSpacing.sm),
+                                              Icon(Icons.chevron_right,
+                                                  color: cs.onSurfaceVariant),
                                             ],
                                           ),
                                         ),
-                                        const SizedBox(width: AppSpacing.sm),
-                                        Icon(
-                                          Icons.chevron_right,
-                                          color: cs.onSurfaceVariant,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                                      ),
                               );
                             },
                           ),
@@ -547,7 +515,7 @@ class _CertificationsPageState extends State<CertificationsPage> {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        'Confirm how your existing certification names map to FireOps requirements. This helps the roadmap recognize credentials you already hold.',
+                        'Confirm how your cert names match the catalog. This helps your Task Book auto-satisfy what you already have.',
                         style: Theme.of(sheetContext).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 14),

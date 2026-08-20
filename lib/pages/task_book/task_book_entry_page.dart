@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
-import 'package:firepath/pages/path/goal_picker_page.dart';
 import 'package:firepath/pages/task_book/task_book_page.dart';
-import 'package:firepath/state/app_state.dart';
 
 /// Entry page for the Task Book tab.
 ///
@@ -13,8 +9,9 @@ class TaskBookEntryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    if (state.roadmap == null) return const GoalPickerPage();
+    // We keep the legacy behavior (prompt for a goal) inside TaskBookPage's
+    // empty-state, but we always enter the Task Book tab so custom Task Books
+    // are accessible even before a Career Road goal is selected.
     return const TaskBookPage();
   }
 }

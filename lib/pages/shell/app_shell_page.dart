@@ -24,7 +24,7 @@ class AppShellPage extends StatelessWidget {
           decoration: BoxDecoration(
             color: cs.surface,
             border: Border(
-              top: BorderSide(color: cs.outline.withValues(alpha: 0.15)),
+              top: BorderSide(color: cs.outline.withValues(alpha: 0.14)),
             ),
           ),
           child: ConstrainedBox(
@@ -37,7 +37,7 @@ class AppShellPage extends StatelessWidget {
               unselectedItemColor: cs.onSurfaceVariant,
               selectedFontSize: 12,
               unselectedFontSize: 12,
-              iconSize: 27,
+              iconSize: 26,
               items: const [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.home_outlined),

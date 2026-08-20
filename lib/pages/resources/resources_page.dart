@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/resource.dart';
 import 'package:firepath/services/catalog.dart';
+import 'package:firepath/pages/profile/us_state_picker_sheet.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
@@ -115,7 +116,7 @@ class _PersonalizedResourcesView extends StatelessWidget {
         final goalId = road?.goal.id;
         final nextCertId =
             road?.nextStep?.requirement.certificationDefinitionId;
-        final userState = state.profile.state;
+        final userState = FireOpsCatalog.stateCodeFromLegacyValue(state.profile.state);
 
         final activeRequirementIds = <String>{};
         if (road != null) {
@@ -220,14 +221,12 @@ class _PersonalizedResourcesView extends StatelessWidget {
           return score(a).compareTo(score(b));
         });
 
-        final stateSpecific = userState == null
-            ? <Resource>[]
-            : filtered.where((r) => r.state == userState).toList();
+        final stateSpecific = userState == null ? <Resource>[] : filtered.where((r) => r.state == userState).toList();
+        // Never mix other states into the national feed; if we don't have the
+        // user's state yet, show only state-neutral resources.
         final national = userState == null
-            ? filtered
-            : filtered
-                  .where((r) => r.state == null || r.state != userState)
-                  .toList();
+            ? filtered.where((r) => r.state == null).toList()
+            : filtered.where((r) => r.state == null).toList();
 
         return Scaffold(
           appBar: AppBar(
@@ -286,6 +285,24 @@ class _PersonalizedResourcesView extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   ..._buildCards(context, stateSpecific, limit: 8),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
+                if (userState == null) ...[
+                  _SectionHeader(
+                    title: 'STATE-SPECIFIC LINKS',
+                    subtitle: 'Select your state to unlock official requirements and training links.',
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _PickStateCard(
+                    onPick: () async {
+                      final picked = await UsStatePickerSheet.pick(context, selectedCode: null);
+                      if (picked == null) return;
+                      final profile = state.profile;
+                      await context.read<AppState>().profileController.updateProfile(
+                            profile.copyWith(state: picked, updatedAt: DateTime.now()),
+                          );
+                    },
+                  ),
                   const SizedBox(height: AppSpacing.lg),
                 ],
                 _SectionHeader(
@@ -353,6 +370,7 @@ class _RequirementResourcesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userState = FireOpsCatalog.stateCodeFromLegacyValue(context.watch<AppState>().profile.state);
     return ValueListenableBuilder(
       valueListenable: searchController,
       builder: (context, value, _) {
@@ -379,7 +397,13 @@ class _RequirementResourcesView extends StatelessWidget {
           return keyOk && qOk && typeOk;
         }
 
-        final filtered = items.where(match).toList();
+        final filtered = items
+            .where(match)
+            .where((r) {
+              if (userState == null || userState.trim().isEmpty) return r.state == null;
+              return r.state == null || r.state == userState;
+            })
+            .toList();
         filtered.sort((a, b) {
           if (a.type != b.type) return a.type.index.compareTo(b.type.index);
           return a.title.toLowerCase().compareTo(b.title.toLowerCase());
@@ -541,6 +565,7 @@ class ResourceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final url = resource.url;
+    final profileState = FireOpsCatalog.stateCodeFromLegacyValue(context.read<AppState>().profile.state);
     return Container(
       padding: AppSpacing.paddingMd,
       decoration: BoxDecoration(
@@ -583,7 +608,9 @@ class ResourceCard extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           FilledButton(
-            onPressed: url == null ? null : () => _openUrl(url),
+            onPressed: url == null
+                ? null
+                : () => _openResourceUrl(context, resource, profileStateCode: profileState),
             style: FilledButton.styleFrom(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -612,7 +639,36 @@ class ResourceCard extends StatelessWidget {
     };
   }
 
-  static Future<void> _openUrl(String url) async {
+  static Future<void> _openResourceUrl(
+    BuildContext context,
+    Resource resource, {
+    required String? profileStateCode,
+  }) async {
+    final url = resource.url;
+    if (url == null || url.trim().isEmpty) return;
+
+    final stateOnly = resource.state?.trim().toUpperCase();
+    final profileState = profileStateCode?.trim().toUpperCase();
+    if (stateOnly != null && stateOnly.isNotEmpty) {
+      if (profileState == null || profileState.isEmpty) {
+        final picked = await UsStatePickerSheet.pick(context, selectedCode: null);
+        if (picked == null) return;
+        try {
+          final app = context.read<AppState>();
+          await app.profileController.updateProfile(
+            app.profile.copyWith(state: picked, updatedAt: DateTime.now()),
+          );
+        } catch (e) {
+          debugPrint('Failed to save picked state before opening resource: $e');
+        }
+      } else if (profileState != stateOnly) {
+        // Avoid surprising mismatched state links.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('This link is for $stateOnly. Your profile is set to $profileState.')),
+        );
+      }
+    }
+
     final uri = Uri.tryParse(url);
     if (uri == null) {
       debugPrint('Invalid URL: $url');
@@ -620,5 +676,56 @@ class ResourceCard extends StatelessWidget {
     }
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok) debugPrint('launchUrl failed for $url');
+  }
+}
+
+class _PickStateCard extends StatelessWidget {
+  final Future<void> Function() onPick;
+  const _PickStateCard({required this.onPick});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: AppSpacing.paddingMd,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(Icons.public, color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Select your state', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 2),
+                Text(
+                  'We’ll prioritize the correct official requirements and training links for your area.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          FilledButton(
+            onPressed: () => onPick(),
+            style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+            child: const Text('Pick'),
+          ),
+        ],
+      ),
+    );
   }
 }

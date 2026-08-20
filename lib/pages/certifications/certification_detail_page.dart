@@ -4,8 +4,11 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/certification.dart';
+import 'package:firepath/models/prefill.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
+import 'package:firepath/pages/career/quick_log_launcher.dart';
+import 'package:firepath/services/certification_urgency.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/services/catalog.dart';
@@ -27,6 +30,7 @@ class CertificationDetailPage extends StatefulWidget {
 class _CertificationDetailPageState extends State<CertificationDetailPage> {
   final _formKey = GlobalKey<FormState>();
   late Certification _cert;
+  bool _autoOpenedRenewal = false;
 
   late final TextEditingController _name;
   late final TextEditingController _org;
@@ -82,6 +86,16 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
               _cert.certificationDefinitionId!.isEmpty)) {
         _cert = _cert.copyWith(certificationDefinitionId: prefillDefId);
       }
+    }
+
+    final extra = widget.extra;
+    final shouldFocusRenewal = extra is Map && extra['focus'] == 'renewal';
+    if (shouldFocusRenewal && !_autoOpenedRenewal) {
+      _autoOpenedRenewal = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showRenewalUpdateSheet();
+      });
     }
   }
 
@@ -217,6 +231,212 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
     }
   }
 
+  Future<void> _showRenewalUpdateSheet() async {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    var newExpiration = _expirationDate;
+    var newIssueDate = _issueDate;
+    final noteController = TextEditingController();
+    final now = DateTime.now();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final previewCert = _cert.copyWith(
+              issueDate: newIssueDate,
+              expirationDate: _doesNotExpire ? null : newExpiration,
+              doesNotExpire: _doesNotExpire,
+              clearExpirationDate: _doesNotExpire,
+            );
+            final guidance = CertificationUrgency.renewalGuidance(previewCert);
+            final isExpired = previewCert.status == CertificationStatus.expired;
+
+            Future<void> pickExpiration() async {
+              final picked = await showDatePicker(
+                context: sheetContext,
+                firstDate: DateTime(now.year - 1),
+                lastDate: DateTime(now.year + 30),
+                initialDate: newExpiration ?? now,
+              );
+              if (picked == null) return;
+              setSheetState(() => newExpiration = picked);
+            }
+
+            Future<void> pickIssue() async {
+              final picked = await showDatePicker(
+                context: sheetContext,
+                firstDate: DateTime(1990),
+                lastDate: DateTime(now.year + 1),
+                initialDate: newIssueDate ?? now,
+              );
+              if (picked == null) return;
+              setSheetState(() => newIssueDate = picked);
+            }
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                AppSpacing.md + MediaQuery.viewInsetsOf(sheetContext).bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    isExpired
+                        ? 'Renew credential (expired)'
+                        : 'Renew credential (expiring soon)',
+                    style: theme.textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    guidance.summary,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DateTile(
+                          label: 'Issue date',
+                          value: newIssueDate,
+                          onTap: pickIssue,
+                          onClear: () => setSheetState(() => newIssueDate = null),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: _DateTile(
+                          label: 'New expiration',
+                          value: newExpiration,
+                          onTap: pickExpiration,
+                          onClear: () => setSheetState(() => newExpiration = null),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: noteController,
+                    decoration: const InputDecoration(
+                      labelText: 'Renewal note (optional proof details)',
+                      hintText: 'e.g., “Completed 24 CE hours, submitted renewal online”',
+                    ),
+                    minLines: 2,
+                    maxLines: 4,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  SizedBox(
+                    height: 52,
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        final before = _cert;
+                        final history = <CertificationRenewal>[...before.renewalHistory];
+                        history.add(
+                          CertificationRenewal(
+                            issueDate: before.issueDate,
+                            expirationDate: before.expirationDate,
+                            doesNotExpire: before.doesNotExpire,
+                            issuingOrganization: before.issuingOrganization,
+                            certificationNumber: before.certificationNumber,
+                            notes: before.notes,
+                            createdAt: DateTime.now(),
+                          ),
+                        );
+
+                        final note = noteController.text.trim();
+                        final updated = before.copyWith(
+                          issueDate: newIssueDate,
+                          expirationDate: newExpiration,
+                          doesNotExpire: false,
+                          renewalHistory: history,
+                          notes: note.isEmpty ? before.notes : note,
+                          updatedAt: DateTime.now(),
+                        );
+                        await context.read<AppState>().upsertCertification(updated);
+                        if (!mounted) return;
+                        setState(() {
+                          _cert = updated;
+                          _issueDate = updated.issueDate;
+                          _expirationDate = updated.expirationDate;
+                          _doesNotExpire = updated.doesNotExpire;
+                          if (note.isNotEmpty) _notes.text = note;
+                        });
+                        if (sheetContext.mounted) sheetContext.pop();
+                      },
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Mark Renewed / Update Dates'),
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    height: 52,
+                    child: OutlinedButton(
+                      onPressed: () => sheetContext.pop(),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                      ),
+                      child: const Text('Not right now'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _logRenewalProgress() {
+    final state = context.read<AppState>();
+    final roadmap = state.roadmap;
+    final defId = _cert.certificationDefinitionId;
+    Requirement? relatedReq;
+    if (defId != null && roadmap != null) {
+      for (final item in roadmap.all) {
+        final r = item.requirement;
+        if (r.type == RequirementType.certification &&
+            r.certificationDefinitionId == defId) {
+          relatedReq = r;
+          break;
+        }
+      }
+    }
+
+    final name = state.certificationDisplayName(_cert);
+
+    QuickLogLauncher.open(
+      context,
+      prefill: LogPrefill(
+        title: 'Renewal: $name',
+        category: 'Certification Renewal',
+        relatedGoalId: roadmap?.goal.id,
+        relatedRequirementId: relatedReq?.id,
+        relatedTaskId: null,
+        tags: ['renewal', 'certification'],
+      ),
+    );
+  }
+
   Future<bool?> _showNiceWork(
     BuildContext context,
     String completedName,
@@ -268,9 +488,7 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
               SizedBox(
                 height: 52,
                 child: FilledButton(
-                  onPressed: nextName == null
-                      ? null
-                      : () => Navigator.of(context).pop(true),
+                  onPressed: nextName == null ? null : () => context.pop(true),
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -283,7 +501,7 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
               SizedBox(
                 height: 52,
                 child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () => context.pop(false),
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -323,12 +541,12 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
               ),
               const SizedBox(height: AppSpacing.lg),
               FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: () => context.pop(true),
                 child: const Text('Delete'),
               ),
               const SizedBox(height: AppSpacing.sm),
               OutlinedButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => context.pop(false),
                 child: const Text('Cancel'),
               ),
             ],
@@ -412,9 +630,39 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
                             ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                     ),
+                    if (status != CertificationStatus.current) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      SizedBox(
+                        height: 40,
+                        child: FilledButton.tonalIcon(
+                          onPressed: _showRenewalUpdateSheet,
+                          icon: const Icon(Icons.autorenew),
+                          label: const Text('Renew'),
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
+              if (status != CertificationStatus.current) ...[
+                const SizedBox(height: AppSpacing.md),
+                _RenewalPlanCard(
+                  cert: _cert.copyWith(
+                    name: _name.text,
+                    doesNotExpire: _doesNotExpire,
+                    expirationDate: _expirationDate,
+                    issueDate: _issueDate,
+                    clearExpirationDate: _doesNotExpire,
+                  ),
+                  onRenewNow: _showRenewalUpdateSheet,
+                  onLogProgress: _logRenewalProgress,
+                ),
+              ],
               const SizedBox(height: AppSpacing.lg),
               TextFormField(
                 controller: _name,
@@ -583,6 +831,132 @@ class _DateTile extends StatelessWidget {
   }
 }
 
+class _RenewalPlanCard extends StatelessWidget {
+  final Certification cert;
+  final VoidCallback onRenewNow;
+  final VoidCallback onLogProgress;
+
+  const _RenewalPlanCard({
+    required this.cert,
+    required this.onRenewNow,
+    required this.onLogProgress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final guidance = CertificationUrgency.renewalGuidance(cert);
+    final isExpired = cert.status == CertificationStatus.expired;
+
+    final bg = isExpired
+        ? cs.errorContainer.withValues(alpha: 0.45)
+        : cs.secondaryContainer.withValues(alpha: 0.35);
+    final border = isExpired
+        ? FireOpsSemanticColors.expired
+        : FireOpsSemanticColors.warning;
+    final icon = isExpired ? Icons.cancel : Icons.warning_amber_rounded;
+
+    return Container(
+      padding: AppSpacing.paddingMd,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: border.withValues(alpha: 0.30)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: border),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  guidance.headline,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            guidance.summary,
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'HOW TO COMPLETE',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...guidance.steps.take(6).map((s) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 18,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        s,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(height: 1.35, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: FilledButton.icon(
+                    onPressed: onRenewNow,
+                    icon: const Icon(Icons.autorenew),
+                    label: const Text('Renew / Update Dates'),
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: onLogProgress,
+              icon: const Icon(Icons.add_task_outlined),
+              label: const Text('Log renewal progress'),
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 enum _DuplicateChoice { updateExisting, addAnother }
 
 extension on _CertificationDetailPageState {
@@ -619,9 +993,7 @@ extension on _CertificationDetailPageState {
               SizedBox(
                 height: 52,
                 child: FilledButton(
-                  onPressed: () => Navigator.of(
-                    context,
-                  ).pop(_DuplicateChoice.updateExisting),
+                  onPressed: () => context.pop(_DuplicateChoice.updateExisting),
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -634,8 +1006,7 @@ extension on _CertificationDetailPageState {
               SizedBox(
                 height: 52,
                 child: OutlinedButton(
-                  onPressed: () =>
-                      Navigator.of(context).pop(_DuplicateChoice.addAnother),
+                  onPressed: () => context.pop(_DuplicateChoice.addAnother),
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -646,7 +1017,7 @@ extension on _CertificationDetailPageState {
               ),
               const SizedBox(height: AppSpacing.sm),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(null),
+                onPressed: () => context.pop(null),
                 child: const Text('Cancel'),
               ),
             ],

@@ -29,6 +29,11 @@ class StateRequirementCatalog {
     return _verified.any((e) => e.stateCode == s);
   }
 
+  static bool hasVerifiedDataForGoal({required String stateCode, required String careerGoalId}) {
+    final s = stateCode.trim().toUpperCase();
+    return _verified.any((e) => e.stateCode == s && e.careerGoalId == careerGoalId);
+  }
+
   static List<StateRequirementEntry> entriesForGoal({
     required String stateCode,
     required String careerGoalId,

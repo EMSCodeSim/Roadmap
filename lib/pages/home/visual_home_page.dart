@@ -4,18 +4,25 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/certification.dart';
+import 'package:firepath/models/home_quick_action.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/certification_urgency.dart';
+import 'package:firepath/services/home_quick_actions_store.dart';
 import 'package:firepath/services/timeline_planner.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
+import 'package:firepath/models/prefill.dart';
+import 'package:firepath/models/quick_log_tracker.dart';
+import 'package:firepath/services/quick_log_preferences_store.dart';
 import 'package:firepath/pages/profile/us_state_picker_sheet.dart';
 import 'package:firepath/widgets/progress_ring.dart';
+import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 
 class VisualHomePage extends StatefulWidget {
   const VisualHomePage({super.key});
@@ -26,17 +33,22 @@ class VisualHomePage extends StatefulWidget {
 
 class _VisualHomePageState extends State<VisualHomePage> {
   bool _promptQueued = false;
+  final HomeQuickActionsStore _quickActionsStore = HomeQuickActionsStore();
+  Future<List<HomeQuickAction>>? _quickActionsFuture;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_promptQueued) return;
     _promptQueued = true;
+    _quickActionsFuture ??= _quickActionsStore.load();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _maybePromptForMissingState();
     });
   }
+
+  void _refreshQuickActions() => setState(() => _quickActionsFuture = _quickActionsStore.load());
 
   Future<void> _maybePromptForMissingState() async {
     final state = context.read<AppState>();
@@ -125,49 +137,113 @@ class _VisualHomePageState extends State<VisualHomePage> {
         ? null
         : CareerTimelinePlanner.build(state);
 
+    final urgentCerts = CertificationUrgency.urgent(
+      state.certifications,
+      withinDays: 90,
+    );
+    final hasCertUrgency = urgentCerts.isNotEmpty;
+
+    final nextStepLabel = roadmap?.nextStep?.requirement.name;
+    final hasNextActions = (nextStepLabel ?? '').trim().isNotEmpty ||
+        urgentCerts.take(2).isNotEmpty;
+
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxHeight < 690;
-            return Padding(
-              padding: EdgeInsets.fromLTRB(14, compact ? 8 : 12, 14, 10),
-              child: Column(
-                children: [
-                  _GraphicHeader(
-                    compact: compact,
-                    onSettings: () => context.push(AppRoutes.settings),
+            final edge = AppSpacing.md;
+            final sectionGap = compact ? AppSpacing.md : AppSpacing.lg;
+
+            return CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    edge,
+                    compact ? AppSpacing.sm : AppSpacing.md,
+                    edge,
+                    AppSpacing.md,
                   ),
-                  SizedBox(height: compact ? 8 : 12),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, cardSpace) => FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.topCenter,
-                        child: SizedBox(
-                          width: cardSpace.maxWidth,
-                          child: _CareerCommandCard(
-                            goalTitle: roadmap?.goal.title,
-                            targetDate: profile.careerPlan.targetDate,
-                            completed: roadmap?.completedCount ?? 0,
-                            total: roadmap?.totalCount ?? 0,
-                            nextStep: roadmap?.nextStep?.requirement.name,
-                            timelineStatus: timelinePlan?.status,
-                            onOpenTaskBook: () => context.go(AppRoutes.myPath),
-                            onQuickLog: () => QuickLogLauncher.open(context),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate(
+                      [
+                        _GraphicHeader(
+                          compact: compact,
+                          onSettings: () => context.push(AppRoutes.settings),
+                        ),
+                        SizedBox(height: sectionGap),
+
+                        // 1) Next level / readiness hero
+                        _NextLevelHeroCard(
+                          goalTitle: roadmap?.goal.title,
+                          targetDate: profile.careerPlan.targetDate,
+                          completed: roadmap?.completedCount ?? 0,
+                          total: roadmap?.totalCount ?? 0,
+                          nextStep: nextStepLabel,
+                          timelineStatus: timelinePlan?.status,
+                          onOpenTaskBook: () => context.go(AppRoutes.myPath),
+                        ),
+
+                        // 2) What needs attention now
+                        if (hasCertUrgency || hasNextActions) ...[
+                          SizedBox(height: sectionGap),
+                          _HomeSectionHeader(
+                            title: 'Needs attention',
+                            subtitle: 'Fast actions that keep your path valid.',
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          if (hasCertUrgency)
+                            _ExpiringCertsMiniPanel(
+                              items: urgentCerts.take(3).toList(),
+                              compact: true,
+                            ),
+                          if (hasCertUrgency && hasNextActions)
+                            const SizedBox(height: AppSpacing.sm),
+                          if (hasNextActions)
+                            _NextThreeActionsPanel(
+                              nextStepLabel: nextStepLabel,
+                              urgentCerts: urgentCerts,
+                              onOpenTaskBook: () => context.go(AppRoutes.myPath),
+                              compact: true,
+                            ),
+                        ],
+
+                        // 3) Quick tools
+                        SizedBox(height: sectionGap),
+                        _HomeSectionHeader(
+                          title: 'Quick tools',
+                          subtitle: 'Log progress and keep momentum.',
+                          trailing: TextButton.icon(
+                            onPressed: () async {
+                              final current = await (_quickActionsFuture ?? _quickActionsStore.load());
+                              if (!context.mounted) return;
+                              await _showEditQuickActionsSheet(context, current);
+                              if (!mounted) return;
+                              _refreshQuickActions();
+                            },
+                            icon: const Icon(Icons.tune_outlined, size: 18),
+                            label: const Text('Edit'),
                           ),
                         ),
-                      ),
+                        const SizedBox(height: AppSpacing.sm),
+                        FutureBuilder<List<HomeQuickAction>>(
+                          future: _quickActionsFuture,
+                          builder: (context, snapshot) {
+                            final actions = snapshot.data ?? HomeQuickActionsStore.defaults;
+                            return _HomeQuickActionsGrid(
+                              compact: compact,
+                              actions: actions,
+                              onRunAction: (action) => _runQuickAction(context, action),
+                            );
+                          },
+                        ),
+                        SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md),
+                      ],
                     ),
                   ),
-                  SizedBox(height: compact ? 8 : 12),
-                  _HomeActionRow(
-                    compact: compact,
-                    onDailyFocus: () => context.push(AppRoutes.dailyFocus),
-                    onQuickLog: () => QuickLogLauncher.open(context),
-                  ),
-                ],
-              ),
+                ),
+              ],
             );
           },
         ),
@@ -359,7 +435,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
                                   ).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        'Changing your state may change state-specific Task Book recommendations and certification requirements.',
+                                        'Changing your state can update Task Book recommendations and cert requirements.',
                                       ),
                                     ),
                                   );
@@ -552,6 +628,283 @@ class _VisualHomePageState extends State<VisualHomePage> {
       },
     );
   }
+
+  Future<void> _showEditQuickActionsSheet(
+    BuildContext context,
+    List<HomeQuickAction> current,
+  ) async {
+    final cs = Theme.of(context).colorScheme;
+    var working = current.toList(growable: true);
+
+    final result = await showModalBottomSheet<List<HomeQuickAction>?> (
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            Future<void> addAction() async {
+              final picked = await _showAddQuickActionSheet(sheetContext, working);
+              if (picked == null) return;
+              setSheetState(() => working.add(picked));
+            }
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                0,
+                16,
+                16 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Quick actions',
+                      style: Theme.of(sheetContext)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Pin the buttons you actually use. Drag to reorder.',
+                    style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 420),
+                    child: ReorderableListView.builder(
+                      shrinkWrap: true,
+                      itemCount: working.length,
+                      onReorder: (oldIndex, newIndex) {
+                        setSheetState(() {
+                          if (newIndex > oldIndex) newIndex -= 1;
+                          final item = working.removeAt(oldIndex);
+                          working.insert(newIndex, item);
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final action = working[index];
+                        final title = _quickActionTitle(action);
+                        final subtitle = _quickActionSubtitle(action);
+                        final icon = _quickActionIcon(action);
+                        return ListTile(
+                          key: ValueKey('qa_${action.type.name}_${action.trackerKey ?? index}'),
+                          contentPadding: EdgeInsets.zero,
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: cs.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(icon, color: cs.onSurfaceVariant),
+                          ),
+                          title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Remove',
+                                onPressed: () => setSheetState(() => working.removeAt(index)),
+                                icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+                              ),
+                              ReorderableDragStartListener(
+                                index: index,
+                                child: Icon(Icons.drag_handle, color: cs.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: addAction,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add quick action'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 56,
+                    child: FilledButton(
+                      onPressed: () => sheetContext.pop(working),
+                      child: const Text('Save'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) return;
+    await _quickActionsStore.save(result);
+  }
+
+  Future<HomeQuickAction?> _showAddQuickActionSheet(
+    BuildContext context,
+    List<HomeQuickAction> current,
+  ) async {
+    final cs = Theme.of(context).colorScheme;
+    final prefs = await QuickLogPreferencesStore().load();
+    final pinnedKeys = prefs.pinnedIds;
+
+    final baseOptions = <HomeQuickAction>[
+      if (!current.any((a) => a.type == HomeQuickActionType.quickLog))
+        const HomeQuickAction(type: HomeQuickActionType.quickLog),
+      if (!current.any((a) => a.type == HomeQuickActionType.dailyFocus))
+        const HomeQuickAction(type: HomeQuickActionType.dailyFocus),
+      if (!current.any((a) => a.type == HomeQuickActionType.openTaskBook))
+        const HomeQuickAction(type: HomeQuickActionType.openTaskBook),
+      if (!current.any((a) => a.type == HomeQuickActionType.openCerts))
+        const HomeQuickAction(type: HomeQuickActionType.openCerts),
+      if (!current.any((a) => a.type == HomeQuickActionType.openResources))
+        const HomeQuickAction(type: HomeQuickActionType.openResources),
+    ];
+
+    final templateOptions = pinnedKeys
+        .where((key) => current.every((a) => a.type != HomeQuickActionType.quickLogTemplate || a.trackerKey != key))
+        .map((key) {
+          final builtIn = QuickLogCatalog.byKey(key);
+          final fromCustom = prefs.customTemplates.where((t) => t.id == key).map((t) => t.title).firstOrNull;
+          return HomeQuickAction(
+            type: HomeQuickActionType.quickLogTemplate,
+            trackerKey: key,
+            titleOverride: builtIn?.title ?? fromCustom,
+          );
+        })
+        .toList();
+
+    return showModalBottomSheet<HomeQuickAction?>(
+      context: context,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Add quick action',
+                  style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              Text(
+                'Choose what to pin on Home.',
+                style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 14),
+              ...baseOptions.map((action) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(_quickActionIcon(action), color: cs.primary),
+                    title: Text(_quickActionTitle(action)),
+                    subtitle: Text(_quickActionSubtitle(action)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => sheetContext.pop(action),
+                  )),
+              if (templateOptions.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text('Quick Log templates',
+                    style: Theme.of(sheetContext).textTheme.labelLarge?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w800,
+                    )),
+                const SizedBox(height: 6),
+                ...templateOptions.take(8).map((action) {
+                  final title = _quickActionTitle(action);
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.bookmark_add_outlined, color: cs.primary),
+                    title: Text(title),
+                    subtitle: const Text('One-tap log'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => sheetContext.pop(action),
+                  );
+                }),
+              ],
+              const SizedBox(height: 6),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  static IconData _quickActionIcon(HomeQuickAction action) => switch (action.type) {
+        HomeQuickActionType.quickLogTemplate => Icons.bookmark_add_outlined,
+        _ => action.type.icon,
+      };
+
+  static String _quickActionTitle(HomeQuickAction action) {
+    if (action.type != HomeQuickActionType.quickLogTemplate) return action.type.label;
+    return action.titleOverride?.trim().isNotEmpty == true
+        ? action.titleOverride!.trim()
+        : (QuickLogCatalog.byKey(action.trackerKey ?? '')?.title ?? 'Quick Log');
+  }
+
+  static String _quickActionSubtitle(HomeQuickAction action) {
+    if (action.type != HomeQuickActionType.quickLogTemplate) return action.type.detail;
+    return 'One-tap log';
+  }
+
+  static Future<void> _runQuickAction(BuildContext context, HomeQuickAction action) async {
+    switch (action.type) {
+      case HomeQuickActionType.quickLog:
+        // Home entry point: always land on categories (no task-book prefill).
+        await QuickLogLauncher.open(context);
+        return;
+      case HomeQuickActionType.dailyFocus:
+        context.push(AppRoutes.dailyFocus);
+        return;
+      case HomeQuickActionType.openTaskBook:
+        context.go(AppRoutes.myPath);
+        return;
+      case HomeQuickActionType.openCerts:
+        context.push(AppRoutes.certifications);
+        return;
+      case HomeQuickActionType.openResources:
+        context.push(AppRoutes.resources);
+        return;
+      case HomeQuickActionType.quickLogTemplate:
+        final trackerKey = (action.trackerKey ?? '').trim();
+        if (trackerKey.isEmpty) {
+          await QuickLogLauncher.open(context);
+          return;
+        }
+        await QuickLogLauncher.open(
+          context,
+          prefill: LogPrefill(
+            title: action.titleOverride?.trim().isNotEmpty == true
+                ? action.titleOverride!.trim()
+                : (QuickLogCatalog.byKey(trackerKey)?.title ?? 'Quick Log'),
+            category: null,
+            relatedGoalId: null,
+            relatedRequirementId: null,
+            relatedTaskId: null,
+            tags: const <String>[],
+            trackerKey: trackerKey,
+          ),
+        );
+        return;
+    }
+  }
 }
 
 extension _FirstOrNull<T> on Iterable<T> {
@@ -667,16 +1020,17 @@ class _GraphicHeader extends StatelessWidget {
                           letterSpacing: .65)),
                     ),
                     const SizedBox(height: 5),
-                      Text(
-                        'Fire Career Roadmap',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: cs.onSecondary,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.2,
-                        ),
+                    FirefighterRoadmapWordmark(
+                      foregroundColor: cs.onSecondary,
+                      iconSize: 20,
+                      gap: 10,
+                      textStyle: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(
+                        color: cs.onSecondary,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.1,
                       ),
+                    ),
                     if (!compact) ...[
                       const SizedBox(height: 4),
                       Text('PLAN  •  WORK  •  RECORD  •  ADVANCE',
@@ -727,54 +1081,95 @@ class _RoadmapBannerIcon extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.all(10),
-      child: Image.asset(
-        'assets/icons/career_road_icon_v2.png',
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) {
-          // If the asset is missing or fails to decode, keep the banner stable.
-          return Icon(Icons.route_outlined, color: cs.onSecondary, size: 30);
-        },
+      child: Center(
+        child: FirefighterRoadmapHeaderIcon(size: 34, tint: cs.onSecondary),
       ),
     );
   }
 }
 
-class _HomeActionRow extends StatelessWidget {
-  final bool compact;
-  final VoidCallback onDailyFocus;
-  final VoidCallback onQuickLog;
-
-  const _HomeActionRow({
-    required this.compact,
-    required this.onDailyFocus,
-    required this.onQuickLog,
-  });
+class _HomeSectionHeader extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  const _HomeSectionHeader({required this.title, this.subtitle, this.trailing});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: compact ? 76 : 90,
-      child: Row(
-        children: [
-          Expanded(
-            child: _HomeActionTile(
-              icon: Icons.bolt_outlined,
-              label: 'TODAY',
-              detail: compact ? 'Daily focus' : 'Choose a focused session',
-              onTap: onDailyFocus,
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _HomeActionTile(
-              icon: Icons.add_task_outlined,
-              label: 'QUICK LOG',
-              detail: compact ? 'Record progress' : 'Capture what you did',
-              onTap: onQuickLog,
-              emphasized: true,
+            if (trailing != null) trailing!,
+          ],
+        ),
+        if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
+          const SizedBox(height: 3),
+          Text(
+            subtitle!,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+              height: 1.35,
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _HomeQuickActionsGrid extends StatelessWidget {
+  final bool compact;
+  final List<HomeQuickAction> actions;
+  final ValueChanged<HomeQuickAction> onRunAction;
+
+  const _HomeQuickActionsGrid({required this.compact, required this.actions, required this.onRunAction});
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = actions.where((a) => a.isValid).toList();
+    if (visible.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Keep the Home layout calm: a small 2-column grid that grows as needed.
+    final crossAxisCount = 2;
+    final tileHeight = compact ? 74.0 : 88.0;
+    final rowCount = (visible.length / crossAxisCount).ceil().clamp(1, 3);
+    final height = rowCount * tileHeight + (rowCount - 1) * 10;
+
+    return SizedBox(
+      height: height,
+      child: GridView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: compact ? 2.55 : 2.25,
+        ),
+        itemCount: visible.length,
+        itemBuilder: (context, index) {
+          final action = visible[index];
+          final isPrimary = action.type == HomeQuickActionType.quickLog;
+          return _HomeActionTile(
+            icon: _VisualHomePageState._quickActionIcon(action),
+            label: _VisualHomePageState._quickActionTitle(action).toUpperCase(),
+            detail: _VisualHomePageState._quickActionSubtitle(action),
+            onTap: () => onRunAction(action),
+            emphasized: isPrimary,
+          );
+        },
       ),
     );
   }
@@ -958,7 +1353,7 @@ class _CurrentLevelCard extends StatelessWidget {
   }
 }
 
-class _CareerCommandCard extends StatelessWidget {
+class _NextLevelHeroCard extends StatelessWidget {
   final String? goalTitle;
   final DateTime? targetDate;
   final int completed;
@@ -966,9 +1361,8 @@ class _CareerCommandCard extends StatelessWidget {
   final String? nextStep;
   final TimelineStatus? timelineStatus;
   final VoidCallback onOpenTaskBook;
-  final VoidCallback onQuickLog;
 
-  const _CareerCommandCard({
+  const _NextLevelHeroCard({
     required this.goalTitle,
     required this.targetDate,
     required this.completed,
@@ -976,7 +1370,6 @@ class _CareerCommandCard extends StatelessWidget {
     required this.nextStep,
     required this.timelineStatus,
     required this.onOpenTaskBook,
-    required this.onQuickLog,
   });
 
   @override
@@ -993,8 +1386,8 @@ class _CareerCommandCard extends StatelessWidget {
       TimelineStatus.noTargetDate when hasGoal => 'Add a target date',
       _ when hasGoal && total > 0 && completed >= total =>
         'Ready for the next goal',
-      _ when hasGoal => 'On your career road',
-      _ => 'Build your career road',
+      _ when hasGoal => 'On your Firefighter Roadmap',
+      _ => 'Build your Firefighter Roadmap',
     };
 
     final guidance = switch (timelineStatus) {
@@ -1009,21 +1402,21 @@ class _CareerCommandCard extends StatelessWidget {
       _ when hasGoal =>
         'Open your Task Book to review requirements and choose the best next action.',
       _ =>
-        'Choose where you want to go next and FireOps will turn that goal into an actionable Task Book.',
+        'Choose your Next Level and Firefighter Roadmap will build your Task Book.',
     };
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: cs.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.28)),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.26)),
         boxShadow: [
           BoxShadow(
-            blurRadius: 22,
+            blurRadius: 18,
             offset: const Offset(0, 8),
-            color: cs.shadow.withValues(alpha: 0.08),
+            color: cs.shadow.withValues(alpha: 0.06),
           ),
         ],
       ),
@@ -1037,7 +1430,7 @@ class _CareerCommandCard extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
@@ -1051,7 +1444,7 @@ class _CareerCommandCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'CAREER READINESS',
+                      'NEXT LEVEL',
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: cs.onSurfaceVariant,
                         fontWeight: FontWeight.w900,
@@ -1115,8 +1508,9 @@ class _CareerCommandCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: cs.primaryContainer.withValues(alpha: 0.42),
-              borderRadius: BorderRadius.circular(16),
+              color: cs.primaryContainer.withValues(alpha: 0.32),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: cs.primary.withValues(alpha: 0.16)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1133,7 +1527,7 @@ class _CareerCommandCard extends StatelessWidget {
                 Text(
                   hasGoal
                       ? (nextStep ?? 'Review your completed Task Book')
-                      : 'Choose a career goal',
+                      : 'Choose Next Level',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
@@ -1170,32 +1564,298 @@ class _CareerCommandCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: FilledButton.icon(
-                  onPressed: onOpenTaskBook,
-                  icon: Icon(
-                    hasGoal ? Icons.menu_book_outlined : Icons.flag_outlined,
-                  ),
-                  label: Text(hasGoal ? 'Open Task Book' : 'Choose Goal'),
-                ),
-              ),
-              if (hasGoal) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: OutlinedButton.icon(
-                    onPressed: onQuickLog,
-                    icon: const Icon(Icons.add_task_outlined),
-                    label: const Text('Log Progress'),
-                  ),
-                ),
-              ],
-            ],
+          FilledButton.icon(
+            onPressed: onOpenTaskBook,
+            icon: Icon(hasGoal ? Icons.menu_book_outlined : Icons.flag_outlined),
+            label: Text(hasGoal ? 'Open Task Book' : 'Choose Next Level'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ExpiringCertsMiniPanel extends StatelessWidget {
+  final List<CertificationUrgencyItem> items;
+  final bool compact;
+  const _ExpiringCertsMiniPanel({required this.items, this.compact = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.read<AppState>();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final expired = items.where((e) => e.status == CertificationStatus.expired).toList();
+    final expiring = items.where((e) => e.status == CertificationStatus.expiringSoon).toList();
+
+    final headline = expired.isNotEmpty
+        ? 'Credential check — action required'
+        : 'Credential check — expiring soon';
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(compact ? 12 : 14),
+      decoration: BoxDecoration(
+        color: (expired.isNotEmpty ? cs.errorContainer : cs.secondaryContainer)
+            .withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(
+          color: (expired.isNotEmpty
+                  ? FireOpsSemanticColors.expired
+                  : FireOpsSemanticColors.warning)
+              .withValues(alpha: 0.30),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                expired.isNotEmpty
+                    ? Icons.cancel
+                    : Icons.warning_amber_rounded,
+                color: expired.isNotEmpty
+                    ? FireOpsSemanticColors.expired
+                    : FireOpsSemanticColors.warning,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  headline,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () => context.push(AppRoutes.certifications),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                ),
+                child: const Text('Open'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...items.take(3).map((e) {
+            final name = app.certificationDisplayName(e.cert);
+            final days = e.daysRemaining;
+            final line = e.status == CertificationStatus.expired
+                ? 'Expired'
+                : days == null
+                    ? 'Expiring soon'
+                    : 'Expires in $days ${days == 1 ? 'day' : 'days'}';
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$name — $line',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    onPressed: () => context.push(
+                      '${AppRoutes.certificationDetail}/${e.cert.id}',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                    ),
+                    child: const Text('Renew'),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _NextThreeActionsPanel extends StatelessWidget {
+  final String? nextStepLabel;
+  final List<CertificationUrgencyItem> urgentCerts;
+  final VoidCallback onOpenTaskBook;
+  final bool compact;
+
+  const _NextThreeActionsPanel({
+    required this.nextStepLabel,
+    required this.urgentCerts,
+    required this.onOpenTaskBook,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.read<AppState>();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final actions = <_NextAction>[];
+
+    for (final item in urgentCerts.take(2)) {
+      final name = app.certificationDisplayName(item.cert);
+      final days = item.daysRemaining;
+      final subtitle = item.status == CertificationStatus.expired
+          ? 'Expired — renew to keep your Task Book accurate.'
+          : days == null
+              ? 'Expiring soon — renew and confirm your dates.'
+              : 'Expires in $days ${days == 1 ? 'day' : 'days'} — renew and confirm.';
+      actions.add(
+        _NextAction(
+          icon: item.status == CertificationStatus.expired
+              ? Icons.cancel
+              : Icons.warning_amber_rounded,
+          tone: item.status == CertificationStatus.expired
+              ? _NextActionTone.critical
+              : _NextActionTone.warning,
+          title: 'Renew $name',
+          subtitle: subtitle,
+          onTap: () => context.push(
+            '${AppRoutes.certificationDetail}/${item.cert.id}',
+          ),
+        ),
+      );
+    }
+
+    if ((nextStepLabel ?? '').trim().isNotEmpty && actions.length < 3) {
+      actions.add(
+        _NextAction(
+          icon: Icons.menu_book_outlined,
+          tone: _NextActionTone.neutral,
+          title: 'Next step: ${nextStepLabel!.trim()}',
+          subtitle: 'Start the highest-priority incomplete requirement.',
+          onTap: onOpenTaskBook,
+        ),
+      );
+    }
+
+    if (actions.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(compact ? 12 : 14),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'NEXT ACTIONS',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+            ),
+          ),
+          SizedBox(height: compact ? 8 : 10),
+          ...actions.take(3).map((a) => Padding(
+                padding: EdgeInsets.only(bottom: compact ? 6 : 8),
+                child: _NextActionTile(action: a),
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+enum _NextActionTone { critical, warning, neutral }
+
+class _NextAction {
+  final IconData icon;
+  final _NextActionTone tone;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _NextAction({
+    required this.icon,
+    required this.tone,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+}
+
+class _NextActionTile extends StatelessWidget {
+  final _NextAction action;
+  const _NextActionTile({required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final (tone, bg) = switch (action.tone) {
+      _NextActionTone.critical => (
+          FireOpsSemanticColors.expired,
+          cs.errorContainer.withValues(alpha: 0.45)
+        ),
+      _NextActionTone.warning => (
+          FireOpsSemanticColors.warning,
+          cs.secondaryContainer.withValues(alpha: 0.35)
+        ),
+      _NextActionTone.neutral => (cs.primary, cs.surface),
+    };
+
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        onTap: action.onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Icon(action.icon, color: tone, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      action.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      action.subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1251,11 +1911,11 @@ class _GoalCard extends StatelessWidget {
               if (targetDate != null)
                 'Target: ${_formatMonthYear(targetDate!)}',
             ].join(' • ')
-          : 'Choose a career goal and FireOps will build your path.',
+          : 'Choose your Next Level and Firefighter Roadmap will build your path.',
       emphasisText: hasGoal && nextStep != null ? 'Next: $nextStep' : null,
       progress: hasGoal ? progress : null,
       status: status,
-      actionLabel: hasGoal ? 'Open Task Book' : 'Choose Goal',
+      actionLabel: hasGoal ? 'Open Task Book' : 'Choose Next Level',
       onTap: onTap,
     );
   }
@@ -1322,7 +1982,7 @@ class _CertificationsCard extends StatelessWidget {
 
     return _HomeCard(
       icon: Icons.verified_outlined,
-      eyebrow: 'CERTIFICATIONS',
+      eyebrow: 'CERTS',
       title: total == 0 ? 'Start your credential record' : '$total tracked',
       subtitle: total == 0
           ? 'Add certifications to track renewals.'
@@ -1349,7 +2009,7 @@ class _QuickLogCard extends StatelessWidget {
             snapshot.connectionState == ConnectionState.waiting &&
             summary == null;
 
-        final subtitle = 'Record something you did today.';
+        final subtitle = 'Log progress from today.';
         final mini = isLoading
             ? null
             : summary == null || summary.total == 0

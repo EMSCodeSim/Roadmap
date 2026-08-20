@@ -10,6 +10,8 @@ import 'package:firepath/pages/path/roadmap_entry_page.dart';
 import 'package:firepath/pages/task_book/task_book_entry_page.dart';
 import 'package:firepath/pages/task_book/task_book_review_page.dart';
 import 'package:firepath/pages/task_book/task_book_requirements_editor_page.dart';
+import 'package:firepath/pages/task_book/custom_task_book_create_page.dart';
+import 'package:firepath/pages/task_book/custom_task_book_builder_page.dart';
 import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
@@ -142,6 +144,18 @@ class AppRouter {
         name: 'task_book_requirements_setup',
         pageBuilder: (context, state) =>
             const MaterialPage(child: TaskBookRequirementsEditorPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.customTaskBookCreate,
+        name: 'custom_task_book_create',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: CustomTaskBookCreatePage()),
+      ),
+      GoRoute(
+        path: AppRoutes.customTaskBookBuilder,
+        name: 'custom_task_book_builder',
+        pageBuilder: (context, state) =>
+            MaterialPage(child: CustomTaskBookBuilderPage(extra: state.extra)),
       ),
       GoRoute(
         path: AppRoutes.goalSetup,
@@ -287,6 +301,8 @@ class AppRoutes {
   static const String taskBookReview = '/task-book/review';
   static const String taskBookRequirementsSetup =
       '/task-book/requirements-setup';
+  static const String customTaskBookCreate = '/task-book/custom/create';
+  static const String customTaskBookBuilder = '/task-book/custom/builder';
   static const String qualificationTaskBook = '/task-book/qualification';
   static const String taskDetail = '/task-book/task';
 }

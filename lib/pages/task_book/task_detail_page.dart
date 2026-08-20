@@ -10,6 +10,9 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
+import 'package:firepath/models/resource.dart';
+import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/task_book_resource_composer.dart';
 
 Future<void> _openExternalUrl(String url) async {
   final uri = Uri.tryParse(url);
@@ -60,6 +63,14 @@ class TaskDetailPage extends StatelessWidget {
       }
     }
 
+    final catalog = FireOpsCatalog.resources();
+    final combinedRefs = TaskBookResourceComposer.buildTaskDetailReferences(
+      certId: certificationDefinitionId,
+      taskId: task.id,
+      stateCode: FireOpsCatalog.stateCodeFromLegacyValue(state.profile.state),
+      catalogCombined: catalog,
+    );
+
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton.toTaskBook(),
@@ -94,49 +105,64 @@ class TaskDetailPage extends StatelessWidget {
             _ExpandableListCard(
               title: 'WHAT TO KNOW',
               items: task.whatToKnow,
-              emptyText: 'No guidance added yet.',
+              emptyText: 'No notes yet. Add what your crew expects on this skill.',
             ),
             const SizedBox(height: AppSpacing.md),
             _ExpandableListCard(
               title: 'PERFORMANCE TASKS',
               items: task.performanceTasks,
-              emptyText: 'No performance breakdown added yet.',
+              emptyText: 'No steps listed yet. Add the checklist you get signed off on.',
             ),
             const SizedBox(height: AppSpacing.md),
             _ExpandableListCard(
               title: 'SAFETY POINTS',
               items: task.safetyPoints,
-              emptyText: 'No safety points added yet.',
+              emptyText: 'No safety notes yet. Add your must-not-miss items.',
             ),
             const SizedBox(height: AppSpacing.md),
             _ExpandableListCard(
               title: 'COMMON MISTAKES',
               items: task.commonMistakes,
-              emptyText: 'No common mistakes added yet.',
+              emptyText: 'No watch-outs yet. Add the mistakes you see most.',
             ),
             const SizedBox(height: AppSpacing.md),
             _CompanionCard(
               certificationDefinitionId: certificationDefinitionId,
               taskId: task.id,
-              stateCode: state.profile.state,
+              stateCode: FireOpsCatalog.stateCodeFromLegacyValue(state.profile.state),
             ),
             const SizedBox(height: AppSpacing.md),
             _PracticeCard(tools: task.practiceTools),
             const SizedBox(height: AppSpacing.md),
-            _ResourcesCard(resources: task.resources),
+            _ResourcesCard(
+              resources: task.resources,
+              extraResources: combinedRefs,
+            ),
             const SizedBox(height: AppSpacing.md),
             _MyRecordCard(
-              onLogPractice: () => QuickLogLauncher.open(
-                context,
-                prefill: LogPrefill(
-                  title: task.title,
-                  category: qualificationName,
-                  relatedGoalId: goalId,
-                  relatedRequirementId: requirementId,
-                  relatedTaskId: task.id,
-                  tags: ['task-book', 'practice'],
-                ),
-              ),
+              onLogPractice: () {
+                // One tap: treat logging as starting practice.
+                if (status == TaskBookTaskStatus.notStarted) {
+                  context.read<AppState>().setTaskStatus(
+                    goalId: goalId,
+                    requirementId: requirementId,
+                    taskId: task.id,
+                    status: TaskBookTaskStatus.practicing,
+                    completionSource: null,
+                  );
+                }
+                QuickLogLauncher.open(
+                  context,
+                  prefill: LogPrefill(
+                    title: task.title,
+                    category: qualificationName,
+                    relatedGoalId: goalId,
+                    relatedRequirementId: requirementId,
+                    relatedTaskId: task.id,
+                    tags: ['task-book', 'practice'],
+                  ),
+                );
+              },
               onAddEvidence: () => context.push(
                 AppRoutes.careerEvidence,
                 extra: EvidencePrefill(
@@ -152,7 +178,7 @@ class TaskDetailPage extends StatelessWidget {
             _InfoCard(
               title: 'NOTICE',
               body:
-                  'FireOps preparation tasks are designed to help organize training and professional development. Always verify certification and performance requirements with your department, state authority, official task book, or certifying organization.',
+                  'This is planning help. Verify requirements with your department, state authority, and official Task Book.',
               tone: _CardTone.neutral,
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -563,15 +589,16 @@ class _PracticeCard extends StatelessWidget {
 
 class _ResourcesCard extends StatelessWidget {
   final List<TaskBookResourceLink> resources;
-  const _ResourcesCard({required this.resources});
+  final List<Resource> extraResources;
+  const _ResourcesCard({required this.resources, required this.extraResources});
 
   @override
   Widget build(BuildContext context) {
-    if (resources.isEmpty) {
+    if (resources.isEmpty && extraResources.isEmpty) {
       return _InfoCard(
         title: 'REFERENCES',
         body:
-            'No reference links added yet. You can add department SOP links later as Task Book customization expands.',
+            'No reference links yet. Use the Companion card above for skill sheets and references.',
         tone: _CardTone.neutral,
       );
     }
@@ -593,6 +620,45 @@ class _ResourcesCard extends StatelessWidget {
             ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppSpacing.sm),
+          if (extraResources.isNotEmpty) ...[
+            ...extraResources.map(
+              (r) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: InkWell(
+                  onTap: r.url == null ? null : () => _openExternalUrl(r.url!),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(
+                        color: cs.outline.withValues(alpha: 0.10),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.menu_book_outlined, color: cs.primary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            r.title,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        Icon(Icons.open_in_new, color: cs.onSurfaceVariant),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (resources.isNotEmpty) const SizedBox(height: 4),
+          ],
           ...resources.map(
             (r) => Padding(
               padding: const EdgeInsets.only(bottom: 10),

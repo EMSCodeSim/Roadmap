@@ -1,1375 +1,387 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import 'package:firepath/widgets/app_back_button.dart';
+import 'package:firepath/models/prefill.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
-import 'package:firepath/services/task_book_library.dart';
+import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/task_book_library.dart';
+import 'package:firepath/services/requirement_source_presenter.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/widgets/app_back_button.dart';
+import 'package:firepath/widgets/progress_ring.dart';
+import 'package:firepath/widgets/status_pill.dart';
 
+/// Requirement detail view.
+///
+/// This page is route-targeted by [AppRoutes.requirementDetail] and is opened
+/// from Roadmap, Task Book, and Quick Log deep links.
 class RequirementDetailPage extends StatelessWidget {
   final Object? requirement;
   const RequirementDetailPage({super.key, required this.requirement});
 
   @override
   Widget build(BuildContext context) {
-    final req = requirement is Requirement ? requirement as Requirement : null;
-    if (req == null)
-      return const Scaffold(
-        body: Center(child: Text('Requirement not found.')),
-      );
+    final map = requirement is Map ? requirement as Map : null;
+    final reqExtra = map == null ? null : map['requirement'];
+    final req = reqExtra is Requirement
+        ? reqExtra
+        : (requirement is Requirement ? requirement as Requirement : null);
+    if (req == null) {
+      debugPrint('RequirementDetailPage opened without a Requirement extra.');
+      return const Scaffold(body: Center(child: Text('Requirement not found.')));
+    }
 
     final state = context.watch<AppState>();
-    final roadmap = state.roadmap;
-    final liveReq =
-        roadmap?.all
-            .where((e) => e.requirement.id == req.id)
-            .map((e) => e.requirement)
-            .firstOrNull ??
-        req;
-    final goalId = roadmap?.goal.id;
-    final isCustom = goalId != null && liveReq.id.startsWith('$goalId::');
-    final isComplete =
-        roadmap?.all.any(
-          (e) => e.requirement.id == liveReq.id && e.isComplete,
-        ) ??
-        false;
     final cs = Theme.of(context).colorScheme;
+    final overrideGoalId = map?['goalId'] as String?;
+    final goalId = (overrideGoalId != null && overrideGoalId.trim().isNotEmpty)
+        ? overrideGoalId
+        : state.roadmap?.goal.id;
+    final canMutate = goalId != null && goalId.trim().isNotEmpty;
 
-    final sourceLabel = switch (liveReq.requirementSource) {
-      RequirementSource.commonlyRequired => 'Commonly Required',
-      RequirementSource.recommended => 'Recommended',
-      RequirementSource.stateRequirement => 'State Requirement',
-      RequirementSource.departmentRequirement => 'Department Requirement',
-    };
+    final override = goalId == null
+        ? null
+        : state.taskBookController.getOverride(goalId, req.id);
+    final isCompleted = (override?.completed ?? req.completed) == true;
+
+    final progress = _progressFor(req);
+    final typeLabel = _typeLabel(req.type);
+    final priorityLabel = _priorityLabel(req.priority);
+
+    final profileState = FireOpsCatalog.stateCodeFromLegacyValue(state.profile.state);
+    final sourceBadge = RequirementSourcePresenter.badgeText(req, profileStateCode: profileState);
+    final sourceColors = RequirementSourcePresenter.badgeColors(context, req);
+
+    final hasTaskBook = TaskBookLibrary.hasTasksForRequirement(req);
 
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton.toTaskBook(),
-        title: Text(liveReq.name),
+        title: const Text('Requirement'),
+        centerTitle: false,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _CompleteToggle(
+              completed: isCompleted,
+              enabled: canMutate,
+              onChanged: (next) async {
+                if (!canMutate) return;
+                await context.read<AppState>().setRequirementCompleted(
+                  goalId: goalId!,
+                  requirementId: req.id,
+                  completed: next,
+                );
+              },
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
           padding: AppSpacing.paddingLg,
           children: [
+            _HeaderCard(
+              title: req.name,
+              subtitle: req.category,
+              typeLabel: typeLabel,
+              priorityLabel: priorityLabel,
+              sourceLabel: sourceBadge,
+              sourceBg: sourceColors.bg,
+              sourceFg: sourceColors.fg,
+              completed: isCompleted,
+              progress: progress,
+              progressLabel: _progressLabel(req),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            _SectionTitle(
+              icon: Icons.playlist_add_check,
+              title: 'How to Complete',
+              subtitle: 'Turn this requirement into next actions.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _StepsCard(
+              steps: _stepsForRequirement(req, hasTaskBook: hasTaskBook),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            _PrimaryActionsCard(
+              requirement: req,
+              hasTaskBook: hasTaskBook,
+              onOpenGetStarted: () => context.push(
+                AppRoutes.getStarted,
+                extra: req,
+              ),
+              onOpenTaskBook: hasTaskBook
+                  ? () => context.push(
+                        AppRoutes.qualificationTaskBook,
+                        extra: {'requirement': req},
+                      )
+                  : null,
+              onQuickLog: () {
+                final tags = <String>['requirement'];
+                if (hasTaskBook) tags.add('task-book');
+                QuickLogLauncher.open(
+                  context,
+                  prefill: LogPrefill(
+                    title: req.name,
+                    category: req.category,
+                    relatedGoalId: goalId,
+                    relatedRequirementId: req.id,
+                    relatedTaskId: null,
+                    tags: tags,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            if (req.description.trim().isNotEmpty)
+              _BodyCard(
+                icon: Icons.info_outline,
+                title: 'Notes',
+                child: Text(
+                  req.description,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        height: 1.5,
+                        color: cs.onSurface,
+                      ),
+                ),
+              ),
+            if (req.description.trim().isNotEmpty)
+              const SizedBox(height: AppSpacing.md),
+
+            _BodyCard(
+              icon: Icons.verified_outlined,
+              title: 'Requirement source',
+              child: _RequirementSourceCard(requirement: req, profileStateCode: profileState),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
             Container(
-              padding: AppSpacing.paddingLg,
+              padding: AppSpacing.paddingMd,
               decoration: BoxDecoration(
-                color: cs.surface,
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        isComplete ? Icons.check_circle : Icons.circle_outlined,
-                        color: isComplete
-                            ? FireOpsSemanticColors.completed
-                            : cs.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        _topLabel(liveReq, sourceLabel),
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    liveReq.description,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(height: 1.55),
-                  ),
-                  if (liveReq.requirementSource ==
-                      RequirementSource.stateRequirement) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    _StateSourceBlock(
-                      requirement: liveReq,
-                      profileStateCode: state.profile.state,
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.md),
-                  SizedBox(
-                    height: 52,
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () =>
-                          context.push(AppRoutes.getStarted, extra: liveReq),
-                      icon: Icon(Icons.bolt, color: cs.onPrimary),
-                      label: Text(
-                        'Get Started',
-                        style: TextStyle(color: cs.onPrimary),
-                      ),
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (TaskBookLibrary.hasTasksForRequirement(liveReq)) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    SizedBox(
-                      height: 52,
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => context.push(
-                          AppRoutes.qualificationTaskBook,
-                          extra: {'requirement': liveReq},
-                        ),
-                        icon: Icon(
-                          Icons.fact_check_outlined,
-                          color: cs.primary,
-                        ),
-                        label: const Text('Open Qualification Task Book'),
-                        style: OutlinedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (!isComplete && goalId != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    _StartThisPanel(goalId: goalId, requirement: liveReq),
-                  ],
-                  if (!isComplete &&
-                      goalId != null &&
-                      state.profile.careerPlan.targetDate != null &&
-                      state.profile.careerPlan.timelineEnabled) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    _TimelineAdjustPanel(
-                      goalId: goalId,
-                      requirementId: liveReq.id,
-                    ),
-                  ],
-                  if (liveReq.type == RequirementType.numericProgress) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    _NumericProgressPanel(
-                      goalId: goalId,
-                      isCustom: isCustom,
-                      requirement: liveReq,
-                    ),
-                  ] else if (liveReq.type == RequirementType.taskBook &&
-                      goalId != null) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    _TaskBookPanel(goalId: goalId, requirement: liveReq),
-                  ] else if (liveReq.type != RequirementType.certification) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    _CompleteToggle(
-                      goalId: goalId,
-                      isCustom: isCustom,
-                      requirementId: liveReq.id,
-                      isComplete: isComplete,
-                    ),
-                  ] else ...[
-                    const SizedBox(height: AppSpacing.md),
-                    _CertActionBar(certName: liveReq.name),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _InfoBlock(title: 'WHAT IS IT?', body: _defaultWhatIsIt(liveReq)),
-            const SizedBox(height: AppSpacing.md),
-            _InfoBlock(
-              title: "WHY IS IT ON MY PATH?",
-              body: _whyOnPath(context, liveReq),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _InfoBlock(
-              title: 'TYPICAL PREREQUISITES',
-              body: _prereqsBlock(liveReq, state),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _InfoBlock(
-              title: 'MY STATUS',
-              body: _statusBlock(state, liveReq, isComplete, goalId),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            const _Notice(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static String _topLabel(Requirement r, String sourceLabel) {
-    final pill = switch (r.priority) {
-      RequirementPriority.core => 'CORE',
-      RequirementPriority.recommended => 'RECOMMENDED',
-      RequirementPriority.development => 'DEVELOPMENT',
-      RequirementPriority.department => 'DEPARTMENT',
-      RequirementPriority.state => 'STATE',
-    };
-    final flags = <String>[];
-    if (r.stateDependent && r.priority != RequirementPriority.state)
-      flags.add('STATE');
-    if (r.departmentDependent && r.priority != RequirementPriority.department)
-      flags.add('DEPT');
-    final suffix = flags.isEmpty ? '' : ' • ${flags.join(' / ')}';
-    return '$pill • $sourceLabel$suffix';
-  }
-
-  static String _defaultWhatIsIt(Requirement r) {
-    return switch (r.type) {
-      RequirementType.certification =>
-        'A certification or credential you earn through training and testing.',
-      RequirementType.trainingCourse || RequirementType.course =>
-        'A course (often classroom + hands-on) to build competence.',
-      RequirementType.taskBook =>
-        'A documented task book demonstrating required skills in the field.',
-      RequirementType.experience =>
-        'An experience requirement typically validated by your department.',
-      RequirementType.numericProgress =>
-        'A measurable requirement you can track (hours, calls, etc.).',
-      RequirementType.promotionalTest =>
-        'A promotional testing requirement used by some departments.',
-      RequirementType.practical =>
-        'A practical skills evaluation or scenario assessment.',
-      RequirementType.interview =>
-        'An interview / oral board component of a promotional process.',
-      RequirementType.education =>
-        'An education requirement (department dependent in many systems).',
-      RequirementType.custom =>
-        'A custom requirement you or your department defines.',
-    };
-  }
-
-  static String _whyOnPath(BuildContext context, Requirement r) {
-    final goal = context.read<AppState>().selectedGoal;
-    final goalName = goal?.title;
-    final base = goalName == null
-        ? 'This helps move you toward your next role.'
-        : 'This is commonly used when preparing for $goalName responsibilities.';
-    return switch (r.requirementSource) {
-      RequirementSource.commonlyRequired =>
-        '$base It’s commonly required in many departments.',
-      RequirementSource.recommended =>
-        '$base It’s commonly recommended but not universal.',
-      RequirementSource.stateRequirement =>
-        '$base Requirements can be state dependent.',
-      RequirementSource.departmentRequirement =>
-        '$base Requirements can be department dependent.',
-    };
-  }
-
-  static String _prereqsBlock(Requirement r, AppState state) {
-    if (r.prerequisiteRequirementIds.isEmpty) {
-      return switch (r.type) {
-        RequirementType.certification =>
-          'Often requires prerequisite certs, minimum time in role, and department approval.',
-        RequirementType.taskBook =>
-          'Typically requires supervisor sign-off and on-the-job evaluation opportunities.',
-        _ =>
-          'Varies by agency; check your department and state certification office.',
-      };
-    }
-    final nameSet = state.certifications
-        .map((c) => c.name.trim().toLowerCase())
-        .toSet();
-    return r.prerequisiteRequirementIds
-        .map((e) {
-          final ok = nameSet.contains(e.trim().toLowerCase());
-          return '${ok ? '✓' : '○'} $e';
-        })
-        .join('\n');
-  }
-
-  static String _statusBlock(
-    AppState state,
-    Requirement r,
-    bool isComplete,
-    String? goalId,
-  ) {
-    final lines = <String>[];
-    if (isComplete) {
-      lines.add('✓ Complete');
-    } else if (goalId != null) {
-      final s = state.activityStatusFor(goalId: goalId, requirementId: r.id);
-      final label = switch (s) {
-        RequirementActivityStatus.notStarted => '○ Not started',
-        RequirementActivityStatus.planning => '◐ Planning',
-        RequirementActivityStatus.scheduled => '📅 Scheduled',
-        RequirementActivityStatus.inProgress => '▶ In progress',
-      };
-      lines.add(label);
-      final schedule = state.scheduleFor(goalId: goalId, requirementId: r.id);
-      if (s == RequirementActivityStatus.scheduled &&
-          schedule?.startDate != null) {
-        lines.add('');
-        lines.add('Start: ${_formatDate(schedule!.startDate!)}');
-        if ((schedule.provider ?? '').trim().isNotEmpty)
-          lines.add('Provider: ${schedule.provider}');
-      }
-    } else {
-      lines.add('○ Not started');
-    }
-
-    if (r.type == RequirementType.experience && r.experienceValue != null) {
-      final years = state.profile.yearsOfService;
-      final required = r.experienceValue!.toStringAsFixed(0);
-      lines.add('');
-      lines.add(
-        'Experience: ${years ?? 0} / $required ${r.experienceUnit ?? 'years'}',
-      );
-    }
-
-    if (r.type == RequirementType.numericProgress &&
-        r.progressRequired != null) {
-      final current = r.progressCurrent ?? 0;
-      final unit = r.progressUnit ?? '';
-      lines.add('');
-      lines.add(
-        'Progress: ${current.toStringAsFixed(0)} / ${r.progressRequired!.toStringAsFixed(0)}${unit.isEmpty ? '' : ' $unit'}',
-      );
-    }
-
-    return lines.join('\n');
-  }
-
-  static String _formatDate(DateTime d) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[d.month - 1]} ${d.day}, ${d.year}';
-  }
-}
-
-class _StateSourceBlock extends StatelessWidget {
-  final Requirement requirement;
-  final String? profileStateCode;
-  const _StateSourceBlock({
-    required this.requirement,
-    required this.profileStateCode,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final stateName =
-        FireOpsCatalog.stateNameForCode(
-          requirement.sourceStateCode ?? profileStateCode,
-        ) ??
-        'State';
-    final title = (requirement.sourceTitle ?? '').trim();
-    final url = (requirement.sourceUrl ?? '').trim();
-    final hasSource = title.isNotEmpty || url.isNotEmpty;
-    final verified = requirement.sourceVerifiedDate;
-
-    return Container(
-      padding: AppSpacing.paddingMd,
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'REQUIREMENT SOURCE',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            stateName,
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          if (hasSource) ...[
-            const SizedBox(height: 4),
-            if (title.isNotEmpty)
-              Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(height: 1.45),
-              ),
-            if (url.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 52,
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      _showOfficialSource(context, title: title, url: url),
-                  icon: Icon(Icons.open_in_new, color: cs.primary),
-                  label: const Text('View Official Source'),
-                ),
-              ),
-            ],
-          ] else ...[
-            const SizedBox(height: 4),
-            Text(
-              'State-specific requirements have not yet been fully verified. Confirm requirements with your department or state authority.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.45,
-              ),
-            ),
-          ],
-          if (verified != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Last reviewed: ${verified.year}',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ],
-          if ((requirement.sourceNotes ?? '').trim().isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              requirement.sourceNotes!,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.45,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  static Future<void> _showOfficialSource(
-    BuildContext context, {
-    required String title,
-    required String url,
-  }) {
-    return showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (sheetContext) {
-        final cs = Theme.of(sheetContext).colorScheme;
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Official State Information',
-                style: Theme.of(
-                  sheetContext,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 8),
-              if (title.trim().isNotEmpty)
-                Text(
-                  title,
-                  style: Theme.of(
-                    sheetContext,
-                  ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              const SizedBox(height: 10),
-              SelectableText(
-                url,
-                style: Theme.of(sheetContext).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 56,
-                child: FilledButton.icon(
-                  onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: url));
-                    if (sheetContext.mounted) {
-                      ScaffoldMessenger.of(sheetContext).showSnackBar(
-                        const SnackBar(content: Text('Link copied')),
-                      );
-                    }
-                  },
-                  icon: Icon(Icons.copy, color: cs.onPrimary),
-                  label: Text(
-                    'Copy Link',
-                    style: TextStyle(color: cs.onPrimary),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 56,
-                child: OutlinedButton(
-                  onPressed: () => sheetContext.pop(),
-                  child: const Text('Done'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _StartThisPanel extends StatelessWidget {
-  final String goalId;
-  final Requirement requirement;
-  const _StartThisPanel({required this.goalId, required this.requirement});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final state = context.watch<AppState>();
-    final status = state.activityStatusFor(
-      goalId: goalId,
-      requirementId: requirement.id,
-    );
-    final label = switch (status) {
-      RequirementActivityStatus.notStarted => 'Start this',
-      RequirementActivityStatus.planning => 'Planning',
-      RequirementActivityStatus.scheduled => 'Scheduled',
-      RequirementActivityStatus.inProgress => 'In progress',
-    };
-
-    return SizedBox(
-      height: 52,
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () => _open(context, initial: status),
-        icon: Icon(Icons.play_circle_outline, color: cs.primary),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _open(
-    BuildContext context, {
-    required RequirementActivityStatus initial,
-  }) async {
-    final selected = await showModalBottomSheet<RequirementActivityStatus>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return Padding(
-          padding: AppSpacing.paddingLg,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Start this',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Choose a status to track progress. You can change this anytime.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              _StatusChoiceTile(
-                value: RequirementActivityStatus.planning,
-                title: 'Planning',
-                subtitle: 'I intend to pursue this next.',
-              ),
-              _StatusChoiceTile(
-                value: RequirementActivityStatus.scheduled,
-                title: 'Scheduled',
-                subtitle: 'I have a course/test scheduled.',
-              ),
-              _StatusChoiceTile(
-                value: RequirementActivityStatus.inProgress,
-                title: 'In progress',
-                subtitle: 'I’m actively working on it.',
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (selected == null) return;
-    final st = context.read<AppState>();
-    await st.setRequirementActivityStatus(
-      goalId: goalId,
-      requirementId: requirement.id,
-      status: selected,
-    );
-
-    if (!context.mounted) return;
-    if (selected == RequirementActivityStatus.scheduled) {
-      await _editSchedule(context);
-    }
-  }
-
-  Future<void> _editSchedule(BuildContext context) async {
-    final st = context.read<AppState>();
-    final existing = st.scheduleFor(
-      goalId: goalId,
-      requirementId: requirement.id,
-    );
-
-    final courseCtrl = TextEditingController(text: existing?.courseName ?? '');
-    final providerCtrl = TextEditingController(text: existing?.provider ?? '');
-    final locationCtrl = TextEditingController(text: existing?.location ?? '');
-    final notesCtrl = TextEditingController(text: existing?.notes ?? '');
-    DateTime? start = existing?.startDate;
-    DateTime? end = existing?.endDate;
-
-    TrainingSchedule? result;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) {
-        final insets = MediaQuery.viewInsetsOf(context);
-        return StatefulBuilder(
-          builder: (context, setModal) {
-            Future<void> pickStart() async {
-              final now = DateTime.now();
-              final picked = await showDatePicker(
-                context: context,
-                firstDate: DateTime(now.year - 1),
-                lastDate: DateTime(now.year + 3),
-                initialDate: start ?? now,
-              );
-              if (picked == null) return;
-              setModal(() => start = picked);
-            }
-
-            Future<void> pickEnd() async {
-              final now = DateTime.now();
-              final picked = await showDatePicker(
-                context: context,
-                firstDate: DateTime(now.year - 1),
-                lastDate: DateTime(now.year + 3),
-                initialDate: end ?? (start ?? now),
-              );
-              if (picked == null) return;
-              setModal(() => end = picked);
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: AppSpacing.md,
-                right: AppSpacing.md,
-                bottom: insets.bottom + AppSpacing.lg,
-                top: AppSpacing.sm,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Upcoming training',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextField(
-                    controller: courseCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Course name (optional)',
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextField(
-                    controller: providerCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Training provider (optional)',
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _DateButton(
-                          label: 'Start date',
-                          value: start,
-                          onTap: pickStart,
-                          onClear: () => setModal(() => start = null),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: _DateButton(
-                          label: 'End date',
-                          value: end,
-                          onTap: pickEnd,
-                          onClear: () => setModal(() => end = null),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextField(
-                    controller: locationCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Location (optional)',
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextField(
-                    controller: notesCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Notes (optional)',
-                    ),
-                    maxLines: 3,
-                    minLines: 2,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  SizedBox(
-                    height: 52,
-                    child: FilledButton(
-                      onPressed: () {
-                        result = TrainingSchedule(
-                          courseName: courseCtrl.text.trim().isEmpty
-                              ? null
-                              : courseCtrl.text.trim(),
-                          provider: providerCtrl.text.trim().isEmpty
-                              ? null
-                              : providerCtrl.text.trim(),
-                          startDate: start,
-                          endDate: end,
-                          location: locationCtrl.text.trim().isEmpty
-                              ? null
-                              : locationCtrl.text.trim(),
-                          notes: notesCtrl.text.trim().isEmpty
-                              ? null
-                              : notesCtrl.text.trim(),
-                        );
-                        context.pop();
-                      },
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                        ),
-                      ),
-                      child: const Text('Save'),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    courseCtrl.dispose();
-    providerCtrl.dispose();
-    locationCtrl.dispose();
-    notesCtrl.dispose();
-
-    await st.setRequirementSchedule(
-      goalId: goalId,
-      requirementId: requirement.id,
-      schedule: result,
-    );
-  }
-}
-
-class _TimelineAdjustPanel extends StatelessWidget {
-  final String goalId;
-  final String requirementId;
-  const _TimelineAdjustPanel({
-    required this.goalId,
-    required this.requirementId,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final state = context.watch<AppState>();
-    final o = state.getOverride(goalId, requirementId);
-    final suggested = o?.suggestedStartDate;
-    final removed = o?.removedFromTimeline ?? false;
-
-    String? subtitle;
-    if (removed) {
-      subtitle = 'Removed from timeline (you can add it back anytime).';
-    } else if (suggested != null) {
-      subtitle =
-          'Targeted for ${RequirementDetailPage._formatDate(suggested)} (planning estimate).';
-    } else {
-      subtitle = 'Timeline uses your Next Step + prerequisites + schedules.';
-    }
-
-    return Container(
-      padding: AppSpacing.paddingMd,
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.timeline, color: cs.onSurfaceVariant, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'TIMELINE',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              if (removed)
-                TextButton(
-                  onPressed: () => state.clearTimelineOverride(
-                    goalId: goalId,
-                    requirementId: requirementId,
-                  ),
-                  child: const Text('Add Back'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: cs.onSurfaceVariant,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: removed
-                      ? null
-                      : () => state.moveTimelineEarlier(
-                          goalId: goalId,
-                          requirementId: requirementId,
-                        ),
-                  icon: Icon(Icons.arrow_upward, color: cs.primary),
-                  label: const Text('Move Earlier'),
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: removed
-                      ? null
-                      : () => state.moveTimelineLater(
-                          goalId: goalId,
-                          requirementId: requirementId,
-                        ),
-                  icon: Icon(Icons.arrow_downward, color: cs.primary),
-                  label: const Text('Move Later'),
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          SizedBox(
-            height: 48,
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: removed
-                  ? null
-                  : () => state.removeFromTimeline(
-                      goalId: goalId,
-                      requirementId: requirementId,
-                    ),
-              icon: Icon(
-                Icons.remove_circle_outline,
-                color: cs.onSurfaceVariant,
-              ),
-              label: const Text('Remove From Timeline'),
-              style: OutlinedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusChoiceTile extends StatelessWidget {
-  final RequirementActivityStatus value;
-  final String title;
-  final String subtitle;
-  const _StatusChoiceTile({
-    required this.value,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: InkWell(
-        onTap: () => context.pop(value),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Container(
-          padding: AppSpacing.paddingMd,
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.radio_button_checked, color: cs.primary),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DateButton extends StatelessWidget {
-  final String label;
-  final DateTime? value;
-  final VoidCallback onTap;
-  final VoidCallback onClear;
-  const _DateButton({
-    required this.label,
-    required this.value,
-    required this.onTap,
-    required this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final text = value == null
-        ? '—'
-        : RequirementDetailPage._formatDate(value!);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: Container(
-        padding: AppSpacing.paddingMd,
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    text,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (value != null)
-              IconButton(
-                onPressed: onClear,
-                icon: const Icon(Icons.close),
-                tooltip: 'Clear',
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoBlock extends StatelessWidget {
-  final String title;
-  final String body;
-  const _InfoBlock({required this.title, required this.body});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: AppSpacing.paddingMd,
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            body,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(height: 1.55),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompleteToggle extends StatelessWidget {
-  final String? goalId;
-  final bool isCustom;
-  final String requirementId;
-  final bool isComplete;
-  const _CompleteToggle({
-    required this.goalId,
-    required this.isCustom,
-    required this.requirementId,
-    required this.isComplete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: AppSpacing.paddingMd,
-      decoration: BoxDecoration(
-        color: FireOpsSemanticColors.completed.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(
-          color: FireOpsSemanticColors.completed.withValues(alpha: 0.18),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Mark complete',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ),
-          Switch(
-            value: isComplete,
-            onChanged: goalId == null
-                ? null
-                : (v) {
-                    final st = context.read<AppState>();
-                    if (isCustom) {
-                      st.toggleCustomRequirementComplete(requirementId, v);
-                    } else {
-                      st.setRequirementCompleted(
-                        goalId: goalId!,
-                        requirementId: requirementId,
-                        completed: v,
-                      );
-                    }
-                  },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NumericProgressPanel extends StatelessWidget {
-  final String? goalId;
-  final bool isCustom;
-  final Requirement requirement;
-  const _NumericProgressPanel({
-    required this.goalId,
-    required this.isCustom,
-    required this.requirement,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final current = requirement.progressCurrent ?? 0;
-    final required = requirement.progressRequired ?? 0;
-    final unit = requirement.progressUnit;
-    final progress = required <= 0
-        ? 0.0
-        : ((current / required).clamp(0, 1) as num).toDouble();
-    final remaining = (((required - current).clamp(0, double.infinity)) as num)
-        .toDouble();
-
-    return Container(
-      padding: AppSpacing.paddingMd,
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Progress',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
-                ),
-              ),
-              Text(
-                '${current.toStringAsFixed(0)} / ${required.toStringAsFixed(0)}${unit == null ? '' : ' $unit'}',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 10,
-              backgroundColor: cs.surfaceContainerHighest.withValues(
-                alpha: 0.8,
-              ),
-              valueColor: AlwaysStoppedAnimation(cs.primary),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${remaining.toStringAsFixed(0)} remaining',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            height: 48,
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: goalId == null
-                  ? null
-                  : () => _addProgress(
-                      context,
-                      goalId: goalId!,
-                      requirement: requirement,
-                    ),
-              icon: Icon(Icons.add, color: cs.onPrimary),
-              label: Text(
-                'Add ${unit ?? 'units'}',
-                style: TextStyle(color: cs.onPrimary),
-              ),
-              style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _addProgress(
-    BuildContext context, {
-    required String goalId,
-    required Requirement requirement,
-  }) async {
-    final amountCtrl = TextEditingController();
-    final notesCtrl = TextEditingController();
-    final result = await showModalBottomSheet<double>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) {
-        final insets = MediaQuery.viewInsetsOf(context);
-        return Padding(
-          padding: EdgeInsets.only(
-            left: AppSpacing.md,
-            right: AppSpacing.md,
-            bottom: insets.bottom + AppSpacing.lg,
-            top: AppSpacing.sm,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Add progress',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText: '${requirement.progressUnit ?? 'Units'} to add',
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: notesCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Notes (optional)',
-                ),
-                maxLines: 3,
-                minLines: 2,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              SizedBox(
-                height: 52,
-                child: FilledButton(
-                  onPressed: () {
-                    final v = double.tryParse(amountCtrl.text.trim());
-                    if (v == null || v <= 0) {
-                      context.pop();
-                      return;
-                    }
-                    context.pop(v);
-                  },
-                  style: FilledButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                    ),
-                  ),
-                  child: const Text('Add'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    amountCtrl.dispose();
-    notesCtrl.dispose();
-
-    if (result == null) return;
-    final st = context.read<AppState>();
-    final current = (requirement.progressCurrent ?? 0) + result;
-    final required = requirement.progressRequired ?? 0;
-    if (isCustom) {
-      await st.updateNumericProgress(
-        requirement.id,
-        current: current,
-        required: required,
-      );
-    } else {
-      await st.setNumericProgress(
-        goalId: goalId,
-        requirementId: requirement.id,
-        current: current,
-        required: required,
-        unit: requirement.progressUnit,
-      );
-    }
-  }
-}
-
-class _CertActionBar extends StatelessWidget {
-  final String certName;
-  const _CertActionBar({required this.certName});
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final cs = Theme.of(context).colorScheme;
-    final existing = state.certifications
-        .where(
-          (c) => c.name.trim().toLowerCase() == certName.trim().toLowerCase(),
-        )
-        .firstOrNull;
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => context.push(
-              '${AppRoutes.certificationDetail}/${existing?.id ?? 'new'}',
-              extra: existing == null ? {'name': certName} : null,
-            ),
-            icon: Icon(Icons.verified, color: cs.primary),
-            label: const Text('Certification details'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
+              child: Text(
+                'Always verify requirements with your department, state authority, official task book, or certifying organization.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.45,
+                    ),
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String typeLabel;
+  final String priorityLabel;
+  final String sourceLabel;
+  final Color sourceBg;
+  final Color sourceFg;
+  final bool completed;
+  final double? progress;
+  final String? progressLabel;
+
+  const _HeaderCard({
+    required this.title,
+    required this.subtitle,
+    required this.typeLabel,
+    required this.priorityLabel,
+    required this.sourceLabel,
+    required this.sourceBg,
+    required this.sourceFg,
+    required this.completed,
+    required this.progress,
+    required this.progressLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final completedColor = FireOpsSemanticColors.completed;
+    final statusText = completed ? 'Completed' : 'In progress';
+    final statusBg = completed
+        ? completedColor.withValues(alpha: 0.16)
+        : cs.surfaceContainerHighest;
+    final statusFg = completed ? completedColor : cs.onSurfaceVariant;
+
+    return Container(
+      padding: AppSpacing.paddingLg,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (progress != null)
+            ProgressRing(
+              progress: progress!,
+              size: 64,
+              strokeWidth: 7,
+              centerLabel: progressLabel,
+              progressColor: completed ? completedColor : cs.primary,
+            )
+          else
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+              child: Icon(
+                Icons.flag_outlined,
+                color: completed ? completedColor : cs.onSurfaceVariant,
+              ),
+            ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        height: 1.15,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    StatusPill(text: typeLabel, backgroundColor: cs.surfaceContainerHighest, foregroundColor: cs.onSurfaceVariant, maxWidth: 170),
+                    StatusPill(text: priorityLabel, backgroundColor: cs.surfaceContainerHighest, foregroundColor: cs.onSurfaceVariant, maxWidth: 170),
+                    StatusPill(text: sourceLabel, backgroundColor: sourceBg, foregroundColor: sourceFg, maxWidth: 220),
+                    StatusPill(text: statusText, backgroundColor: statusBg, foregroundColor: statusFg, maxWidth: 170),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RequirementSourceCard extends StatelessWidget {
+  final Requirement requirement;
+  final String? profileStateCode;
+  const _RequirementSourceCard({required this.requirement, required this.profileStateCode});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final r = requirement;
+    final sourceLine = RequirementSourcePresenter.shortLine(r, profileStateCode: profileStateCode);
+
+    final hasUrl = (r.sourceUrl ?? '').trim().isNotEmpty;
+    final hasTitle = (r.sourceTitle ?? '').trim().isNotEmpty;
+
+    final verifiedDate = r.sourceVerifiedDate;
+    final verifiedText = verifiedDate == null
+        ? null
+        : 'Verified ${verifiedDate.year}-${verifiedDate.month.toString().padLeft(2, '0')}-${verifiedDate.day.toString().padLeft(2, '0')}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(sourceLine, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 6),
+        Text(
+          r.requirementSource == RequirementSource.stateRequirement
+              ? 'Shown because your profile state matches a verified state requirement entry. Always confirm final requirements with the official state/department source.'
+              : r.requirementSource == RequirementSource.departmentRequirement
+                  ? 'Department-specific items are meant to match local SOPs, promotions, and internal task books.'
+                  : 'Common items are recommended starting points when verified state-specific data is not available.'
+          ,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+        ),
+        if ((r.sourceNotes ?? '').trim().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text('Notes: ${r.sourceNotes}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
+        ],
+        if (hasUrl) ...[
+          const SizedBox(height: 12),
+          _SourceRow(
+            title: hasTitle ? r.sourceTitle! : 'Official source',
+            subtitle: verifiedText ?? 'Verified source',
+            url: r.sourceUrl!,
+          ),
+        ] else if (hasTitle || verifiedText != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(hasTitle ? r.sourceTitle! : 'Verified source', style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900)),
+                if (verifiedText != null) ...[
+                  const SizedBox(height: 4),
+                  Text(verifiedText, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  const _SectionTitle({required this.icon, required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Icon(icon, color: cs.primary, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 2),
+              Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35)),
+            ],
           ),
         ),
       ],
@@ -1377,197 +389,370 @@ class _CertActionBar extends StatelessWidget {
   }
 }
 
-class _TaskBookPanel extends StatelessWidget {
-  final String goalId;
-  final Requirement requirement;
-  const _TaskBookPanel({required this.goalId, required this.requirement});
+class _StepsCard extends StatelessWidget {
+  final List<String> steps;
+  const _StepsCard({required this.steps});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final st = context.watch<AppState>();
-    final progress = st.taskBookProgressFor(
-      goalId: goalId,
-      requirementId: requirement.id,
-    );
-    final completed = progress?.$1 ?? 0;
-    final total = progress?.$2 ?? 0;
-    final pct = total <= 0
-        ? 0.0
-        : ((completed / total).clamp(0, 1) as num).toDouble();
-
     return Container(
-      padding: AppSpacing.paddingMd,
+      padding: AppSpacing.paddingLg,
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < steps.length; i++) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 26,
+                  height: 26,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${i + 1}',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w900, color: cs.primary),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    steps[i],
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
+                  ),
+                ),
+              ],
+            ),
+            if (i != steps.length - 1)
+              Padding(
+                padding: const EdgeInsets.only(left: 13),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 10),
+                  height: 18,
+                  width: 1,
+                  color: cs.outline.withValues(alpha: 0.18),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PrimaryActionsCard extends StatelessWidget {
+  final Requirement requirement;
+  final bool hasTaskBook;
+  final VoidCallback onOpenGetStarted;
+  final VoidCallback? onOpenTaskBook;
+  final VoidCallback onQuickLog;
+
+  const _PrimaryActionsCard({
+    required this.requirement,
+    required this.hasTaskBook,
+    required this.onOpenGetStarted,
+    required this.onOpenTaskBook,
+    required this.onQuickLog,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: AppSpacing.paddingLg,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ActionButton(
+            icon: Icons.rocket_launch,
+            label: 'Get Started (recommended)',
+            onPressed: onOpenGetStarted,
+            filled: true,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (onOpenTaskBook != null) ...[
+            _ActionButton(
+              icon: Icons.checklist,
+              label: 'Open Task Book requirements',
+              onPressed: onOpenTaskBook,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          _ActionButton(
+            icon: Icons.bolt,
+            label: 'Quick Log progress',
+            onPressed: onQuickLog,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Tip: Quick Log entries are automatically connected to this requirement when possible.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BodyCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Widget child;
+  const _BodyCard({required this.icon, required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: AppSpacing.paddingLg,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  'Task book progress',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
-                ),
-              ),
-              Text(
-                '$completed / $total',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900),
-              ),
+              Icon(icon, size: 18, color: cs.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900, color: cs.onSurfaceVariant)),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 10,
-              backgroundColor: cs.surfaceContainerHighest.withValues(
-                alpha: 0.8,
-              ),
-              valueColor: AlwaysStoppedAnimation(cs.primary),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            height: 48,
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () =>
-                  _edit(context, completed: completed, total: total),
-              icon: Icon(Icons.edit, color: cs.onPrimary),
-              label: Text(
-                'Update progress',
-                style: TextStyle(color: cs.onPrimary),
-              ),
-              style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                ),
-              ),
-            ),
-          ),
+          child,
         ],
       ),
     );
   }
-
-  Future<void> _edit(
-    BuildContext context, {
-    required int completed,
-    required int total,
-  }) async {
-    final completedCtrl = TextEditingController(text: completed.toString());
-    final totalCtrl = TextEditingController(
-      text: total == 0 ? '' : total.toString(),
-    );
-    final result = await showModalBottomSheet<(int, int)>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) {
-        final insets = MediaQuery.viewInsetsOf(context);
-        return Padding(
-          padding: EdgeInsets.only(
-            left: AppSpacing.md,
-            right: AppSpacing.md,
-            bottom: insets.bottom + AppSpacing.lg,
-            top: AppSpacing.sm,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Task book progress',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: completedCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Completed items',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: TextField(
-                      controller: totalCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Total items',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              SizedBox(
-                height: 52,
-                child: FilledButton(
-                  onPressed: () {
-                    final c = int.tryParse(completedCtrl.text.trim()) ?? 0;
-                    final t = int.tryParse(totalCtrl.text.trim()) ?? 0;
-                    context.pop((c, t));
-                  },
-                  child: const Text('Save'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    completedCtrl.dispose();
-    totalCtrl.dispose();
-    if (result == null) return;
-    await context.read<AppState>().setTaskBookProgress(
-      goalId: goalId,
-      requirementId: requirement.id,
-      completedItems: result.$1,
-      totalItems: result.$2,
-    );
-  }
 }
 
-class _Notice extends StatelessWidget {
-  const _Notice();
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+  final bool filled;
+  const _ActionButton({required this.icon, required this.label, required this.onPressed, this.filled = false});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: AppSpacing.paddingMd,
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+    final bg = filled ? cs.primary : cs.surfaceContainerHighest;
+    final fg = filled ? cs.onPrimary : cs.onSurface;
+    return FilledButton.tonal(
+      style: FilledButton.styleFrom(
+        backgroundColor: bg,
+        foregroundColor: fg,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      child: Text(
-        'Fire service certification, promotional, and training requirements vary by state, agency, and department. FireOps Path provides career planning guidance. Always verify requirements with your department and certification authority.',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: cs.onSurfaceVariant,
-          height: 1.45,
+      onPressed: onPressed,
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: fg),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(color: fg, fontWeight: FontWeight.w800),
+            ),
+          ),
+          Icon(Icons.chevron_right, size: 20, color: fg.withValues(alpha: 0.8)),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompleteToggle extends StatelessWidget {
+  final bool completed;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+  const _CompleteToggle({required this.completed, required this.enabled, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final completedColor = FireOpsSemanticColors.completed;
+    return FilledButton.tonalIcon(
+      onPressed: enabled ? () => onChanged(!completed) : null,
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+        backgroundColor: completed
+            ? completedColor.withValues(alpha: 0.16)
+            : cs.surfaceContainerHighest,
+        foregroundColor: completed ? completedColor : cs.onSurface,
+      ),
+      icon: Icon(completed ? Icons.check_circle : Icons.circle_outlined, color: completed ? completedColor : cs.onSurfaceVariant, size: 18),
+      label: Text(
+        completed ? 'Done' : 'Mark done',
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800, color: completed ? completedColor : cs.onSurface),
+      ),
+    );
+  }
+}
+
+class _SourceRow extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String url;
+  const _SourceRow({required this.title, required this.subtitle, required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: () {
+        final uri = Uri.tryParse(url);
+        if (uri == null) {
+          debugPrint('Invalid requirement source URL: $url');
+          return;
+        }
+        launchUrl(uri, mode: LaunchMode.externalApplication).then((ok) {
+          if (!ok) debugPrint('launchUrl failed for $url');
+        }).catchError((e) {
+          debugPrint('launchUrl error for $url: $e');
+        });
+      },
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.link, size: 18, color: cs.onSurfaceVariant),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35)),
+                ],
+              ),
+            ),
+            Icon(Icons.open_in_new, size: 18, color: cs.onSurfaceVariant),
+          ],
         ),
       ),
     );
   }
 }
 
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
+double? _progressFor(Requirement r) {
+  final required = r.progressRequired;
+  final current = r.progressCurrent;
+  if (required == null || current == null || required <= 0) return null;
+  return (current / required).clamp(0.0, 1.0);
+}
+
+String? _progressLabel(Requirement r) {
+  final required = r.progressRequired;
+  final current = r.progressCurrent;
+  if (required == null || current == null || required <= 0) return null;
+  final pct = ((current / required).clamp(0.0, 1.0) * 100).round();
+  return '$pct%';
+}
+
+String _typeLabel(RequirementType t) => switch (t) {
+      RequirementType.certification => 'Certification',
+      RequirementType.trainingCourse => 'Training course',
+      RequirementType.course => 'Course',
+      RequirementType.education => 'Education',
+      RequirementType.taskBook => 'Task book',
+      RequirementType.experience => 'Experience',
+      RequirementType.numericProgress => 'Progress',
+      RequirementType.promotionalTest => 'Promotional test',
+      RequirementType.practical => 'Practical',
+      RequirementType.interview => 'Interview',
+      RequirementType.custom => 'Custom',
+    };
+
+String _priorityLabel(RequirementPriority p) => switch (p) {
+      RequirementPriority.core => 'Core',
+      RequirementPriority.recommended => 'Recommended',
+      RequirementPriority.development => 'Development',
+      RequirementPriority.department => 'Department',
+      RequirementPriority.state => 'State',
+    };
+
+List<String> _stepsForRequirement(Requirement r, {required bool hasTaskBook}) {
+  final unit = (r.progressUnit ?? r.experienceUnit ?? '').trim();
+  final unitSuffix = unit.isEmpty ? '' : ' ($unit)';
+
+  if (hasTaskBook || r.type == RequirementType.taskBook) {
+    return [
+      'Open the Task Book and identify the next incomplete task.',
+      'Use Quick Log to record practice, training hours, or task sign-offs connected to this requirement.',
+      'Save evidence (photos, certificates, evaluator notes) as you go.',
+      'Mark complete once your evaluator/department signs off.',
+    ];
+  }
+
+  return switch (r.type) {
+    RequirementType.certification || RequirementType.trainingCourse || RequirementType.course || RequirementType.education => [
+        'Open “Get Started” to see prerequisites and the best official links for your state.',
+        'Find training (academy, state, or approved provider) and enroll.',
+        'Study with your preferred materials and log study time with Quick Log.',
+        'After completion, record the credential and mark this requirement complete.',
+      ],
+    RequirementType.numericProgress => [
+        'Confirm the required target and unit$unitSuffix.',
+        'Use Quick Log to capture each session and keep the current total up to date.',
+        'Review progress weekly until you hit the target.',
+        'Mark complete when your total meets the requirement.',
+      ],
+    RequirementType.experience => [
+        'Confirm the minimum experience needed (time-in-role, years, or months).',
+        'Log key milestones (hours, assignments, ride-alongs) using Quick Log.',
+        'Track evidence (letters, evaluations, duty assignments) in your Career Vault.',
+        'Mark complete when your experience minimum is satisfied.',
+      ],
+    RequirementType.promotionalTest || RequirementType.practical || RequirementType.interview => [
+        'Use “Get Started” to gather official testing / promotional resources.',
+        'Create a weekly study plan and log practice reps with Quick Log.',
+        'Capture feedback and scoring notes after each mock scenario.',
+        'Mark complete once you pass / are cleared by your department.',
+      ],
+    RequirementType.custom => [
+        'Clarify what “done” means (who verifies it and what evidence counts).',
+        'Add a department link or reference material in Get Started.',
+        'Use Quick Log for each step until you reach completion.',
+        'Mark complete when verified.',
+      ],
+    _ => [
+        'Open “Get Started” to gather official info and training resources.',
+        'Use Quick Log to capture time and milestones.',
+        'Add evidence as you go.',
+        'Mark complete once verified.',
+      ],
+  };
+}
+
+String _sourceSubtitle(Requirement r) {
+  final parts = <String>[];
+  if ((r.sourceStateCode ?? '').trim().isNotEmpty) parts.add(r.sourceStateCode!);
+  if (r.sourceVerifiedDate != null) {
+    parts.add('Verified ${r.sourceVerifiedDate!.year}-${r.sourceVerifiedDate!.month.toString().padLeft(2, '0')}-${r.sourceVerifiedDate!.day.toString().padLeft(2, '0')}');
+  }
+  return parts.isEmpty ? 'Tap to view' : parts.join(' • ');
 }

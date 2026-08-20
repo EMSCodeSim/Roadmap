@@ -14,6 +14,115 @@ class RoadmapRequirement {
 
 enum RequirementActivityStatus { notStarted, planning, scheduled, inProgress }
 
+/// A concrete, user-actionable step for completing a requirement.
+///
+/// Stored inside [PathRequirementOverride] so it can apply to both catalog and
+/// user-customized requirements.
+class RequirementPlanStep {
+  final String id;
+  final String title;
+  final bool isDone;
+  final String? notes;
+  final String? url;
+  final int? estimatedMinutes;
+
+  const RequirementPlanStep({
+    required this.id,
+    required this.title,
+    required this.isDone,
+    required this.notes,
+    required this.url,
+    required this.estimatedMinutes,
+  });
+
+  RequirementPlanStep copyWith({
+    String? title,
+    bool? isDone,
+    String? notes,
+    String? url,
+    int? estimatedMinutes,
+    bool clearNotes = false,
+    bool clearUrl = false,
+    bool clearEstimatedMinutes = false,
+  }) {
+    return RequirementPlanStep(
+      id: id,
+      title: title ?? this.title,
+      isDone: isDone ?? this.isDone,
+      notes: clearNotes ? null : (notes ?? this.notes),
+      url: clearUrl ? null : (url ?? this.url),
+      estimatedMinutes: clearEstimatedMinutes
+          ? null
+          : (estimatedMinutes ?? this.estimatedMinutes),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'isDone': isDone,
+        'notes': notes,
+        'url': url,
+        'estimatedMinutes': estimatedMinutes,
+      };
+
+  factory RequirementPlanStep.fromJson(Map<String, dynamic> json) {
+    return RequirementPlanStep(
+      id: (json['id'] as String?) ?? '',
+      title: (json['title'] as String?) ?? '',
+      isDone: (json['isDone'] as bool?) ?? false,
+      notes: json['notes'] as String?,
+      url: json['url'] as String?,
+      estimatedMinutes: (json['estimatedMinutes'] as num?)?.toInt(),
+    );
+  }
+}
+
+/// A smaller checklist item that rolls up into requirement progress.
+class RequirementSubTask {
+  final String id;
+  final String title;
+  final bool isDone;
+  final String? notes;
+
+  const RequirementSubTask({
+    required this.id,
+    required this.title,
+    required this.isDone,
+    required this.notes,
+  });
+
+  RequirementSubTask copyWith({
+    String? title,
+    bool? isDone,
+    String? notes,
+    bool clearNotes = false,
+  }) {
+    return RequirementSubTask(
+      id: id,
+      title: title ?? this.title,
+      isDone: isDone ?? this.isDone,
+      notes: clearNotes ? null : (notes ?? this.notes),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'isDone': isDone,
+        'notes': notes,
+      };
+
+  factory RequirementSubTask.fromJson(Map<String, dynamic> json) {
+    return RequirementSubTask(
+      id: (json['id'] as String?) ?? '',
+      title: (json['title'] as String?) ?? '',
+      isDone: (json['isDone'] as bool?) ?? false,
+      notes: json['notes'] as String?,
+    );
+  }
+}
+
 class TrainingSchedule {
   final String? courseName;
   final String? provider;
@@ -70,6 +179,8 @@ class PathRequirementOverride {
   final DateTime? suggestedCompletionDate;
   final bool removedFromTimeline;
   final List<ResourceLink> userResourceLinks;
+  final List<RequirementPlanStep> planSteps;
+  final List<RequirementSubTask> subTasks;
 
   const PathRequirementOverride({
     required this.goalId,
@@ -88,6 +199,8 @@ class PathRequirementOverride {
     required this.suggestedCompletionDate,
     required this.removedFromTimeline,
     this.userResourceLinks = const <ResourceLink>[],
+    this.planSteps = const <RequirementPlanStep>[],
+    this.subTasks = const <RequirementSubTask>[],
   });
 
   PathRequirementOverride copyWith({
@@ -107,6 +220,8 @@ class PathRequirementOverride {
     bool? removedFromTimeline,
     bool clearSuggestedDates = false,
     List<ResourceLink>? userResourceLinks,
+    List<RequirementPlanStep>? planSteps,
+    List<RequirementSubTask>? subTasks,
   }) {
     return PathRequirementOverride(
       goalId: goalId,
@@ -133,6 +248,8 @@ class PathRequirementOverride {
           : (suggestedCompletionDate ?? this.suggestedCompletionDate),
       removedFromTimeline: removedFromTimeline ?? this.removedFromTimeline,
       userResourceLinks: userResourceLinks ?? this.userResourceLinks,
+      planSteps: planSteps ?? this.planSteps,
+      subTasks: subTasks ?? this.subTasks,
     );
   }
 
@@ -153,6 +270,8 @@ class PathRequirementOverride {
         'suggestedCompletionDate': suggestedCompletionDate?.toIso8601String(),
         'removedFromTimeline': removedFromTimeline,
         'userResourceLinks': userResourceLinks.map((e) => e.toJson()).toList(),
+        'planSteps': planSteps.map((e) => e.toJson()).toList(),
+        'subTasks': subTasks.map((e) => e.toJson()).toList(),
       };
 
   factory PathRequirementOverride.fromJson(Map<String, dynamic> json) {
@@ -187,6 +306,40 @@ class PathRequirementOverride {
           .toList();
     }
 
+    List<RequirementPlanStep> _planSteps(dynamic v) {
+      if (v is! List) return const <RequirementPlanStep>[];
+      return v
+          .whereType<Map>()
+          .map((e) {
+            try {
+              return RequirementPlanStep.fromJson(
+                Map<String, dynamic>.from(e),
+              );
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<RequirementPlanStep>()
+          .where((e) => e.id.trim().isNotEmpty && e.title.trim().isNotEmpty)
+          .toList();
+    }
+
+    List<RequirementSubTask> _subTasks(dynamic v) {
+      if (v is! List) return const <RequirementSubTask>[];
+      return v
+          .whereType<Map>()
+          .map((e) {
+            try {
+              return RequirementSubTask.fromJson(Map<String, dynamic>.from(e));
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<RequirementSubTask>()
+          .where((e) => e.id.trim().isNotEmpty && e.title.trim().isNotEmpty)
+          .toList();
+    }
+
     return PathRequirementOverride(
       goalId: (json['goalId'] as String?) ?? '',
       requirementId: (json['requirementId'] as String?) ?? '',
@@ -207,6 +360,8 @@ class PathRequirementOverride {
       suggestedCompletionDate: _dt(json['suggestedCompletionDate']),
       removedFromTimeline: (json['removedFromTimeline'] as bool?) ?? false,
       userResourceLinks: _links(json['userResourceLinks']),
+      planSteps: _planSteps(json['planSteps']),
+      subTasks: _subTasks(json['subTasks']),
     );
   }
 }

@@ -21,6 +21,7 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
   List<String> _pinned = [];
   List<QuickLogTemplate> _custom = [];
   QuickLogRolePreset? _preset;
+  List<String> _quickActionKeys = [];
 
   @override
   void initState() {
@@ -35,7 +36,31 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
       _pinned = List<String>.from(preferences.pinnedIds);
       _custom = List<QuickLogTemplate>.from(preferences.customTemplates);
       _preset = _guessPreset(_pinned);
+      _quickActionKeys = List<String>.from(preferences.quickActionKeys);
       _loading = false;
+    });
+  }
+
+  static const List<(String, String, IconData)> _quickActionOptions = [
+    ('call', 'CALL', Icons.local_fire_department_outlined),
+    ('training', 'TRAINING', Icons.school_outlined),
+    ('skill', 'SKILL', Icons.handyman_outlined),
+    ('drive', 'DRIVE', Icons.local_shipping_outlined),
+    ('task_book', 'TASK BOOK', Icons.fact_check_outlined),
+    ('career', 'CAREER', Icons.military_tech_outlined),
+  ];
+
+  void _toggleQuickAction(String key) {
+    setState(() {
+      if (_quickActionKeys.contains(key)) {
+        _quickActionKeys.remove(key);
+      } else {
+        _quickActionKeys.add(key);
+      }
+      if (_quickActionKeys.isEmpty) {
+        _quickActionKeys =
+            List<String>.from(QuickLogPreferencesStore.defaultQuickActionKeys);
+      }
     });
   }
 
@@ -141,6 +166,39 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                             _pinned = QuickLogCatalog.defaultsFor(preset);
                           });
                         },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    'QUICK ACTIONS (TOP GRID)',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Pick what shows up first when you open Quick Log. You can turn items on/off anytime.',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _quickActionOptions.map((option) {
+                      final key = option.$1;
+                      final label = option.$2;
+                      final icon = option.$3;
+                      final selected = _quickActionKeys.contains(key);
+                      return FilterChip(
+                        selected: selected,
+                        label: Text(label),
+                        avatar: Icon(icon, size: 18),
+                        onSelected: (_) => _toggleQuickAction(key),
                       );
                     }).toList(),
                   ),
@@ -355,6 +413,7 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
         QuickLogPreferences(
           pinnedIds: List<String>.from(_pinned),
           customTemplates: List<QuickLogTemplate>.from(_custom),
+          quickActionKeys: List<String>.from(_quickActionKeys),
         ),
       );
       if (!mounted) return;

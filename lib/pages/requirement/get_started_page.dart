@@ -10,6 +10,7 @@ import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/resource.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/task_book_resource_composer.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
@@ -38,7 +39,7 @@ class GetStartedPage extends StatelessWidget {
 
     final prereqs = req.prerequisiteRequirementIds;
     final certId = req.certificationDefinitionId;
-    final userState = state.profile.state;
+    final userState = FireOpsCatalog.stateCodeFromLegacyValue(state.profile.state);
 
     final allResources = FireOpsCatalog.resources();
     final byId = {for (final r in allResources) r.id: r};
@@ -56,50 +57,18 @@ class GetStartedPage extends StatelessWidget {
               .toList();
     final combined = {...directResources, ...relatedResources}.toList();
 
-    List<Resource> pickSection(Set<ResourceType> types) {
-      final filtered = combined.where((r) => types.contains(r.type)).toList();
-      filtered.sort((a, b) {
-        int score(Resource r) {
-          int s = 0;
-          if (userState != null && r.state == userState) s += 100;
-          if (r.verified) s += 50;
-          // Official then credentialing then training then everything else.
-          s += switch (r.type) {
-            ResourceType.officialStateAgency => 40,
-            ResourceType.officialFederalAgency => 35,
-            ResourceType.credentialingOrganization => 30,
-            ResourceType.trainingProvider => 20,
-            ResourceType.courseFinder => 18,
-            ResourceType.collegeAcademy => 16,
-            ResourceType.professionalOrganization => 12,
-            ResourceType.studyResource => 10,
-            ResourceType.practiceResource => 8,
-            ResourceType.fireOpsTool => 6,
-            ResourceType.departmentResource => 25,
-          };
-          return -s;
-        }
+    final composed = certId == null
+        ? null
+        : TaskBookResourceComposer.buildGetStartedSections(
+            certId: certId,
+            stateCode: userState,
+            catalogCombined: combined,
+          );
 
-        return score(a).compareTo(score(b));
-      });
-      return filtered;
-    }
-
-    final official = pickSection({
-      ResourceType.officialStateAgency,
-      ResourceType.officialFederalAgency,
-      ResourceType.credentialingOrganization,
-    });
-    final training = pickSection({
-      ResourceType.trainingProvider,
-      ResourceType.courseFinder,
-      ResourceType.collegeAcademy,
-    });
-    final study = pickSection({ResourceType.studyResource});
-    final practice = pickSection({
-      ResourceType.practiceResource,
-      ResourceType.fireOpsTool,
-    });
+    final official = composed?.official ?? const <Resource>[];
+    final training = composed?.training ?? const <Resource>[];
+    final study = composed?.study ?? const <Resource>[];
+    final practice = composed?.practice ?? const <Resource>[];
 
     final road = state.roadmap;
     final goalId = road?.goal.id;
@@ -166,7 +135,9 @@ class GetStartedPage extends StatelessWidget {
               title: 'Official requirements',
               child: _ResourceSection(
                 resources: official,
-                emptyText: 'No verified official resource added yet.',
+                emptyText: certId == null
+                    ? 'No official links available for this item yet.'
+                    : 'No official links found yet. Check Resources for options.',
                 onViewAll: certId == null
                     ? null
                     : () => context.go(
@@ -189,7 +160,9 @@ class GetStartedPage extends StatelessWidget {
               title: 'Find training',
               child: _ResourceSection(
                 resources: training,
-                emptyText: 'No verified training resource added yet.',
+                emptyText: certId == null
+                    ? 'No training links available for this item yet.'
+                    : 'No training links found yet. Check Resources for class finders.',
                 onViewAll: certId == null
                     ? null
                     : () => context.go(
@@ -212,7 +185,9 @@ class GetStartedPage extends StatelessWidget {
               title: 'Study',
               child: _ResourceSection(
                 resources: study,
-                emptyText: 'No verified study resource added yet.',
+                emptyText: certId == null
+                    ? 'No study links available for this item yet.'
+                    : 'No study links found yet. Check Resources for study guides.',
                 onViewAll: certId == null
                     ? null
                     : () => context.go(
@@ -231,7 +206,9 @@ class GetStartedPage extends StatelessWidget {
               title: 'Practice',
               child: _ResourceSection(
                 resources: practice,
-                emptyText: 'No verified practice tools added yet.',
+                emptyText: certId == null
+                    ? 'No practice tools available for this item yet.'
+                    : 'No practice tools found yet. Check Resources for practice tools.',
                 onViewAll: certId == null
                     ? null
                     : () => context.go(
@@ -489,7 +466,7 @@ class _ResourceSection extends StatelessWidget {
           if (onViewAll != null) ...[
             const SizedBox(height: AppSpacing.md),
             _ActionButton(
-              label: 'Browse All Resources',
+              label: 'Open Resources',
               icon: Icons.search,
               onPressed: onViewAll,
             ),
@@ -660,7 +637,7 @@ class _Notice extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
       child: Text(
-        'Fire service certification, promotional, and training requirements vary by state, agency, and department. FireOps Path provides career planning guidance. Always verify requirements with your department and certification authority.',
+        'Requirements vary by state and department. Use this as planning help—verify with your department and cert authority.',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
           color: cs.onSurfaceVariant,
           height: 1.45,

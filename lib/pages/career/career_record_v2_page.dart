@@ -11,6 +11,7 @@ import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 
 enum _CareerFilter { all, calls, skills, training, driving, exposures, leadership, achievements }
 
@@ -119,8 +120,8 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
     final visible = _visibleRecords;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Career Record'),
+      appBar: FirefighterRoadmapAppBar(
+        subtitle: 'Log',
         actions: [
           IconButton(
             tooltip: 'Quick Log setup',

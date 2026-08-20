@@ -8,6 +8,7 @@ import 'package:firepath/services/advancement_analyzer.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 
 class GrowthOverviewPage extends StatefulWidget {
   const GrowthOverviewPage({super.key});
@@ -44,7 +45,7 @@ class _GrowthOverviewPageState extends State<GrowthOverviewPage> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Advance')),
+      appBar: const FirefighterRoadmapAppBar(subtitle: 'Advance'),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(

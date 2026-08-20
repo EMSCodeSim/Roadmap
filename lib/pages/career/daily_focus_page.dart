@@ -218,7 +218,7 @@ class _Hero extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             goal == null
-                ? 'Choose a career goal and FireOps will turn spare time into focused career progress.'
+                ? 'Choose your Next Level and use Daily Focus to turn spare time into progress.'
                 : 'Focused on $goal. Pick the time you have and work the next meaningful step.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: cs.onSurfaceVariant,

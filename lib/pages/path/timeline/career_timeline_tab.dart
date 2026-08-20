@@ -7,6 +7,7 @@ import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/services/timeline_planner.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/services/task_book_stage_planner.dart';
 
 class CareerTimelineTab extends StatelessWidget {
   const CareerTimelineTab({super.key});
@@ -313,6 +314,30 @@ class _TimelineSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     if (section.items.isEmpty) return const SizedBox.shrink();
+
+    // When the section mostly contains requirements, add lightweight stage
+    // grouping cues (matches Task Book stage defaults).
+    final items = section.items;
+    final hasRequirements = items.any((e) => e.requirement != null);
+    final stageGroups = <TaskBookStage, List<TimelineItem>>{};
+    final nonRequirement = <TimelineItem>[];
+    if (hasRequirements) {
+      // We don't have full dependency data here, so stage classification is
+      // best-effort and purely visual.
+      for (final item in items) {
+        final r = item.requirement;
+        if (r == null) {
+          nonRequirement.add(item);
+          continue;
+        }
+        final stage = TaskBookStagePlanner.stageForRequirement(
+          r,
+          isPrerequisiteForOthers: false,
+        );
+        stageGroups.putIfAbsent(stage, () => <TimelineItem>[]).add(item);
+      }
+    }
+
     return Container(
       padding: AppSpacing.paddingMd,
       decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: cs.outline.withValues(alpha: 0.14))),
@@ -326,51 +351,79 @@ class _TimelineSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          ...section.items.map((item) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: InkWell(
-                onTap: () => onTap(item),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                  decoration: BoxDecoration(color: cs.surfaceContainerHighest.withValues(alpha: 0.35), borderRadius: BorderRadius.circular(AppRadius.md)),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        item.kind == TimelineItemKind.target
-                            ? Icons.flag
-                            : item.kind == TimelineItemKind.renewal
-                                ? Icons.warning_amber
-                                : item.isNextStep
-                                    ? Icons.bolt
-                                    : Icons.chevron_right,
-                        color: item.kind == TimelineItemKind.renewal ? FireOpsSemanticColors.warning : cs.onSurfaceVariant,
-                        size: 18,
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item.title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
-                            if ((item.subtitle ?? '').isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(item.subtitle!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35)),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
-                    ],
+          if (!hasRequirements) ...items.map((item) => _TimelineItemRow(item: item, onTap: () => onTap(item))) else ...[
+            ...TaskBookStage.values.expand((stage) {
+              final group = stageGroups[stage] ?? const <TimelineItem>[];
+              if (group.isEmpty) return const <Widget>[];
+              final meta = TaskBookStagePlanner.metaFor(stage);
+              return [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    meta.title.toUpperCase(),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900, color: cs.onSurfaceVariant),
                   ),
                 ),
-              ),
-            );
-          }),
+                ...group.map((item) => _TimelineItemRow(item: item, onTap: () => onTap(item))),
+                const SizedBox(height: 4),
+              ];
+            }),
+            ...nonRequirement.map((item) => _TimelineItemRow(item: item, onTap: () => onTap(item))),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _TimelineItemRow extends StatelessWidget {
+  final TimelineItem item;
+  final VoidCallback onTap;
+  const _TimelineItemRow({required this.item, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          decoration: BoxDecoration(color: cs.surfaceContainerHighest.withValues(alpha: 0.35), borderRadius: BorderRadius.circular(AppRadius.md)),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                item.kind == TimelineItemKind.target
+                    ? Icons.flag
+                    : item.kind == TimelineItemKind.renewal
+                        ? Icons.warning_amber
+                        : item.isNextStep
+                            ? Icons.bolt
+                            : Icons.chevron_right,
+                color: item.kind == TimelineItemKind.renewal ? FireOpsSemanticColors.warning : cs.onSurfaceVariant,
+                size: 18,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
+                    if ((item.subtitle ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(item.subtitle!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35)),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
     );
   }

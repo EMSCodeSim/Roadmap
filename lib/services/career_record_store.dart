@@ -155,8 +155,8 @@ class CareerRecordStore {
     );
   }
 
-  /// Full portable career backup. Version 4 adds Task Book task progress and
-  /// custom Task Book tasks while remaining backward-compatible with v3.
+  /// Full portable career backup. Version 5 adds custom Task Books + active
+  /// Task Book selection while remaining backward-compatible with v4/v3.
   Future<String> exportBackup() async {
     final records = await load();
     final profile = await _store.loadProfile();
@@ -169,10 +169,12 @@ class CareerRecordStore {
     final onboardingComplete = await _store.getOnboardingComplete();
     final taskBookTaskProgress = await _store.loadTaskBookTaskProgress();
     final taskBookCustomTasks = await _store.loadTaskBookCustomTasks();
+    final taskBookCustomBooks = await _store.loadTaskBookCustomBooks();
+    final taskBookActiveBook = await _store.loadTaskBookActiveBook();
 
     return const JsonEncoder.withIndent('  ').convert({
       'format': 'fireops-career-portfolio',
-      'version': 4,
+      'version': 5,
       'exportedAt': DateTime.now().toIso8601String(),
       'onboardingComplete': onboardingComplete,
       'profile': profile,
@@ -183,6 +185,8 @@ class CareerRecordStore {
       'quickLogPreferences': quickLogPreferences,
       'taskBookTaskProgress': taskBookTaskProgress,
       'taskBookCustomTasks': taskBookCustomTasks,
+      'taskBookCustomBooks': taskBookCustomBooks,
+      'taskBookActiveBook': taskBookActiveBook,
       'records': records.map((e) => e.toJson()).toList(),
     });
   }
@@ -241,6 +245,8 @@ class CareerRecordStore {
       Map<String, dynamic>? quickLogPreferences;
       Map<String, dynamic>? taskBookTaskProgress;
       List<Map<String, dynamic>>? taskBookCustomTasks;
+      List<Map<String, dynamic>>? taskBookCustomBooks;
+      Map<String, dynamic>? taskBookActiveBook;
 
       if (isPortfolio) {
         profile = mapValue(map['profile'], 'profile');
@@ -262,6 +268,14 @@ class CareerRecordStore {
         if (map.containsKey('taskBookCustomTasks')) {
           taskBookCustomTasks =
               mapList(map['taskBookCustomTasks'], 'taskBookCustomTasks');
+        }
+        if (map.containsKey('taskBookCustomBooks')) {
+          taskBookCustomBooks =
+              mapList(map['taskBookCustomBooks'], 'taskBookCustomBooks');
+        }
+        if (map.containsKey('taskBookActiveBook')) {
+          taskBookActiveBook =
+              mapValue(map['taskBookActiveBook'], 'taskBookActiveBook');
         }
       }
 
@@ -309,6 +323,29 @@ class CareerRecordStore {
               count: restored.length,
               message:
                   'Career records were restored, but custom Task Book tasks could not be saved.',
+            );
+          }
+        }
+
+        if (taskBookCustomBooks != null) {
+          final ok = await _store.saveTaskBookCustomBooks(taskBookCustomBooks);
+          if (!ok) {
+            return CareerRestoreResult(
+              success: false,
+              count: restored.length,
+              message:
+                  'Career records were restored, but custom Task Books could not be saved.',
+            );
+          }
+        }
+        if (taskBookActiveBook != null) {
+          final ok = await _store.saveTaskBookActiveBook(taskBookActiveBook);
+          if (!ok) {
+            return CareerRestoreResult(
+              success: false,
+              count: restored.length,
+              message:
+                  'Career records were restored, but Task Book selection could not be saved.',
             );
           }
         }

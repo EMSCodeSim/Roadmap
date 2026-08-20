@@ -726,7 +726,7 @@ class _SafetyNotice extends StatelessWidget {
       padding: AppSpacing.paddingMd,
       decoration: BoxDecoration(color: cs.surfaceContainerHighest.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(AppRadius.lg)),
       child: Text(
-        'Fire service certification and promotional requirements vary by state, agency, and department. FireOps Path provides career planning guidance and should not replace official department or state requirements.',
+        'Requirements vary by state and department. Use this for planning—verify official requirements locally.',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
       ),
     );

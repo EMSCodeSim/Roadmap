@@ -54,20 +54,28 @@ class QuickLogTemplate {
 class QuickLogPreferences {
   final List<String> pinnedIds;
   final List<QuickLogTemplate> customTemplates;
+  /// Controls the tiles shown in the Quick Log sheet under "WHAT ARE YOU LOGGING?".
+  ///
+  /// Stored as stable string keys so it can be edited without importing UI enums.
+  /// Valid keys: call, training, skill, drive, task_book, career
+  final List<String> quickActionKeys;
 
   const QuickLogPreferences({
     required this.pinnedIds,
     required this.customTemplates,
+    required this.quickActionKeys,
   });
 
   Map<String, dynamic> toJson() => {
         'pinnedIds': pinnedIds,
         'customTemplates': customTemplates.map((e) => e.toJson()).toList(),
+        'quickActionKeys': quickActionKeys,
       };
 
   factory QuickLogPreferences.fromJson(Map<String, dynamic> json) {
     final pinnedRaw = json['pinnedIds'];
     final customRaw = json['customTemplates'];
+    final quickRaw = json['quickActionKeys'];
     return QuickLogPreferences(
       pinnedIds: pinnedRaw is List ? pinnedRaw.whereType<String>().toList() : const <String>[],
       customTemplates: customRaw is List
@@ -77,6 +85,8 @@ class QuickLogPreferences {
               .where((e) => e.id.isNotEmpty && e.title.trim().isNotEmpty)
               .toList()
           : const <QuickLogTemplate>[],
+      quickActionKeys:
+          quickRaw is List ? quickRaw.whereType<String>().toList() : const <String>[],
     );
   }
 }

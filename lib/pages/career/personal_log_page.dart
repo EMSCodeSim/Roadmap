@@ -101,7 +101,10 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
     );
   }
 
-  static QuickLogPreferences _preferencesFromConfig(QuickLogConfig config) {
+  static QuickLogPreferences _preferencesFromConfig(
+    QuickLogConfig config, {
+    required List<String> quickActionKeys,
+  }) {
     final customTemplates = config.customTrackers
         .where((tracker) => tracker.custom)
         .map(
@@ -120,6 +123,7 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
     return QuickLogPreferences(
       pinnedIds: config.pinnedKeys,
       customTemplates: customTemplates,
+      quickActionKeys: quickActionKeys,
     );
   }
 
@@ -684,7 +688,15 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
 
     if (result == null) return;
     try {
-      await _preferences.save(_preferencesFromConfig(result));
+      final existing = await _preferences.load();
+      await _preferences.save(
+        _preferencesFromConfig(
+          result,
+          quickActionKeys: existing.quickActionKeys.isEmpty
+              ? QuickLogPreferencesStore.defaultQuickActionKeys
+              : existing.quickActionKeys,
+        ),
+      );
       if (!mounted) return;
       setState(() => _config = result);
     } catch (e) {
