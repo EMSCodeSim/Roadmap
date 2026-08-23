@@ -40,12 +40,6 @@ class VisualHomePage extends StatelessWidget {
               onStart: () => context.push(AppRoutes.dailyFocus),
               onChooseGoal: () => context.go(AppRoutes.myPath),
             ),
-            const SizedBox(height: 12),
-            _PrimaryActions(
-              onQuickLog: () => QuickLogLauncher.open(context),
-              onTaskBook: () => context.go(AppRoutes.myPath),
-              onCerts: () => context.go(AppRoutes.certifications),
-            ),
             const SizedBox(height: 14),
             const CareerInboxPreview(),
             const SizedBox(height: 18),
@@ -54,6 +48,12 @@ class VisualHomePage extends StatelessWidget {
               total: total,
               nextTitle: next?.name,
               onAdvance: () => context.go(AppRoutes.growth),
+            ),
+            const SizedBox(height: 12),
+            _SinglePrimaryAction(
+              label: 'Quick Log',
+              icon: Icons.add_task_outlined,
+              onTap: () => QuickLogLauncher.open(context),
             ),
           ],
         ),
@@ -228,87 +228,22 @@ class _TodayCard extends StatelessWidget {
   }
 }
 
-class _PrimaryActions extends StatelessWidget {
-  final VoidCallback onQuickLog;
-  final VoidCallback onTaskBook;
-  final VoidCallback onCerts;
-
-  const _PrimaryActions({
-    required this.onQuickLog,
-    required this.onTaskBook,
-    required this.onCerts,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ActionButton(
-            icon: Icons.add_task_outlined,
-            label: 'Quick Log',
-            onTap: onQuickLog,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _ActionButton(
-            icon: Icons.route_outlined,
-            label: 'Task Book',
-            onTap: onTaskBook,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _ActionButton(
-            icon: Icons.verified_outlined,
-            label: 'Certs',
-            onTap: onCerts,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
+class _SinglePrimaryAction extends StatelessWidget {
   final String label;
+  final IconData icon;
   final VoidCallback onTap;
 
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _SinglePrimaryAction({required this.label, required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 8),
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: cs.outline.withValues(alpha: .16)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: cs.primary),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: FilledButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon),
+        label: Text(label),
       ),
     );
   }
