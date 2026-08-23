@@ -24,7 +24,10 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-warnings --no-fatal-infos
 
-      - name: Run tests
+      - name: Core career loop regression tests
+        run: flutter test test/core_career_loop_regression_test.dart
+
+      - name: Run full test suite
         run: flutter test
 
       - name: Build web release
