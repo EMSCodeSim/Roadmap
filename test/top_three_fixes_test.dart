@@ -77,7 +77,7 @@ void main() {
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
 
     expect(decoded['format'], 'fireops-career-portfolio');
-    expect(decoded['version'], 4);
+    expect(decoded['version'], 5);
     expect(decoded['profile'], isA<Map>());
     expect((decoded['certifications'] as List), isNotEmpty);
     expect((decoded['customRequirements'] as List).length,
@@ -86,6 +86,8 @@ void main() {
     expect(decoded.containsKey('quickLogPreferences'), isTrue);
     expect(decoded.containsKey('taskBookTaskProgress'), isTrue);
     expect(decoded.containsKey('taskBookCustomTasks'), isTrue);
+    expect(decoded.containsKey('taskBookCustomBooks'), isTrue);
+    expect(decoded.containsKey('taskBookActiveBook'), isTrue);
     expect(decoded.containsKey('records'), isTrue);
   });
 }
