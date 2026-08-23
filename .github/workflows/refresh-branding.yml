@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/refresh-branding.yml'
       - 'tools/apply_branding_update.py'
+      - 'assets/icons/career_road_ios.svg'
+      - 'pubspec.yaml'
 
 permissions:
   contents: write
@@ -31,6 +33,19 @@ jobs:
       - name: Apply Home branding update
         run: python3 tools/apply_branding_update.py
 
+      - name: Install SVG renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+
+      - name: Render iOS launcher source
+        run: |
+          rsvg-convert \
+            -w 1024 \
+            -h 1024 \
+            assets/icons/career_road_ios.svg \
+            -o assets/icons/career_road_ios.png
+
       - name: Regenerate launcher icons
         run: dart run flutter_launcher_icons
 
@@ -42,6 +57,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/pages/home/visual_home_page.dart android/app/src/main/res ios/Runner/Assets.xcassets/AppIcon.appiconset web pubspec.lock
+          git add lib/pages/home/visual_home_page.dart assets/icons/career_road_ios.png android/app/src/main/res ios/Runner/Assets.xcassets/AppIcon.appiconset web pubspec.lock
           git commit -m "Refresh Career Road home icon and launcher icons"
           git push origin main
