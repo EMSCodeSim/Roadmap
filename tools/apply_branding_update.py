@@ -1,13 +1,14 @@
 from pathlib import Path
 
-path = Path('lib/pages/home/visual_home_page.dart')
+# Home branding lives on the shared wordmark widget (not visual_home_page).
+path = Path('lib/widgets/firefighter_roadmap_wordmark.dart')
 text = path.read_text()
 
-# Home now uses the compact header icon (post no-scroll redesign).
-# Keep legacy banner/path variants so old branches can still be migrated.
-preferred = 'assets/icons/career_road_icon_v2.png'
+# Prefer the launcher-aligned Roadmap.png, with legacy icon/banner paths for migration.
+preferred = 'assets/icons/Roadmap.png'
 candidates = [
     preferred,
+    'assets/icons/career_road_icon_v2.png',
     'assets/icons/career_road_icon.png',
     'assets/graphics/career_road_banner.jpg',
     'assets/graphics/career_road_banner_v2.png',

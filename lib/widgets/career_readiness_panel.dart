@@ -31,11 +31,24 @@ class CareerReadinessPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final majorGaps = snapshot.majorGaps.take(maxMajorGaps).toList();
+    final trimmedGoal = goalTitle.trim();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (trimmedGoal.isNotEmpty) ...[
+          Text(
+            trimmedGoal,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
         CareerReadinessCard(
           snapshot: snapshot,
           // The readiness card exposes a "view gaps" affordance. In this panel,
