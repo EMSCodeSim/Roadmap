@@ -178,7 +178,7 @@ void main() {
     expect(practicing.completedAt, isNull);
   });
 
-  test('portfolio backup v4 includes Task Book state', () async {
+  test('portfolio backup v5 includes Task Book state', () async {
     final local = LocalStore();
     expect(
       await local.saveTaskBookTaskProgress({
@@ -202,9 +202,11 @@ void main() {
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
 
     expect(decoded['format'], 'fireops-career-portfolio');
-    expect(decoded['version'], 4);
+    expect(decoded['version'], 5);
     expect(decoded['taskBookTaskProgress'], isA<Map>());
     expect(decoded['taskBookCustomTasks'], isA<List>());
+    expect(decoded.containsKey('taskBookCustomBooks'), isTrue);
+    expect(decoded.containsKey('taskBookActiveBook'), isTrue);
   });
 
   test('older portfolio backups remain restorable', () async {
