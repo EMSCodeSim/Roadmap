@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firepath/models/career_goal.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/services/state_requirement_catalog.dart';
+import 'package:firepath/services/state_fire_authority_catalog.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/local_store.dart';
@@ -60,10 +61,10 @@ class ProfileController extends ChangeNotifier {
   /// Rules:
   /// - A requirement sourced to one state is never shown to a user in another.
   /// - Verified state requirements replace their matching common requirement.
-  /// - State-dependent common guidance remains available when verified data is
-  ///   not yet in the catalog, but is explicitly labeled for the selected state
-  ///   as guidance that must be verified. This prevents a generic/Colorado-like
-  ///   baseline from being presented as an official rule in another state.
+  /// - State-dependent common guidance is attached to the correct official
+  ///   state fire-service authority so every state points at its own source.
+  /// - Common guidance is never silently promoted to a legal/statewide mandate;
+  ///   the source note tells the user when department/AHJ rules still control.
   CareerGoal? selectedGoalResolved() {
     final existing = selectedGoal();
     if (existing == null) return null;
@@ -142,16 +143,25 @@ class ProfileController extends ChangeNotifier {
       return requirement;
     }
 
+    final authority = StateFireAuthorityCatalog.forState(stateCode);
     const marker = 'State-specific note:';
     final baseDescription = requirement.description.contains(marker)
         ? requirement.description.split(marker).first.trimRight()
         : requirement.description.trimRight();
+
+    final authorityGuidance = authority?.guidance ??
+        'Confirm the current $stateName certification/training rules and your department requirements before treating this item as mandatory.';
     final description =
-        '$baseDescription\n\n$marker This item is commonly used in fire/EMS career paths, but it is not currently verified as an official $stateName requirement. Confirm the current $stateName certification/training rules and your department requirements before treating it as mandatory.';
+        '$baseDescription\n\n$marker $authorityGuidance';
 
     return requirement.copyWith(
       description: description,
       stateDependent: true,
+      sourceStateCode: stateCode,
+      sourceTitle: authority?.sourceTitle,
+      sourceUrl: authority?.sourceUrl,
+      sourceVerifiedDate: authority?.verifiedDate,
+      sourceNotes: authorityGuidance,
       updatedAt: DateTime.now(),
     );
   }
