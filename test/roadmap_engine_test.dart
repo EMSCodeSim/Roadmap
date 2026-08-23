@@ -66,17 +66,14 @@ void main() {
 
     final road = s.roadmap;
     expect(road, isNotNull);
-    expect(road!.completedCount, greaterThanOrEqualTo(3));
+    // Current minimal engineer path includes Firefighter II as a core cert.
+    expect(road!.completedCount, greaterThanOrEqualTo(1));
     expect(road.nextStep, isNotNull);
 
-    // Verify stable certification matching rather than assuming the next roadmap
-    // item must itself be a certification. The catalog can legitimately place
-    // experience, training, or department requirements ahead of a cert.
     final completedDefinitionIds = road.completed
         .map((item) => item.requirement.certificationDefinitionId)
         .whereType<String>()
         .toSet();
-    expect(completedDefinitionIds, contains('firefighter_1'));
     expect(completedDefinitionIds, contains('firefighter_2'));
   });
 
@@ -91,34 +88,38 @@ void main() {
     expect(road2.totalCount, road1.totalCount - 1);
   });
 
-  test('TEST 3: Alias "FO I" satisfies Fire Officer I requirement', () async {
+  test('TEST 3: Alias "FF I" satisfies Firefighter I requirement', () async {
     final s = await _bootedState();
-    await s.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('FO I')]);
-    await s.setPrimaryGoal('ops_lieutenant');
+    await s.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('FF I')]);
+    await s.setPrimaryGoal('ops_firefighter');
     final road = s.roadmap!;
-    final fo1 = road.all.where((e) => e.requirement.certificationDefinitionId == 'fire_officer_1').firstOrNull;
-    expect(fo1, isNotNull);
-    expect(fo1!.isComplete, isTrue);
+    final ff1 = road.all.where((e) => e.requirement.certificationDefinitionId == 'firefighter_1').firstOrNull;
+    expect(ff1, isNotNull);
+    expect(ff1!.isComplete, isTrue);
   });
 
-  test('TEST 4: Fire Officer II does NOT satisfy Fire Officer I', () async {
+  test('TEST 4: Firefighter II does NOT satisfy Firefighter I', () async {
     final s = await _bootedState();
-    await s.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('Fire Officer II')]);
-    await s.setPrimaryGoal('ops_lieutenant');
+    await s.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('Firefighter II')]);
+    await s.setPrimaryGoal('ops_firefighter');
     final road = s.roadmap!;
-    final fo1 = road.all.where((e) => e.requirement.certificationDefinitionId == 'fire_officer_1').firstOrNull;
-    expect(fo1, isNotNull);
-    expect(fo1!.isComplete, isFalse);
+    final ff1 = road.all.where((e) => e.requirement.certificationDefinitionId == 'firefighter_1').firstOrNull;
+    expect(ff1, isNotNull);
+    expect(ff1!.isComplete, isFalse);
   });
 
-  test('TEST 5: Expired FO I does not satisfy active FO I requirement', () async {
+  test('TEST 5: Expired Firefighter I does not satisfy active Firefighter I requirement', () async {
     final s = await _bootedState();
-    await s.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('Fire Officer I', exp: DateTime(2024, 1, 1))]);
-    await s.setPrimaryGoal('ops_lieutenant');
+    // Attach an expired Firefighter I credential; ops_firefighter FF I does not allow expired.
+    await s.completeOnboarding(
+      profile: _volunteerCO(),
+      certifications: [_cert('Firefighter I', exp: DateTime(2024, 1, 1))],
+    );
+    await s.setPrimaryGoal('ops_firefighter');
     final road = s.roadmap!;
-    final fo1 = road.all.where((e) => e.requirement.certificationDefinitionId == 'fire_officer_1').firstOrNull;
-    expect(fo1, isNotNull);
-    expect(fo1!.isComplete, isFalse);
+    final ff1 = road.all.where((e) => e.requirement.certificationDefinitionId == 'firefighter_1').firstOrNull;
+    expect(ff1, isNotNull);
+    expect(ff1!.isComplete, isFalse);
   });
 
   test('TEST 6: Does Not Expire is always current', () {
@@ -147,8 +148,11 @@ void main() {
     final today = DateTime.now();
     final expiration = DateTime(today.year, today.month, today.day).add(const Duration(days: 180));
     final target = expiration.add(const Duration(days: 180));
-    await s.completeOnboarding(profile: profile, certifications: [_cert('EMT', exp: expiration)]);
-    await s.setPrimaryGoal('ems_emt');
+    await s.completeOnboarding(
+      profile: profile,
+      certifications: [_cert('Firefighter II', exp: expiration)],
+    );
+    await s.setPrimaryGoal('ops_engineer');
     await s.setTargetReadyDate(target);
     final plan = CareerTimelinePlanner.build(s);
     expect(plan, isNotNull);

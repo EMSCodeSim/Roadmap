@@ -1,11 +1,7 @@
 name: Apply Career Readiness home update
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/apply-career-readiness-home.yml'
-      - 'tools/apply_career_readiness_home.py'
+  workflow_dispatch:
 
 permissions:
   contents: write

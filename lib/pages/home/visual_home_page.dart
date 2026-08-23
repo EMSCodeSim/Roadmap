@@ -4,9 +4,12 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
+import 'package:firepath/services/readiness_action_plan.dart';
+import 'package:firepath/services/readiness_snapshot.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/widgets/career_inbox_preview.dart';
+import 'package:firepath/widgets/career_readiness_panel.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 
 class VisualHomePage extends StatelessWidget {
@@ -18,9 +21,7 @@ class VisualHomePage extends StatelessWidget {
     final roadmap = app.roadmap;
     final goal = roadmap?.goal;
     final next = roadmap?.nextStep?.requirement;
-    final completed = roadmap?.completedCount ?? 0;
-    final total = roadmap?.totalCount ?? 0;
-    final progress = total <= 0 ? 0.0 : completed / total;
+    final hasRoadmap = roadmap != null && roadmap.totalCount > 0;
 
     return Scaffold(
       body: SafeArea(
@@ -31,24 +32,31 @@ class VisualHomePage extends StatelessWidget {
               onSettings: () => context.push(AppRoutes.settings),
             ),
             const SizedBox(height: 18),
-            _TodayCard(
-              goalTitle: goal?.title,
-              nextTitle: next?.name,
-              completed: completed,
-              total: total,
-              progress: progress,
-              onStart: () => context.push(AppRoutes.dailyFocus),
-              onChooseGoal: () => context.go(AppRoutes.myPath),
-            ),
+            if (!hasRoadmap)
+              _ChooseGoalCard(
+                onChooseGoal: () => context.go(AppRoutes.myPath),
+              )
+            else ...[
+              CareerReadinessPanel(
+                snapshot: CareerReadinessSnapshot.fromRoadmap(roadmap),
+                actionPlan: CareerReadinessActionPlan.fromState(app),
+                goalTitle: goal?.title ?? 'Career Road',
+                onViewPath: () => context.go(AppRoutes.myPath),
+                onActionTap: (item) {
+                  context.push(
+                    AppRoutes.requirementDetail,
+                    extra: item.requirement,
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+              _DailyFocusCta(
+                nextTitle: next?.name,
+                onStart: () => context.push(AppRoutes.dailyFocus),
+              ),
+            ],
             const SizedBox(height: 14),
             const CareerInboxPreview(),
-            const SizedBox(height: 18),
-            _ProgressSummary(
-              completed: completed,
-              total: total,
-              nextTitle: next?.name,
-              onAdvance: () => context.go(AppRoutes.growth),
-            ),
             const SizedBox(height: 12),
             _SinglePrimaryAction(
               label: 'Quick Log',
@@ -84,29 +92,14 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _TodayCard extends StatelessWidget {
-  final String? goalTitle;
-  final String? nextTitle;
-  final int completed;
-  final int total;
-  final double progress;
-  final VoidCallback onStart;
+class _ChooseGoalCard extends StatelessWidget {
   final VoidCallback onChooseGoal;
 
-  const _TodayCard({
-    required this.goalTitle,
-    required this.nextTitle,
-    required this.completed,
-    required this.total,
-    required this.progress,
-    required this.onStart,
-    required this.onChooseGoal,
-  });
+  const _ChooseGoalCard({required this.onChooseGoal});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final hasRoadmap = goalTitle != null && total > 0;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -117,111 +110,91 @@ class _TodayCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(
-                  color: cs.surface.withValues(alpha: .75),
-                  borderRadius: BorderRadius.circular(999),
+          Text(
+            'Choose what you are working toward.',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
                 ),
-                child: Text(
-                  'TODAY',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .8,
-                    color: cs.primary,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              if (hasRoadmap)
-                Text(
-                  '${(progress * 100).round()}%',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-            ],
           ),
-          const SizedBox(height: 16),
-          if (!hasRoadmap) ...[
-            Text(
-              'Choose what you are working toward.',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
+          const SizedBox(height: 8),
+          Text(
+            'Build your Task Book first. FireOps Career Road will then turn the next requirement into one clear focus for today.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.45,
+                ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: FilledButton.icon(
+              onPressed: onChooseGoal,
+              icon: const Icon(Icons.route_outlined),
+              label: const Text('Build My Task Book'),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Build your Task Book first. Roadmap will then turn the next requirement into one clear focus for today.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.45,
-              ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DailyFocusCta extends StatelessWidget {
+  final String? nextTitle;
+  final VoidCallback onStart;
+
+  const _DailyFocusCta({
+    required this.nextTitle,
+    required this.onStart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'DAILY FOCUS',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .8,
+                  color: cs.primary,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            nextTitle ?? 'Continue your next requirement',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Pick 15 min, 30 min, 1 hour, or a crew drill. Learn → Practice → Record.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.4,
+                ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton.icon(
+              onPressed: onStart,
+              icon: const Icon(Icons.play_arrow_rounded),
+              label: const Text("Start Today's Focus"),
             ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: FilledButton.icon(
-                onPressed: onChooseGoal,
-                icon: const Icon(Icons.route_outlined),
-                label: const Text('Build My Task Book'),
-              ),
-            ),
-          ] else ...[
-            Text(
-              goalTitle!,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              nextTitle ?? 'Continue your next requirement',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w900,
-                height: 1.12,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Your next meaningful step. Choose the time you have and Roadmap will build the session.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: progress.clamp(0.0, 1.0).toDouble(),
-                minHeight: 8,
-                backgroundColor: cs.surface.withValues(alpha: .55),
-              ),
-            ),
-            const SizedBox(height: 7),
-            Text(
-              '$completed of $total requirements complete',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: FilledButton.icon(
-                onPressed: onStart,
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text("Start Today's Focus"),
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );
@@ -233,7 +206,11 @@ class _SinglePrimaryAction extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _SinglePrimaryAction({required this.label, required this.icon, required this.onTap});
+  const _SinglePrimaryAction({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -244,75 +221,6 @@ class _SinglePrimaryAction extends StatelessWidget {
         onPressed: onTap,
         icon: Icon(icon),
         label: Text(label),
-      ),
-    );
-  }
-}
-
-class _ProgressSummary extends StatelessWidget {
-  final int completed;
-  final int total;
-  final String? nextTitle;
-  final VoidCallback onAdvance;
-
-  const _ProgressSummary({
-    required this.completed,
-    required this.total,
-    required this.nextTitle,
-    required this.onAdvance,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: cs.outline.withValues(alpha: .14)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: cs.secondaryContainer,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.trending_up_rounded),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Career progress',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  total == 0
-                      ? 'Set a goal to start building your career record.'
-                      : '$completed of $total requirements complete${nextTitle == null ? '' : ' • Next: $nextTitle'}',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: onAdvance,
-            child: const Text('Advance'),
-          ),
-        ],
       ),
     );
   }

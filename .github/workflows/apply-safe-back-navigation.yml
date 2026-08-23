@@ -1,11 +1,7 @@
 name: Apply safe back navigation
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'tools/apply_safe_back_navigation.py'
-      - '.github/workflows/apply-safe-back-navigation.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write

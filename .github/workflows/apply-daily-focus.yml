@@ -1,11 +1,7 @@
 name: Apply Daily Focus integration
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'tools/apply_daily_focus_integration.py'
-      - '.github/workflows/apply-daily-focus.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write

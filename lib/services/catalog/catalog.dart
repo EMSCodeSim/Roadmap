@@ -27,12 +27,19 @@ class FireOpsCatalog {
   // Roles / onboarding helpers
   // ---------------------------------------------------------------------------
 
-  static const List<String> commonRoles = <String>[
+    static const List<String> commonRoles = <String>[
     'Firefighter',
     'Firefighter (Probationary)',
     'Driver/Operator',
     'Engineer',
     'Company Officer',
+    'Lieutenant',
+    'Captain',
+    'Battalion Chief',
+    'Division Chief',
+    'Assistant Chief',
+    'Deputy Chief',
+    'Fire Chief',
     'Training Officer',
     'EMS Provider',
     'Wildland Firefighter',
@@ -171,7 +178,7 @@ class UsStateOption {
 }
 
 // -----------------------------------------------------------------------------
-// Private catalog data (minimal baseline; expand as needed)
+// Private catalog data (operations ladder through Fire Chief)
 // -----------------------------------------------------------------------------
 
 final DateTime _seedNow = DateTime(2026, 8, 23);
@@ -212,7 +219,11 @@ final List<CertificationDefinition> _certifications = <CertificationDefinition>[
     stateDependent: true,
     nationalCredential: false,
     issuingOrganizations: const ['State fire authority / AHJ', 'IFSAC / Pro Board (where applicable)'],
-    relatedCareerGoalIds: const ['ops_engineer', 'ops_officer'],
+    relatedCareerGoalIds: const [
+      'ops_engineer',
+      'ops_company_officer',
+      'ops_battalion_chief',
+    ],
     resourceIds: const [],
     searchKeywords: const ['ff2', 'firefighter ii', 'firefighter 2'],
     renewalDescription: null,
@@ -303,6 +314,196 @@ final List<CertificationDefinition> _certifications = <CertificationDefinition>[
     continuingEducationNotes: 'Confirm current CE hour distribution and skills verification rules for your state and NREMT.',
     renewalResourceIds: const [],
   ),
+  CertificationDefinition(
+    id: 'fire_officer_1',
+    displayName: 'Fire Officer I',
+    shortName: 'FO I',
+    category: CertificationCategory.officer,
+    description:
+        'Supervisory-level fire officer certification focused on company-level leadership, tactics, and daily operations (name and delivery vary by state / IFSAC / Pro Board).',
+    aliases: const [
+      'Fire Officer 1',
+      'Company Officer I',
+      'FO1',
+      'NFPA 1021 Fire Officer I',
+    ],
+    prerequisiteCertificationIds: const ['firefighter_2'],
+    recommendedPrerequisiteIds: const ['driver_operator_pumper'],
+    typicallyExpires: false,
+    typicalRenewalYears: null,
+    stateDependent: true,
+    nationalCredential: false,
+    issuingOrganizations: const [
+      'State fire authority / AHJ',
+      'IFSAC / Pro Board (where applicable)',
+    ],
+    relatedCareerGoalIds: const ['ops_company_officer'],
+    resourceIds: const ['state_fire_authority'],
+    searchKeywords: const [
+      'fire officer i',
+      'fire officer 1',
+      'fo1',
+      'company officer',
+      'nfpa 1021',
+    ],
+    renewalDescription: null,
+    continuingEducationNotes: null,
+    renewalResourceIds: const [],
+  ),
+  CertificationDefinition(
+    id: 'fire_officer_2',
+    displayName: 'Fire Officer II',
+    shortName: 'FO II',
+    category: CertificationCategory.officer,
+    description:
+        'Mid-level fire officer certification covering multi-company supervision, planning, and administrative responsibilities (varies by state / IFSAC / Pro Board).',
+    aliases: const [
+      'Fire Officer 2',
+      'FO2',
+      'NFPA 1021 Fire Officer II',
+    ],
+    prerequisiteCertificationIds: const ['fire_officer_1'],
+    recommendedPrerequisiteIds: const ['fire_instructor_1'],
+    typicallyExpires: false,
+    typicalRenewalYears: null,
+    stateDependent: true,
+    nationalCredential: false,
+    issuingOrganizations: const [
+      'State fire authority / AHJ',
+      'IFSAC / Pro Board (where applicable)',
+    ],
+    relatedCareerGoalIds: const [
+      'ops_company_officer',
+      'ops_battalion_chief',
+    ],
+    resourceIds: const ['state_fire_authority'],
+    searchKeywords: const [
+      'fire officer ii',
+      'fire officer 2',
+      'fo2',
+      'nfpa 1021',
+    ],
+    renewalDescription: null,
+    continuingEducationNotes: null,
+    renewalResourceIds: const [],
+  ),
+  CertificationDefinition(
+    id: 'fire_officer_3',
+    displayName: 'Fire Officer III',
+    shortName: 'FO III',
+    category: CertificationCategory.officer,
+    description:
+        'Senior / administrative fire officer certification emphasizing program management, interagency coordination, and organizational leadership.',
+    aliases: const [
+      'Fire Officer 3',
+      'FO3',
+      'NFPA 1021 Fire Officer III',
+    ],
+    prerequisiteCertificationIds: const ['fire_officer_2'],
+    recommendedPrerequisiteIds: const [],
+    typicallyExpires: false,
+    typicalRenewalYears: null,
+    stateDependent: true,
+    nationalCredential: false,
+    issuingOrganizations: const [
+      'State fire authority / AHJ',
+      'IFSAC / Pro Board (where applicable)',
+    ],
+    relatedCareerGoalIds: const [
+      'ops_battalion_chief',
+      'ops_division_chief',
+    ],
+    resourceIds: const ['state_fire_authority'],
+    searchKeywords: const [
+      'fire officer iii',
+      'fire officer 3',
+      'fo3',
+      'nfpa 1021',
+    ],
+    renewalDescription: null,
+    continuingEducationNotes: null,
+    renewalResourceIds: const [],
+  ),
+  CertificationDefinition(
+    id: 'fire_officer_4',
+    displayName: 'Fire Officer IV',
+    shortName: 'FO IV',
+    category: CertificationCategory.officer,
+    description:
+        'Executive-level fire officer certification focused on strategic leadership, policy, and department-level administration.',
+    aliases: const [
+      'Fire Officer 4',
+      'FO4',
+      'NFPA 1021 Fire Officer IV',
+      'Executive Fire Officer',
+    ],
+    prerequisiteCertificationIds: const ['fire_officer_3'],
+    recommendedPrerequisiteIds: const [],
+    typicallyExpires: false,
+    typicalRenewalYears: null,
+    stateDependent: true,
+    nationalCredential: false,
+    issuingOrganizations: const [
+      'State fire authority / AHJ',
+      'IFSAC / Pro Board (where applicable)',
+      'National Fire Academy (related executive programs)',
+    ],
+    relatedCareerGoalIds: const [
+      'ops_division_chief',
+      'ops_deputy_chief',
+      'ops_fire_chief',
+    ],
+    resourceIds: const ['state_fire_authority'],
+    searchKeywords: const [
+      'fire officer iv',
+      'fire officer 4',
+      'fo4',
+      'executive fire officer',
+      'nfpa 1021',
+    ],
+    renewalDescription: null,
+    continuingEducationNotes: null,
+    renewalResourceIds: const [],
+  ),
+  CertificationDefinition(
+    id: 'fire_instructor_1',
+    displayName: 'Fire Instructor I',
+    shortName: 'FI I',
+    category: CertificationCategory.instructor,
+    description:
+        'Entry-level fire service instructor certification for delivering organized training and evaluating student performance (NFPA 1041 level I equivalent in many systems).',
+    aliases: const [
+      'Fire Instructor 1',
+      'Instructor I',
+      'FI1',
+      'NFPA 1041 Fire Instructor I',
+    ],
+    prerequisiteCertificationIds: const ['firefighter_2'],
+    recommendedPrerequisiteIds: const [],
+    typicallyExpires: false,
+    typicalRenewalYears: null,
+    stateDependent: true,
+    nationalCredential: false,
+    issuingOrganizations: const [
+      'State fire authority / AHJ',
+      'IFSAC / Pro Board (where applicable)',
+    ],
+    relatedCareerGoalIds: const [
+      'ops_company_officer',
+      'ops_battalion_chief',
+    ],
+    resourceIds: const ['state_fire_authority'],
+    searchKeywords: const [
+      'fire instructor i',
+      'fire instructor 1',
+      'fi1',
+      'instructor i',
+      'nfpa 1041',
+    ],
+    renewalDescription: null,
+    continuingEducationNotes: null,
+    renewalResourceIds: const [],
+  ),
 ];
 
 final Map<String, CertificationDefinition> _certById = {
@@ -336,6 +537,22 @@ final Map<String, String> _certMatchIndex = () {
   add('do pumper', 'driver_operator_pumper');
   add('driver operator', 'driver_operator_pumper');
   add('pump ops', 'driver_operator_pumper');
+  add('fo i', 'fire_officer_1');
+  add('fo 1', 'fire_officer_1');
+  add('fo1', 'fire_officer_1');
+  add('fo ii', 'fire_officer_2');
+  add('fo 2', 'fire_officer_2');
+  add('fo2', 'fire_officer_2');
+  add('fo iii', 'fire_officer_3');
+  add('fo 3', 'fire_officer_3');
+  add('fo3', 'fire_officer_3');
+  add('fo iv', 'fire_officer_4');
+  add('fo 4', 'fire_officer_4');
+  add('fo4', 'fire_officer_4');
+  add('fi i', 'fire_instructor_1');
+  add('fi 1', 'fire_instructor_1');
+  add('fi1', 'fire_instructor_1');
+  add('instructor i', 'fire_instructor_1');
   return out;
 }();
 
@@ -386,9 +603,6 @@ final List<CareerGoal> _goals = <CareerGoal>[
     requirements: <Requirement>[
       _reqCert('ff2', 'Firefighter II', defId: 'firefighter_2', sortOrder: 10, stateDependent: true),
       _reqCert('do_pumper', 'Driver/Operator – Pumper', defId: 'driver_operator_pumper', sortOrder: 20, stateDependent: true),
-
-      // State-dependent guidance example: this is NOT a verified mandate, but we
-      // want the UI to attach the correct state authority source.
       _reqCourse(
         'state_driver_policy',
         'State driver/operator policy check',
@@ -399,7 +613,103 @@ final List<CareerGoal> _goals = <CareerGoal>[
     ],
     recommendedExperience: const [],
     resourceIds: const ['state_fire_authority'],
-    nextRoles: const ['Company Officer'],
+    nextRoles: const ['Company Officer', 'Lieutenant', 'Captain'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ops_company_officer',
+    title: 'Company Officer',
+    category: 'Operations',
+    description: 'Prepare to lead a company: tactics, people, training, and daily readiness.',
+    subtitle: 'Lieutenant / Captain track',
+    typicalPrerequisiteRoles: const ['Driver/Operator', 'Engineer', 'Firefighter'],
+    requirements: <Requirement>[
+      _reqCert('fo1', 'Fire Officer I', defId: 'fire_officer_1', sortOrder: 10, stateDependent: true),
+      _reqCert('fi1', 'Fire Instructor I', defId: 'fire_instructor_1', sortOrder: 20, stateDependent: true),
+      _reqCourse('ics300', 'ICS 300', sortOrder: 30, stateDependent: false, description: 'Intermediate ICS for expanding incidents and supervisory roles.'),
+      _reqCourse('acting_time', 'Documented acting / ride-up time', sortOrder: 40, stateDependent: false, description: 'Log supervised company-level acting assignments and feedback.'),
+      _reqCourse('promo_prep_co', 'Company officer promotional prep', sortOrder: 50, stateDependent: false, description: 'Written, assessment center, and interview preparation for company officer.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_fire_authority'],
+    nextRoles: const ['Battalion Chief', 'Captain'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ops_battalion_chief',
+    title: 'Battalion Chief',
+    category: 'Operations',
+    description: 'Multi-company command, shift leadership, and operational oversight.',
+    subtitle: 'Shift / battalion command',
+    typicalPrerequisiteRoles: const ['Company Officer', 'Captain', 'Lieutenant'],
+    requirements: <Requirement>[
+      _reqCert('fo2', 'Fire Officer II', defId: 'fire_officer_2', sortOrder: 10, stateDependent: true),
+      _reqCourse('ics400', 'ICS 400', sortOrder: 20, stateDependent: false, description: 'Advanced ICS for complex incident management and area command concepts.'),
+      _reqCourse('multi_company', 'Multi-company / shift command experience', sortOrder: 30, stateDependent: false, description: 'Documented command of multi-unit responses and shift-level leadership.'),
+      _reqCourse('promo_prep_bc', 'Battalion chief promotional prep', sortOrder: 40, stateDependent: false, description: 'Assessment, command scenarios, and interview preparation.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_fire_authority'],
+    nextRoles: const ['Division Chief', 'Assistant Chief', 'Deputy Chief'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ops_division_chief',
+    title: 'Division / Assistant Chief',
+    category: 'Operations',
+    description: 'Program leadership, planning, and department-level operational support.',
+    subtitle: 'Senior staff / division leadership',
+    typicalPrerequisiteRoles: const ['Battalion Chief', 'Captain'],
+    requirements: <Requirement>[
+      _reqCert('fo3', 'Fire Officer III', defId: 'fire_officer_3', sortOrder: 10, stateDependent: true),
+      _reqCourse('exec_dev', 'Executive / senior officer development', sortOrder: 20, stateDependent: false, description: 'Leadership, labor, budget, and strategic planning coursework or program.'),
+      _reqCourse('program_ownership', 'Major program or division ownership', sortOrder: 30, stateDependent: false, description: 'Documented ownership of training, ops, EMS, prevention, or similar major program.'),
+      _reqCourse('promo_prep_ac', 'Senior chief promotional prep', sortOrder: 40, stateDependent: false, description: 'Executive interview, strategic scenarios, and portfolio preparation.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_fire_authority'],
+    nextRoles: const ['Deputy Chief', 'Fire Chief'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ops_deputy_chief',
+    title: 'Deputy Chief',
+    category: 'Operations',
+    description: 'Second-in-command readiness: citywide operations, labor, and executive support.',
+    subtitle: 'Executive operations leadership',
+    typicalPrerequisiteRoles: const ['Division Chief', 'Assistant Chief', 'Battalion Chief'],
+    requirements: <Requirement>[
+      _reqCert('fo4', 'Fire Officer IV', defId: 'fire_officer_4', sortOrder: 10, stateDependent: true),
+      _reqCourse('citywide_ops', 'Citywide / department operations leadership', sortOrder: 20, stateDependent: false, description: 'Evidence of department-level operational decision-making and coverage planning.'),
+      _reqCourse('labor_budget', 'Labor, budget, or policy exposure', sortOrder: 30, stateDependent: false, description: 'Documented involvement in budget, labor relations, policy, or city processes.'),
+      _reqCourse('promo_prep_dc', 'Deputy chief / executive prep', sortOrder: 40, stateDependent: false, description: 'Executive assessment and interview preparation.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_fire_authority'],
+    nextRoles: const ['Fire Chief'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ops_fire_chief',
+    title: 'Fire Chief',
+    category: 'Operations',
+    description: 'Prepare for the top executive role: strategy, culture, risk, and community leadership.',
+    subtitle: 'Department executive',
+    typicalPrerequisiteRoles: const ['Deputy Chief', 'Assistant Chief', 'Division Chief'],
+    requirements: <Requirement>[
+      _reqCert('fo4_chief', 'Fire Officer IV / Executive pathway', defId: 'fire_officer_4', sortOrder: 10, stateDependent: true),
+      _reqCourse('strategic_plan', 'Strategic plan / CRR leadership', sortOrder: 20, stateDependent: false, description: 'Evidence of strategic planning, community risk reduction, or equivalent executive work.'),
+      _reqCourse('external_relations', 'City / board / community leadership', sortOrder: 30, stateDependent: false, description: 'Documented work with elected officials, boards, mutual aid, or community partners.'),
+      _reqCourse('chief_promo_prep', 'Fire chief selection prep', sortOrder: 40, stateDependent: false, description: 'Executive interview, portfolio, and assessment preparation for fire chief processes.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_fire_authority'],
+    nextRoles: const [],
     createdAt: _seedNow,
     updatedAt: _seedNow,
   ),

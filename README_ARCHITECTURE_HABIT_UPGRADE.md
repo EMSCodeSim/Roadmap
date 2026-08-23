@@ -68,11 +68,11 @@ Renamed the corrupted `career_road_bannejpg` asset to `career_road_banner.jpg` a
 
 ## Follow-on work (recommended next upgrades)
 
-1. Split remaining AppState responsibilities into focused controllers (`ProfileController`, `CertificationsController`, `TaskBookController`, `CareerRecordController`).
+1. ~~Split remaining AppState responsibilities into focused controllers~~ (started: Profile / Certification / TaskBook / CareerRecord controllers)
 2. Move `FireOpsCatalog` static data into JSON/YAML assets.
 3. Wire `flutter_local_notifications` on top of `NotificationPreferencesStore`.
-4. Expand widget tests around the Daily Focus → Record path.
-5. Retire remaining legacy log routes (`/log/legacy`, vault/hub duplicates) once product confirms no deep-link dependency.
+4. ~~Expand widget tests around Home readiness + Daily Focus~~ (added catalog contract + home/daily-focus widget tests)
+5. ~~Retire `/log/legacy` as a primary route~~ (redirects to `/log/classic`; Career Record remains primary)
 
 ## Compatibility
 

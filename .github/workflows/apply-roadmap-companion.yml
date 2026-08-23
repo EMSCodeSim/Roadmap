@@ -1,11 +1,7 @@
 name: Apply Roadmap companion integration
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/apply-roadmap-companion.yml'
-      - 'tools/apply_roadmap_companion_update.py'
+  workflow_dispatch:
 
 permissions:
   contents: write

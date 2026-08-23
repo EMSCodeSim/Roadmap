@@ -1,11 +1,7 @@
 name: Fix Task Book practice links
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/fix-taskbook-practice-links.yml'
-      - 'tools/fix_taskbook_practice_links.py'
+  workflow_dispatch:
 
 permissions:
   contents: write

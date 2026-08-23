@@ -140,7 +140,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
             tooltip: 'More career record tools',
             onSelected: (value) {
               if (value == 'advanced') {
-                context.push(AppRoutes.personalLogLegacy);
+                context.push(AppRoutes.personalLogClassic);
               }
             },
             itemBuilder: (context) => const [
@@ -148,8 +148,8 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 value: 'advanced',
                 child: ListTile(
                   leading: Icon(Icons.inventory_2_outlined),
-                  title: Text('Advanced log tools'),
-                  subtitle: Text('Backup, restore, evidence, and legacy tools'),
+                  title: Text('Classic log tools'),
+                  subtitle: Text('Backup, restore, evidence, and older log views'),
                 ),
               ),
             ],

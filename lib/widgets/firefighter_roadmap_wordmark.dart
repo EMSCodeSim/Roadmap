@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 /// Keeps the title fully visible on typical iPhone widths by allowing
 /// scale-down instead of truncation.
 class FirefighterRoadmapWordmark extends StatelessWidget {
-  static const String title = 'Firefighter Roadmap';
+  static const String title = 'FireOps Career Road';
   // Prefer the same raster that ships as the app launcher icon (known-good on iOS).
   static const String _primaryAssetPath = 'assets/icons/Roadmap.png';
   // Keep a secondary fallback for older builds.

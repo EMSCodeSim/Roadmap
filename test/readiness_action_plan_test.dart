@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:firepath/models/career_goal.dart';
 import 'package:firepath/models/certification.dart';
+import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/services/readiness_action_plan.dart';
 import 'package:firepath/state/app_state.dart';
@@ -70,22 +72,63 @@ void main() {
   });
 
   test('numeric experience gaps use log progress CTA', () async {
-    final s = await booted();
-    await s.completeOnboarding(
-      profile: volunteerProfile(),
-      certifications: [
-        cert('FF I'),
-        cert('FF II'),
-        cert('HazMat Ops'),
-        cert('EMT'),
-        cert('Driver Operator – Pumper'),
-        cert('Driver Operator – Aerial'),
-        cert('ICS-200'),
-      ],
+    final now = DateTime(2026, 1, 1);
+    final requirements = [
+      Requirement(
+        id: 'drive_hours',
+        name: 'Apparatus driving hours',
+        category: 'Experience',
+        priority: RequirementPriority.department,
+        description: 'Log apparatus driving hours toward readiness.',
+        type: RequirementType.numericProgress,
+        requirementSource: RequirementSource.departmentRequirement,
+        defaultRequired: true,
+        stateDependent: false,
+        departmentDependent: true,
+        completed: false,
+        progressCurrent: 10,
+        progressRequired: 40,
+        progressUnit: 'hours',
+        experienceValue: null,
+        experienceUnit: null,
+        certificationReference: null,
+        certificationDefinitionId: null,
+        allowExpiredCertification: false,
+        prerequisiteRequirementIds: const [],
+        resourceIds: const [],
+        resourceLinks: const [],
+        sortOrder: 10,
+        estimatedDurationDays: null,
+        recommendedLeadTimeDays: null,
+        canRunConcurrent: true,
+        timelineCategory: null,
+        suggestedStartDate: null,
+        suggestedCompletionDate: null,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    ];
+    final road = Roadmap(
+      goal: CareerGoal(
+        id: 'goal',
+        title: 'Engineer',
+        category: 'Operations',
+        description: 'Test',
+        subtitle: null,
+        typicalPrerequisiteRoles: const [],
+        requirements: requirements,
+        recommendedExperience: const [],
+        resourceIds: const [],
+        nextRoles: const [],
+        createdAt: now,
+        updatedAt: now,
+      ),
+      all: requirements
+          .map((r) => RoadmapRequirement(requirement: r, isComplete: false, isExcluded: false))
+          .toList(),
     );
-    await s.setPrimaryGoal('ops_engineer');
 
-    final plan = CareerReadinessActionPlan.fromState(s, maxItems: 20);
+    final plan = CareerReadinessActionPlan.fromRoadmap(road, maxItems: 20);
     final progressItems = plan.items.where(
       (e) => e.actionKind == ReadinessActionKind.logProgress,
     );

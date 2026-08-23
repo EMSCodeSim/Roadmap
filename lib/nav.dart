@@ -122,9 +122,14 @@ class AppRouter {
         redirect: (context, state) => AppRoutes.personalLog,
       ),
 
+      // Old deep link: keep bookmarks working by landing on the classic tools page.
       GoRoute(
         path: AppRoutes.personalLogLegacy,
-        name: 'personal_log_legacy',
+        redirect: (context, state) => AppRoutes.personalLogClassic,
+      ),
+      GoRoute(
+        path: AppRoutes.personalLogClassic,
+        name: 'personal_log_classic',
         pageBuilder: (context, state) => MaterialPage(
           child: PersonalLogPage(prefill: state.extra as LogPrefill?),
         ),
@@ -289,6 +294,7 @@ class AppRoutes {
   static const String myPathLegacy = '/task-book/customize';
   static const String personalLog = '/log';
   static const String personalLogLegacy = '/log/legacy';
+  static const String personalLogClassic = '/log/classic';
   static const String quickLogSetup = '/log/setup';
   static const String growth = '/growth';
   static const String certifications = '/certifications';

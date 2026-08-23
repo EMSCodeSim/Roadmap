@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => AppState()..bootstrap(),
       child: MaterialApp.router(
-        title: 'Fire Career Roadmap',
+        title: 'FireOps Career Road',
         debugShowCheckedModeBanner: false,
         theme: phoneFriendlyTheme(lightTheme),
         darkTheme: phoneFriendlyTheme(darkTheme),

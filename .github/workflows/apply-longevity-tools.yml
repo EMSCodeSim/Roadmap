@@ -1,11 +1,7 @@
 name: Apply long-term career tools
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'tools/apply_longevity_tools.py'
-      - '.github/workflows/apply-longevity-tools.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write

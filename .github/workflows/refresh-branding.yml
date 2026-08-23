@@ -57,6 +57,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/pages/home/visual_home_page.dart assets/icons/career_road_ios.png android/app/src/main/res ios/Runner/Assets.xcassets/AppIcon.appiconset web pubspec.lock
+          git add lib/widgets/firefighter_roadmap_wordmark.dart assets/icons/career_road_ios.png android/app/src/main/res ios/Runner/Assets.xcassets/AppIcon.appiconset web pubspec.lock
           git commit -m "Refresh Career Road home icon and launcher icons"
           git push origin main
