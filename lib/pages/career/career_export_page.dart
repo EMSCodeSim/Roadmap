@@ -6,6 +6,7 @@ import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/career_pdf_export.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/promotion_portfolio_export.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
@@ -73,6 +74,7 @@ class _CareerExportPageState extends State<CareerExportPage> {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
+    final goal = app.selectedGoal?.title;
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton.toCareerIntelligence(),
@@ -93,13 +95,15 @@ class _CareerExportPageState extends State<CareerExportPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Turn your career record into a professional document.',
+                        'Build a promotion-ready career package.',
                         style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Generate a polished career portfolio, promotion packet, or resume from the information you have already preserved in Career Road.',
+                        goal == null
+                            ? 'Career Road turns the work you have already logged into a professional summary, resume, and promotion portfolio. Choose an advancement goal to make promotion readiness more specific.'
+                            : 'Target: $goal. Career Road uses your saved requirements, credentials, leadership, training, projects, achievements, and interview-ready stories to build a promotion-focused package.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: cs.onSurfaceVariant,
                           height: 1.45,
@@ -171,7 +175,35 @@ class _CareerExportPageState extends State<CareerExportPage> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'PDF EXPORTS',
+                  'PROMOTION TOOLS',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _ExportCard(
+                  icon: Icons.summarize_outlined,
+                  title: 'Professional Career Summary',
+                  description:
+                      'An executive-style summary with quantified career signals, strongest documented areas, selected accomplishments, credentials, recent momentum, and your next advancement move.',
+                  badge: 'Best first document',
+                  onPreview: _working ? null : () => _previewCareerSummary(app),
+                  onShare: _working ? null : () => _shareCareerSummary(app),
+                ),
+                const SizedBox(height: 10),
+                _ExportCard(
+                  icon: Icons.workspace_premium_outlined,
+                  title: 'Promotion Portfolio',
+                  description:
+                      'A promotion-focused packet with candidate profile, readiness dashboard, competency evidence, interview story bank, leadership and project evidence, credentials, gaps, and a review checklist.',
+                  badge: goal == null ? 'Choose a goal for best results' : 'Targeted to $goal',
+                  onPreview: _working ? null : () => _previewPromotionPortfolio(app),
+                  onShare: _working ? null : () => _sharePromotionPortfolio(app),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'OTHER EXPORTS',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w900,
@@ -188,19 +220,19 @@ class _CareerExportPageState extends State<CareerExportPage> {
                 ),
                 const SizedBox(height: 10),
                 _ExportCard(
-                  icon: Icons.workspace_premium_outlined,
-                  title: 'Promotion Packet',
+                  icon: Icons.fact_check_outlined,
+                  title: 'Legacy Promotion Preparation Packet',
                   description:
-                      'Readiness, evidence gaps, competencies, credentials, and your strongest interview stories in a promotion-focused packet.',
+                      'The original readiness, evidence-gap, competency, and interview-story report remains available for comparison and preparation.',
                   onPreview: _working ? null : () => _previewPromotion(app),
                   onShare: _working ? null : () => _sharePromotion(app),
                 ),
                 const SizedBox(height: 10),
                 _ExportCard(
                   icon: Icons.auto_stories_outlined,
-                  title: 'Career Portfolio',
+                  title: 'Full Career Portfolio',
                   description:
-                      'A fuller professional history with career totals, credentials, highlights, advancement readiness, and development priorities.',
+                      'A broader professional history with career totals, credentials, highlights, advancement readiness, and development priorities.',
                   onPreview: _working ? null : () => _previewPortfolio(app),
                   onShare: _working ? null : () => _sharePortfolio(app),
                 ),
@@ -226,6 +258,52 @@ class _CareerExportPageState extends State<CareerExportPage> {
       if (mounted) setState(() => _working = false);
     }
   }
+
+  Future<void> _previewCareerSummary(AppState app) => _run(() async {
+    await Printing.layoutPdf(
+      name: 'FireOps_Professional_Career_Summary.pdf',
+      onLayout: (_) => PromotionPortfolioExport.buildCareerSummary(
+        app: app,
+        records: _records,
+        identity: _identity,
+      ),
+    );
+  });
+
+  Future<void> _shareCareerSummary(AppState app) => _run(() async {
+    final bytes = await PromotionPortfolioExport.buildCareerSummary(
+      app: app,
+      records: _records,
+      identity: _identity,
+    );
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'FireOps_Professional_Career_Summary.pdf',
+    );
+  });
+
+  Future<void> _previewPromotionPortfolio(AppState app) => _run(() async {
+    await Printing.layoutPdf(
+      name: 'FireOps_Promotion_Portfolio.pdf',
+      onLayout: (_) => PromotionPortfolioExport.buildPromotionPortfolio(
+        app: app,
+        records: _records,
+        identity: _identity,
+      ),
+    );
+  });
+
+  Future<void> _sharePromotionPortfolio(AppState app) => _run(() async {
+    final bytes = await PromotionPortfolioExport.buildPromotionPortfolio(
+      app: app,
+      records: _records,
+      identity: _identity,
+    );
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'FireOps_Promotion_Portfolio.pdf',
+    );
+  });
 
   Future<void> _previewResume(AppState app) => _run(() async {
     await Printing.layoutPdf(
@@ -301,6 +379,7 @@ class _ExportCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String description;
+  final String? badge;
   final VoidCallback? onPreview;
   final VoidCallback? onShare;
 
@@ -308,6 +387,7 @@ class _ExportCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.description,
+    this.badge,
     required this.onPreview,
     required this.onShare,
   });
@@ -339,6 +419,22 @@ class _ExportCard extends StatelessWidget {
               ),
             ],
           ),
+          if ((badge ?? '').isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: cs.secondaryContainer,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                badge!,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
           Text(
             description,
