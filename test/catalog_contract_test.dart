@@ -100,7 +100,10 @@ void main() {
     expect(FireOpsCatalog.matchCertificationDefinitionId('EMT'), 'emt');
     expect(FireOpsCatalog.matchCertificationDefinitionId('FO I'), 'fire_officer_1');
     expect(FireOpsCatalog.matchCertificationDefinitionId('Fire Officer II'), 'fire_officer_2');
+    expect(FireOpsCatalog.matchCertificationDefinitionId('NFPA 1021 Fire Officer III'), 'fire_officer_3');
+    expect(FireOpsCatalog.matchCertificationDefinitionId('Executive Fire Officer'), 'fire_officer_4');
     expect(FireOpsCatalog.matchCertificationDefinitionId('FI I'), 'fire_instructor_1');
+    expect(FireOpsCatalog.matchCertificationDefinitionId('NFPA 1041 Fire Instructor I'), 'fire_instructor_1');
   });
 
   test('validateCatalog runs without throwing', () {
