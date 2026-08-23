@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/fast_quick_log_shortcuts_store.dart';
 import 'package:firepath/theme.dart';
 
 enum FastQuickLogResult { moreDetails }
@@ -10,6 +11,15 @@ enum FastQuickLogResult { moreDetails }
 enum _FastMode { call, training, skill, drive, taskBook, career }
 
 extension _FastModeX on _FastMode {
+  String get key => switch (this) {
+        _FastMode.call => 'call',
+        _FastMode.training => 'training',
+        _FastMode.skill => 'skill',
+        _FastMode.drive => 'drive',
+        _FastMode.taskBook => 'task_book',
+        _FastMode.career => 'career',
+      };
+
   String get label => switch (this) {
         _FastMode.call => 'CALL',
         _FastMode.training => 'TRAINING',
@@ -27,6 +37,13 @@ extension _FastModeX on _FastMode {
         _FastMode.taskBook => Icons.fact_check_outlined,
         _FastMode.career => Icons.military_tech_outlined,
       };
+
+  static _FastMode? fromKey(String key) {
+    for (final mode in _FastMode.values) {
+      if (mode.key == key) return mode;
+    }
+    return null;
+  }
 }
 
 class FastQuickLogSheet extends StatefulWidget {
@@ -40,9 +57,15 @@ class FastQuickLogSheet extends StatefulWidget {
 
 class _FastQuickLogSheetState extends State<FastQuickLogSheet> {
   final CareerRecordStore _store = CareerRecordStore();
+  final FastQuickLogShortcutsStore _shortcutsStore =
+      FastQuickLogShortcutsStore();
+
   _FastMode? _mode;
   String? _choice;
   bool _saving = false;
+  bool _loadingShortcuts = true;
+  List<FastQuickLogShortcut> _favorites = const [];
+  List<FastQuickLogShortcut> _recent = const [];
 
   @override
   void initState() {
@@ -50,13 +73,57 @@ class _FastQuickLogSheetState extends State<FastQuickLogSheet> {
     final prefill = widget.prefill;
     if ((prefill?.title ?? '').trim().isNotEmpty) {
       _mode = _FastMode.taskBook;
-      _choice = prefill!.title!.trim();
+      _choice = prefill!.title.trim();
     }
+    _loadShortcuts();
+  }
+
+  Future<void> _loadShortcuts() async {
+    final data = await _shortcutsStore.load();
+    if (!mounted) return;
+    setState(() {
+      _favorites = data.favorites;
+      _recent = data.recent;
+      _loadingShortcuts = false;
+    });
+  }
+
+  bool get _isCurrentFavorite {
+    final mode = _mode;
+    final choice = _choice;
+    if (mode == null || choice == null) return false;
+    final id = '${mode.key}::$choice';
+    return _favorites.any((item) => item.id == id);
+  }
+
+  void _openShortcut(FastQuickLogShortcut shortcut) {
+    final mode = _FastModeX.fromKey(shortcut.modeKey);
+    if (mode == null) return;
+    setState(() {
+      _mode = mode;
+      _choice = shortcut.title;
+    });
+  }
+
+  Future<void> _toggleFavorite() async {
+    final mode = _mode;
+    final choice = _choice;
+    if (mode == null || choice == null) return;
+    final shortcut = FastQuickLogShortcut(modeKey: mode.key, title: choice);
+    final added = await _shortcutsStore.toggleFavorite(shortcut);
+    if (!mounted) return;
+    await _loadShortcuts();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(added ? '$choice added to Favorites' : '$choice removed from Favorites'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return SafeArea(
       top: false,
       child: Padding(
@@ -69,9 +136,12 @@ class _FastQuickLogSheetState extends State<FastQuickLogSheet> {
                   mode: _mode!,
                   choice: _choice!,
                   saving: _saving,
+                  isFavorite: _isCurrentFavorite,
+                  onToggleFavorite: _toggleFavorite,
                   onBack: () => setState(() => _choice = null),
                   onSave: _save,
-                  onMoreDetails: () => Navigator.of(context).pop(FastQuickLogResult.moreDetails),
+                  onMoreDetails: () => Navigator.of(context)
+                      .pop(FastQuickLogResult.moreDetails),
                 )
               : _mode != null
                   ? _PresetStep(
@@ -79,12 +149,18 @@ class _FastQuickLogSheetState extends State<FastQuickLogSheet> {
                       mode: _mode!,
                       onBack: () => setState(() => _mode = null),
                       onPick: (value) => setState(() => _choice = value),
-                      onMoreDetails: () => Navigator.of(context).pop(FastQuickLogResult.moreDetails),
+                      onMoreDetails: () => Navigator.of(context)
+                          .pop(FastQuickLogResult.moreDetails),
                     )
                   : _CategoryStep(
                       key: const ValueKey('category'),
+                      favorites: _favorites,
+                      recent: _recent,
+                      loadingShortcuts: _loadingShortcuts,
+                      onShortcut: _openShortcut,
                       onPick: (mode) => setState(() => _mode = mode),
-                      onMoreDetails: () => Navigator.of(context).pop(FastQuickLogResult.moreDetails),
+                      onMoreDetails: () => Navigator.of(context)
+                          .pop(FastQuickLogResult.moreDetails),
                     ),
         ),
       ),
@@ -117,8 +193,10 @@ class _FastQuickLogSheetState extends State<FastQuickLogSheet> {
       relatedRequirementId: prefill?.relatedRequirementId,
       relatedTaskId: prefill?.relatedTaskId,
       highlight: mode == _FastMode.career,
-      trackingKey: mode == _FastMode.drive ? 'fire.driver' : prefill?.trackerKey,
-      outcome: mode == _FastMode.taskBook ? CareerRecordOutcome.completed : null,
+      trackingKey:
+          mode == _FastMode.drive ? 'fire.driver' : prefill?.trackerKey,
+      outcome:
+          mode == _FastMode.taskBook ? CareerRecordOutcome.completed : null,
       details: mode == _FastMode.drive
           ? <String, dynamic>{'apparatusName': title, 'quickCapture': true}
           : const <String, dynamic>{},
@@ -128,10 +206,16 @@ class _FastQuickLogSheetState extends State<FastQuickLogSheet> {
     final ok = await _store.upsert(record);
     if (!mounted) return;
     if (ok) {
-      Navigator.of(context).pop();
+      if (widget.prefill == null) {
+        await _shortcutsStore.recordRecent(
+          FastQuickLogShortcut(modeKey: mode.key, title: title),
+        );
+      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$title logged')),
       );
+      Navigator.of(context).pop();
     } else {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -140,7 +224,8 @@ class _FastQuickLogSheetState extends State<FastQuickLogSheet> {
     }
   }
 
-  static CareerRecordType _typeFor(_FastMode mode, String title) => switch (mode) {
+  static CareerRecordType _typeFor(_FastMode mode, String title) =>
+      switch (mode) {
         _FastMode.call => CareerRecordType.operationalExperience,
         _FastMode.training => CareerRecordType.training,
         _FastMode.skill => CareerRecordType.skill,
@@ -151,14 +236,22 @@ class _FastQuickLogSheetState extends State<FastQuickLogSheet> {
 
   static CareerRecordType _careerType(String title) {
     final t = title.toLowerCase();
-    if (t.contains('teach') || t.contains('instructor') || t.contains('mentor')) {
+    if (t.contains('teach') ||
+        t.contains('instructor') ||
+        t.contains('mentor')) {
       return CareerRecordType.teaching;
     }
-    if (t.contains('project') || t.contains('committee')) return CareerRecordType.project;
-    if (t.contains('class') || t.contains('course') || t.contains('education')) {
+    if (t.contains('project') || t.contains('committee')) {
+      return CareerRecordType.project;
+    }
+    if (t.contains('class') ||
+        t.contains('course') ||
+        t.contains('education')) {
       return CareerRecordType.education;
     }
-    if (t.contains('lead') || t.contains('acting')) return CareerRecordType.leadership;
+    if (t.contains('lead') || t.contains('acting')) {
+      return CareerRecordType.leadership;
+    }
     return CareerRecordType.achievement;
   }
 
@@ -173,11 +266,19 @@ class _FastQuickLogSheetState extends State<FastQuickLogSheet> {
 }
 
 class _CategoryStep extends StatelessWidget {
+  final List<FastQuickLogShortcut> favorites;
+  final List<FastQuickLogShortcut> recent;
+  final bool loadingShortcuts;
+  final ValueChanged<FastQuickLogShortcut> onShortcut;
   final ValueChanged<_FastMode> onPick;
   final VoidCallback onMoreDetails;
 
   const _CategoryStep({
     super.key,
+    required this.favorites,
+    required this.recent,
+    required this.loadingShortcuts,
+    required this.onShortcut,
     required this.onPick,
     required this.onMoreDetails,
   });
@@ -185,56 +286,158 @@ class _CategoryStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Quick Log',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'What are you logging?',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-        ),
-        const SizedBox(height: 14),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 1.85,
+    final favoriteIds = favorites.map((item) => item.id).toSet();
+    final recentOnly = recent
+        .where((item) => !favoriteIds.contains(item.id))
+        .take(4)
+        .toList();
+
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Quick Log',
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w900),
           ),
-          itemCount: _FastMode.values.length,
-          itemBuilder: (context, index) {
-            final mode = _FastMode.values[index];
-            return FilledButton.tonal(
-              onPressed: () => onPick(mode),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.all(14),
-                alignment: Alignment.centerLeft,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(mode.icon, size: 27),
-                  const SizedBox(height: 7),
-                  Text(mode.label, style: const TextStyle(fontWeight: FontWeight.w900)),
-                ],
-              ),
-            );
-          },
+          const SizedBox(height: 4),
+          Text(
+            'What are you logging?',
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          if (!loadingShortcuts && favorites.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _ShortcutSection(
+              title: 'FAVORITES',
+              icon: Icons.star_rounded,
+              items: favorites,
+              onTap: onShortcut,
+            ),
+          ],
+          if (!loadingShortcuts && recentOnly.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _ShortcutSection(
+              title: 'RECENT',
+              icon: Icons.history_rounded,
+              items: recentOnly,
+              onTap: onShortcut,
+            ),
+          ],
+          const SizedBox(height: 14),
+          Text(
+            'ALL CATEGORIES',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .7,
+                ),
+          ),
+          const SizedBox(height: 8),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.85,
+            ),
+            itemCount: _FastMode.values.length,
+            itemBuilder: (context, index) {
+              final mode = _FastMode.values[index];
+              return FilledButton.tonal(
+                onPressed: () => onPick(mode),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.all(14),
+                  alignment: Alignment.centerLeft,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(mode.icon, size: 27),
+                    const SizedBox(height: 7),
+                    Text(
+                      mode.label,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: onMoreDetails,
+            icon: const Icon(Icons.tune_outlined),
+            label: const Text('Full log / more details'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShortcutSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final List<FastQuickLogShortcut> items;
+  final ValueChanged<FastQuickLogShortcut> onTap;
+
+  const _ShortcutSection({
+    required this.title,
+    required this.icon,
+    required this.items,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: cs.primary),
+            const SizedBox(width: 5),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .7,
+                  ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        TextButton.icon(
-          onPressed: onMoreDetails,
-          icon: const Icon(Icons.tune_outlined),
-          label: const Text('Full log / more details'),
+        const SizedBox(height: 7),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: items
+              .map(
+                (item) => ActionChip(
+                  avatar: Icon(
+                    _FastModeX.fromKey(item.modeKey)?.icon ??
+                        Icons.add_task_outlined,
+                    size: 18,
+                  ),
+                  label: Text(item.title),
+                  onPressed: () => onTap(item),
+                ),
+              )
+              .toList(),
         ),
       ],
     );
@@ -264,11 +467,17 @@ class _PresetStep extends StatelessWidget {
       children: [
         Row(
           children: [
-            IconButton(onPressed: onBack, icon: const Icon(Icons.chevron_left)),
+            IconButton(
+              onPressed: onBack,
+              icon: const Icon(Icons.chevron_left),
+            ),
             Expanded(
               child: Text(
                 mode.label,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900),
               ),
             ),
           ],
@@ -368,6 +577,8 @@ class _ConfirmStep extends StatelessWidget {
   final _FastMode mode;
   final String choice;
   final bool saving;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
   final VoidCallback onBack;
   final VoidCallback onSave;
   final VoidCallback onMoreDetails;
@@ -377,6 +588,8 @@ class _ConfirmStep extends StatelessWidget {
     required this.mode,
     required this.choice,
     required this.saving,
+    required this.isFavorite,
+    required this.onToggleFavorite,
     required this.onBack,
     required this.onSave,
     required this.onMoreDetails,
@@ -391,11 +604,24 @@ class _ConfirmStep extends StatelessWidget {
       children: [
         Row(
           children: [
-            IconButton(onPressed: saving ? null : onBack, icon: const Icon(Icons.chevron_left)),
+            IconButton(
+              onPressed: saving ? null : onBack,
+              icon: const Icon(Icons.chevron_left),
+            ),
             Expanded(
               child: Text(
                 'Ready to save',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
+            ),
+            IconButton(
+              tooltip: isFavorite ? 'Remove favorite' : 'Add favorite',
+              onPressed: saving ? null : onToggleFavorite,
+              icon: Icon(
+                isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
               ),
             ),
           ],
@@ -414,19 +640,43 @@ class _ConfirmStep extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(mode.label, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w900)),
+                    Text(
+                      mode.label,
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelMedium
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
                     const SizedBox(height: 3),
-                    Text(choice, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                    Text(
+                      choice,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
+        Text(
+          isFavorite
+              ? 'Pinned to Favorites for faster repeat logging.'
+              : 'Tap the star to pin this entry to Favorites.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 8),
         Text(
           'Saves one occurrence for today. Add miles, hours, notes, outcomes, task links, or other details only when you need them.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                height: 1.4,
+              ),
         ),
         const SizedBox(height: 14),
         SizedBox(
@@ -434,7 +684,11 @@ class _ConfirmStep extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: saving ? null : onSave,
             icon: saving
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.check_circle_outline),
             label: Text(saving ? 'Saving…' : 'Save Quick Log'),
           ),
