@@ -20,6 +20,7 @@ import 'package:firepath/pages/career/career_longevity_page.dart';
 import 'package:firepath/pages/career/daily_focus_page.dart';
 import 'package:firepath/pages/career/career_export_page.dart';
 import 'package:firepath/pages/career/career_inbox_page.dart';
+import 'package:firepath/pages/career/promotion_portfolio_review_page.dart';
 import 'package:firepath/pages/career/department_transfer_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_v2_page.dart';
@@ -201,6 +202,12 @@ class AppRouter {
             const MaterialPage(child: CareerExportPage()),
       ),
       GoRoute(
+        path: AppRoutes.promotionPortfolioReview,
+        name: 'promotion_portfolio_review',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: PromotionPortfolioReviewPage()),
+      ),
+      GoRoute(
         path: AppRoutes.departmentTransfer,
         name: 'department_transfer',
         pageBuilder: (context, state) =>
@@ -299,6 +306,8 @@ class AppRoutes {
   static const String dailyFocus = '/daily-focus';
   static const String careerInbox = '/career-inbox';
   static const String careerExport = '/career-intelligence/export';
+  static const String promotionPortfolioReview =
+      '/career-intelligence/export/promotion-review';
   static const String departmentTransfer =
       '/career-intelligence/department-transfer';
   static const String requirementDetail = '/requirement';
