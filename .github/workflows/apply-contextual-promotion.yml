@@ -1,11 +1,7 @@
 name: Apply contextual promotion integration
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'tools/apply_contextual_promotion.py'
-      - '.github/workflows/apply-contextual-promotion.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write

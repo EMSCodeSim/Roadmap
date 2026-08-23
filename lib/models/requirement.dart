@@ -121,7 +121,7 @@ class Requirement {
 
   /// Optional metadata for VERIFIED state requirements.
   ///
-  /// These fields are only set when Fire Career Roadmap has a verified state
+  /// These fields are only set when FireOps Career Road has a verified state
   /// source for a requirement. If null, the requirement should NOT be
   /// interpreted as an official state requirement.
   final String? sourceStateCode;

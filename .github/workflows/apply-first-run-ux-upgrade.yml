@@ -1,11 +1,7 @@
 name: Apply first-run UX upgrade
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/apply-first-run-ux-upgrade.yml'
-      - 'tools/apply_first_run_ux_upgrade.py'
+  workflow_dispatch:
 
 permissions:
   contents: write

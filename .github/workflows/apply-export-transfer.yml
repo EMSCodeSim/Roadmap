@@ -1,11 +1,6 @@
 name: Apply export and transfer integration
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'tools/apply_export_transfer_integration.py'
-      - '.github/workflows/apply-export-transfer.yml'
   workflow_dispatch:
 
 permissions:
