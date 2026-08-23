@@ -38,8 +38,9 @@ class CareerReadinessPanel extends StatelessWidget {
       children: [
         CareerReadinessCard(
           snapshot: snapshot,
-          goalTitle: goalTitle,
-          onTap: onViewPath,
+          // The readiness card exposes a "view gaps" affordance. In this panel,
+          // we reuse it as the main navigation entrypoint to the user's path.
+          onViewGaps: onViewPath,
         ),
         if (majorGaps.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -52,7 +53,7 @@ class CareerReadinessPanel extends StatelessWidget {
           const SizedBox(height: 12),
           ReadinessActionSection(
             plan: actionPlan,
-            onActionTap: onActionTap,
+            onAction: onActionTap,
           ),
         ],
       ],
