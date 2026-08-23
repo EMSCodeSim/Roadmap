@@ -539,14 +539,20 @@ final Map<String, String> _certMatchIndex = () {
   add('pump ops', 'driver_operator_pumper');
   add('fo i', 'fire_officer_1');
   add('fo 1', 'fire_officer_1');
+  add('fo1', 'fire_officer_1');
   add('fo ii', 'fire_officer_2');
   add('fo 2', 'fire_officer_2');
+  add('fo2', 'fire_officer_2');
   add('fo iii', 'fire_officer_3');
   add('fo 3', 'fire_officer_3');
+  add('fo3', 'fire_officer_3');
   add('fo iv', 'fire_officer_4');
   add('fo 4', 'fire_officer_4');
+  add('fo4', 'fire_officer_4');
   add('fi i', 'fire_instructor_1');
   add('fi 1', 'fire_instructor_1');
+  add('fi1', 'fire_instructor_1');
+  add('instructor i', 'fire_instructor_1');
   return out;
 }();
 
