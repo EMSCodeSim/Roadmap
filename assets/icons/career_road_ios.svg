@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#061a33"/>
+      <stop offset="1" stop-color="#0c2f57"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#d89b28"/>
+      <stop offset="1" stop-color="#ffd879"/>
+    </linearGradient>
+  </defs>
+
+  <!-- iOS applies the rounded-square mask itself. Keep this background full bleed
+       so the installed icon does not look like a smaller rounded tile inside it. -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- Keep detailed artwork inside a comfortable iOS optical safe area. -->
+  <g transform="translate(61.44 61.44) scale(.88)">
+    <path d="M512 105 828 232v245c0 204-126 355-316 442C322 832 196 681 196 477V232z" fill="#0b2344" stroke="#f5f7fb" stroke-width="34"/>
+    <path d="M278 410 401 264l92 111 92-143 170 210-55 8-108-112-91 143-98-113-88 92z" fill="#f5f7fb"/>
+    <path d="M502 815c-70-119-70-220 1-306 35-43 60-86 55-126 86 99 87 210 1 330-20 28-39 62-57 102z" fill="#f5f7fb"/>
+    <path d="M503 778c-30-86-12-149 55-191 36-23 72-48 100-84-4 74-35 132-92 177-34 27-55 60-63 98z" fill="#0b2344"/>
+    <path d="M660 729c82-67 138-142 167-225" fill="none" stroke="url(#gold)" stroke-width="62" stroke-linecap="round"/>
+    <path d="m819 442 28 106 76-80z" fill="#ffd879"/>
+    <g transform="translate(178 515)">
+      <rect x="0" y="46" width="116" height="154" rx="14" fill="#d62d2d"/>
+      <rect x="24" y="0" width="68" height="56" rx="16" fill="#e44332"/>
+      <circle cx="58" cy="122" r="30" fill="none" stroke="#07192d" stroke-width="15"/>
+      <path d="M-22 86h22M116 86h22M-22 155h22M116 155h22" stroke="#d62d2d" stroke-width="24" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(732 655)">
+      <path d="M62 0v48h48v76H62v48h-76v-48h-48V48h48V0z" fill="#2566bd" stroke="#f5f7fb" stroke-width="9"/>
+      <path d="M24 25v124M5 62c45 9 45 32 0 42M43 52c-43 14-42 34 0 46" fill="none" stroke="#f5f7fb" stroke-width="8" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>
