@@ -55,8 +55,15 @@ class ProfileController extends ChangeNotifier {
     return null;
   }
 
-  /// Returns the selected goal with any state-verified requirement overrides
-  /// merged in.
+  /// Returns the selected goal resolved for the user's selected state.
+  ///
+  /// Rules:
+  /// - A requirement sourced to one state is never shown to a user in another.
+  /// - Verified state requirements replace their matching common requirement.
+  /// - State-dependent common guidance remains available when verified data is
+  ///   not yet in the catalog, but is explicitly labeled for the selected state
+  ///   as guidance that must be verified. This prevents a generic/Colorado-like
+  ///   baseline from being presented as an official rule in another state.
   CareerGoal? selectedGoalResolved() {
     final existing = selectedGoal();
     if (existing == null) return null;
@@ -66,15 +73,39 @@ class ProfileController extends ChangeNotifier {
       return existing;
     }
 
+    final stateName = FireOpsCatalog.stateNameForCode(stateCode) ?? stateCode;
+
+    final applicableBase = existing.requirements
+        .where((r) {
+          if (r.requirementSource != RequirementSource.stateRequirement) {
+            final sourcedState = r.sourceStateCode?.trim().toUpperCase();
+            return sourcedState == null ||
+                sourcedState.isEmpty ||
+                sourcedState == stateCode;
+          }
+
+          // Official/state-requirement entries must identify the state they
+          // belong to. Never let an unscoped or foreign state rule bleed into
+          // another user's roadmap.
+          final sourcedState = r.sourceStateCode?.trim().toUpperCase();
+          return sourcedState != null &&
+              sourcedState.isNotEmpty &&
+              sourcedState == stateCode;
+        })
+        .map((r) => _withStateContext(r, stateCode, stateName))
+        .toList();
+
+    // Use the original base catalog as the lookup source so a verified overlay
+    // can still replace its common counterpart even when the common item had
+    // legacy state metadata that was filtered above.
     final baseById = {for (final r in existing.requirements) r.id: r};
     final verified = StateRequirementCatalog.buildVerifiedRequirements(
       stateCode: stateCode,
       careerGoalId: existing.id,
       baseRequirementById: baseById,
     );
-    if (verified.isEmpty) return existing;
 
-    final merged = [...existing.requirements];
+    final merged = [...applicableBase];
     for (final r in verified) {
       final idx = merged.indexWhere((e) => e.id == r.id);
       if (idx >= 0) {
@@ -84,6 +115,7 @@ class ProfileController extends ChangeNotifier {
       }
     }
     merged.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+
     return CareerGoal(
       id: existing.id,
       title: existing.title,
@@ -97,6 +129,30 @@ class ProfileController extends ChangeNotifier {
       nextRoles: existing.nextRoles,
       createdAt: existing.createdAt,
       updatedAt: existing.updatedAt,
+    );
+  }
+
+  Requirement _withStateContext(
+    Requirement requirement,
+    String stateCode,
+    String stateName,
+  ) {
+    if (!requirement.stateDependent ||
+        requirement.requirementSource == RequirementSource.stateRequirement) {
+      return requirement;
+    }
+
+    const marker = 'State-specific note:';
+    final baseDescription = requirement.description.contains(marker)
+        ? requirement.description.split(marker).first.trimRight()
+        : requirement.description.trimRight();
+    final description =
+        '$baseDescription\n\n$marker This item is commonly used in fire/EMS career paths, but it is not currently verified as an official $stateName requirement. Confirm the current $stateName certification/training rules and your department requirements before treating it as mandatory.';
+
+    return requirement.copyWith(
+      description: description,
+      stateDependent: true,
+      updatedAt: DateTime.now(),
     );
   }
 
