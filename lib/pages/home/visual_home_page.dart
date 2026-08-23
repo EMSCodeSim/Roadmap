@@ -207,7 +207,7 @@ class _TodayCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: LinearProgressIndicator(
-                value: progress.clamp(0, 1),
+                value: progress.clamp(0.0, 1.0).toDouble(),
                 minHeight: 8,
                 backgroundColor: cs.surface.withValues(alpha: .55),
               ),
