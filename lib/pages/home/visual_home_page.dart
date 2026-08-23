@@ -4,9 +4,9 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
-import 'package:firepath/services/certification_urgency.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/widgets/career_inbox_preview.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 
 class VisualHomePage extends StatelessWidget {
@@ -21,10 +21,6 @@ class VisualHomePage extends StatelessWidget {
     final completed = roadmap?.completedCount ?? 0;
     final total = roadmap?.totalCount ?? 0;
     final progress = total <= 0 ? 0.0 : completed / total;
-    final urgentCerts = CertificationUrgency.urgent(
-      app.certifications,
-      withinDays: 90,
-    );
 
     return Scaffold(
       body: SafeArea(
@@ -50,13 +46,8 @@ class VisualHomePage extends StatelessWidget {
               onTaskBook: () => context.go(AppRoutes.myPath),
               onCerts: () => context.go(AppRoutes.certifications),
             ),
-            if (urgentCerts.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _AttentionStrip(
-                count: urgentCerts.length,
-                onTap: () => context.go(AppRoutes.certifications),
-              ),
-            ],
+            const SizedBox(height: 14),
+            const CareerInboxPreview(),
             const SizedBox(height: 18),
             _ProgressSummary(
               completed: completed,
@@ -316,44 +307,6 @@ class _ActionButton extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AttentionStrip extends StatelessWidget {
-  final int count;
-  final VoidCallback onTap;
-
-  const _AttentionStrip({required this.count, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: cs.errorContainer.withValues(alpha: .55),
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.notifications_active_outlined, color: cs.error),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                '$count certification${count == 1 ? '' : 's'} need attention within 90 days',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            const Icon(Icons.chevron_right),
           ],
         ),
       ),
