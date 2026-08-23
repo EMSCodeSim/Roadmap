@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_pdf_export.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/promotion_portfolio_export.dart';
@@ -196,10 +198,14 @@ class _CareerExportPageState extends State<CareerExportPage> {
                   icon: Icons.workspace_premium_outlined,
                   title: 'Promotion Portfolio',
                   description:
-                      'A promotion-focused packet with candidate profile, readiness dashboard, competency evidence, interview story bank, leadership and project evidence, credentials, gaps, and a review checklist.',
-                  badge: goal == null ? 'Choose a goal for best results' : 'Targeted to $goal',
-                  onPreview: _working ? null : () => _previewPromotionPortfolio(app),
-                  onShare: _working ? null : () => _sharePromotionPortfolio(app),
+                      'Review and edit the candidate summary, accomplishments, interview stories, and included sections before any PDF is generated.',
+                  badge: goal == null
+                      ? 'Review before PDF'
+                      : 'Targeted to $goal • Review before PDF',
+                  previewLabel: 'Review / Preview',
+                  shareLabel: 'Review / Share',
+                  onPreview: _working ? null : _openPromotionReview,
+                  onShare: _working ? null : _openPromotionReview,
                 ),
                 const SizedBox(height: 20),
                 Text(
@@ -259,6 +265,12 @@ class _CareerExportPageState extends State<CareerExportPage> {
     }
   }
 
+  Future<void> _openPromotionReview() async {
+    await _saveIdentity();
+    if (!mounted) return;
+    await context.push(AppRoutes.promotionPortfolioReview);
+  }
+
   Future<void> _previewCareerSummary(AppState app) => _run(() async {
     await Printing.layoutPdf(
       name: 'FireOps_Professional_Career_Summary.pdf',
@@ -279,29 +291,6 @@ class _CareerExportPageState extends State<CareerExportPage> {
     await Printing.sharePdf(
       bytes: bytes,
       filename: 'FireOps_Professional_Career_Summary.pdf',
-    );
-  });
-
-  Future<void> _previewPromotionPortfolio(AppState app) => _run(() async {
-    await Printing.layoutPdf(
-      name: 'FireOps_Promotion_Portfolio.pdf',
-      onLayout: (_) => PromotionPortfolioExport.buildPromotionPortfolio(
-        app: app,
-        records: _records,
-        identity: _identity,
-      ),
-    );
-  });
-
-  Future<void> _sharePromotionPortfolio(AppState app) => _run(() async {
-    final bytes = await PromotionPortfolioExport.buildPromotionPortfolio(
-      app: app,
-      records: _records,
-      identity: _identity,
-    );
-    await Printing.sharePdf(
-      bytes: bytes,
-      filename: 'FireOps_Promotion_Portfolio.pdf',
     );
   });
 
@@ -380,6 +369,8 @@ class _ExportCard extends StatelessWidget {
   final String title;
   final String description;
   final String? badge;
+  final String previewLabel;
+  final String shareLabel;
   final VoidCallback? onPreview;
   final VoidCallback? onShare;
 
@@ -388,6 +379,8 @@ class _ExportCard extends StatelessWidget {
     required this.title,
     required this.description,
     this.badge,
+    this.previewLabel = 'Preview / Print',
+    this.shareLabel = 'Share PDF',
     required this.onPreview,
     required this.onShare,
   });
@@ -450,7 +443,7 @@ class _ExportCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onPreview,
                   icon: const Icon(Icons.print_outlined),
-                  label: const Text('Preview / Print'),
+                  label: Text(previewLabel),
                 ),
               ),
               const SizedBox(width: 8),
@@ -458,7 +451,7 @@ class _ExportCard extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: onShare,
                   icon: const Icon(Icons.ios_share_outlined),
-                  label: const Text('Share PDF'),
+                  label: Text(shareLabel),
                 ),
               ),
             ],
