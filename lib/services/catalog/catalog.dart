@@ -178,7 +178,7 @@ class UsStateOption {
 }
 
 // -----------------------------------------------------------------------------
-// Private catalog data (minimal baseline; expand as needed)
+// Private catalog data (operations ladder through Fire Chief)
 // -----------------------------------------------------------------------------
 
 final DateTime _seedNow = DateTime(2026, 8, 23);
