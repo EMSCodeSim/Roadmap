@@ -1,4 +1,5 @@
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/services/certification_urgency.dart';
 import 'package:firepath/services/task_book_library.dart';
@@ -98,7 +99,7 @@ class CareerInbox {
       (recordsByTask[taskId] ??= <CareerRecord>[]).add(record);
     }
 
-    final requirements = {
+    final requirements = <String, Requirement>{
       for (final item in roadmap.all) item.requirement.id: item.requirement,
     };
 
@@ -116,7 +117,8 @@ class CareerInbox {
       );
       if (task == null) continue;
 
-      final linkedRecords = recordsByTask[progress.taskId] ?? const <CareerRecord>[];
+      final linkedRecords =
+          recordsByTask[progress.taskId] ?? const <CareerRecord>[];
       final hasLinkedCareerRecord = linkedRecords.any(
         (record) =>
             record.relatedGoalId == progress.goalId &&
@@ -179,7 +181,7 @@ class CareerInbox {
     required String goalId,
     required String requirementId,
     required String taskId,
-    required dynamic requirement,
+    required Requirement requirement,
   }) {
     final tasks = <TaskBookTaskDefinition>[
       ...TaskBookLibrary.tasksForRequirement(requirement),
