@@ -9,6 +9,7 @@ import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/pages/profile/us_state_picker_sheet.dart';
+import 'package:firepath/widgets/role_toggle_chip.dart';
 
 class OnboardingV2Page extends StatefulWidget {
   const OnboardingV2Page({super.key});
@@ -541,25 +542,26 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 ),
                 const SizedBox(height: 12),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 10,
+                  runSpacing: 10,
                   children: [
                     ...commonRoles.map(
-                      (role) => FilterChip(
-                        label: Text(role),
+                      (role) => RoleToggleChip(
+                        label: role,
                         selected: _roles.contains(role),
-                        onSelected: (selected) => setState(() {
-                          if (selected) {
-                            _roles.add(role);
-                          } else {
+                        onPressed: () => setState(() {
+                          if (_roles.contains(role)) {
                             _roles.remove(role);
+                          } else {
+                            _roles.add(role);
                           }
                         }),
                       ),
                     ),
-                    ActionChip(
-                      avatar: Icon(Icons.add, size: 18, color: cs.primary),
-                      label: const Text('Add role'),
+                    RoleToggleChip(
+                      label: 'Add role',
+                      selected: false,
+                      leading: Icons.add,
                       onPressed: _addCustomRole,
                     ),
                   ],
