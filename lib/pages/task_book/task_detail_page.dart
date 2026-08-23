@@ -24,6 +24,56 @@ Future<void> _openExternalUrl(String url) async {
   if (!ok) debugPrint('launchUrl failed for $url');
 }
 
+Future<void> _setTaskStatusWithCareerHandoff({
+  required BuildContext context,
+  required TaskBookTaskStatus previous,
+  required TaskBookTaskStatus next,
+  required String goalId,
+  required String requirementId,
+  required TaskBookTaskDefinition task,
+  required String? qualificationName,
+}) async {
+  await context.read<AppState>().setTaskStatus(
+    goalId: goalId,
+    requirementId: requirementId,
+    taskId: task.id,
+    status: next,
+    completionSource: next == TaskBookTaskStatus.complete
+        ? TaskBookCompletionSource.selfVerified
+        : null,
+  );
+
+  if (!context.mounted ||
+      next != TaskBookTaskStatus.complete ||
+      previous == TaskBookTaskStatus.complete) {
+    return;
+  }
+
+  final addToRecord = await showModalBottomSheet<bool>(
+    context: context,
+    showDragHandle: true,
+    useSafeArea: true,
+    builder: (sheetContext) => _CompletionHandoffSheet(
+      taskTitle: task.title,
+      qualificationName: qualificationName,
+    ),
+  );
+
+  if (addToRecord != true || !context.mounted) return;
+
+  await QuickLogLauncher.open(
+    context,
+    prefill: LogPrefill(
+      title: task.title,
+      category: qualificationName,
+      relatedGoalId: goalId,
+      relatedRequirementId: requirementId,
+      relatedTaskId: task.id,
+      tags: const ['task-book', 'completed'],
+    ),
+  );
+}
+
 class TaskDetailPage extends StatelessWidget {
   final Object? extra;
   const TaskDetailPage({super.key, required this.extra});
@@ -83,14 +133,14 @@ class TaskDetailPage extends StatelessWidget {
           children: [
             _StatusCard(
               status: status,
-              onChanged: (next) => context.read<AppState>().setTaskStatus(
+              onChanged: (next) => _setTaskStatusWithCareerHandoff(
+                context: context,
+                previous: status,
+                next: next,
                 goalId: goalId,
                 requirementId: requirementId,
-                taskId: task.id,
-                status: next,
-                completionSource: next == TaskBookTaskStatus.complete
-                    ? TaskBookCompletionSource.selfVerified
-                    : null,
+                task: task,
+                qualificationName: qualificationName,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -141,7 +191,6 @@ class TaskDetailPage extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             _MyRecordCard(
               onLogPractice: () {
-                // One tap: treat logging as starting practice.
                 if (status == TaskBookTaskStatus.notStarted) {
                   context.read<AppState>().setTaskStatus(
                     goalId: goalId,
@@ -768,6 +817,103 @@ class _MyRecordCard extends StatelessWidget {
               color: cs.onSurfaceVariant,
               height: 1.45,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompletionHandoffSheet extends StatelessWidget {
+  final String taskTitle;
+  final String? qualificationName;
+
+  const _CompletionHandoffSheet({
+    required this.taskTitle,
+    required this.qualificationName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: FireOpsSemanticColors.completed.withValues(alpha: .14),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.check_circle_outline,
+                  color: FireOpsSemanticColors.completed,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Task complete',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    if ((qualificationName ?? '').isNotEmpty)
+                      Text(
+                        qualificationName!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            taskTitle,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Preserve this accomplishment in your career history while it is fresh. The task, qualification, date, and Task Book links will already be filled in.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.45,
+                ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 54,
+            child: FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: const Icon(Icons.add_task_outlined),
+              label: const Text('Add to Career Record'),
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Not now'),
+          ),
+          Text(
+            'Task completion is already saved. Adding a career record is optional.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
           ),
         ],
       ),
