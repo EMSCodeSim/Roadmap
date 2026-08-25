@@ -7,6 +7,7 @@ import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/nav.dart';
+import 'package:firepath/services/advanced_certification_guide_data.dart';
 import 'package:firepath/services/certification_guide_library.dart';
 import 'package:firepath/services/state_fire_authority_catalog.dart';
 import 'package:firepath/services/task_book_library.dart';
@@ -36,7 +37,18 @@ class QualificationTaskBookPage extends StatelessWidget {
       );
     }
 
-    final guide = CertificationGuideLibrary.guideForRequirement(req);
+    final advancedGuide = AdvancedCertificationGuideData.forRequirement(req);
+    final guide = CertificationGuideLibrary.guideForRequirement(req) ??
+        (advancedGuide == null
+            ? null
+            : CertificationPathwayGuide(
+                certificationId: advancedGuide.certificationId,
+                title: advancedGuide.title,
+                summary: advancedGuide.summary,
+                pathwaySteps: advancedGuide.pathwaySteps,
+                officialSourceNote: advancedGuide.officialSourceNote,
+                tasks: advancedGuide.tasks,
+              ));
     final base = TaskBookLibrary.tasksForRequirement(req);
     final guideTasks = guide?.tasks ?? const <TaskBookTaskDefinition>[];
     final custom = state.customTasksFor(goalId: goalId, requirementId: req.id);
