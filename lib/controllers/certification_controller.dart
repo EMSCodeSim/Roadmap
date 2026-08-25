@@ -46,13 +46,17 @@ class CertificationController extends ChangeNotifier {
   Future<void> replaceAll(List<Certification> certifications) async {
     _certsById
       ..clear()
-      ..addEntries(certifications.map((c) => MapEntry(c.id, c)));
+      ..addEntries(certifications.map((c) {
+        final normalized = _withResolvedDefinition(c);
+        return MapEntry(normalized.id, normalized);
+      }));
     await _persist();
     notifyListeners();
   }
 
   Future<void> upsert(Certification cert) async {
-    _certsById[cert.id] = cert.copyWith(updatedAt: DateTime.now());
+    final normalized = _withResolvedDefinition(cert);
+    _certsById[cert.id] = normalized.copyWith(updatedAt: DateTime.now());
     await _persist();
     notifyListeners();
   }
@@ -96,6 +100,45 @@ class CertificationController extends ChangeNotifier {
     await _store.saveCertifications(_certsById.values.map((e) => e.toJson()).toList());
   }
 
+  Certification _withResolvedDefinition(Certification cert) {
+    final existing = cert.certificationDefinitionId?.trim();
+    if (existing != null && existing.isNotEmpty) return cert;
+
+    final resolved = _resolveDefinitionId(cert.name);
+    if (resolved == null) return cert;
+    return cert.copyWith(
+      certificationDefinitionId: resolved,
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  String? _resolveDefinitionId(String userText) {
+    final direct = FireOpsCatalog.matchCertificationDefinitionId(userText);
+    if (direct != null) return direct;
+
+    // Common firefighter shorthand used in departments and onboarding notes.
+    // These map to stable catalog IDs so a credential the user already has
+    // can never be offered again as the Roadmap's Next Best Step.
+    final norm = FireOpsCatalog.normalizeCertificationText(userText);
+    const commonAliases = <String, String>{
+      'fire 1': 'firefighter_1',
+      'fire i': 'firefighter_1',
+      'firefighter one': 'firefighter_1',
+      'fire 2': 'firefighter_2',
+      'fire ii': 'firefighter_2',
+      'firefighter two': 'firefighter_2',
+      'driver operator pumper': 'driver_operator_pumper',
+      'driver operator': 'driver_operator_pumper',
+      'pump operator': 'driver_operator_pumper',
+      'engineer pumper': 'driver_operator_pumper',
+      'officer 1': 'fire_officer_1',
+      'officer i': 'fire_officer_1',
+      'instructor 1': 'fire_instructor_1',
+      'instructor i': 'fire_instructor_1',
+    };
+    return commonAliases[norm];
+  }
+
   Future<void> _migrateCertifications() async {
     _pendingCertMatches.clear();
     if (_certsById.isEmpty) return;
@@ -122,7 +165,7 @@ class CertificationController extends ChangeNotifier {
         continue;
       }
 
-      final direct = FireOpsCatalog.matchCertificationDefinitionId(cert.name);
+      final direct = _resolveDefinitionId(cert.name);
       if (direct != null) {
         updated[entry.key] = cert.copyWith(certificationDefinitionId: direct, updatedAt: DateTime.now());
         changed = true;
