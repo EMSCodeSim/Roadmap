@@ -37,6 +37,12 @@ class VisualHomePage extends StatelessWidget {
                 onChooseGoal: () => context.go(AppRoutes.myPath),
               )
             else ...[
+              _DailyFocusCta(
+                goalTitle: goal?.title,
+                nextTitle: next?.name,
+                onStart: () => context.push(AppRoutes.dailyFocus),
+              ),
+              const SizedBox(height: 14),
               CareerReadinessPanel(
                 snapshot: CareerReadinessSnapshot.fromRoadmap(roadmap),
                 actionPlan: CareerReadinessActionPlan.fromState(app),
@@ -48,11 +54,6 @@ class VisualHomePage extends StatelessWidget {
                     extra: item.requirement,
                   );
                 },
-              ),
-              const SizedBox(height: 14),
-              _DailyFocusCta(
-                nextTitle: next?.name,
-                onStart: () => context.push(AppRoutes.dailyFocus),
               ),
             ],
             const SizedBox(height: 14),
@@ -141,10 +142,12 @@ class _ChooseGoalCard extends StatelessWidget {
 }
 
 class _DailyFocusCta extends StatelessWidget {
+  final String? goalTitle;
   final String? nextTitle;
   final VoidCallback onStart;
 
   const _DailyFocusCta({
+    required this.goalTitle,
     required this.nextTitle,
     required this.onStart,
   });
@@ -154,41 +157,58 @@ class _DailyFocusCta extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.primary.withValues(alpha: .16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'DAILY FOCUS',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: .8,
-                  color: cs.primary,
-                ),
+          Row(
+            children: [
+              Icon(Icons.bolt_rounded, size: 20, color: cs.primary),
+              const SizedBox(width: 6),
+              Text(
+                'TODAY',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .9,
+                      color: cs.primary,
+                    ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 9),
           Text(
             nextTitle ?? 'Continue your next requirement',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w900,
                 ),
           ),
-          const SizedBox(height: 4),
+          if (goalTitle != null && goalTitle!.trim().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Moving you toward $goalTitle',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+          const SizedBox(height: 9),
           Text(
-            'Pick 15 min, 30 min, 1 hour, or a crew drill. Learn → Practice → Record.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            'Choose 15 min, 30 min, 1 hour, or a crew drill. Career Road will turn this requirement into a focused Learn → Practice → Record session.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: cs.onSurfaceVariant,
-                  height: 1.4,
+                  height: 1.45,
                 ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: 52,
+            height: 56,
             child: FilledButton.icon(
               onPressed: onStart,
               icon: const Icon(Icons.play_arrow_rounded),

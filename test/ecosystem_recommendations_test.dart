@@ -69,18 +69,24 @@ void main() {
       expect(recommendation!.product, 'EMSCodeSim');
     });
 
-    test('explicit Daily Focus builder includes goal context', () {
+    test('explicit Daily Focus builder includes complete Roadmap context', () {
       final recommendation = EcosystemRecommendations.forDailyFocus(
         topic: 'Initial radio report',
         qualification: 'Fire Officer I',
         goal: 'Lieutenant',
+        taskId: 'officer-radio-report',
+        requirementId: 'fire_officer_1',
       );
 
       expect(recommendation, isNotNull);
-      final uri = Uri.parse(recommendation!.url);
+      expect(recommendation!.actionLabel, 'Practice in FireOpsSim');
+      final uri = Uri.parse(recommendation.url);
       expect(uri.queryParameters['level'], 'officer_1');
       expect(uri.queryParameters['topic'], 'Initial radio report');
+      expect(uri.queryParameters['qualification'], 'Fire Officer I');
       expect(uri.queryParameters['goal'], 'Lieutenant');
+      expect(uri.queryParameters['task_id'], 'officer-radio-report');
+      expect(uri.queryParameters['requirement_id'], 'fire_officer_1');
     });
   });
 }

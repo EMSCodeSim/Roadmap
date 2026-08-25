@@ -79,9 +79,17 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
       0,
       (sum, record) => sum + (record.hours ?? 0),
     );
-    final ecosystemRecommendation = EcosystemRecommendations.forTopic(
-      [task?.title, next?.name].whereType<String>().join(' '),
-    );
+    final focusTopic = task?.title ?? next?.name;
+    final ecosystemRecommendation = next == null
+        ? null
+        : EcosystemRecommendations.forDailyFocus(
+              topic: focusTopic ?? next.name,
+              qualification: next.name,
+              goal: roadmap?.goal.title,
+              taskId: task?.id,
+              requirementId: next.id,
+            ) ??
+            EcosystemRecommendations.forTopic(focusTopic);
 
     return Scaffold(
       appBar: AppBar(
