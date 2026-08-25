@@ -44,4 +44,52 @@ void main() {
     expect(find.text('Education'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Driving captures miles response mode emergent transport and notes',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ProductionQuickLogSheet(),
+        ),
+      ),
+    );
+
+    await tester.ensureVisible(find.text('DRIVING'));
+    await tester.tap(find.text('DRIVING'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Engine'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Miles driven'), findsOneWidget);
+    expect(find.text('Response'), findsOneWidget);
+    expect(find.text('Training'), findsOneWidget);
+    expect(find.text('Emergent / lights & siren'), findsOneWidget);
+    expect(find.text('Patient transport'), findsOneWidget);
+    expect(find.text('Notes'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Skill capture supports IV success attempts and notes', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ProductionQuickLogSheet(),
+        ),
+      ),
+    );
+
+    await tester.ensureVisible(find.text('SKILL'));
+    await tester.tap(find.text('SKILL'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('IV / vascular access'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Attempts / reps'), findsOneWidget);
+    expect(find.text('Successful'), findsOneWidget);
+    expect(find.text('Attempted'), findsOneWidget);
+    expect(find.text('Unsuccessful'), findsOneWidget);
+    expect(find.text('Notes'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
