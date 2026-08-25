@@ -133,7 +133,7 @@ class NeedsAttentionEngine {
         ));
       }
 
-      if (roadmap.incompleteCount > 0) {
+      if (roadmap.missing.isNotEmpty) {
         final linked = records
             .where((record) =>
                 record.relatedGoalId == roadmap.goal.id ||
