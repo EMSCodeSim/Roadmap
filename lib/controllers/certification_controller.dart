@@ -46,13 +46,21 @@ class CertificationController extends ChangeNotifier {
   Future<void> replaceAll(List<Certification> certifications) async {
     _certsById
       ..clear()
-      ..addEntries(certifications.map((c) => MapEntry(c.id, c)));
+      ..addEntries(
+        certifications.map((c) {
+          final normalized = _normalizeHeldCertification(c);
+          return MapEntry(normalized.id, normalized);
+        }),
+      );
     await _persist();
     notifyListeners();
   }
 
   Future<void> upsert(Certification cert) async {
-    _certsById[cert.id] = cert.copyWith(updatedAt: DateTime.now());
+    final normalized = _normalizeHeldCertification(
+      cert.copyWith(updatedAt: DateTime.now()),
+    );
+    _certsById[normalized.id] = normalized;
     await _persist();
     notifyListeners();
   }
@@ -122,7 +130,7 @@ class CertificationController extends ChangeNotifier {
         continue;
       }
 
-      final direct = FireOpsCatalog.matchCertificationDefinitionId(cert.name);
+      final direct = _definitionIdForName(cert.name);
       if (direct != null) {
         updated[entry.key] = cert.copyWith(certificationDefinitionId: direct, updatedAt: DateTime.now());
         changed = true;
@@ -141,6 +149,40 @@ class CertificationController extends ChangeNotifier {
         ..clear()
         ..addAll(updated);
     }
+  }
+
+  Certification _normalizeHeldCertification(Certification cert) {
+    final existing = cert.certificationDefinitionId?.trim();
+    if (existing != null && existing.isNotEmpty) return cert;
+
+    final mapped = _definitionIdForName(cert.name);
+    if (mapped == null) return cert;
+    return cert.copyWith(
+      certificationDefinitionId: mapped,
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  String? _definitionIdForName(String userText) {
+    final direct = FireOpsCatalog.matchCertificationDefinitionId(userText);
+    if (direct != null) return direct;
+
+    // Conservative compatibility aliases for common real-world shorthand.
+    // These are intentionally exact after normalization so we do not silently
+    // convert an unrelated credential into a career-road requirement.
+    final norm = FireOpsCatalog.normalizeCertificationText(userText);
+    return switch (norm) {
+      'fire 1' || 'fire i' || 'firefighter one' || 'fire fighter one' =>
+        'firefighter_1',
+      'fire 2' || 'fire ii' || 'firefighter two' || 'fire fighter two' =>
+        'firefighter_2',
+      'driver operator pumper' || 'driver operator pump' || 'do pumper' =>
+        'driver_operator_pumper',
+      'fire officer one' || 'officer one' => 'fire_officer_1',
+      'fire officer two' || 'officer two' => 'fire_officer_2',
+      'fire instructor one' || 'instructor one' => 'fire_instructor_1',
+      _ => null,
+    };
   }
 
   String? _suggestDefinitionId(String userText) {
