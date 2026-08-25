@@ -13,7 +13,9 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.fireopssim.careerroadmap"
-    compileSdk = flutter.compileSdkVersion
+    // Pin Android 16 explicitly for Play production compliance instead of
+    // depending on the Flutter toolchain default.
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -37,7 +39,7 @@ android {
     defaultConfig {
         applicationId "com.fireopssim.careerroadmap"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
