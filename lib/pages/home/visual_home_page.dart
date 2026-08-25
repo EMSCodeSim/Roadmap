@@ -11,6 +11,7 @@ import 'package:firepath/theme.dart';
 import 'package:firepath/widgets/career_inbox_preview.dart';
 import 'package:firepath/widgets/career_readiness_panel.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
+import 'package:firepath/widgets/needs_attention_preview.dart';
 
 class VisualHomePage extends StatelessWidget {
   const VisualHomePage({super.key});
@@ -56,6 +57,8 @@ class VisualHomePage extends StatelessWidget {
                 },
               ),
             ],
+            const SizedBox(height: 14),
+            const NeedsAttentionPreview(),
             const SizedBox(height: 14),
             const CareerInboxPreview(),
             const SizedBox(height: 12),
