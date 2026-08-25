@@ -18,12 +18,15 @@ class EcosystemRecommendations {
   /// Builds the focused Roadmap → FireOpsSim handoff used by Daily Focus.
   ///
   /// Career Road owns the user's goal/task-book context. FireOpsSim receives
-  /// only the current training level/topic so it can open the matching drill
-  /// library and level-specific skill wheel. No completion state is transferred.
+  /// the current training level/topic plus stable Roadmap task identifiers so
+  /// it can open the matching drill library and preserve enough context for a
+  /// later "Record this drill" return flow. No completion state is transferred.
   static EcosystemRecommendation? forDailyFocus({
     required String topic,
     String? qualification,
     String? goal,
+    String? taskId,
+    String? requirementId,
   }) {
     final context = [
       qualification,
@@ -34,12 +37,18 @@ class EcosystemRecommendations {
     if (level == null) return null;
 
     final cleanTopic = topic.trim();
+    final cleanQualification = qualification?.trim() ?? '';
     final cleanGoal = goal?.trim() ?? '';
+    final cleanTaskId = taskId?.trim() ?? '';
+    final cleanRequirementId = requirementId?.trim() ?? '';
     final query = <String, String>{
       'source': 'roadmap',
       'level': level,
       if (cleanTopic.isNotEmpty) 'topic': cleanTopic,
+      if (cleanQualification.isNotEmpty) 'qualification': cleanQualification,
       if (cleanGoal.isNotEmpty) 'goal': cleanGoal,
+      if (cleanTaskId.isNotEmpty) 'task_id': cleanTaskId,
+      if (cleanRequirementId.isNotEmpty) 'requirement_id': cleanRequirementId,
     };
     final url = Uri.https(
       'fireopssim.com',
@@ -52,8 +61,8 @@ class EcosystemRecommendations {
       product: 'FireOpsSim',
       title: '$label Focus Drills',
       reason:
-          'Open the FireOpsSim drill library matched to this training level. Pick a focused drill for today or spin the $label skill wheel for a random level-appropriate rep.',
-      actionLabel: 'Open Focus Drills',
+          'Practice this exact Career Road focus in the FireOpsSim $label drill library. Choose the recommended drill or spin the level-specific skill wheel, then return to Career Road to record the work.',
+      actionLabel: 'Practice in FireOpsSim',
       url: url,
     );
   }
@@ -62,9 +71,8 @@ class EcosystemRecommendations {
     final topic = (rawTopic ?? '').trim().toLowerCase();
     if (topic.isEmpty) return null;
 
-    // Daily Focus already passes its current task and qualification through
-    // this method. Prefer a certification-aware FireOpsSim handoff whenever
-    // that context resolves to a supported fire-service training level.
+    // Generic callers still get a certification-aware FireOpsSim handoff when
+    // the supplied topic itself contains a supported fire-service level.
     final focusRecommendation = forDailyFocus(topic: rawTopic ?? '');
     if (focusRecommendation != null) return focusRecommendation;
 
