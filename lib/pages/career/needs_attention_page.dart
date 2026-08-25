@@ -127,10 +127,15 @@ class _NeedsAttentionPageState extends State<NeedsAttentionPage> {
       case NeedsAttentionKind.certificationExpiring:
         final id = item.certificationId;
         if (id != null) {
-          context.push('${AppRoutes.certificationDetail}/$id', extra: const {'focus': 'renewal'});
+          context.push(
+            '${AppRoutes.certificationDetail}/$id',
+            extra: const {'focus': 'renewal'},
+          );
         }
+        return;
       case NeedsAttentionKind.certificationMatch:
         context.go(AppRoutes.certifications);
+        return;
       case NeedsAttentionKind.missingRequiredCertification:
         final requirementId = item.requirementId;
         if (requirementId == null) return;
@@ -142,8 +147,10 @@ class _NeedsAttentionPageState extends State<NeedsAttentionPage> {
             return;
           }
         }
+        return;
       case NeedsAttentionKind.stalledTaskBook:
         context.go(AppRoutes.myPath);
+        return;
     }
   }
 }
@@ -180,7 +187,12 @@ class _AttentionTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: item.urgency == NeedsAttentionUrgency.now ? cs.error : cs.primary),
+              Icon(
+                icon,
+                color: item.urgency == NeedsAttentionUrgency.now
+                    ? cs.error
+                    : cs.primary,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
