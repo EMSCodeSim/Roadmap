@@ -128,18 +128,30 @@ void main() {
     expect(cert.daysRemaining, isNull);
   });
 
-  test('TEST 7: Completing Next Step forces a different Next Step', () async {
+  test('TEST 7: Completing one senior-path prerequisite advances to another', () async {
     final s = await _bootedState();
-    await s.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('FF I'), _cert('FF II')]);
-    await s.setPrimaryGoal('ops_engineer');
+    await s.completeOnboarding(
+      profile: _volunteerCO(),
+      certifications: [_cert('FF I'), _cert('FF II')],
+    );
+    await s.setPrimaryGoal('ops_battalion_chief');
+
     final before = s.roadmap!.nextStep!.requirement;
-    // Mark complete by adding the associated cert.
     final id = before.certificationDefinitionId;
     expect(id, isNotNull);
-    await s.upsertCertification(_cert(before.name).copyWith(certificationDefinitionId: id));
+
+    await s.upsertCertification(
+      _cert(before.name).copyWith(certificationDefinitionId: id),
+    );
+
     final after = s.roadmap!.nextStep;
     expect(after, isNotNull);
-    expect(after!.requirement.id == before.id, isFalse);
+    expect(after!.requirement.id, isNot(before.id));
+    expect(
+      s.roadmap!.missing.length,
+      greaterThan(1),
+      reason: 'A senior career target should retain later prerequisite stages.',
+    );
   });
 
   test('TEST 8: Cert expiring before target date generates renewal timeline item', () async {
