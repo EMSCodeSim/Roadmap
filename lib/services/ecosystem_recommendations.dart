@@ -1,3 +1,5 @@
+import 'package:firepath/services/fireopssim_links.dart';
+
 class EcosystemRecommendation {
   final String product;
   final String title;
@@ -24,27 +26,28 @@ class EcosystemRecommendations {
     required String topic,
     String? qualification,
     String? goal,
+    String? certId,
+    String? taskId,
   }) {
     final context = [
+      certId,
       qualification,
       topic,
       goal,
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' ');
-    final level = _fireOpsFocusLevel(context);
+    final level = _isEmsCert(certId)
+        ? null
+        : (certId != null && certId.trim().isNotEmpty)
+            ? FireOpsSimLinks.focusLevelFor(certId)
+            : _fireOpsFocusLevel(context);
     if (level == null) return null;
 
-    final cleanTopic = topic.trim();
-    final cleanGoal = goal?.trim() ?? '';
-    final query = <String, String>{
-      'source': 'roadmap',
-      'level': level,
-      if (cleanTopic.isNotEmpty) 'topic': cleanTopic,
-      if (cleanGoal.isNotEmpty) 'goal': cleanGoal,
-    };
-    final url = Uri.https(
-      'fireopssim.com',
-      '/focus-drills.html',
-      query,
+    final url = FireOpsSimLinks.focusDrills(
+      level: level,
+      topic: topic,
+      task: taskId,
+      cert: certId,
+      goal: goal,
     ).toString();
     final label = _fireOpsFocusLabel(level);
 
@@ -58,14 +61,26 @@ class EcosystemRecommendations {
     );
   }
 
-  static EcosystemRecommendation? forTopic(String? rawTopic) {
+  static EcosystemRecommendation? forTopic(
+    String? rawTopic, {
+    String? certId,
+    String? taskId,
+    String? goal,
+    String? qualification,
+  }) {
     final topic = (rawTopic ?? '').trim().toLowerCase();
-    if (topic.isEmpty) return null;
+    if (topic.isEmpty && (certId == null || certId.trim().isEmpty)) return null;
 
     // Daily Focus already passes its current task and qualification through
     // this method. Prefer a certification-aware FireOpsSim handoff whenever
     // that context resolves to a supported fire-service training level.
-    final focusRecommendation = forDailyFocus(topic: rawTopic ?? '');
+    final focusRecommendation = forDailyFocus(
+      topic: rawTopic ?? '',
+      qualification: qualification,
+      goal: goal,
+      certId: certId,
+      taskId: taskId,
+    );
     if (focusRecommendation != null) return focusRecommendation;
 
     if (_containsAny(topic, const [
@@ -130,26 +145,43 @@ class EcosystemRecommendations {
     }
 
     if (_containsAny(topic, const [
-      'fire officer',
-      'officer',
-      'instructor',
-      'hazmat',
-      'firefighter',
-      'leadership',
-      'promotion',
-      'cpat',
-    ])) {
-      return const EcosystemRecommendation(
+          'fire officer',
+          'officer',
+          'instructor',
+          'hazmat',
+          'firefighter',
+          'leadership',
+          'promotion',
+          'cpat',
+        ]) ||
+        (certId != null && certId.trim().isNotEmpty)) {
+      final pathway = FireOpsSimLinks.pathwayIdFor(certId);
+      final url = pathway != null
+          ? FireOpsSimLinks.pathwayRoadmap(cert: certId).toString()
+          : FireOpsSimLinks.taskbookResources(
+              cert: certId,
+              task: taskId,
+              goal: goal,
+            ).toString();
+      return EcosystemRecommendation(
         product: 'FireOpsSim',
-        title: 'Continue learning on FireOpsSim',
+        title: pathway != null
+            ? 'Open the full pathway roadmap'
+            : 'Continue learning on FireOpsSim',
         reason:
-            'FireOpsSim has free firefighter career, training, leadership, and study resources that fit this part of your development plan.',
-        actionLabel: 'Open FireOpsSim',
-        url: 'https://fireopssim.com',
+            'FireOpsSim has free firefighter career, training, leadership, and study resources that fit this part of your development plan—with deep links that keep your Roadmap context.',
+        actionLabel:
+            pathway != null ? 'Open pathway roadmap' : 'Open FireOpsSim',
+        url: url,
       );
     }
 
     return null;
+  }
+
+  static bool _isEmsCert(String? certId) {
+    const ems = {'emt', 'aemt', 'paramedic', 'bls', 'acls', 'pals'};
+    return ems.contains((certId ?? '').trim().toLowerCase());
   }
 
   static String? _fireOpsFocusLevel(String rawTopic) {
