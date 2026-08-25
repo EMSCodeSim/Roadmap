@@ -33,10 +33,10 @@ class VisualHomePage extends StatelessWidget {
               onSettings: () => context.push(AppRoutes.settings),
             ),
             const SizedBox(height: 10),
-            _SinglePrimaryAction(
-              label: 'Quick Log',
-              icon: Icons.add_task_outlined,
-              onTap: () => QuickLogLauncher.open(context),
+            _QuickAccessRow(
+              hasRoadmap: hasRoadmap,
+              onQuickLog: () => QuickLogLauncher.open(context),
+              onTaskBook: () => context.go(AppRoutes.myPath),
             ),
             const SizedBox(height: 14),
             if (!hasRoadmap)
@@ -90,6 +90,47 @@ class _Header extends StatelessWidget {
           tooltip: 'Settings',
           onPressed: onSettings,
           icon: const Icon(Icons.settings_outlined),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickAccessRow extends StatelessWidget {
+  final bool hasRoadmap;
+  final VoidCallback onQuickLog;
+  final VoidCallback onTaskBook;
+
+  const _QuickAccessRow({
+    required this.hasRoadmap,
+    required this.onQuickLog,
+    required this.onTaskBook,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 50,
+            child: FilledButton.icon(
+              onPressed: onQuickLog,
+              icon: const Icon(Icons.add_task_outlined),
+              label: const Text('Quick Log'),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: SizedBox(
+            height: 50,
+            child: FilledButton.tonalIcon(
+              onPressed: onTaskBook,
+              icon: const Icon(Icons.fact_check_outlined),
+              label: Text(hasRoadmap ? 'Task Book' : 'Build Task Book'),
+            ),
+          ),
         ),
       ],
     );
@@ -219,31 +260,6 @@ class _DailyFocusCta extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SinglePrimaryAction extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _SinglePrimaryAction({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: FilledButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon),
-        label: Text(label),
       ),
     );
   }
