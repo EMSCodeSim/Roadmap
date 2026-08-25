@@ -67,40 +67,71 @@ class Requirement {
 
   /// Stable certification definition ID for certification requirements.
   ///
-  /// Most catalog entries provide this through [certificationReference]. Older
-  /// state/NREMT EMS requirements were created without a reference, which made
-  /// them impossible to match against a user's tracked EMT/AEMT/Paramedic
-  /// credential. The getter keeps explicit IDs authoritative and provides a
-  /// narrow backwards-compatible inference for those legacy EMS labels.
+  /// Explicit IDs remain authoritative. Older catalog/state requirements were
+  /// sometimes created with only a human-readable label, which meant a user
+  /// could already hold the credential but still see it as Next Best Step.
+  /// This getter provides a narrow compatibility map for known common labels.
   String? get certificationDefinitionId {
     final explicit = _certificationDefinitionId?.trim();
     if (explicit != null && explicit.isNotEmpty) return explicit;
     if (type != RequirementType.certification) return null;
-    return _inferLegacyEmsCertificationId(certificationReference ?? name);
+    return _inferKnownCertificationId(certificationReference ?? name);
   }
 
-  static String? _inferLegacyEmsCertificationId(String value) {
+  static String? _inferKnownCertificationId(String value) {
     final normalized = value
         .toLowerCase()
+        .replaceAll('&', ' and ')
         .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
         .trim()
         .replaceAll(RegExp(r'\s+'), ' ');
     if (normalized.isEmpty) return null;
 
-    // Order matters because "AEMT" and "Advanced EMT" contain the EMT term.
-    if (normalized == 'aemt' ||
-        normalized == 'advanced emt' ||
-        normalized.startsWith('national registry aemt') ||
+    const exact = <String, String>{
+      'firefighter i': 'firefighter_1',
+      'firefighter 1': 'firefighter_1',
+      'fire fighter i': 'firefighter_1',
+      'fire fighter 1': 'firefighter_1',
+      'fire 1': 'firefighter_1',
+      'fire i': 'firefighter_1',
+      'ff1': 'firefighter_1',
+      'ff i': 'firefighter_1',
+      'ff 1': 'firefighter_1',
+      'firefighter ii': 'firefighter_2',
+      'firefighter 2': 'firefighter_2',
+      'fire fighter ii': 'firefighter_2',
+      'fire fighter 2': 'firefighter_2',
+      'fire 2': 'firefighter_2',
+      'fire ii': 'firefighter_2',
+      'ff2': 'firefighter_2',
+      'ff ii': 'firefighter_2',
+      'ff 2': 'firefighter_2',
+      'hazmat awareness': 'hazmat_awareness',
+      'haz mat awareness': 'hazmat_awareness',
+      'hazardous materials awareness': 'hazmat_awareness',
+      'hazmat operations': 'hazmat_operations',
+      'hazmat ops': 'hazmat_operations',
+      'haz mat operations': 'hazmat_operations',
+      'haz mat ops': 'hazmat_operations',
+      'hazardous materials operations': 'hazmat_operations',
+      'emt': 'emt',
+      'aemt': 'aemt',
+      'advanced emt': 'aemt',
+      'paramedic': 'paramedic',
+    };
+    final direct = exact[normalized];
+    if (direct != null) return direct;
+
+    // Legacy state/NREMT labels often include extra words around the credential.
+    if (normalized.startsWith('national registry aemt') ||
         normalized.startsWith('state aemt certification')) {
       return 'aemt';
     }
-    if (normalized == 'paramedic' ||
-        normalized.startsWith('national registry paramedic') ||
+    if (normalized.startsWith('national registry paramedic') ||
         normalized.startsWith('state paramedic certification')) {
       return 'paramedic';
     }
-    if (normalized == 'emt' ||
-        normalized.startsWith('national registry emt') ||
+    if (normalized.startsWith('national registry emt') ||
         normalized.startsWith('state emt certification')) {
       return 'emt';
     }
