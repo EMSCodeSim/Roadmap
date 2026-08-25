@@ -9,6 +9,8 @@ enum SimpleQuickLogResult { moreDetails }
 
 enum _SimpleMode { training, call, skill, drive, career, taskBook }
 
+enum _DriveActivity { response, training, other }
+
 extension _SimpleModeX on _SimpleMode {
   String get label => switch (this) {
         _SimpleMode.training => 'TRAINING',
@@ -40,9 +42,19 @@ class SimpleQuickLogSheet extends StatefulWidget {
 
 class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
   final CareerRecordStore _store = CareerRecordStore();
+  final TextEditingController _notes = TextEditingController();
+  final TextEditingController _miles = TextEditingController();
+  final TextEditingController _durationMinutes = TextEditingController();
+  final TextEditingController _repetitions = TextEditingController(text: '1');
+  final TextEditingController _role = TextEditingController();
+
   _SimpleMode? _mode;
   String? _choice;
   bool _saving = false;
+  bool _emergent = false;
+  bool _transport = false;
+  _DriveActivity _driveActivity = _DriveActivity.response;
+  CareerRecordOutcome? _skillOutcome;
 
   @override
   void initState() {
@@ -55,6 +67,16 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
   }
 
   @override
+  void dispose() {
+    _notes.dispose();
+    _miles.dispose();
+    _durationMinutes.dispose();
+    _repetitions.dispose();
+    _role.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
@@ -64,10 +86,27 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
           duration: const Duration(milliseconds: 140),
           child: _choice != null
               ? _ConfirmStep(
-                  key: const ValueKey('confirm'),
+                  key: ValueKey('confirm-${_mode!.name}'),
                   mode: _mode!,
                   choice: _choice!,
                   saving: _saving,
+                  notes: _notes,
+                  miles: _miles,
+                  durationMinutes: _durationMinutes,
+                  repetitions: _repetitions,
+                  role: _role,
+                  emergent: _emergent,
+                  transport: _transport,
+                  driveActivity: _driveActivity,
+                  skillOutcome: _skillOutcome,
+                  onEmergentChanged: (value) =>
+                      setState(() => _emergent = value),
+                  onTransportChanged: (value) =>
+                      setState(() => _transport = value),
+                  onDriveActivityChanged: (value) =>
+                      setState(() => _driveActivity = value),
+                  onSkillOutcomeChanged: (value) =>
+                      setState(() => _skillOutcome = value),
                   onBack: () => setState(() => _choice = null),
                   onSave: _save,
                   onMoreDetails: () => Navigator.of(context)
@@ -96,10 +135,14 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
   Future<void> _save() async {
     if (_mode == null || _choice == null || _saving) return;
     setState(() => _saving = true);
+
     final now = DateTime.now();
     final mode = _mode!;
     final title = _choice!;
     final prefill = widget.prefill;
+    final notes = _notes.text.trim();
+    final duration = double.tryParse(_durationMinutes.text.trim());
+    final repetitions = int.tryParse(_repetitions.text.trim()) ?? 1;
 
     final record = CareerRecord(
       id: 'ql-${now.microsecondsSinceEpoch.toRadixString(36)}',
@@ -109,24 +152,24 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
           ? prefill!.category!.trim()
           : _category(mode),
       date: now,
-      roleOrAssignment: null,
-      summary: null,
+      roleOrAssignment: _role.text.trim().isEmpty ? null : _role.text.trim(),
+      summary: notes.isEmpty ? null : notes,
       impact: null,
       evidenceReference: null,
-      hours: null,
-      repetitions: 1,
-      tags: const ['quick-log', 'simple-capture'],
+      hours: duration == null || duration <= 0 ? null : duration / 60,
+      repetitions: repetitions < 1 ? 1 : repetitions,
+      tags: _tagsFor(mode),
       relatedGoalId: prefill?.relatedGoalId,
       relatedRequirementId: prefill?.relatedRequirementId,
       relatedTaskId: prefill?.relatedTaskId,
       highlight: mode == _SimpleMode.career,
-      trackingKey: mode == _SimpleMode.drive ? 'fire.driver' : prefill?.trackerKey,
-      outcome: mode == _SimpleMode.taskBook
-          ? CareerRecordOutcome.completed
-          : null,
-      details: mode == _SimpleMode.drive
-          ? <String, dynamic>{'apparatusName': title, 'quickCapture': true}
-          : const <String, dynamic>{},
+      trackingKey: _trackingKey(mode, title, prefill?.trackerKey),
+      outcome: mode == _SimpleMode.skill
+          ? _skillOutcome
+          : mode == _SimpleMode.taskBook
+              ? CareerRecordOutcome.completed
+              : null,
+      details: _detailsFor(mode, title),
       createdAt: now,
       updatedAt: now,
     );
@@ -144,6 +187,58 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
         const SnackBar(content: Text('Could not save the log. Try again.')),
       );
     }
+  }
+
+  Map<String, dynamic> _detailsFor(_SimpleMode mode, String title) {
+    switch (mode) {
+      case _SimpleMode.drive:
+        final miles = double.tryParse(_miles.text.trim());
+        return <String, dynamic>{
+          'apparatusName': title,
+          if (miles != null && miles >= 0) 'miles': miles,
+          'emergent': _emergent,
+          'patientTransport': _transport,
+          'activityType': _driveActivity.name,
+          'quickCapture': true,
+        };
+      case _SimpleMode.call:
+        return <String, dynamic>{
+          'emergent': _emergent,
+          'patientTransport': _transport,
+          'quickCapture': true,
+        };
+      case _SimpleMode.skill:
+        return <String, dynamic>{
+          if (_skillOutcome != null) 'outcome': _skillOutcome!.name,
+          'quickCapture': true,
+        };
+      case _SimpleMode.training:
+        return const <String, dynamic>{'quickCapture': true};
+      case _SimpleMode.career:
+        return const <String, dynamic>{'quickCapture': true};
+      case _SimpleMode.taskBook:
+        return const <String, dynamic>{'quickCapture': true};
+    }
+  }
+
+  static List<String> _tagsFor(_SimpleMode mode) => <String>[
+        'quick-log',
+        'simple-capture',
+        mode.name,
+      ];
+
+  static String? _trackingKey(
+    _SimpleMode mode,
+    String title,
+    String? prefillKey,
+  ) {
+    if (mode == _SimpleMode.drive) return 'fire.driver';
+    final normalized = title.toLowerCase();
+    if (mode == _SimpleMode.skill &&
+        (normalized.contains('iv') || normalized.contains('vascular'))) {
+      return 'ems.iv';
+    }
+    return prefillKey;
   }
 
   static CareerRecordType _recordType(_SimpleMode mode, String title) =>
@@ -342,7 +437,7 @@ class _ChoiceStep extends StatelessWidget {
   static String _prompt(_SimpleMode mode) => switch (mode) {
         _SimpleMode.training => 'What kind of training?',
         _SimpleMode.call => 'What kind of call?',
-        _SimpleMode.skill => 'What skill did you practice?',
+        _SimpleMode.skill => 'What skill did you perform or practice?',
         _SimpleMode.drive => 'Which apparatus?',
         _SimpleMode.career => 'What career activity?',
         _SimpleMode.taskBook => 'What did you do in your Task Book?',
@@ -353,6 +448,19 @@ class _ConfirmStep extends StatelessWidget {
   final _SimpleMode mode;
   final String choice;
   final bool saving;
+  final TextEditingController notes;
+  final TextEditingController miles;
+  final TextEditingController durationMinutes;
+  final TextEditingController repetitions;
+  final TextEditingController role;
+  final bool emergent;
+  final bool transport;
+  final _DriveActivity driveActivity;
+  final CareerRecordOutcome? skillOutcome;
+  final ValueChanged<bool> onEmergentChanged;
+  final ValueChanged<bool> onTransportChanged;
+  final ValueChanged<_DriveActivity> onDriveActivityChanged;
+  final ValueChanged<CareerRecordOutcome?> onSkillOutcomeChanged;
   final VoidCallback onBack;
   final VoidCallback onSave;
   final VoidCallback onMoreDetails;
@@ -362,6 +470,19 @@ class _ConfirmStep extends StatelessWidget {
     required this.mode,
     required this.choice,
     required this.saving,
+    required this.notes,
+    required this.miles,
+    required this.durationMinutes,
+    required this.repetitions,
+    required this.role,
+    required this.emergent,
+    required this.transport,
+    required this.driveActivity,
+    required this.skillOutcome,
+    required this.onEmergentChanged,
+    required this.onTransportChanged,
+    required this.onDriveActivityChanged,
+    required this.onSkillOutcomeChanged,
     required this.onBack,
     required this.onSave,
     required this.onMoreDetails,
@@ -381,7 +502,7 @@ class _ConfirmStep extends StatelessWidget {
             ),
             Expanded(
               child: Text(
-                'Ready to log',
+                'Quick details',
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge
@@ -391,38 +512,19 @@ class _ConfirmStep extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: AppSpacing.paddingMd,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-          ),
-          child: Row(
-            children: [
-              Icon(mode.icon),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      mode.label,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      choice,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        _SummaryCard(mode: mode, choice: choice),
+        const SizedBox(height: 14),
+        ..._fieldsForMode(context),
+        const SizedBox(height: 12),
+        TextField(
+          controller: notes,
+          minLines: 2,
+          maxLines: 4,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Notes',
+            hintText: 'Anything worth remembering later…',
+            border: OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 14),
@@ -444,9 +546,218 @@ class _ConfirmStep extends StatelessWidget {
         TextButton.icon(
           onPressed: onMoreDetails,
           icon: const Icon(Icons.tune_outlined),
-          label: const Text('Add details instead'),
+          label: const Text('Open full log instead'),
         ),
       ],
+    );
+  }
+
+  List<Widget> _fieldsForMode(BuildContext context) {
+    switch (mode) {
+      case _SimpleMode.drive:
+        return [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: miles,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Miles driven',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text('Type', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('Response'),
+                selected: driveActivity == _DriveActivity.response,
+                onSelected: (_) =>
+                    onDriveActivityChanged(_DriveActivity.response),
+              ),
+              ChoiceChip(
+                label: const Text('Training'),
+                selected: driveActivity == _DriveActivity.training,
+                onSelected: (_) =>
+                    onDriveActivityChanged(_DriveActivity.training),
+              ),
+              ChoiceChip(
+                label: const Text('Other'),
+                selected: driveActivity == _DriveActivity.other,
+                onSelected: (_) => onDriveActivityChanged(_DriveActivity.other),
+              ),
+            ],
+          ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Emergent / lights & siren'),
+            value: emergent,
+            onChanged: onEmergentChanged,
+          ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Patient transport'),
+            value: transport,
+            onChanged: onTransportChanged,
+          ),
+        ];
+      case _SimpleMode.call:
+        return [
+          TextField(
+            controller: role,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Role / assignment',
+              hintText: 'Medic, driver, nozzle, command…',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Emergent response'),
+            value: emergent,
+            onChanged: onEmergentChanged,
+          ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Patient transport'),
+            value: transport,
+            onChanged: onTransportChanged,
+          ),
+        ];
+      case _SimpleMode.skill:
+        return [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: repetitions,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Attempts / reps',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text('Outcome', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              ChoiceChip(
+                label: const Text('Successful'),
+                selected: skillOutcome == CareerRecordOutcome.successful,
+                onSelected: (_) =>
+                    onSkillOutcomeChanged(CareerRecordOutcome.successful),
+              ),
+              ChoiceChip(
+                label: const Text('Attempted'),
+                selected: skillOutcome == CareerRecordOutcome.attempted,
+                onSelected: (_) =>
+                    onSkillOutcomeChanged(CareerRecordOutcome.attempted),
+              ),
+              ChoiceChip(
+                label: const Text('Unsuccessful'),
+                selected: skillOutcome == CareerRecordOutcome.unsuccessful,
+                onSelected: (_) =>
+                    onSkillOutcomeChanged(CareerRecordOutcome.unsuccessful),
+              ),
+            ],
+          ),
+        ];
+      case _SimpleMode.training:
+        return [
+          TextField(
+            controller: durationMinutes,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Duration (minutes)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ];
+      case _SimpleMode.career:
+        return [
+          TextField(
+            controller: durationMinutes,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Time spent (minutes, optional)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ];
+      case _SimpleMode.taskBook:
+        return [
+          TextField(
+            controller: durationMinutes,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Time spent (minutes, optional)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ];
+    }
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final _SimpleMode mode;
+  final String choice;
+
+  const _SummaryCard({required this.mode, required this.choice});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: AppSpacing.paddingMd,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Row(
+        children: [
+          Icon(mode.icon),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  mode.label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  choice,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -469,12 +780,14 @@ List<String> _choices(_SimpleMode mode) => switch (mode) {
           'Public assist',
         ],
       _SimpleMode.skill => const [
+          'IV / vascular access',
+          'Airway management',
+          'Patient assessment',
           'Pump operations',
           'Ground ladders',
           'Hose advancement',
           'Search and rescue',
-          'Patient assessment',
-          'Airway management',
+          'Other skill',
         ],
       _SimpleMode.drive => const [
           'Engine',
