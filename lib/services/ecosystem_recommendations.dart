@@ -20,14 +20,16 @@ class EcosystemRecommendations {
   /// Builds the focused Roadmap → FireOpsSim handoff used by Daily Focus.
   ///
   /// Career Road owns the user's goal/task-book context. FireOpsSim receives
-  /// only the current training level/topic so it can open the matching drill
-  /// library and level-specific skill wheel. No completion state is transferred.
+  /// the current training level/topic plus stable Roadmap task identifiers so
+  /// it can open the matching drill library and preserve enough context for a
+  /// later "Record this drill" return flow. No completion state is transferred.
   static EcosystemRecommendation? forDailyFocus({
     required String topic,
     String? qualification,
     String? goal,
-    String? certId,
     String? taskId,
+    String? requirementId,
+    String? certId,
   }) {
     final context = [
       certId,
@@ -35,17 +37,30 @@ class EcosystemRecommendations {
       topic,
       goal,
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' ');
-    final level = _isEmsCert(certId)
-        ? null
-        : (certId != null && certId.trim().isNotEmpty)
-            ? FireOpsSimLinks.focusLevelFor(certId)
-            : _fireOpsFocusLevel(context);
+
+    // Prefer explicit certification ids when present (except EMS certs, which
+    // should fall through to EMSCodeSim via forTopic). Otherwise resolve from
+    // human-readable qualification/topic text.
+    final String? level;
+    if (_isEmsCert(certId) || _isEmsCert(requirementId)) {
+      level = null;
+    } else if (certId != null && certId.trim().isNotEmpty) {
+      level = FireOpsSimLinks.focusLevelFor(certId);
+    } else if (requirementId != null &&
+        requirementId.trim().isNotEmpty &&
+        _looksLikeFireCertId(requirementId)) {
+      level = FireOpsSimLinks.focusLevelFor(requirementId);
+    } else {
+      level = _fireOpsFocusLevel(context);
+    }
     if (level == null) return null;
 
     final url = FireOpsSimLinks.focusDrills(
       level: level,
       topic: topic,
-      task: taskId,
+      taskId: taskId,
+      requirementId: requirementId,
+      qualification: qualification,
       cert: certId,
       goal: goal,
     ).toString();
@@ -55,32 +70,19 @@ class EcosystemRecommendations {
       product: 'FireOpsSim',
       title: '$label Focus Drills',
       reason:
-          'Open the FireOpsSim drill library matched to this training level. Pick a focused drill for today or spin the $label skill wheel for a random level-appropriate rep.',
-      actionLabel: 'Open Focus Drills',
+          'Practice this exact Career Road focus in the FireOpsSim $label drill library. Choose the recommended drill or spin the level-specific skill wheel, then return to Career Road to record the work.',
+      actionLabel: 'Practice in FireOpsSim',
       url: url,
     );
   }
 
-  static EcosystemRecommendation? forTopic(
-    String? rawTopic, {
-    String? certId,
-    String? taskId,
-    String? goal,
-    String? qualification,
-  }) {
+  static EcosystemRecommendation? forTopic(String? rawTopic) {
     final topic = (rawTopic ?? '').trim().toLowerCase();
-    if (topic.isEmpty && (certId == null || certId.trim().isEmpty)) return null;
+    if (topic.isEmpty) return null;
 
-    // Daily Focus already passes its current task and qualification through
-    // this method. Prefer a certification-aware FireOpsSim handoff whenever
-    // that context resolves to a supported fire-service training level.
-    final focusRecommendation = forDailyFocus(
-      topic: rawTopic ?? '',
-      qualification: qualification,
-      goal: goal,
-      certId: certId,
-      taskId: taskId,
-    );
+    // Generic callers still get a certification-aware FireOpsSim handoff when
+    // the supplied topic itself contains a supported fire-service level.
+    final focusRecommendation = forDailyFocus(topic: rawTopic ?? '');
     if (focusRecommendation != null) return focusRecommendation;
 
     if (_containsAny(topic, const [
@@ -145,34 +147,22 @@ class EcosystemRecommendations {
     }
 
     if (_containsAny(topic, const [
-          'fire officer',
-          'officer',
-          'instructor',
-          'hazmat',
-          'firefighter',
-          'leadership',
-          'promotion',
-          'cpat',
-        ]) ||
-        (certId != null && certId.trim().isNotEmpty)) {
-      final pathway = FireOpsSimLinks.pathwayIdFor(certId);
-      final url = pathway != null
-          ? FireOpsSimLinks.pathwayRoadmap(cert: certId).toString()
-          : FireOpsSimLinks.taskbookResources(
-              cert: certId,
-              task: taskId,
-              goal: goal,
-            ).toString();
-      return EcosystemRecommendation(
+      'fire officer',
+      'officer',
+      'instructor',
+      'hazmat',
+      'firefighter',
+      'leadership',
+      'promotion',
+      'cpat',
+    ])) {
+      return const EcosystemRecommendation(
         product: 'FireOpsSim',
-        title: pathway != null
-            ? 'Open the full pathway roadmap'
-            : 'Continue learning on FireOpsSim',
+        title: 'Continue learning on FireOpsSim',
         reason:
-            'FireOpsSim has free firefighter career, training, leadership, and study resources that fit this part of your development plan—with deep links that keep your Roadmap context.',
-        actionLabel:
-            pathway != null ? 'Open pathway roadmap' : 'Open FireOpsSim',
-        url: url,
+            'FireOpsSim has free firefighter career, training, leadership, and study resources that fit this part of your development plan.',
+        actionLabel: 'Open FireOpsSim',
+        url: 'https://fireopssim.com',
       );
     }
 
@@ -182,6 +172,15 @@ class EcosystemRecommendations {
   static bool _isEmsCert(String? certId) {
     const ems = {'emt', 'aemt', 'paramedic', 'bls', 'acls', 'pals'};
     return ems.contains((certId ?? '').trim().toLowerCase());
+  }
+
+  static bool _looksLikeFireCertId(String raw) {
+    final n = raw.trim().toLowerCase();
+    return n.startsWith('firefighter_') ||
+        n.startsWith('fire_officer_') ||
+        n.startsWith('fire_instructor_') ||
+        n.startsWith('driver_operator') ||
+        n.startsWith('hazmat_');
   }
 
   static String? _fireOpsFocusLevel(String rawTopic) {
@@ -268,15 +267,15 @@ class EcosystemRecommendations {
   }
 
   static String _fireOpsFocusLabel(String level) => switch (level) {
-    'probationary' => 'Academy / Probation',
-    'firefighter_1' => 'Firefighter I',
-    'firefighter_2' => 'Firefighter II',
-    'hazmat_ops' => 'HazMat Operations',
-    'driver_operator' => 'Driver / Operator',
-    'officer_1' => 'Company Officer I',
-    'instructor_1' => 'Fire Instructor I',
-    _ => 'Working Firefighter',
-  };
+        'probationary' => 'Academy / Probation',
+        'firefighter_1' => 'Firefighter I',
+        'firefighter_2' => 'Firefighter II',
+        'hazmat_ops' => 'HazMat Operations',
+        'driver_operator' => 'Driver / Operator',
+        'officer_1' => 'Company Officer I',
+        'instructor_1' => 'Fire Instructor I',
+        _ => 'Working Firefighter',
+      };
 
   static bool _containsAny(String topic, List<String> terms) =>
       terms.any(topic.contains);

@@ -18,6 +18,7 @@ import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/career_intelligence_page.dart';
 import 'package:firepath/pages/career/career_longevity_page.dart';
 import 'package:firepath/pages/career/daily_focus_page.dart';
+import 'package:firepath/pages/career/needs_attention_page.dart';
 import 'package:firepath/pages/career/career_export_page.dart';
 import 'package:firepath/pages/career/career_inbox_page.dart';
 import 'package:firepath/pages/career/promotion_portfolio_review_page.dart';
@@ -122,7 +123,6 @@ class AppRouter {
         redirect: (context, state) => AppRoutes.personalLog,
       ),
 
-      // Old deep link: keep bookmarks working by landing on the classic tools page.
       GoRoute(
         path: AppRoutes.personalLogLegacy,
         redirect: (context, state) => AppRoutes.personalLogClassic,
@@ -193,6 +193,12 @@ class AppRouter {
         name: 'daily_focus',
         pageBuilder: (context, state) =>
             const MaterialPage(child: DailyFocusPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.needsAttention,
+        name: 'needs_attention',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: NeedsAttentionPage()),
       ),
       GoRoute(
         path: AppRoutes.careerInbox,
@@ -310,6 +316,7 @@ class AppRoutes {
   static const String careerIntelligence = '/career-intelligence';
   static const String careerLongevity = '/career-intelligence/long-term';
   static const String dailyFocus = '/daily-focus';
+  static const String needsAttention = '/needs-attention';
   static const String careerInbox = '/career-inbox';
   static const String careerExport = '/career-intelligence/export';
   static const String promotionPortfolioReview =

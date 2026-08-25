@@ -21,12 +21,18 @@ void main() {
         cert: 'firefighter_2',
         topic: 'ventilation',
         goal: 'Firefighter II',
+        qualification: 'Firefighter II',
+        taskId: 'ff2-vent',
+        requirementId: 'firefighter_2',
       );
       expect(focus.host, 'fireopssim.com');
       expect(focus.path, '/focus-drills.html');
       expect(focus.queryParameters['source'], 'roadmap');
       expect(focus.queryParameters['level'], 'firefighter_2');
       expect(focus.queryParameters['topic'], 'ventilation');
+      expect(focus.queryParameters['qualification'], 'Firefighter II');
+      expect(focus.queryParameters['task_id'], 'ff2-vent');
+      expect(focus.queryParameters['requirement_id'], 'firefighter_2');
 
       final pathway = FireOpsSimLinks.pathwayRoadmap(
         cert: 'firefighter_1',
@@ -49,17 +55,21 @@ void main() {
   });
 
   group('EcosystemRecommendations FireOpsSim handoff', () {
-    test('daily focus opens focus drills with level', () {
+    test('daily focus opens focus drills with level and ids', () {
       final rec = EcosystemRecommendations.forDailyFocus(
-        topic: 'hose stretch',
-        qualification: 'Firefighter I',
-        goal: 'Firefighter',
-        certId: 'firefighter_1',
+        topic: 'Initial radio report',
+        qualification: 'Fire Officer I',
+        goal: 'Lieutenant',
+        taskId: 'officer-radio-report',
+        requirementId: 'fire_officer_1',
+        certId: 'fire_officer_1',
       );
       expect(rec, isNotNull);
       expect(rec!.url, contains('focus-drills.html'));
       expect(rec.url, contains('source=roadmap'));
-      expect(rec.url, contains('level=firefighter_1'));
+      expect(rec.url, contains('level=officer_1'));
+      expect(rec.url, contains('task_id=officer-radio-report'));
+      expect(rec.url, contains('requirement_id=fire_officer_1'));
     });
   });
 }

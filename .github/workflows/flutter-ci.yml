@@ -33,8 +33,11 @@ jobs:
       - name: Build web release
         run: flutter build web --release
 
-      - name: Build Android release
+      - name: Build Android APK release
         run: flutter build apk --release
+
+      - name: Build Android App Bundle release
+        run: flutter build appbundle --release
 
   ios-release:
     runs-on: macos-latest

@@ -81,13 +81,18 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
       0,
       (sum, record) => sum + (record.hours ?? 0),
     );
-    final ecosystemRecommendation = EcosystemRecommendations.forTopic(
-      [task?.title, next?.name].whereType<String>().join(' '),
-      certId: next?.certificationDefinitionId,
-      taskId: task?.id,
-      goal: roadmap?.goal.title,
-      qualification: next?.name,
-    );
+    final focusTopic = task?.title ?? next?.name;
+    final ecosystemRecommendation = next == null
+        ? null
+        : EcosystemRecommendations.forDailyFocus(
+              topic: focusTopic ?? next.name,
+              qualification: next.name,
+              goal: roadmap?.goal.title,
+              taskId: task?.id,
+              requirementId: next.id,
+              certId: next.certificationDefinitionId,
+            ) ??
+            EcosystemRecommendations.forTopic(focusTopic);
 
     return Scaffold(
       appBar: AppBar(
@@ -150,7 +155,9 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
                     onPracticeFireOpsSim: () async {
                       final uri = FireOpsSimLinks.focusDrills(
                         cert: next.certificationDefinitionId,
-                        task: task?.id,
+                        taskId: task?.id,
+                        requirementId: next.id,
+                        qualification: next.name,
                         topic: task?.title ?? next.name,
                         goal: roadmap?.goal.title,
                       );

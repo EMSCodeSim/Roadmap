@@ -85,18 +85,27 @@ class FireOpsSimLinks {
     String? level,
     String? topic,
     String? task,
+    String? taskId,
+    String? requirementId,
+    String? qualification,
     String? cert,
     String? goal,
     String source = 'roadmap',
   }) {
-    final resolved = level ?? focusLevelFor(cert ?? task ?? topic);
+    final resolved = level ??
+        focusLevelFor(cert ?? requirementId ?? taskId ?? task ?? topic);
+    final cleanTaskId = (taskId ?? task)?.trim() ?? '';
     return Uri.https(host, '/focus-drills.html', {
       if (source.isNotEmpty) 'source': source,
       if (resolved.isNotEmpty) 'level': resolved,
-      if ((topic ?? task)?.isNotEmpty == true) 'topic': topic ?? task!,
-      if (task != null && task.isNotEmpty) 'task': task,
-      if (cert != null && cert.isNotEmpty) 'cert': cert,
+      if (topic != null && topic.trim().isNotEmpty) 'topic': topic.trim(),
+      if (qualification != null && qualification.trim().isNotEmpty)
+        'qualification': qualification.trim(),
       if (goal != null && goal.isNotEmpty) 'goal': goal,
+      if (cleanTaskId.isNotEmpty) 'task_id': cleanTaskId,
+      if (requirementId != null && requirementId.trim().isNotEmpty)
+        'requirement_id': requirementId.trim(),
+      if (cert != null && cert.isNotEmpty) 'cert': cert,
     });
   }
 

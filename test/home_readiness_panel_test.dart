@@ -47,7 +47,7 @@ void main() {
     );
   }
 
-  testWidgets('home leads with career readiness when a goal is active', (tester) async {
+  testWidgets('home keeps Quick Log immediately accessible with an active goal', (tester) async {
     final app = AppState();
     await app.bootstrap();
     await app.completeOnboarding(
@@ -64,6 +64,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Quick Log'), findsOneWidget);
+
+    final quickLogTop = tester.getTopLeft(find.text('Quick Log')).dy;
+    expect(
+      quickLogTop,
+      lessThan(180),
+      reason: 'Quick Log should be reachable from Home without scrolling.',
+    );
+
     expect(find.textContaining('Driver/Operator'), findsWidgets);
     expect(find.text('CAREER READINESS'), findsOneWidget);
     expect(find.text('MAJOR GAPS'), findsOneWidget);
@@ -75,13 +84,6 @@ void main() {
       scrollable: scrollable,
     );
     expect(find.text("Start Today's Focus"), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('Quick Log'),
-      300,
-      scrollable: scrollable,
-    );
-    expect(find.text('Quick Log'), findsOneWidget);
   });
 
   testWidgets('home prompts for a Task Book when no goal is set', (tester) async {
@@ -96,6 +98,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Quick Log'), findsOneWidget);
     expect(find.text('Build My Task Book'), findsOneWidget);
     expect(find.text('CAREER READINESS'), findsNothing);
   });
