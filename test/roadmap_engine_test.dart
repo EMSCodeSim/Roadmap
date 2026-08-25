@@ -136,6 +136,20 @@ void main() {
     );
     await s.setPrimaryGoal('ops_battalion_chief');
 
+    // HazMat baseline items currently do not yet have stable certification IDs,
+    // so exclude them in this narrow engine test to isolate mapped-cert
+    // progression through the senior career ladder.
+    final initial = s.roadmap!;
+    for (final item in initial.included.where((e) =>
+        e.requirement.name == 'HazMat Awareness' ||
+        e.requirement.name == 'HazMat Operations')) {
+      await s.setRequirementExcluded(
+        goalId: initial.goal.id,
+        requirementId: item.requirement.id,
+        excluded: true,
+      );
+    }
+
     final before = s.roadmap!.nextStep!.requirement;
     final id = before.certificationDefinitionId;
     expect(id, isNotNull);
