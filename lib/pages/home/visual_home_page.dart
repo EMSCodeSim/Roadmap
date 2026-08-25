@@ -32,7 +32,13 @@ class VisualHomePage extends StatelessWidget {
             _Header(
               onSettings: () => context.push(AppRoutes.settings),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
+            _SinglePrimaryAction(
+              label: 'Quick Log',
+              icon: Icons.add_task_outlined,
+              onTap: () => QuickLogLauncher.open(context),
+            ),
+            const SizedBox(height: 14),
             if (!hasRoadmap)
               _ChooseGoalCard(
                 onChooseGoal: () => context.go(AppRoutes.myPath),
@@ -61,12 +67,6 @@ class VisualHomePage extends StatelessWidget {
             const NeedsAttentionPreview(),
             const SizedBox(height: 14),
             const CareerInboxPreview(),
-            const SizedBox(height: 12),
-            _SinglePrimaryAction(
-              label: 'Quick Log',
-              icon: Icons.add_task_outlined,
-              onTap: () => QuickLogLauncher.open(context),
-            ),
           ],
         ),
       ),
