@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:firepath/models/prefill.dart';
+import 'package:firepath/pages/career/production_quick_log_sheet.dart';
 import 'package:firepath/pages/career/quick_log_sheet.dart';
 import 'package:firepath/pages/career/simple_quick_log_sheet.dart';
 
@@ -17,7 +18,7 @@ class QuickLogLauncher {
       isScrollControlled: true,
       showDragHandle: true,
       useSafeArea: true,
-      builder: (sheetContext) => SimpleQuickLogSheet(prefill: prefill),
+      builder: (sheetContext) => ProductionQuickLogSheet(prefill: prefill),
     );
 
     if (result != SimpleQuickLogResult.moreDetails || !context.mounted) return;

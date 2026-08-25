@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:firepath/pages/career/simple_quick_log_sheet.dart';
+import 'package:firepath/pages/career/production_quick_log_sheet.dart';
 
 void main() {
   testWidgets('Quick Log starts with six fixed primary choices', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: SimpleQuickLogSheet(),
+          body: ProductionQuickLogSheet(),
         ),
       ),
     );
@@ -20,17 +20,19 @@ void main() {
     expect(find.text('DRIVING'), findsOneWidget);
     expect(find.text('CAREER'), findsOneWidget);
     expect(find.text('TASK BOOK'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Career opens grouped career activity choices', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: SimpleQuickLogSheet(),
+          body: ProductionQuickLogSheet(),
         ),
       ),
     );
 
+    await tester.ensureVisible(find.text('CAREER'));
     await tester.tap(find.text('CAREER'));
     await tester.pumpAndSettle();
 
@@ -40,5 +42,6 @@ void main() {
     expect(find.text('Award / Recognition'), findsOneWidget);
     expect(find.text('Project'), findsOneWidget);
     expect(find.text('Education'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
