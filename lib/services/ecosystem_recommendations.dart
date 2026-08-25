@@ -1,3 +1,5 @@
+import 'package:firepath/services/fireopssim_links.dart';
+
 class EcosystemRecommendation {
   final String product;
   final String title;
@@ -27,33 +29,40 @@ class EcosystemRecommendations {
     String? goal,
     String? taskId,
     String? requirementId,
+    String? certId,
   }) {
     final context = [
+      certId,
       qualification,
       topic,
       goal,
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' ');
-    final level = _fireOpsFocusLevel(context);
+
+    // Prefer explicit certification ids when present (except EMS certs, which
+    // should fall through to EMSCodeSim via forTopic). Otherwise resolve from
+    // human-readable qualification/topic text.
+    final String? level;
+    if (_isEmsCert(certId) || _isEmsCert(requirementId)) {
+      level = null;
+    } else if (certId != null && certId.trim().isNotEmpty) {
+      level = FireOpsSimLinks.focusLevelFor(certId);
+    } else if (requirementId != null &&
+        requirementId.trim().isNotEmpty &&
+        _looksLikeFireCertId(requirementId)) {
+      level = FireOpsSimLinks.focusLevelFor(requirementId);
+    } else {
+      level = _fireOpsFocusLevel(context);
+    }
     if (level == null) return null;
 
-    final cleanTopic = topic.trim();
-    final cleanQualification = qualification?.trim() ?? '';
-    final cleanGoal = goal?.trim() ?? '';
-    final cleanTaskId = taskId?.trim() ?? '';
-    final cleanRequirementId = requirementId?.trim() ?? '';
-    final query = <String, String>{
-      'source': 'roadmap',
-      'level': level,
-      if (cleanTopic.isNotEmpty) 'topic': cleanTopic,
-      if (cleanQualification.isNotEmpty) 'qualification': cleanQualification,
-      if (cleanGoal.isNotEmpty) 'goal': cleanGoal,
-      if (cleanTaskId.isNotEmpty) 'task_id': cleanTaskId,
-      if (cleanRequirementId.isNotEmpty) 'requirement_id': cleanRequirementId,
-    };
-    final url = Uri.https(
-      'fireopssim.com',
-      '/focus-drills.html',
-      query,
+    final url = FireOpsSimLinks.focusDrills(
+      level: level,
+      topic: topic,
+      taskId: taskId,
+      requirementId: requirementId,
+      qualification: qualification,
+      cert: certId,
+      goal: goal,
     ).toString();
     final label = _fireOpsFocusLabel(level);
 
@@ -160,6 +169,20 @@ class EcosystemRecommendations {
     return null;
   }
 
+  static bool _isEmsCert(String? certId) {
+    const ems = {'emt', 'aemt', 'paramedic', 'bls', 'acls', 'pals'};
+    return ems.contains((certId ?? '').trim().toLowerCase());
+  }
+
+  static bool _looksLikeFireCertId(String raw) {
+    final n = raw.trim().toLowerCase();
+    return n.startsWith('firefighter_') ||
+        n.startsWith('fire_officer_') ||
+        n.startsWith('fire_instructor_') ||
+        n.startsWith('driver_operator') ||
+        n.startsWith('hazmat_');
+  }
+
   static String? _fireOpsFocusLevel(String rawTopic) {
     final topic = rawTopic.trim().toLowerCase();
     if (topic.isEmpty) return null;
@@ -244,15 +267,15 @@ class EcosystemRecommendations {
   }
 
   static String _fireOpsFocusLabel(String level) => switch (level) {
-    'probationary' => 'Academy / Probation',
-    'firefighter_1' => 'Firefighter I',
-    'firefighter_2' => 'Firefighter II',
-    'hazmat_ops' => 'HazMat Operations',
-    'driver_operator' => 'Driver / Operator',
-    'officer_1' => 'Company Officer I',
-    'instructor_1' => 'Fire Instructor I',
-    _ => 'Working Firefighter',
-  };
+        'probationary' => 'Academy / Probation',
+        'firefighter_1' => 'Firefighter I',
+        'firefighter_2' => 'Firefighter II',
+        'hazmat_ops' => 'HazMat Operations',
+        'driver_operator' => 'Driver / Operator',
+        'officer_1' => 'Company Officer I',
+        'instructor_1' => 'Fire Instructor I',
+        _ => 'Working Firefighter',
+      };
 
   static bool _containsAny(String topic, List<String> terms) =>
       terms.any(topic.contains);

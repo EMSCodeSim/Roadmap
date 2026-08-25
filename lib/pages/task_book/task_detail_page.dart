@@ -12,6 +12,7 @@ import 'package:firepath/theme.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/models/resource.dart';
 import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/fireopssim_links.dart';
 import 'package:firepath/services/task_book_resource_composer.dart';
 
 Future<void> _openExternalUrl(String url) async {
@@ -465,33 +466,29 @@ class _CompanionCard extends StatelessWidget {
     final cert = certificationDefinitionId?.trim();
     final state = stateCode?.trim().toUpperCase();
 
-    final taskQuery = <String, String>{
-      'task': taskId,
-      'source': 'roadmap',
-      if (cert != null && cert.isNotEmpty) 'cert': cert,
-      if (state != null && state.isNotEmpty) 'state': state,
-    };
-    final taskUri = Uri.https(
-      'fireopssim.com',
-      '/taskbook-resources.html',
-      taskQuery,
+    final taskUri = FireOpsSimLinks.taskbookResources(
+      cert: cert,
+      task: taskId,
+      state: state,
     );
-
-    final studyUri = cert == null || cert.isEmpty
+    final studyUri = (cert == null || cert.isEmpty)
         ? taskUri
-        : Uri.https('fireopssim.com', '/study-guides.html', {'cert': cert});
-
+        : FireOpsSimLinks.studyGuides(cert: cert);
     const emsCerts = {'emt', 'aemt', 'paramedic', 'bls', 'acls', 'pals'};
-    final finderQuery = <String, String>{
-      'path': emsCerts.contains(cert) ? 'ems' : 'fire',
-      if (cert != null && cert.isNotEmpty) 'cert': cert,
-      if (state != null && state.isNotEmpty) 'state': state,
-    };
-    final finderUri = Uri.https(
-      'fireopssim.com',
-      '/school-finder.html',
-      finderQuery,
+    final finderUri = FireOpsSimLinks.schoolFinder(
+      cert: cert,
+      state: state,
+      path: emsCerts.contains(cert) ? 'ems' : 'fire',
     );
+    final focusUri = FireOpsSimLinks.focusDrills(
+      cert: cert,
+      task: taskId,
+      topic: taskId,
+    );
+    final pathwayId = FireOpsSimLinks.pathwayIdFor(cert);
+    final pathwayUri = pathwayId == null
+        ? null
+        : FireOpsSimLinks.pathwayRoadmap(pathwayId: pathwayId, state: state);
 
     return Container(
       padding: AppSpacing.paddingMd,
@@ -519,7 +516,7 @@ class _CompanionCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Free study, practice tools, class-finder links, and official sources for this Task Book item.',
+            'Free study, focus drills, full pathway roadmaps, class-finder links, and official sources for this Task Book item.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: cs.onSurfaceVariant,
               height: 1.45,
@@ -545,6 +542,28 @@ class _CompanionCard extends StatelessWidget {
               label: const Text('Practice / tools'),
             ),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: () => _openExternalUrl(focusUri.toString()),
+              icon: const Icon(Icons.sports_martial_arts_outlined),
+              label: const Text('Open focus drills'),
+            ),
+          ),
+          if (pathwayUri != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: () => _openExternalUrl(pathwayUri.toString()),
+                icon: const Icon(Icons.map_outlined),
+                label: const Text('Full pathway roadmap'),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
             width: double.infinity,

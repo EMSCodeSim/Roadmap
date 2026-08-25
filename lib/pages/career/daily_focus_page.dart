@@ -11,10 +11,12 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/ecosystem_recommendations.dart';
+import 'package:firepath/services/fireopssim_links.dart';
 import 'package:firepath/widgets/ecosystem_recommendation_card.dart';
 import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum DailyFocusMode { fifteen, thirty, sixty, crew }
 
@@ -88,6 +90,7 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
               goal: roadmap?.goal.title,
               taskId: task?.id,
               requirementId: next.id,
+              certId: next.certificationDefinitionId,
             ) ??
             EcosystemRecommendations.forTopic(focusTopic);
 
@@ -149,6 +152,17 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
                               'task': task,
                             },
                           ),
+                    onPracticeFireOpsSim: () async {
+                      final uri = FireOpsSimLinks.focusDrills(
+                        cert: next.certificationDefinitionId,
+                        taskId: task?.id,
+                        requirementId: next.id,
+                        qualification: next.name,
+                        topic: task?.title ?? next.name,
+                        goal: roadmap?.goal.title,
+                      );
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    },
                     onRecord: () => QuickLogLauncher.open(
                       context,
                       prefill: LogPrefill(
@@ -286,6 +300,7 @@ class _FocusPlan extends StatelessWidget {
   final TaskBookTaskDefinition? task;
   final VoidCallback onOpenTask;
   final VoidCallback onRecord;
+  final VoidCallback onPracticeFireOpsSim;
 
   const _FocusPlan({
     required this.mode,
@@ -294,6 +309,7 @@ class _FocusPlan extends StatelessWidget {
     required this.task,
     required this.onOpenTask,
     required this.onRecord,
+    required this.onPracticeFireOpsSim,
   });
 
   @override
@@ -369,6 +385,16 @@ class _FocusPlan extends StatelessWidget {
               label: Text(
                 task == null ? 'Open Task Book' : 'Start Focus Session',
               ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: onPracticeFireOpsSim,
+              icon: const Icon(Icons.sports_martial_arts_outlined),
+              label: const Text('Practice on FireOpsSim'),
             ),
           ),
           const SizedBox(height: 8),
