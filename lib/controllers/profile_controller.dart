@@ -17,6 +17,16 @@ class ProfileController extends ChangeNotifier {
       : _store = store ?? LocalStore(),
         _taskBookSetupStore = taskBookSetupStore ?? TaskBookSetupStore();
 
+  static const List<String> _operationsCareerLadder = <String>[
+    'ops_firefighter',
+    'ops_engineer',
+    'ops_company_officer',
+    'ops_battalion_chief',
+    'ops_division_chief',
+    'ops_deputy_chief',
+    'ops_fire_chief',
+  ];
+
   final LocalStore _store;
   final TaskBookSetupStore _taskBookSetupStore;
 
@@ -58,6 +68,13 @@ class ProfileController extends ChangeNotifier {
 
   /// Returns the selected goal resolved for the user's selected state.
   ///
+  /// Operations goals are cumulative. A user targeting Battalion Chief, for
+  /// example, receives the Firefighter -> Engineer -> Company Officer ->
+  /// Battalion Chief pathway instead of jumping directly to the final-stage
+  /// Fire Officer II requirement. Existing certifications still satisfy their
+  /// matching requirements normally, so the resulting Task Book starts at the
+  /// first real gap for that user.
+  ///
   /// Rules:
   /// - A requirement sourced to one state is never shown to a user in another.
   /// - Verified state requirements replace their matching common requirement.
@@ -66,16 +83,77 @@ class ProfileController extends ChangeNotifier {
   /// - Common guidance is never silently promoted to a legal/statewide mandate;
   ///   the source note tells the user when department/AHJ rules still control.
   CareerGoal? selectedGoalResolved() {
-    final existing = selectedGoal();
-    if (existing == null) return null;
+    final target = selectedGoal();
+    if (target == null) return null;
 
+    final stages = _careerStagesThrough(target);
     final stateCode = FireOpsCatalog.stateCodeFromLegacyValue(_profile.state);
     if (stateCode == null || stateCode == FireOpsCatalog.otherStateCode) {
-      return existing;
+      return _combineCareerStages(target, stages);
     }
 
     final stateName = FireOpsCatalog.stateNameForCode(stateCode) ?? stateCode;
+    final resolvedStages = stages
+        .map((stage) => _resolveSingleGoalForState(stage, stateCode, stateName))
+        .toList();
+    return _combineCareerStages(target, resolvedStages);
+  }
 
+  List<CareerGoal> _careerStagesThrough(CareerGoal target) {
+    final targetIndex = _operationsCareerLadder.indexOf(target.id);
+    if (targetIndex < 0) return <CareerGoal>[target];
+
+    final byId = <String, CareerGoal>{
+      for (final goal in availableGoals) goal.id: goal,
+    };
+    return _operationsCareerLadder
+        .take(targetIndex + 1)
+        .map((id) => byId[id])
+        .whereType<CareerGoal>()
+        .toList();
+  }
+
+  CareerGoal _combineCareerStages(
+    CareerGoal target,
+    List<CareerGoal> stages,
+  ) {
+    if (stages.length <= 1) return stages.isEmpty ? target : stages.first;
+
+    final requirements = <Requirement>[];
+    final seenRequirementIds = <String>{};
+    for (var stageIndex = 0; stageIndex < stages.length; stageIndex++) {
+      final stage = stages[stageIndex];
+      for (final requirement in stage.requirements) {
+        if (!seenRequirementIds.add(requirement.id)) continue;
+        requirements.add(
+          requirement.copyWith(
+            sortOrder: (stageIndex * 100) + requirement.sortOrder,
+          ),
+        );
+      }
+    }
+
+    return CareerGoal(
+      id: target.id,
+      title: target.title,
+      category: target.category,
+      description: target.description,
+      subtitle: target.subtitle,
+      typicalPrerequisiteRoles: target.typicalPrerequisiteRoles,
+      requirements: requirements,
+      recommendedExperience: target.recommendedExperience,
+      resourceIds: target.resourceIds,
+      nextRoles: target.nextRoles,
+      createdAt: target.createdAt,
+      updatedAt: target.updatedAt,
+    );
+  }
+
+  CareerGoal _resolveSingleGoalForState(
+    CareerGoal existing,
+    String stateCode,
+    String stateName,
+  ) {
     final applicableBase = existing.requirements
         .where((r) {
           if (r.requirementSource != RequirementSource.stateRequirement) {
@@ -96,9 +174,9 @@ class ProfileController extends ChangeNotifier {
         .map((r) => _withStateContext(r, stateCode, stateName))
         .toList();
 
-    // Use the original base catalog as the lookup source so a verified overlay
-    // can still replace its common counterpart even when the common item had
-    // legacy state metadata that was filtered above.
+    // Use each ladder stage's original base catalog as the lookup source so a
+    // verified state overlay can replace the correct common requirement even
+    // when the user's final goal is several promotions beyond this stage.
     final baseById = {for (final r in existing.requirements) r.id: r};
     final verified = StateRequirementCatalog.buildVerifiedRequirements(
       stateCode: stateCode,
