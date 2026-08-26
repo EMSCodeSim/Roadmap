@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/requirement.dart';
+import 'package:firepath/pages/task_book/requirement_checklist_page.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/widgets/app_back_button.dart';
 
 class TaskBookRequirementsEditorPage extends StatelessWidget {
   const TaskBookRequirementsEditorPage({super.key});
@@ -36,17 +37,39 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
     List<RoadmapRequirement> bySource(RequirementSource src) =>
         items.where((e) => e.requirement.requirementSource == src).toList();
 
+    final national = bySource(RequirementSource.commonlyRequired);
     final stateReqs = bySource(RequirementSource.stateRequirement);
-    final deptReqs = bySource(RequirementSource.departmentRequirement);
-    final commonReqs = bySource(RequirementSource.commonlyRequired);
-    final recReqs = bySource(RequirementSource.recommended);
+    final local = bySource(RequirementSource.departmentRequirement);
+    final recommended = bySource(RequirementSource.recommended);
 
-    final grouped = <(String title, List<RoadmapRequirement> list)>[
-      if (stateReqs.isNotEmpty) ('STATE', stateReqs),
-      if (commonReqs.isNotEmpty) ('COMMON', commonReqs),
-      if (deptReqs.isNotEmpty) ('DEPARTMENT', deptReqs),
-      if (recReqs.isNotEmpty) ('RECOMMENDED', recReqs),
+    final groups = <(String, String, List<RoadmapRequirement>)>[
+      if (national.isNotEmpty)
+        (
+          'NATIONAL BASELINE',
+          'Start here, then verify state and department requirements.',
+          national,
+        ),
+      if (stateReqs.isNotEmpty)
+        (
+          'STATE',
+          'Verified state-specific requirements available to this profile.',
+          stateReqs,
+        ),
+      if (local.isNotEmpty)
+        (
+          'LOCAL / DEPARTMENT',
+          'Items added for your department, AHJ, or personal career path.',
+          local,
+        ),
+      if (recommended.isNotEmpty)
+        (
+          'RECOMMENDED',
+          'Development that may improve readiness but is not universal.',
+          recommended,
+        ),
     ];
+
+    final stateName = FireOpsCatalog.stateNameForCode(state.profile.state);
 
     return Scaffold(
       appBar: AppBar(
@@ -67,149 +90,76 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Make this book match your department',
+                    'National baseline + your local reality',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                          fontWeight: FontWeight.w900,
+                        ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Turn off items your department does not require and add local requirements before you begin using the Task Book.',
+                    'Career Road starts with a national/common framework. Verify ${stateName ?? 'your state'}, your AHJ, department job description, and promotional process. Add anything local that is missing.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      height: 1.45,
-                    ),
+                          color: cs.onSurfaceVariant,
+                          height: 1.45,
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline, size: 18, color: cs.primary),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'A national baseline is a planning starting point, not proof that a certification is required by every department.',
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             SizedBox(
               height: 54,
               child: FilledButton.icon(
                 onPressed: () => _showAddRequirement(context, state, goalId),
                 icon: const Icon(Icons.add),
-                label: const Text('Add Department Requirement'),
+                label: const Text('Add Local Requirement'),
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'REQUIREMENTS',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w900,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...grouped.expand((group) {
-              final header = Padding(
-                padding: const EdgeInsets.only(top: 10, bottom: 8),
-                child: Text(
-                  group.$1,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: cs.onSurfaceVariant,
-                  ),
+            const SizedBox(height: 18),
+            ...groups.expand((group) sync* {
+              yield Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.$1,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      group.$2,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
                 ),
               );
-              final cards = group.$2.map((item) {
-                final requirement = item.requirement;
-                final custom = requirement.id.startsWith('$goalId::');
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-                    decoration: BoxDecoration(
-                      color: item.isExcluded
-                          ? cs.surfaceContainerHighest.withValues(alpha: 0.45)
-                          : cs.surface,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border: Border.all(
-                        color: cs.outline.withValues(alpha: 0.14),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                requirement.name,
-                                style: Theme.of(context).textTheme.titleSmall
-                                    ?.copyWith(fontWeight: FontWeight.w800),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                _sourceLabel(
-                                  requirement,
-                                  stateCode: state.profile.state,
-                                ),
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: cs.onSurfaceVariant),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (custom)
-                          IconButton(
-                            tooltip: 'Delete custom requirement',
-                            onPressed: () => _confirmDelete(
-                              context,
-                              state,
-                              requirement.id,
-                              requirement.name,
-                            ),
-                            icon: const Icon(Icons.delete_outline),
-                          ),
-                        Switch(
-                          value: !item.isExcluded,
-                          onChanged: (enabled) async {
-                            final excluding = !enabled;
-                            if (excluding &&
-                                requirement.requirementSource ==
-                                    RequirementSource.stateRequirement) {
-                              final stateName =
-                                  FireOpsCatalog.stateNameForCode(
-                                    state.profile.state,
-                                  ) ??
-                                  'your state';
-                              final confirmed = await showDialog<bool>(
-                                context: context,
-                                builder: (dialogContext) => AlertDialog(
-                                  title: const Text('Remove requirement?'),
-                                  content: Text(
-                                    'This item is listed as a $stateName requirement. Remove it from your personal Task Book?',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => dialogContext.pop(false),
-                                      child: const Text('Keep Requirement'),
-                                    ),
-                                    FilledButton(
-                                      onPressed: () => dialogContext.pop(true),
-                                      child: const Text(
-                                        'Remove From My Task Book',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirmed != true) return;
-                            }
-                            await state.setRequirementExcluded(
-                              goalId: goalId,
-                              requirementId: requirement.id,
-                              excluded: excluding,
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+
+              for (final item in group.$3) {
+                yield _RequirementCard(
+                  goalId: goalId,
+                  item: item,
+                  state: state,
                 );
-              }).toList();
-              return [header, ...cards];
+              }
             }),
           ],
         ),
@@ -230,62 +180,6 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
     );
   }
 
-  static String _sourceLabel(
-    Requirement requirement, {
-    required String? stateCode,
-  }) {
-    final source = switch (requirement.requirementSource) {
-      RequirementSource.commonlyRequired => 'Commonly required',
-      RequirementSource.recommended => 'Recommended',
-      RequirementSource.stateRequirement => 'State requirement',
-      RequirementSource.departmentRequirement => 'Department requirement',
-    };
-    final stateName = FireOpsCatalog.stateNameForCode(stateCode);
-    final stateTail =
-        requirement.requirementSource == RequirementSource.stateRequirement &&
-            stateName != null
-        ? ' • $stateName'
-        : '';
-    final detail = switch (requirement.type) {
-      RequirementType.numericProgress
-          when requirement.progressRequired != null =>
-        '${requirement.progressRequired!.toStringAsFixed(0)} ${requirement.progressUnit ?? ''}'
-            .trim(),
-      RequirementType.experience when requirement.experienceValue != null =>
-        '${requirement.experienceValue!.toStringAsFixed(0)} ${requirement.experienceUnit ?? 'years'}',
-      _ => requirement.type.name,
-    };
-    return '$source$stateTail • $detail';
-  }
-
-  static Future<void> _confirmDelete(
-    BuildContext context,
-    AppState state,
-    String requirementId,
-    String name,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete requirement?'),
-        content: Text('$name will be removed from this custom Task Book.'),
-        actions: [
-          TextButton(
-            onPressed: () => dialogContext.pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => dialogContext.pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await state.deleteCustomRequirement(requirementId);
-    }
-  }
-
   static Future<void> _showAddRequirement(
     BuildContext context,
     AppState state,
@@ -301,128 +195,130 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
       isScrollControlled: true,
       showDragHandle: true,
       useSafeArea: true,
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (sheetContext, setSheetState) {
-            final insets = MediaQuery.viewInsetsOf(sheetContext);
-            return Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 20 + insets.bottom),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Add Department Requirement',
-                      style: Theme.of(sheetContext).textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w900),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final insets = MediaQuery.viewInsetsOf(sheetContext);
+          return Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 20 + insets.bottom),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Add Local Requirement',
+                    style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Use this for a state, AHJ, department, union, academy, or promotional requirement that is not already in the baseline.',
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: name,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      labelText: 'Requirement name',
+                      hintText: 'Example: Department acting officer task book',
                     ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: name,
-                      autofocus: true,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        labelText: 'Requirement name',
-                        hintText: 'Example: 100 hours apparatus driving',
+                  ),
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<RequirementType>(
+                    initialValue: type,
+                    decoration: const InputDecoration(labelText: 'Type'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: RequirementType.certification,
+                        child: Text('Certification'),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<RequirementType>(
-                      value: type,
-                      decoration: const InputDecoration(labelText: 'Type'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: RequirementType.certification,
-                          child: Text('Certification'),
-                        ),
-                        DropdownMenuItem(
-                          value: RequirementType.trainingCourse,
-                          child: Text('Training / Course'),
-                        ),
-                        DropdownMenuItem(
-                          value: RequirementType.taskBook,
-                          child: Text('Department Task Book'),
-                        ),
-                        DropdownMenuItem(
-                          value: RequirementType.experience,
-                          child: Text('Experience'),
-                        ),
-                        DropdownMenuItem(
-                          value: RequirementType.numericProgress,
-                          child: Text('Hours / Repetitions / Numeric Goal'),
-                        ),
-                        DropdownMenuItem(
-                          value: RequirementType.promotionalTest,
-                          child: Text('Written / Promotional Test'),
-                        ),
-                        DropdownMenuItem(
-                          value: RequirementType.practical,
-                          child: Text('Practical Evaluation'),
-                        ),
-                        DropdownMenuItem(
-                          value: RequirementType.interview,
-                          child: Text('Interview'),
-                        ),
-                        DropdownMenuItem(
-                          value: RequirementType.custom,
-                          child: Text('Other'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) setSheetState(() => type = value);
-                      },
-                    ),
-                    if (type == RequirementType.numericProgress ||
-                        type == RequirementType.experience) ...[
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: required,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              decoration: const InputDecoration(
-                                labelText: 'Required amount',
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: unit,
-                              decoration: InputDecoration(
-                                labelText: 'Unit',
-                                hintText: type == RequirementType.experience
-                                    ? 'years'
-                                    : 'hours',
-                              ),
-                            ),
-                          ),
-                        ],
+                      DropdownMenuItem(
+                        value: RequirementType.trainingCourse,
+                        child: Text('Training / Course'),
+                      ),
+                      DropdownMenuItem(
+                        value: RequirementType.taskBook,
+                        child: Text('Task Book'),
+                      ),
+                      DropdownMenuItem(
+                        value: RequirementType.experience,
+                        child: Text('Experience'),
+                      ),
+                      DropdownMenuItem(
+                        value: RequirementType.numericProgress,
+                        child: Text('Hours / Repetitions / Numeric Goal'),
+                      ),
+                      DropdownMenuItem(
+                        value: RequirementType.promotionalTest,
+                        child: Text('Written / Promotional Test'),
+                      ),
+                      DropdownMenuItem(
+                        value: RequirementType.practical,
+                        child: Text('Practical Evaluation'),
+                      ),
+                      DropdownMenuItem(
+                        value: RequirementType.interview,
+                        child: Text('Interview'),
+                      ),
+                      DropdownMenuItem(
+                        value: RequirementType.custom,
+                        child: Text('Other'),
                       ),
                     ],
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      height: 56,
-                      child: FilledButton(
-                        onPressed: () {
-                          if (name.text.trim().isEmpty) return;
-                          Navigator.pop(sheetContext, true);
-                        },
-                        child: const Text('Add Requirement'),
-                      ),
+                    onChanged: (value) {
+                      if (value != null) setSheetState(() => type = value);
+                    },
+                  ),
+                  if (type == RequirementType.numericProgress ||
+                      type == RequirementType.experience) ...[
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: required,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Required amount',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: unit,
+                            decoration: InputDecoration(
+                              labelText: 'Unit',
+                              hintText: type == RequirementType.experience
+                                  ? 'years'
+                                  : 'hours',
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 56,
+                    child: FilledButton(
+                      onPressed: () {
+                        if (name.text.trim().isEmpty) return;
+                        Navigator.pop(sheetContext, true);
+                      },
+                      child: const Text('Add Requirement'),
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
-        );
-      },
+            ),
+          );
+        },
+      ),
     );
 
     if (result != true) {
@@ -436,21 +332,20 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
     final amount = double.tryParse(required.text.trim());
     final cleanUnit = unit.text.trim();
     final requirement = Requirement(
-      id: '$goalId::dept_${now.millisecondsSinceEpoch}',
+      id: '$goalId::local_${now.millisecondsSinceEpoch}',
       name: name.text.trim(),
-      category: 'Department',
+      category: 'Local',
       priority: RequirementPriority.department,
-      description: 'Custom department requirement added by the user.',
+      description: 'Local requirement added by the user. Verify against the official source.',
       type: type,
       requirementSource: RequirementSource.departmentRequirement,
       defaultRequired: true,
-      stateDependent: false,
+      stateDependent: true,
       departmentDependent: true,
       completed: false,
       progressCurrent: type == RequirementType.numericProgress ? 0 : null,
-      progressRequired: type == RequirementType.numericProgress
-          ? (amount ?? 0)
-          : null,
+      progressRequired:
+          type == RequirementType.numericProgress ? (amount ?? 0) : null,
       progressUnit: type == RequirementType.numericProgress
           ? (cleanUnit.isEmpty ? 'hours' : cleanUnit)
           : null,
@@ -458,13 +353,18 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
       experienceUnit: type == RequirementType.experience
           ? (cleanUnit.isEmpty ? 'years' : cleanUnit)
           : null,
-      certificationReference: null,
-      certificationDefinitionId: null,
+      certificationReference: type == RequirementType.certification
+          ? name.text.trim()
+          : null,
+      certificationDefinitionId: type == RequirementType.certification
+          ? FireOpsCatalog.matchCertificationDefinitionId(name.text.trim())
+          : null,
       allowExpiredCertification: false,
       prerequisiteRequirementIds: const [],
       resourceIds: const [],
       resourceLinks: const [],
       sortOrder: 999,
+      sourceNotes: 'User-added local requirement; confirm with the responsible authority.',
       estimatedDurationDays: null,
       recommendedLeadTimeDays: null,
       canRunConcurrent: true,
@@ -483,5 +383,137 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
     name.dispose();
     required.dispose();
     unit.dispose();
+  }
+}
+
+class _RequirementCard extends StatelessWidget {
+  final String goalId;
+  final RoadmapRequirement item;
+  final AppState state;
+
+  const _RequirementCard({
+    required this.goalId,
+    required this.item,
+    required this.state,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final requirement = item.requirement;
+    final cs = Theme.of(context).colorScheme;
+    final custom = requirement.id.startsWith('$goalId::');
+    final override = state.taskBookController.getOverride(goalId, requirement.id);
+    final steps = override?.planSteps ?? const [];
+    final subTasks = override?.subTasks ?? const [];
+    final done = steps.where((e) => e.isDone).length;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+        decoration: BoxDecoration(
+          color: item.isExcluded
+              ? cs.surfaceContainerHighest.withValues(alpha: 0.45)
+              : cs.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    requirement.name,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _sourceLabel(requirement, state.profile.state),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                  ),
+                  if (steps.isNotEmpty || subTasks.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '${steps.length} checklist items • $done complete${subTasks.isEmpty ? '' : ' • ${subTasks.length} deeper steps'}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Open checklist',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => RequirementChecklistPage(
+                    goalId: goalId,
+                    requirement: requirement,
+                  ),
+                ),
+              ),
+              icon: const Icon(Icons.account_tree_outlined),
+            ),
+            if (custom)
+              IconButton(
+                tooltip: 'Delete local requirement',
+                onPressed: () => _confirmDelete(context, requirement),
+                icon: const Icon(Icons.delete_outline),
+              ),
+            Switch(
+              value: !item.isExcluded,
+              onChanged: (enabled) async {
+                await state.setRequirementExcluded(
+                  goalId: goalId,
+                  requirementId: requirement.id,
+                  excluded: !enabled,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, Requirement req) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete local requirement?'),
+        content: Text('${req.name} will be removed from this Task Book.'),
+        actions: [
+          TextButton(
+            onPressed: () => dialogContext.pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => dialogContext.pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await state.deleteCustomRequirement(req.id);
+  }
+
+  static String _sourceLabel(Requirement requirement, String? stateCode) {
+    final stateName = FireOpsCatalog.stateNameForCode(stateCode);
+    final source = switch (requirement.requirementSource) {
+      RequirementSource.commonlyRequired => 'National/common baseline',
+      RequirementSource.recommended => 'Recommended development',
+      RequirementSource.stateRequirement =>
+        '${stateName ?? 'State'} requirement',
+      RequirementSource.departmentRequirement => 'Local / department',
+    };
+    return '$source • ${requirement.type.name}';
   }
 }
