@@ -6,6 +6,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/readiness_action_plan.dart';
 import 'package:firepath/services/readiness_snapshot.dart';
+import 'package:firepath/services/smart_next_step.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/widgets/career_inbox_preview.dart';
@@ -21,7 +22,8 @@ class VisualHomePage extends StatelessWidget {
     final app = context.watch<AppState>();
     final roadmap = app.roadmap;
     final goal = roadmap?.goal;
-    final next = roadmap?.nextStep?.requirement;
+    final smartNext = SmartNextStepEngine.resolve(app);
+    final next = smartNext?.requirement;
     final hasRoadmap = roadmap != null && roadmap.totalCount > 0;
 
     return Scaffold(
@@ -46,7 +48,8 @@ class VisualHomePage extends StatelessWidget {
             else ...[
               _DailyFocusCta(
                 goalTitle: goal?.title,
-                nextTitle: next?.name,
+                nextTitle: smartNext?.focusTitle ?? next?.name,
+                nextReason: smartNext?.reason,
                 onStart: () => context.push(AppRoutes.dailyFocus),
               ),
               const SizedBox(height: 14),
@@ -188,11 +191,13 @@ class _ChooseGoalCard extends StatelessWidget {
 class _DailyFocusCta extends StatelessWidget {
   final String? goalTitle;
   final String? nextTitle;
+  final String? nextReason;
   final VoidCallback onStart;
 
   const _DailyFocusCta({
     required this.goalTitle,
     required this.nextTitle,
+    required this.nextReason,
     required this.onStart,
   });
 
@@ -238,6 +243,16 @@ class _DailyFocusCta extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+          if (nextReason != null && nextReason!.trim().isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Text(
+              nextReason!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w800,
                   ),
             ),
           ],
