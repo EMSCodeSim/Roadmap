@@ -58,6 +58,7 @@ void main() {
     await tester.ensureVisible(find.text('DRIVING'));
     await tester.tap(find.text('DRIVING'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Engine'));
     await tester.tap(find.text('Engine'));
     await tester.pumpAndSettle();
 
@@ -82,6 +83,7 @@ void main() {
     await tester.ensureVisible(find.text('SKILL'));
     await tester.tap(find.text('SKILL'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('IV / vascular access'));
     await tester.tap(find.text('IV / vascular access'));
     await tester.pumpAndSettle();
 
