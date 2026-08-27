@@ -33,7 +33,7 @@ import 'package:firepath/pages/requirement/requirement_detail_page.dart';
 import 'package:firepath/pages/requirement/get_started_page.dart';
 import 'package:firepath/pages/certifications/certification_detail_page.dart';
 import 'package:firepath/pages/certifications/certification_picker_page.dart';
-import 'package:firepath/pages/task_book/qualification_task_book_page.dart';
+import 'package:firepath/pages/task_book/qualification_task_book_checklist_shell.dart';
 import 'package:firepath/pages/task_book/task_detail_page.dart';
 import 'package:firepath/models/prefill.dart';
 
@@ -235,7 +235,7 @@ class AppRouter {
         path: AppRoutes.qualificationTaskBook,
         name: 'qualification_task_book',
         pageBuilder: (context, state) => MaterialPage(
-          child: QualificationTaskBookPage(
+          child: QualificationTaskBookChecklistShell(
             requirement: (state.extra as Map?)?['requirement'] ?? state.extra,
           ),
         ),
