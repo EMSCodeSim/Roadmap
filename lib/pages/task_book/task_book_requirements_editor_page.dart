@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/pages/task_book/requirement_checklist_page.dart';
 import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/national_task_book_baseline.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
@@ -403,8 +404,16 @@ class _RequirementCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final custom = requirement.id.startsWith('$goalId::');
     final override = state.taskBookController.getOverride(goalId, requirement.id);
-    final steps = override?.planSteps ?? const [];
-    final subTasks = override?.subTasks ?? const [];
+    final savedSteps = override?.planSteps ?? const <RequirementPlanStep>[];
+    final savedSubTasks = override?.subTasks ?? const <RequirementSubTask>[];
+    final steps = NationalTaskBookBaseline.effectiveSteps(
+      requirement,
+      savedSteps,
+    );
+    final subTasks = NationalTaskBookBaseline.effectiveSubTasks(
+      requirement,
+      savedSubTasks,
+    );
     final done = steps.where((e) => e.isDone).length;
 
     return Padding(
