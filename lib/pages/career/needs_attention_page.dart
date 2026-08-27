@@ -143,7 +143,7 @@ class _NeedsAttentionPageState extends State<NeedsAttentionPage> {
         if (roadmap == null) return;
         for (final rr in roadmap.all) {
           if (rr.requirement.id == requirementId) {
-            context.push(AppRoutes.requirementDetail, extra: rr.requirement);
+            AppRouter.openRequirement(context, rr.requirement);
             return;
           }
         }

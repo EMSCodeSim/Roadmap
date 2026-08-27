@@ -34,8 +34,11 @@ import 'package:firepath/pages/requirement/get_started_page.dart';
 import 'package:firepath/pages/certifications/certification_detail_page.dart';
 import 'package:firepath/pages/certifications/certification_picker_page.dart';
 import 'package:firepath/pages/task_book/qualification_task_book_checklist_shell.dart';
+import 'package:firepath/pages/task_book/requirement_checklist_page.dart';
 import 'package:firepath/pages/task_book/task_detail_page.dart';
 import 'package:firepath/models/prefill.dart';
+import 'package:firepath/models/requirement.dart';
+import 'package:firepath/services/task_book_navigation.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -247,6 +250,27 @@ class AppRouter {
             MaterialPage(child: TaskDetailPage(extra: state.extra)),
       ),
       GoRoute(
+        path: AppRoutes.requirementChecklist,
+        name: 'requirement_checklist',
+        pageBuilder: (context, state) {
+          final args = TaskBookRouteArgs.fromExtra(state.extra);
+          final requirement = args.requirement;
+          if (requirement == null) {
+            return const MaterialPage(
+              child: Scaffold(
+                body: Center(child: Text('Checklist not found.')),
+              ),
+            );
+          }
+          return MaterialPage(
+            child: RequirementChecklistPage(
+              requirement: requirement,
+              goalId: args.goalId,
+            ),
+          );
+        },
+      ),
+      GoRoute(
         path: AppRoutes.myPathLegacy,
         name: 'task_book_customize',
         pageBuilder: (context, state) =>
@@ -289,6 +313,49 @@ class AppRouter {
       ),
     ],
   );
+
+  /// Opens a Task Book requirement at the correct depth.
+  ///
+  /// Certifications go to the JPR/skills checklist. Preparation tasks remain
+  /// a secondary screen when FireOps has authored that content.
+  static void openRequirement(
+    BuildContext context,
+    Requirement requirement, {
+    String? goalId,
+  }) {
+    switch (TaskBookNavigation.targetFor(requirement)) {
+      case TaskBookOpenTarget.skillsChecklist:
+        context.push(
+          AppRoutes.requirementChecklist,
+          extra: <String, dynamic>{
+            'requirement': requirement,
+            if (goalId != null) 'goalId': goalId,
+          },
+        );
+      case TaskBookOpenTarget.preparationTasks:
+        openPreparationTasks(context, requirement);
+      case TaskBookOpenTarget.requirementDetail:
+        context.push(
+          AppRoutes.requirementDetail,
+          extra: goalId == null
+              ? requirement
+              : <String, dynamic>{
+                  'requirement': requirement,
+                  'goalId': goalId,
+                },
+        );
+    }
+  }
+
+  static void openPreparationTasks(
+    BuildContext context,
+    Requirement requirement,
+  ) {
+    context.push(
+      AppRoutes.qualificationTaskBook,
+      extra: <String, dynamic>{'requirement': requirement},
+    );
+  }
 }
 
 class AppRoutes {
@@ -334,5 +401,6 @@ class AppRoutes {
   static const String customTaskBookCreate = '/task-book/custom/create';
   static const String customTaskBookBuilder = '/task-book/custom/builder';
   static const String qualificationTaskBook = '/task-book/qualification';
+  static const String requirementChecklist = '/task-book/checklist';
   static const String taskDetail = '/task-book/task';
 }

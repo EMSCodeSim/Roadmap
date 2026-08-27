@@ -330,7 +330,7 @@ class _PathTab extends StatelessWidget {
                   emphasized: emphasized,
                   subtitle: MyPathPage._whyLabel(item.requirement),
                   primaryLabel: _primaryLabel(item.requirement),
-                  onOpen: () => context.push(AppRoutes.requirementDetail, extra: item.requirement),
+                  onOpen: () => AppRouter.openRequirement(context, item.requirement, goalId: state.roadmap?.goal.id),
                   onPrimary: () => _primaryAction(context, state, item.requirement),
                 ),
               );
@@ -352,7 +352,7 @@ class _PathTab extends StatelessWidget {
                         requirement: r.requirement,
                         statusIcon: Icons.circle_outlined,
                         statusColor: cs.onSurfaceVariant,
-                        onTap: () => context.push(AppRoutes.requirementDetail, extra: r.requirement),
+                        onTap: () => AppRouter.openRequirement(context, r.requirement, goalId: state.roadmap?.goal.id),
                         compactBadges: true,
                       ),
                     )),
@@ -381,7 +381,7 @@ class _PathTab extends StatelessWidget {
                         requirement: r.requirement,
                         statusIcon: Icons.check_circle,
                         statusColor: FireOpsSemanticColors.completed,
-                        onTap: () => context.push(AppRoutes.requirementDetail, extra: r.requirement),
+                        onTap: () => AppRouter.openRequirement(context, r.requirement, goalId: state.roadmap?.goal.id),
                         compactBadges: true,
                       ),
                     )),
@@ -412,8 +412,12 @@ class _PathTab extends StatelessWidget {
   }
 
   static void _primaryAction(BuildContext context, AppState state, Requirement r) {
+    if (r.type == RequirementType.certification) {
+      AppRouter.openRequirement(context, r, goalId: state.roadmap?.goal.id);
+      return;
+    }
     if (r.type == RequirementType.taskBook || r.type == RequirementType.numericProgress) {
-      context.push(AppRoutes.requirementDetail, extra: r);
+      AppRouter.openRequirement(context, r, goalId: state.roadmap?.goal.id);
       return;
     }
     if (r.type == RequirementType.experience) {

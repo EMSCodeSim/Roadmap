@@ -143,7 +143,11 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
                     focusReason: smartNext?.reason,
                     task: task,
                     onOpenTask: task == null
-                        ? () => context.go(AppRoutes.myPath)
+                        ? () => AppRouter.openRequirement(
+                            context,
+                            next,
+                            goalId: goalId,
+                          )
                         : () => context.push(
                             AppRoutes.taskDetail,
                             extra: {

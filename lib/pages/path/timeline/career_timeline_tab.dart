@@ -61,7 +61,13 @@ class CareerTimelineTab extends StatelessWidget {
 
           _ThisMonthCard(
             item: plan.thisMonthFocus,
-            onOpen: plan.thisMonthFocus?.requirement == null ? null : () => context.push(AppRoutes.getStarted, extra: plan.thisMonthFocus!.requirement!),
+            onOpen: plan.thisMonthFocus?.requirement == null
+                ? null
+                : () => AppRouter.openRequirement(
+                      context,
+                      plan.thisMonthFocus!.requirement!,
+                      goalId: context.read<AppState>().roadmap?.goal.id,
+                    ),
           ),
           const SizedBox(height: AppSpacing.md),
 
@@ -71,7 +77,7 @@ class CareerTimelineTab extends StatelessWidget {
             onTapItem: (item) {
               final r = item.requirement;
               if (r == null) return;
-              context.push(AppRoutes.requirementDetail, extra: r);
+              AppRouter.openRequirement(context, r, goalId: context.read<AppState>().roadmap?.goal.id);
             },
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -89,7 +95,13 @@ class CareerTimelineTab extends StatelessWidget {
                   context.go(AppRoutes.certifications);
                   return;
                 }
-                if (item.requirement != null) context.push(AppRoutes.requirementDetail, extra: item.requirement!);
+                if (item.requirement != null) {
+                  AppRouter.openRequirement(
+                    context,
+                    item.requirement!,
+                    goalId: context.read<AppState>().roadmap?.goal.id,
+                  );
+                }
               }),
               const SizedBox(height: AppSpacing.md),
             ];

@@ -59,10 +59,7 @@ class VisualHomePage extends StatelessWidget {
                 goalTitle: goal?.title ?? 'Career Road',
                 onViewPath: () => context.go(AppRoutes.myPath),
                 onActionTap: (item) {
-                  context.push(
-                    AppRoutes.requirementDetail,
-                    extra: item.requirement,
-                  );
+                  AppRouter.openRequirement(context, item.requirement);
                 },
               ),
             ],

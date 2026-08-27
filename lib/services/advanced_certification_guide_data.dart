@@ -23,6 +23,11 @@ class AdvancedCertificationGuideData {
     if (id == 'driver_operator_pumper') return driverOperatorPumper;
     if (id == 'fire_officer_1') return fireOfficerI;
 
+    // Name fallback is only for certification requirements. Training courses
+    // such as "State driver/operator policy check" must not inherit the
+    // pumper preparation-task book.
+    if (requirement.type != RequirementType.certification) return null;
+
     final name = requirement.name.trim().toLowerCase();
     if ((name.contains('driver') || name.contains('engineer')) &&
         (name.contains('pumper') || name.contains('operator'))) {
