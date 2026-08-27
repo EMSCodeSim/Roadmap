@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/roadmap_models.dart';
 import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/national_task_book_baseline.dart';
 import 'package:firepath/services/task_book_checklist_hierarchy.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
@@ -25,13 +26,22 @@ class RequirementChecklistPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final controller = state.taskBookController;
-    final steps = controller.planStepsFor(
+    final savedSteps = controller.planStepsFor(
       goalId: goalId,
       requirementId: requirement.id,
     );
-    final subTasks = controller.subTasksFor(
+    final savedSubTasks = controller.subTasksFor(
       goalId: goalId,
       requirementId: requirement.id,
+    );
+    final standard = NationalTaskBookBaseline.standardFor(requirement);
+    final steps = NationalTaskBookBaseline.effectiveSteps(
+      requirement,
+      savedSteps,
+    );
+    final subTasks = NationalTaskBookBaseline.effectiveSubTasks(
+      requirement,
+      savedSubTasks,
     );
     final cs = Theme.of(context).colorScheme;
 
@@ -40,7 +50,7 @@ class RequirementChecklistPage extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addStep(context, state),
         icon: const Icon(Icons.add),
-        label: const Text('Checklist item'),
+        label: const Text('Local item'),
       ),
       body: SafeArea(
         child: ListView(
@@ -54,7 +64,9 @@ class RequirementChecklistPage extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              _sourceText(state),
+              standard == null
+                  ? _sourceText(state)
+                  : '${standard.citation} • national professional-qualification baseline',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     height: 1.4,
@@ -68,7 +80,9 @@ class RequirementChecklistPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
               child: Text(
-                'Start with the national baseline, then verify your state, department, and promotional process. Add local steps here without changing the baseline requirement.',
+                standard == null
+                    ? 'No built-in national checklist is mapped to this requirement yet. Add state, department, academy, or promotional steps here.'
+                    : 'This checklist starts with a paraphrased ${standard.citation} national baseline. National items remain intact while state, AHJ, department, academy, and promotional requirements can be added on top. Verify the official certification process for your jurisdiction.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       height: 1.45,
                     ),
@@ -94,6 +108,7 @@ class RequirementChecklistPage extends StatelessWidget {
                   onAddChild: () => _addSubStep(context, state, step),
                   onToggleChild: (child, done) =>
                       _toggleSubStep(state, step, child, done),
+                  isNational: NationalTaskBookBaseline.isNationalItem(step.id),
                   onDelete: () => controller.deletePlanStep(
                     goalId: goalId,
                     requirementId: requirement.id,
@@ -150,9 +165,9 @@ class RequirementChecklistPage extends StatelessWidget {
   Future<void> _addStep(BuildContext context, AppState state) async {
     final title = await _textPrompt(
       context,
-      title: 'Add checklist item',
+      title: 'Add local checklist item',
       label: 'Checklist item',
-      hint: 'Example: Complete pump operations evaluation',
+      hint: 'Example: Department acting officer evaluation',
     );
     if (title == null) return;
     final now = DateTime.now();
@@ -177,9 +192,9 @@ class RequirementChecklistPage extends StatelessWidget {
   ) async {
     final title = await _textPrompt(
       context,
-      title: 'Add deeper step',
+      title: 'Add local substep',
       label: 'Substep',
-      hint: 'Example: Establish water supply',
+      hint: 'Example: Evaluator initials required',
     );
     if (title == null) return;
     final now = DateTime.now();
@@ -204,22 +219,20 @@ class RequirementChecklistPage extends StatelessWidget {
     bool done,
   ) async {
     final controller = state.taskBookController;
-    await controller.setPlanStepDone(
+    await controller.upsertPlanStep(
       goalId: goalId,
       requirementId: requirement.id,
-      stepId: step.id,
-      done: done,
+      step: step.copyWith(isDone: done),
     );
     for (final child in TaskBookChecklistHierarchy.childrenFor(
       step.id,
       allSubTasks,
     )) {
       if (child.isDone == done) continue;
-      await controller.setSubTaskDone(
+      await controller.upsertSubTask(
         goalId: goalId,
         requirementId: requirement.id,
-        subTaskId: child.id,
-        done: done,
+        subTask: child.copyWith(isDone: done),
       );
     }
   }
@@ -231,26 +244,27 @@ class RequirementChecklistPage extends StatelessWidget {
     bool done,
   ) async {
     final controller = state.taskBookController;
-    await controller.setSubTaskDone(
+    await controller.upsertSubTask(
       goalId: goalId,
       requirementId: requirement.id,
-      subTaskId: child.id,
-      done: done,
+      subTask: child.copyWith(isDone: done),
     );
-    final updated = controller.subTasksFor(
-      goalId: goalId,
-      requirementId: requirement.id,
+    final updated = NationalTaskBookBaseline.effectiveSubTasks(
+      requirement,
+      controller.subTasksFor(
+        goalId: goalId,
+        requirementId: requirement.id,
+      ),
     );
     final parentDone = TaskBookChecklistHierarchy.stepCompleteFromChildren(
       parent.id,
       updated,
     );
     if (parentDone != parent.isDone) {
-      await controller.setPlanStepDone(
+      await controller.upsertPlanStep(
         goalId: goalId,
         requirementId: requirement.id,
-        stepId: parent.id,
-        done: parentDone,
+        step: parent.copyWith(isDone: parentDone),
       );
     }
   }
@@ -299,6 +313,7 @@ class _StepCard extends StatelessWidget {
   final ValueChanged<bool> onToggle;
   final VoidCallback onAddChild;
   final void Function(RequirementSubTask, bool) onToggleChild;
+  final bool isNational;
   final VoidCallback onDelete;
 
   const _StepCard({
@@ -307,6 +322,7 @@ class _StepCard extends StatelessWidget {
     required this.onToggle,
     required this.onAddChild,
     required this.onToggleChild,
+    required this.isNational,
     required this.onDelete,
   });
 
@@ -327,9 +343,11 @@ class _StepCard extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         subtitle: Text(
-          children.isEmpty
-              ? 'Tap to add deeper checklist steps'
-              : '$doneCount of ${children.length} substeps complete',
+          isNational
+              ? 'National baseline • $doneCount of ${children.length} objectives complete'
+              : (children.isEmpty
+                  ? 'Local/custom item • tap to add deeper checklist steps'
+                  : '$doneCount of ${children.length} substeps complete'),
           style: TextStyle(color: cs.onSurfaceVariant),
         ),
         trailing: const Icon(Icons.expand_more),
@@ -353,14 +371,20 @@ class _StepCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onAddChild,
                   icon: const Icon(Icons.add),
-                  label: const Text('Add substep'),
+                  label: Text(isNational ? 'Add local substep' : 'Add substep'),
                 ),
                 const Spacer(),
-                IconButton(
-                  tooltip: 'Delete checklist item',
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline),
-                ),
+                if (!isNational)
+                  IconButton(
+                    tooltip: 'Delete checklist item',
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline),
+                  )
+                else
+                  const Chip(
+                    avatar: Icon(Icons.verified_outlined, size: 16),
+                    label: Text('National'),
+                  ),
               ],
             ),
           ),
@@ -384,21 +408,21 @@ class _EmptyChecklist extends StatelessWidget {
             const Icon(Icons.account_tree_outlined, size: 38),
             const SizedBox(height: 10),
             Text(
-              'Build the checklist',
+              'Add local requirements',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
             ),
             const SizedBox(height: 6),
             const Text(
-              'Add a checklist item. If it has multiple parts, open it and add deeper substeps.',
+              'No national baseline is mapped to this requirement yet. Add state, department, academy, or promotional checklist items here.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: onAdd,
               icon: const Icon(Icons.add),
-              label: const Text('Add first item'),
+              label: const Text('Add local item'),
             ),
           ],
         ),
