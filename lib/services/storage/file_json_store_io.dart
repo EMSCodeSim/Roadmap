@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:firepath/services/storage/file_json_store.dart';
@@ -17,6 +18,17 @@ class PlatformFileJsonStore implements FileJsonStore {
   Directory? _cachedRoot;
   static bool _documentsUnavailable = false;
 
+  static bool get _runningUnderTestBinding {
+    try {
+      return WidgetsBinding.instance.runtimeType
+          .toString()
+          .contains('TestWidgetsFlutterBinding');
+    } catch (_) {
+      // Binding is not initialized (plain unit tests).
+      return true;
+    }
+  }
+
   static final _safeKey = RegExp(r'^fireops\.[A-Za-z0-9._-]+$');
 
   Future<Directory?> _root() async {
@@ -29,8 +41,12 @@ class PlatformFileJsonStore implements FileJsonStore {
         return dir;
       }
       if (_documentsUnavailable) return null;
+      if (_runningUnderTestBinding) {
+        _documentsUnavailable = true;
+        return null;
+      }
       final docs = await getApplicationDocumentsDirectory()
-          .timeout(const Duration(seconds: 1));
+          .timeout(const Duration(seconds: 2));
       final dir = Directory('${docs.path}/fireops_data');
       if (!await dir.exists()) await dir.create(recursive: true);
       _cachedRoot = dir;
