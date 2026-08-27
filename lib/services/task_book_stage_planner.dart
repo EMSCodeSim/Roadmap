@@ -77,13 +77,10 @@ class TaskBookStagePlanner {
     final cat = r.category.toLowerCase();
     if (cat.contains('prereq') || cat.contains('pre-req')) return TaskBookStage.prerequisites;
 
-    // If this requirement is a known prerequisite for other items AND it isn't
-    // a purely “ongoing” type, treat it as a prerequisite stage anchor.
     if (isPrerequisiteForOthers && r.type != RequirementType.experience && r.type != RequirementType.numericProgress) {
       return TaskBookStage.prerequisites;
     }
 
-    // Priority-based development bucket.
     if (r.priority == RequirementPriority.development) return TaskBookStage.developmentRecommended;
 
     return switch (r.type) {
@@ -115,7 +112,6 @@ class TaskBookStagePlanner {
       if (key2.isNotEmpty) normalizedToIdx.putIfAbsent(key2, () => i);
     }
 
-    // Find which requirements are prerequisites for others.
     final prereqKeys = <String>{};
     for (final r in requirements) {
       for (final p in r.prerequisiteRequirementIds) {
@@ -124,7 +120,6 @@ class TaskBookStagePlanner {
       }
     }
 
-    // Map requirement indexes that are known prerequisites.
     final prerequisiteRequirementIndexes = <int>{};
     for (final key in prereqKeys) {
       final idx = normalizedToIdx[key];
@@ -142,10 +137,12 @@ class TaskBookStagePlanner {
       for (final prereq in r.prerequisiteRequirementIds) {
         final k = _norm(prereq);
         final idx = normalizedToIdx[k];
-        if (idx == null) continue; // Unknown prereq (external) => don't block.
+        if (idx == null) continue;
         if (idx < 0 || idx >= items.length) continue;
         final prereqRaw = items[idx];
-        if (!isComplete(prereqRaw)) unmet.add(requirements[idx].name);
+        if (!isComplete(prereqRaw)) {
+          unmet.add('Complete ${requirements[idx].name} first');
+        }
       }
 
       stageItems.add(TaskBookStageItem<T>(
@@ -159,23 +156,27 @@ class TaskBookStagePlanner {
       ));
     }
 
-    // Suggested next: earliest stage item that is incomplete and startable.
-    final suggested = stageItems
-        .where((e) => !e.isComplete)
-        .toList()
-      ..sort((a, b) {
-        final sa = metaFor(a.stage).order;
-        final sb = metaFor(b.stage).order;
-        final c = sa.compareTo(sb);
-        if (c != 0) return c;
-        if (a.canStartNow != b.canStartNow) return a.canStartNow ? -1 : 1;
+    // Suggested next: remain in the earliest unfinished stage. Inside that
+    // stage, favor work with measurable progress already underway, then normal
+    // priority/sort order. Locked future work stays visible but is never Next.
+    TaskBookStageItem<T>? suggestedNext;
+    for (final meta in _meta) {
+      final currentStage = stageItems
+          .where((e) => e.stage == meta.stage && !e.isComplete && e.canStartNow)
+          .toList();
+      if (currentStage.isEmpty) continue;
+      currentStage.sort((a, b) {
+        final underway = _progressRank(a.requirement).compareTo(_progressRank(b.requirement));
+        if (underway != 0) return underway;
         final pa = _priorityRank(a.requirement.priority);
         final pb = _priorityRank(b.requirement.priority);
         final pc = pa.compareTo(pb);
         if (pc != 0) return pc;
         return a.originalIndex.compareTo(b.originalIndex);
       });
-    final suggestedNext = suggested.where((e) => e.canStartNow).firstOrNull;
+      suggestedNext = currentStage.first;
+      break;
+    }
 
     final byStage = <TaskBookStage, List<TaskBookStageItem<T>>>{};
     for (final item in stageItems) {
@@ -187,13 +188,13 @@ class TaskBookStagePlanner {
       final list = byStage[meta.stage] ?? <TaskBookStageItem<T>>[];
       if (list.isEmpty) continue;
 
-      // Smart ordering (view-only): startable incomplete -> locked incomplete -> complete.
       final sorted = [...list];
       sorted.sort((a, b) {
         int tier(TaskBookStageItem<T> i) {
-          if (i.isComplete) return 2;
-          if (!i.canStartNow) return 1;
-          return 0;
+          if (i.isComplete) return 3;
+          if (!i.canStartNow) return 2;
+          if (_progressRank(i.requirement) == 0) return 0;
+          return 1;
         }
 
         final c = tier(a).compareTo(tier(b));
@@ -219,8 +220,19 @@ class TaskBookStagePlanner {
     );
   }
 
+  static int _progressRank(Requirement r) {
+    if (r.type == RequirementType.numericProgress &&
+        r.progressCurrent != null &&
+        r.progressRequired != null &&
+        r.progressRequired! > 0 &&
+        r.progressCurrent! > 0 &&
+        r.progressCurrent! < r.progressRequired!) {
+      return 0;
+    }
+    return 1;
+  }
+
   static int _priorityRank(RequirementPriority p) {
-    // Smaller = more important.
     return switch (p) {
       RequirementPriority.state => 0,
       RequirementPriority.core => 1,

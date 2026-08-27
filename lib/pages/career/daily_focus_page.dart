@@ -11,6 +11,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/ecosystem_recommendations.dart';
+import 'package:firepath/services/smart_next_step.dart';
 import 'package:firepath/widgets/ecosystem_recommendation_card.dart';
 import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/state/app_state.dart';
@@ -66,7 +67,8 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     final roadmap = app.roadmap;
-    final next = roadmap?.nextStep?.requirement;
+    final smartNext = SmartNextStepEngine.resolve(app);
+    final next = smartNext?.requirement;
     final goalId = roadmap?.goal.id;
     final task = next == null || goalId == null
         ? null
@@ -79,7 +81,7 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
       0,
       (sum, record) => sum + (record.hours ?? 0),
     );
-    final focusTopic = task?.title ?? next?.name;
+    final focusTopic = smartNext?.focusTitle ?? task?.title ?? next?.name;
     final ecosystemRecommendation = next == null
         ? null
         : EcosystemRecommendations.forDailyFocus(
@@ -137,6 +139,8 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
                     mode: _mode,
                     goalId: goalId!,
                     requirement: next,
+                    focusTitle: focusTopic ?? next.name,
+                    focusReason: smartNext?.reason,
                     task: task,
                     onOpenTask: task == null
                         ? () => context.go(AppRoutes.myPath)
@@ -152,7 +156,7 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
                     onRecord: () => QuickLogLauncher.open(
                       context,
                       prefill: LogPrefill(
-                        title: task?.title ?? next.name,
+                        title: focusTopic ?? next.name,
                         category: 'Daily Focus',
                         relatedGoalId: goalId,
                         relatedRequirementId: next.id,
@@ -283,6 +287,8 @@ class _FocusPlan extends StatelessWidget {
   final DailyFocusMode mode;
   final String goalId;
   final Requirement requirement;
+  final String focusTitle;
+  final String? focusReason;
   final TaskBookTaskDefinition? task;
   final VoidCallback onOpenTask;
   final VoidCallback onRecord;
@@ -291,6 +297,8 @@ class _FocusPlan extends StatelessWidget {
     required this.mode,
     required this.goalId,
     required this.requirement,
+    required this.focusTitle,
+    required this.focusReason,
     required this.task,
     required this.onOpenTask,
     required this.onRecord,
@@ -319,7 +327,7 @@ class _FocusPlan extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            task?.title ?? requirement.name,
+            focusTitle,
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -331,6 +339,16 @@ class _FocusPlan extends StatelessWidget {
               context,
             ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
+          if (focusReason != null && focusReason!.trim().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              focusReason!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ],
           const SizedBox(height: 16),
           ...steps.indexed.map(
             (entry) => Padding(
