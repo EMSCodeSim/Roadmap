@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -28,16 +29,24 @@ class PlatformFileJsonStore implements FileJsonStore {
         return dir;
       }
       if (_documentsUnavailable) return null;
-      final docs = await getApplicationDocumentsDirectory();
+      final docs = await getApplicationDocumentsDirectory()
+          .timeout(const Duration(seconds: 1));
       final dir = Directory('${docs.path}/fireops_data');
       if (!await dir.exists()) await dir.create(recursive: true);
       _cachedRoot = dir;
       return dir;
+    } on TimeoutException {
+      _documentsUnavailable = true;
+      return null;
     } on MissingPluginException {
       // Unit tests and hosts without path_provider fall back to prefs.
       _documentsUnavailable = true;
       return null;
     } catch (e) {
+      if (e.toString().contains('Binding has not yet been initialized')) {
+        _documentsUnavailable = true;
+        return null;
+      }
       debugPrint('PlatformFileJsonStore._root failed: $e');
       return null;
     }
