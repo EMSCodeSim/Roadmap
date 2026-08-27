@@ -26,7 +26,7 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.byKey(const Key('backup-save-file')), findsOneWidget);
     expect(find.byKey(const Key('backup-restore-file')), findsOneWidget);
@@ -35,7 +35,7 @@ void main() {
     expect(find.text('Paste FireOps Career Portfolio JSON'), findsNothing);
 
     await tester.tap(find.text('Paste an older backup instead'));
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(find.text('Paste FireOps Career Portfolio JSON'), findsOneWidget);
     expect(find.text('Restore pasted backup'), findsOneWidget);
   });
