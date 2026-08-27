@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/roadmap_models.dart';
+import 'package:firepath/nav.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/national_task_book_baseline.dart';
 import 'package:firepath/services/task_book_checklist_hierarchy.dart';
+import 'package:firepath/services/task_book_navigation.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
+import 'package:firepath/widgets/app_back_button.dart';
 
 /// A requirement-level checklist that can expand one level deeper.
 ///
 /// Task Book -> Requirement -> Checklist item -> Substeps.
 class RequirementChecklistPage extends StatelessWidget {
-  final String goalId;
+  final String? goalId;
   final Requirement requirement;
 
   const RequirementChecklistPage({
@@ -22,16 +26,32 @@ class RequirementChecklistPage extends StatelessWidget {
     required this.requirement,
   });
 
+  String? _effectiveGoalId(AppState state) {
+    final explicit = goalId?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    return state.roadmap?.goal.id;
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final resolvedGoalId = _effectiveGoalId(state);
+    if (resolvedGoalId == null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: const AppBackButton.toTaskBook(),
+          title: const Text('Skills Checklist'),
+        ),
+        body: const Center(child: Text('Select a career goal to use this checklist.')),
+      );
+    }
     final controller = state.taskBookController;
     final savedSteps = controller.planStepsFor(
-      goalId: goalId,
+      goalId: resolvedGoalId,
       requirementId: requirement.id,
     );
     final savedSubTasks = controller.subTasksFor(
-      goalId: goalId,
+      goalId: resolvedGoalId,
       requirementId: requirement.id,
     );
     final standard = NationalTaskBookBaseline.standardFor(requirement);
@@ -46,9 +66,12 @@ class RequirementChecklistPage extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Requirement Checklist')),
+      appBar: AppBar(
+        leading: const AppBackButton.toTaskBook(),
+        title: const Text('Skills Checklist'),
+      ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _addStep(context, state),
+        onPressed: () => _addStep(context, state, resolvedGoalId),
         icon: const Icon(Icons.add),
         label: const Text('Local item'),
       ),
@@ -88,9 +111,22 @@ class RequirementChecklistPage extends StatelessWidget {
                     ),
               ),
             ),
+            if (TaskBookNavigation.hasPreparationTasks(requirement)) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                key: const Key('checklist-open-preparation-tasks'),
+                onPressed: () =>
+                    context.push(
+                      AppRoutes.qualificationTaskBook,
+                      extra: <String, dynamic>{'requirement': requirement},
+                    ),
+                icon: const Icon(Icons.menu_book_outlined),
+                label: const Text('Open preparation tasks'),
+              ),
+            ],
             const SizedBox(height: 16),
             if (steps.isEmpty)
-              _EmptyChecklist(onAdd: () => _addStep(context, state))
+              _EmptyChecklist(onAdd: () => _addStep(context, state, resolvedGoalId))
             else
               ...steps.map(
                 (step) => _StepCard(
@@ -101,16 +137,23 @@ class RequirementChecklistPage extends StatelessWidget {
                   ),
                   onToggle: (done) => _toggleStep(
                     state,
+                    resolvedGoalId,
                     step,
                     subTasks,
                     done,
                   ),
-                  onAddChild: () => _addSubStep(context, state, step),
-                  onToggleChild: (child, done) =>
-                      _toggleSubStep(state, step, child, done),
+                  onAddChild: () =>
+                      _addSubStep(context, state, resolvedGoalId, step),
+                  onToggleChild: (child, done) => _toggleSubStep(
+                    state,
+                    resolvedGoalId,
+                    step,
+                    child,
+                    done,
+                  ),
                   isNational: NationalTaskBookBaseline.isNationalItem(step.id),
                   onDelete: () => controller.deletePlanStep(
-                    goalId: goalId,
+                    goalId: resolvedGoalId,
                     requirementId: requirement.id,
                     stepId: step.id,
                   ),
@@ -134,7 +177,7 @@ class RequirementChecklistPage extends StatelessWidget {
                       ? null
                       : Text(TaskBookChecklistHierarchy.visibleNotes(item)!),
                   onChanged: (value) => controller.setSubTaskDone(
-                    goalId: goalId,
+                    goalId: resolvedGoalId,
                     requirementId: requirement.id,
                     subTaskId: item.id,
                     done: value ?? false,
@@ -162,7 +205,11 @@ class RequirementChecklistPage extends StatelessWidget {
     };
   }
 
-  Future<void> _addStep(BuildContext context, AppState state) async {
+  Future<void> _addStep(
+    BuildContext context,
+    AppState state,
+    String resolvedGoalId,
+  ) async {
     final title = await _textPrompt(
       context,
       title: 'Add local checklist item',
@@ -172,7 +219,7 @@ class RequirementChecklistPage extends StatelessWidget {
     if (title == null) return;
     final now = DateTime.now();
     await state.taskBookController.upsertPlanStep(
-      goalId: goalId,
+      goalId: resolvedGoalId,
       requirementId: requirement.id,
       step: RequirementPlanStep(
         id: 'step_${now.microsecondsSinceEpoch}',
@@ -188,6 +235,7 @@ class RequirementChecklistPage extends StatelessWidget {
   Future<void> _addSubStep(
     BuildContext context,
     AppState state,
+    String resolvedGoalId,
     RequirementPlanStep parent,
   ) async {
     final title = await _textPrompt(
@@ -206,7 +254,7 @@ class RequirementChecklistPage extends StatelessWidget {
     );
     subTask = TaskBookChecklistHierarchy.attachToStep(subTask, parent.id);
     await state.taskBookController.upsertSubTask(
-      goalId: goalId,
+      goalId: resolvedGoalId,
       requirementId: requirement.id,
       subTask: subTask,
     );
@@ -214,13 +262,14 @@ class RequirementChecklistPage extends StatelessWidget {
 
   Future<void> _toggleStep(
     AppState state,
+    String resolvedGoalId,
     RequirementPlanStep step,
     List<RequirementSubTask> allSubTasks,
     bool done,
   ) async {
     final controller = state.taskBookController;
     await controller.upsertPlanStep(
-      goalId: goalId,
+      goalId: resolvedGoalId,
       requirementId: requirement.id,
       step: step.copyWith(isDone: done),
     );
@@ -230,7 +279,7 @@ class RequirementChecklistPage extends StatelessWidget {
     )) {
       if (child.isDone == done) continue;
       await controller.upsertSubTask(
-        goalId: goalId,
+        goalId: resolvedGoalId,
         requirementId: requirement.id,
         subTask: child.copyWith(isDone: done),
       );
@@ -239,20 +288,21 @@ class RequirementChecklistPage extends StatelessWidget {
 
   Future<void> _toggleSubStep(
     AppState state,
+    String resolvedGoalId,
     RequirementPlanStep parent,
     RequirementSubTask child,
     bool done,
   ) async {
     final controller = state.taskBookController;
     await controller.upsertSubTask(
-      goalId: goalId,
+      goalId: resolvedGoalId,
       requirementId: requirement.id,
       subTask: child.copyWith(isDone: done),
     );
     final updated = NationalTaskBookBaseline.effectiveSubTasks(
       requirement,
       controller.subTasksFor(
-        goalId: goalId,
+        goalId: resolvedGoalId,
         requirementId: requirement.id,
       ),
     );
@@ -262,7 +312,7 @@ class RequirementChecklistPage extends StatelessWidget {
     );
     if (parentDone != parent.isDone) {
       await controller.upsertPlanStep(
-        goalId: goalId,
+        goalId: resolvedGoalId,
         requirementId: requirement.id,
         step: parent.copyWith(isDone: parentDone),
       );

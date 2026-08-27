@@ -11,6 +11,7 @@ import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/services/requirement_source_presenter.dart';
+import 'package:firepath/services/task_book_navigation.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
@@ -59,6 +60,8 @@ class RequirementDetailPage extends StatelessWidget {
     final sourceColors = RequirementSourcePresenter.badgeColors(context, req);
 
     final hasTaskBook = TaskBookLibrary.hasTasksForRequirement(req);
+    final hasSkillsChecklist = TaskBookNavigation.hasSkillsChecklist(req);
+    final hasPreparationTasks = TaskBookNavigation.hasPreparationTasks(req);
 
     return Scaffold(
       appBar: AppBar(
@@ -108,22 +111,28 @@ class RequirementDetailPage extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             _StepsCard(
-              steps: _stepsForRequirement(req, hasTaskBook: hasTaskBook),
+              steps: _stepsForRequirement(
+                req,
+                hasTaskBook: hasTaskBook,
+                hasSkillsChecklist: hasSkillsChecklist,
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
 
             _PrimaryActionsCard(
-              requirement: req,
-              hasTaskBook: hasTaskBook,
               onOpenGetStarted: () => context.push(
                 AppRoutes.getStarted,
                 extra: req,
               ),
-              onOpenTaskBook: hasTaskBook
-                  ? () => context.push(
-                        AppRoutes.qualificationTaskBook,
-                        extra: {'requirement': req},
+              onOpenChecklist: hasSkillsChecklist
+                  ? () => AppRouter.openRequirement(
+                        context,
+                        req,
+                        goalId: goalId,
                       )
+                  : null,
+              onOpenTaskBook: hasPreparationTasks
+                  ? () => AppRouter.openPreparationTasks(context, req)
                   : null,
               onQuickLog: () {
                 final tags = <String>['requirement'];
@@ -449,16 +458,14 @@ class _StepsCard extends StatelessWidget {
 }
 
 class _PrimaryActionsCard extends StatelessWidget {
-  final Requirement requirement;
-  final bool hasTaskBook;
   final VoidCallback onOpenGetStarted;
+  final VoidCallback? onOpenChecklist;
   final VoidCallback? onOpenTaskBook;
   final VoidCallback onQuickLog;
 
   const _PrimaryActionsCard({
-    required this.requirement,
-    required this.hasTaskBook,
     required this.onOpenGetStarted,
+    required this.onOpenChecklist,
     required this.onOpenTaskBook,
     required this.onQuickLog,
   });
@@ -483,10 +490,18 @@ class _PrimaryActionsCard extends StatelessWidget {
             filled: true,
           ),
           const SizedBox(height: AppSpacing.sm),
-          if (onOpenTaskBook != null) ...[
+          if (onOpenChecklist != null) ...[
             _ActionButton(
               icon: Icons.checklist,
-              label: 'Open Task Book requirements',
+              label: 'Open skills checklist',
+              onPressed: onOpenChecklist,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          if (onOpenTaskBook != null) ...[
+            _ActionButton(
+              icon: Icons.menu_book_outlined,
+              label: 'Open preparation tasks',
               onPressed: onOpenTaskBook,
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -695,9 +710,22 @@ String _priorityLabel(RequirementPriority p) => switch (p) {
       RequirementPriority.state => 'State',
     };
 
-List<String> _stepsForRequirement(Requirement r, {required bool hasTaskBook}) {
+List<String> _stepsForRequirement(
+  Requirement r, {
+  required bool hasTaskBook,
+  required bool hasSkillsChecklist,
+}) {
   final unit = (r.progressUnit ?? r.experienceUnit ?? '').trim();
   final unitSuffix = unit.isEmpty ? '' : ' ($unit)';
+
+  if (hasSkillsChecklist || r.type == RequirementType.certification) {
+    return [
+      'Open the skills checklist and work the next unfinished JPR / objective.',
+      'Add department, state, or academy items on top of the national baseline.',
+      'Use Quick Log to record practice, training hours, or sign-offs connected to this credential.',
+      'The credential itself is complete only when it is current in Certs — checking skills is preparation, not certification.',
+    ];
+  }
 
   if (hasTaskBook || r.type == RequirementType.taskBook) {
     return [

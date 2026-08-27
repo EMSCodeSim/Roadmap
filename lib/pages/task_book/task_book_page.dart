@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/custom_task_book.dart';
 import 'package:firepath/nav.dart';
-import 'package:firepath/services/task_book_library.dart';
+import 'package:firepath/services/national_task_book_baseline.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/state_requirement_catalog.dart';
 import 'package:firepath/services/requirement_source_presenter.dart';
@@ -450,9 +450,10 @@ class _CustomTaskBookBody extends StatelessWidget {
                 section: section,
                 goalId: goalId,
                 suggestedNextRequirementId: plan.suggestedNext?.requirement.id,
-                openRequirement: (r) => context.push(
-                  AppRoutes.requirementDetail,
-                  extra: {'requirement': r, 'goalId': goalId},
+                openRequirement: (r) => AppRouter.openRequirement(
+                  context,
+                  r,
+                  goalId: goalId,
                 ),
               ),
             );
@@ -563,7 +564,11 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
             title: next?.name,
             onContinue: next == null
                 ? null
-                : () => _openRequirement(context, state, next),
+                : () => AppRouter.openRequirement(
+                    context,
+                    next,
+                    goalId: roadmap.goal.id,
+                  ),
             onQuickLog: next == null
                 ? null
                 : () {
@@ -594,7 +599,11 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
                 section: s,
                 goalId: roadmap.goal.id,
                 suggestedNextRequirementId: plan.suggestedNext?.requirement.id,
-                openRequirement: (r) => _TaskBookBodyState._openRequirement(context, state, r),
+                openRequirement: (r) => AppRouter.openRequirement(
+                  context,
+                  r,
+                  goalId: roadmap.goal.id,
+                ),
               ),
             ),
           ),
@@ -623,18 +632,6 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
         ],
       ),
     );
-  }
-
-  static void _openRequirement(
-    BuildContext context,
-    AppState state,
-    Requirement r,
-  ) {
-    if (TaskBookLibrary.hasTasksForRequirement(r)) {
-      context.push(AppRoutes.qualificationTaskBook, extra: {'requirement': r});
-      return;
-    }
-    context.push(AppRoutes.requirementDetail, extra: r);
   }
 }
 
@@ -1039,6 +1036,9 @@ class _TaskBookStageSectionCard<T> extends StatelessWidget {
                         unmetPrereqLabels: section.items[i].unmetPrerequisiteLabels,
                         showDivider: i != section.items.length - 1,
                         onOpen: () => openRequirement(section.items[i].requirement),
+                        rowKey: Key(
+                          'task-book-requirement-${section.items[i].requirement.id}',
+                        ),
                       ),
                     ],
                   ],
@@ -1060,6 +1060,7 @@ class _StagedRequirementRow extends StatelessWidget {
   final List<String> unmetPrereqLabels;
   final bool showDivider;
   final VoidCallback onOpen;
+  final Key? rowKey;
 
   const _StagedRequirementRow({
     required this.requirement,
@@ -1070,6 +1071,7 @@ class _StagedRequirementRow extends StatelessWidget {
     required this.unmetPrereqLabels,
     required this.showDivider,
     required this.onOpen,
+    this.rowKey,
   });
 
   @override
@@ -1090,6 +1092,12 @@ class _StagedRequirementRow extends StatelessWidget {
     if (r.type == RequirementType.numericProgress && r.progressCurrent != null && r.progressRequired != null) {
       final unit = r.progressUnit;
       trailing = '${r.progressCurrent!.toStringAsFixed(0)} / ${r.progressRequired!.toStringAsFixed(0)}${unit == null ? '' : ' $unit'}';
+    } else if (NationalTaskBookBaseline.standardFor(r) != null) {
+      final subTasks = NationalTaskBookBaseline.effectiveSubTasks(
+        r,
+        state.subTasksFor(goalId: goalId, requirementId: r.id),
+      );
+      trailing = '${subTasks.where((item) => item.isDone).length} / ${subTasks.length} skills';
     }
 
     final prereqLine = unmetPrereqLabels.isEmpty ? null : 'Prerequisites: ${unmetPrereqLabels.take(2).join(', ')}${unmetPrereqLabels.length > 2 ? '…' : ''}';
@@ -1108,6 +1116,7 @@ class _StagedRequirementRow extends StatelessWidget {
     return Opacity(
       opacity: dim ? 0.62 : 1,
       child: InkWell(
+        key: rowKey,
         onTap: onOpen,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
