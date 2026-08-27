@@ -85,7 +85,11 @@ Do not enter patient names, addresses, dates of birth, medical record numbers, p
 
 ## Backup
 
-The portable Career Portfolio backup includes profile data, certifications, custom requirements, path overrides, Quick Log preferences, Career Records, Task Book task progress, and custom Task Book tasks. Current backups use portfolio schema version 4; older supported backups remain importable.
+The portable Career Portfolio backup includes profile data, certifications, custom requirements, path overrides, Quick Log preferences, Career Records, Task Book task progress, and custom Task Book tasks. Current backups use portfolio schema version 5; older supported backups remain importable.
+
+On iOS and Android, career JSON is stored in the app documents directory rather than SharedPreferences. Existing preference data is migrated automatically on first read. Web continues to use browser storage, so saving a backup file is the durable copy when changing devices.
+
+Backup and restore live in Settings and on the Log tab. Save or share a `.json` file as the primary path. Pasting an older clipboard backup remains available as a fallback.
 
 ## Validation
 

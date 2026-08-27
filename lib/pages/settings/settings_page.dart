@@ -7,6 +7,7 @@ import 'package:firepath/services/notification_preferences_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
+import 'package:firepath/widgets/portfolio_backup_sheet.dart';
 import 'package:firepath/widgets/section_header.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -62,7 +63,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   leading: Icon(Icons.info_outline),
                   title: Text('About FireOps Career Road'),
                   subtitle: Text('Career planning and professional record'),
-                  trailing: Text('1.1.1'),
+                  trailing: Text('1.1.6'),
                 ),
               ],
             ),
@@ -114,6 +115,22 @@ class _SettingsPageState extends State<SettingsPage> {
                 ],
               ),
             const SizedBox(height: 18),
+            _SettingsSection(
+              title: 'BACKUP',
+              children: [
+                ListTile(
+                  key: const Key('settings-backup-restore'),
+                  leading: const Icon(Icons.backup_outlined),
+                  title: const Text('Backup & restore'),
+                  subtitle: const Text(
+                    'Save a portfolio file, or restore one onto this device',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => PortfolioBackupSheet.show(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
             Text(
               'DATA & PRIVACY',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -153,7 +170,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Your data is stored locally on this device. Reset cannot be undone unless you previously created a backup.',
+              'Your data is stored locally on this device in app files. Reset cannot be undone unless you previously saved a backup file.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     height: 1.45,

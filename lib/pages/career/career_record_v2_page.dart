@@ -12,6 +12,7 @@ import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
+import 'package:firepath/widgets/portfolio_backup_sheet.dart';
 
 enum _CareerFilter { all, calls, skills, training, driving, exposures, leadership, achievements }
 
@@ -139,17 +140,27 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
           PopupMenuButton<String>(
             tooltip: 'More career record tools',
             onSelected: (value) {
-              if (value == 'advanced') {
+              if (value == 'backup') {
+                PortfolioBackupSheet.show(context, onRestored: _load);
+              } else if (value == 'advanced') {
                 context.push(AppRoutes.personalLogClassic);
               }
             },
             itemBuilder: (context) => const [
               PopupMenuItem(
+                value: 'backup',
+                child: ListTile(
+                  leading: Icon(Icons.backup_outlined),
+                  title: Text('Backup & restore'),
+                  subtitle: Text('Save or restore a portfolio file'),
+                ),
+              ),
+              PopupMenuItem(
                 value: 'advanced',
                 child: ListTile(
                   leading: Icon(Icons.inventory_2_outlined),
                   title: Text('Classic log tools'),
-                  subtitle: Text('Backup, restore, evidence, and older log views'),
+                  subtitle: Text('Evidence and older log views'),
                 ),
               ),
             ],

@@ -3,7 +3,13 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:firepath/services/storage/file_json_store.dart';
+import 'package:firepath/services/storage/file_json_store_platform.dart';
+
 class LocalStore {
+  LocalStore({FileJsonStore? fileStore})
+      : _files = fileStore ?? PlatformFileJsonStore();
+
   static const String _kOnboardingComplete = 'fireops.onboardingComplete';
   static const String _kProfile = 'fireops.profile';
   static const String _kCertifications = 'fireops.certifications';
@@ -14,6 +20,8 @@ class LocalStore {
   static const String _kTaskBookCustomTasks = 'fireops.taskBook.customTasks';
   static const String _kTaskBookCustomBooks = 'fireops.taskBook.customBooks.v1';
   static const String _kTaskBookActiveBook = 'fireops.taskBook.activeBook.v1';
+
+  final FileJsonStore _files;
 
   Future<bool> getOnboardingComplete() async {
     try {
@@ -34,10 +42,27 @@ class LocalStore {
     }
   }
 
-  Future<Map<String, dynamic>?> loadJsonMap(String key) async {
+  Future<String?> _readRaw(String key) async {
+    final fromFile = await _files.read(key);
+    if (fromFile != null) return fromFile;
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(key);
+      if (raw == null) return null;
+      final migrated = await _files.write(key, raw);
+      if (migrated) {
+        await prefs.remove(key);
+      }
+      return raw;
+    } catch (e) {
+      debugPrint('LocalStore._readRaw($key) failed: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> loadJsonMap(String key) async {
+    try {
+      final raw = await _readRaw(key);
       if (raw == null) return null;
       final decoded = jsonDecode(raw);
       if (decoded is Map<String, dynamic>) return decoded;
@@ -51,8 +76,7 @@ class LocalStore {
 
   Future<List<Map<String, dynamic>>> loadJsonList(String key) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(key);
+      final raw = await _readRaw(key);
       if (raw == null) return <Map<String, dynamic>>[];
       final decoded = jsonDecode(raw);
       if (decoded is List) {
@@ -74,9 +98,20 @@ class LocalStore {
 
   /// Saves JSON and reports whether the write actually succeeded.
   Future<bool> saveJsonChecked(String key, Object value) async {
+    final encoded = jsonEncode(value);
+    final fileOk = await _files.write(key, encoded);
+    if (fileOk) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(key);
+      } catch (e) {
+        debugPrint('LocalStore.saveJsonChecked prefs cleanup failed: $e');
+      }
+      return true;
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
-      return await prefs.setString(key, jsonEncode(value));
+      return await prefs.setString(key, encoded);
     } catch (e) {
       debugPrint('LocalStore.saveJsonChecked($key) failed: $e');
       return false;
@@ -84,9 +119,11 @@ class LocalStore {
   }
 
   Future<bool> removeKey(String key) async {
+    final fileOk = await _files.remove(key);
     try {
       final prefs = await SharedPreferences.getInstance();
-      return await prefs.remove(key);
+      final prefsOk = await prefs.remove(key);
+      return fileOk && prefsOk;
     } catch (e) {
       debugPrint('LocalStore.removeKey($key) failed: $e');
       return false;
@@ -97,10 +134,10 @@ class LocalStore {
   /// yearly career-record segments. Other preferences on the device are left
   /// untouched.
   Future<bool> resetAppData() async {
+    var success = await _files.clearFireops();
     try {
       final prefs = await SharedPreferences.getInstance();
       final keys = prefs.getKeys().where((key) => key.startsWith('fireops.'));
-      var success = true;
       for (final key in keys) {
         if (!await prefs.remove(key)) success = false;
       }

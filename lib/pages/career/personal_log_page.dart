@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
@@ -12,7 +9,7 @@ import 'package:firepath/models/prefill.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/quick_log_preferences_store.dart';
-import 'package:firepath/state/app_state.dart';
+import 'package:firepath/widgets/portfolio_backup_sheet.dart';
 
 class PersonalLogPage extends StatefulWidget {
   final LogPrefill? prefill;
@@ -868,116 +865,6 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
     return result;
   }
 
-  Future<void> _backupRestore() async {
-    final backup = await _store.exportBackup();
-    if (!mounted) return;
-    final restoreController = TextEditingController();
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Portfolio Backup / Restore'),
-        content: SizedBox(
-          width: 620,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Back up your complete FireOps career portfolio before changing phones or periodically for safekeeping.',
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: backup));
-                    if (!dialogContext.mounted) return;
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Backup copied to clipboard. Store it somewhere secure.',
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.copy_all_outlined),
-                  label: const Text('Copy portfolio backup'),
-                ),
-                const SizedBox(height: 20),
-                const Divider(),
-                const SizedBox(height: 10),
-                Text(
-                  'Restore a portfolio backup',
-                  style: Theme.of(dialogContext).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Restoring replaces the local FireOps career portfolio on this device. Paste a FireOps Career Portfolio backup below. Older Career Log backups are also supported.',
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: restoreController,
-                  minLines: 4,
-                  maxLines: 8,
-                  decoration: const InputDecoration(
-                    hintText: 'Paste backup JSON here',
-                  ),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final raw = restoreController.text.trim();
-                    if (raw.isEmpty) return;
-                    final confirmed = await showDialog<bool>(
-                      context: dialogContext,
-                      builder: (confirmContext) => AlertDialog(
-                        title: const Text('Replace current portfolio?'),
-                        content: const Text(
-                          'The local FireOps career portfolio on this device will be replaced with the pasted backup.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () =>
-                                Navigator.pop(confirmContext, false),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            onPressed: () =>
-                                Navigator.pop(confirmContext, true),
-                            child: const Text('Restore'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed != true) return;
-                    final result = await _store.restoreBackup(raw);
-                    if (!dialogContext.mounted) return;
-                    ScaffoldMessenger.of(
-                      dialogContext,
-                    ).showSnackBar(SnackBar(content: Text(result.message)));
-                    if (result.success) {
-                      Navigator.pop(dialogContext);
-                      await context.read<AppState>().bootstrap();
-                      await _load();
-                    }
-                  },
-                  icon: const Icon(Icons.restore_outlined),
-                  label: const Text('Restore pasted backup'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Done'),
-          ),
-        ],
-      ),
-    );
-    restoreController.dispose();
-  }
-
   List<int> get _years {
     final years = <int>{
       DateTime.now().year,
@@ -1184,7 +1071,9 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'custom') _openLogEditor();
-              if (value == 'backup') _backupRestore();
+              if (value == 'backup') {
+                PortfolioBackupSheet.show(context, onRestored: _load);
+              }
               if (value == 'evidence') context.push(AppRoutes.careerEvidence);
             },
             itemBuilder: (context) => const [
