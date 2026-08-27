@@ -9,7 +9,9 @@ class CareerRecordStore {
   static const String _legacyStorageKey = 'fireops.careerRecords.v1';
   static const String _yearIndexKey = 'fireops.careerRecords.v2.years';
   static const String _yearPrefix = 'fireops.careerRecords.v2.';
-  final LocalStore _store = LocalStore();
+  CareerRecordStore({LocalStore? store}) : _store = store ?? LocalStore();
+
+  final LocalStore _store;
 
   String _yearKey(int year) => '$_yearPrefix$year';
 
@@ -374,7 +376,7 @@ class CareerRecordStore {
         success: false,
         count: 0,
         message:
-            'Backup could not be read. Check that the complete backup text was pasted.',
+            'Backup could not be read. Choose a FireOps Career Portfolio .json file, or paste a complete backup.',
       );
     }
   }
