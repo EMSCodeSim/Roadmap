@@ -20,7 +20,6 @@ class PlatformFileJsonStore implements FileJsonStore {
 
   Future<Directory?> _root() async {
     if (_cachedRoot != null) return _cachedRoot;
-    if (_documentsUnavailable) return null;
     try {
       if (rootPath != null) {
         final dir = Directory(rootPath!);
@@ -28,6 +27,7 @@ class PlatformFileJsonStore implements FileJsonStore {
         _cachedRoot = dir;
         return dir;
       }
+      if (_documentsUnavailable) return null;
       final docs = await getApplicationDocumentsDirectory();
       final dir = Directory('${docs.path}/fireops_data');
       if (!await dir.exists()) await dir.create(recursive: true);
