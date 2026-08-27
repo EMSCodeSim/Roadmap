@@ -45,11 +45,21 @@ void main() {
   test('training courses stay on requirement detail instead of a JPR list', () {
     final course = FireOpsCatalog.goals()
         .expand((goal) => goal.requirements)
-        .firstWhere((requirement) => requirement.type == RequirementType.trainingCourse);
+        .firstWhere((requirement) => requirement.id == 'ics300');
 
+    expect(course.type, RequirementType.trainingCourse);
     expect(
       TaskBookNavigation.targetFor(course),
       TaskBookOpenTarget.requirementDetail,
+    );
+
+    final driverPolicy = FireOpsCatalog.goals()
+        .expand((goal) => goal.requirements)
+        .firstWhere((requirement) => requirement.id == 'state_driver_policy');
+    expect(
+      TaskBookNavigation.targetFor(driverPolicy),
+      TaskBookOpenTarget.requirementDetail,
+      reason: 'Driver/operator policy course must not open the pumper prep book',
     );
   });
 
@@ -96,6 +106,9 @@ void main() {
     expect(find.text('Skills Checklist'), findsOneWidget);
     expect(find.text('Firefighter I'), findsWidgets);
     expect(find.text('Fireground operations'), findsOneWidget);
+
+    await tester.tap(find.text('Fireground operations'));
+    await tester.pumpAndSettle();
     expect(
       find.textContaining('Deploy and operate attack hose lines'),
       findsOneWidget,
@@ -184,9 +197,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final row = find.byKey(const Key('task-book-requirement-ff1'));
-    await tester.scrollUntilVisible(row, 240);
-    await tester.tap(row);
+    expect(find.text('Open task'), findsOneWidget);
+    await tester.tap(find.text('Open task'));
     await tester.pumpAndSettle();
 
     expect(find.text('Skills Checklist'), findsOneWidget);

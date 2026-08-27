@@ -962,7 +962,9 @@ class _TaskBookStageSectionCard<T> extends StatelessWidget {
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
+        child: Material(
+          color: Colors.transparent,
+          child: ExpansionTile(
           initiallyExpanded: !defaultCollapsed,
           tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
           childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
@@ -1045,6 +1047,7 @@ class _TaskBookStageSectionCard<T> extends StatelessWidget {
                 ),
               ),
           ],
+        ),
         ),
       ),
     );
