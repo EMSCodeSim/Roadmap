@@ -3,6 +3,7 @@ import 'package:firepath/models/roadmap_models.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/services/task_book_checklist_hierarchy.dart';
 import 'package:firepath/services/task_book_library.dart';
+import 'package:firepath/services/national_task_book_baseline.dart';
 import 'package:firepath/services/task_book_stage_planner.dart';
 import 'package:firepath/state/app_state.dart';
 
@@ -186,13 +187,19 @@ class SmartNextStepEngine {
       return false;
     }
 
-    final steps = state.planStepsFor(
-      goalId: goalId,
-      requirementId: requirement.id,
+    final steps = NationalTaskBookBaseline.effectiveSteps(
+      requirement,
+      state.planStepsFor(
+        goalId: goalId,
+        requirementId: requirement.id,
+      ),
     );
-    final subTasks = state.subTasksFor(
-      goalId: goalId,
-      requirementId: requirement.id,
+    final subTasks = NationalTaskBookBaseline.effectiveSubTasks(
+      requirement,
+      state.subTasksFor(
+        goalId: goalId,
+        requirementId: requirement.id,
+      ),
     );
 
     if (steps.isNotEmpty) {
@@ -228,8 +235,14 @@ class SmartNextStepEngine {
       return (r.progressCurrent! / r.progressRequired!).clamp(0, 1).toDouble();
     }
 
-    final steps = state.planStepsFor(goalId: goalId, requirementId: r.id);
-    final subTasks = state.subTasksFor(goalId: goalId, requirementId: r.id);
+    final steps = NationalTaskBookBaseline.effectiveSteps(
+      r,
+      state.planStepsFor(goalId: goalId, requirementId: r.id),
+    );
+    final subTasks = NationalTaskBookBaseline.effectiveSubTasks(
+      r,
+      state.subTasksFor(goalId: goalId, requirementId: r.id),
+    );
     if (steps.isNotEmpty) {
       var done = 0;
       for (final step in steps) {
@@ -250,13 +263,19 @@ class SmartNextStepEngine {
     required String goalId,
     required Requirement requirement,
   }) {
-    final steps = state.planStepsFor(
-      goalId: goalId,
-      requirementId: requirement.id,
+    final steps = NationalTaskBookBaseline.effectiveSteps(
+      requirement,
+      state.planStepsFor(
+        goalId: goalId,
+        requirementId: requirement.id,
+      ),
     );
-    final subTasks = state.subTasksFor(
-      goalId: goalId,
-      requirementId: requirement.id,
+    final subTasks = NationalTaskBookBaseline.effectiveSubTasks(
+      requirement,
+      state.subTasksFor(
+        goalId: goalId,
+        requirementId: requirement.id,
+      ),
     );
 
     for (final step in steps) {
