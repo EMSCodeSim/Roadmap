@@ -129,7 +129,9 @@ class _DepartmentTaskBookPageState extends State<DepartmentTaskBookPage> {
                   ),
                   const SizedBox(height: 10),
                   LinearProgressIndicator(
-                    value: (_assignment.progress / 100).clamp(0, 1),
+                    value: (_assignment.progress / 100)
+                        .clamp(0.0, 1.0)
+                        .toDouble(),
                     minHeight: 8,
                     borderRadius: BorderRadius.circular(999),
                   ),
@@ -297,7 +299,9 @@ class _RequirementSheetState extends State<_RequirementSheet> {
     final requirement = widget.requirement;
     final cs = Theme.of(context).colorScheme;
     final viewInsets = MediaQuery.viewInsetsOf(context);
-    final nextRep = (requirement.repetitionCount + 1).clamp(1, requirement.repetitionsRequired);
+    final nextRep = (requirement.repetitionCount + 1)
+        .clamp(1, requirement.repetitionsRequired)
+        .toInt();
 
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 4, 16, 20 + viewInsets.bottom),
