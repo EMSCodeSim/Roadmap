@@ -142,6 +142,21 @@ class _DepartmentTaskBookPageState extends State<DepartmentTaskBookPage> {
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45),
                     ),
                   ],
+                  if (_assignment.notes.trim().isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: cs.surface.withValues(alpha: .55),
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                      ),
+                      child: Text(
+                        _assignment.notes,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4),
+                      ),
+                    ),
+                  ],
                   if (_assignment.evaluatorName != null ||
                       _assignment.supervisorName != null ||
                       _assignment.dueDate != null) ...[
@@ -166,7 +181,7 @@ class _DepartmentTaskBookPageState extends State<DepartmentTaskBookPage> {
             if (_assignment.pendingApproval > 0)
               _Notice(
                 icon: Icons.hourglass_top_rounded,
-                text: '${_assignment.pendingApproval} item${_assignment.pendingApproval == 1 ? '' : 's'} waiting for evaluator review.',
+                text: '${_assignment.pendingApproval} item${_assignment.pendingApproval == 1 ? '' : 's'} waiting for department review.',
               ),
             if (_assignment.pendingApproval > 0) const SizedBox(height: 12),
             ..._assignment.sections.map((section) {
@@ -205,12 +220,16 @@ class _DepartmentTaskBookPageState extends State<DepartmentTaskBookPage> {
                               ? Icons.check_circle_rounded
                               : requirement.isAwaitingReview
                                   ? Icons.hourglass_top_rounded
-                                  : Icons.radio_button_unchecked_rounded,
+                                  : requirement.blockedByPrerequisites
+                                      ? Icons.lock_outline_rounded
+                                      : Icons.radio_button_unchecked_rounded,
                           color: requirement.isFullyApproved
                               ? cs.primary
                               : requirement.isAwaitingReview
                                   ? cs.tertiary
-                                  : cs.onSurfaceVariant,
+                                  : requirement.blockedByPrerequisites
+                                      ? cs.onSurfaceVariant
+                                      : cs.onSurfaceVariant,
                         ),
                         title: Text(
                           requirement.title,
@@ -266,13 +285,13 @@ class _RequirementSheetState extends State<_RequirementSheet> {
   }
 
   Future<void> _submit() async {
-    if (_submitting) return;
+    if (_submitting || !widget.requirement.canSubmit) return;
     setState(() => _submitting = true);
     try {
       final assignment = await widget.api.submitRequirement(
         assignmentId: widget.assignment.id,
         requirementId: widget.requirement.id,
-        memberNotes: _notes.text,
+        memberNotes: widget.requirement.memberNotesAllowed ? _notes.text : '',
         evidenceDescription: _evidence.text,
         evidenceType: widget.requirement.evidenceType,
       );
@@ -318,7 +337,7 @@ class _RequirementSheetState extends State<_RequirementSheet> {
             if (requirement.repetitionsRequired > 1) ...[
               const SizedBox(height: 10),
               Text(
-                '${requirement.repetitionCount} of ${requirement.repetitionsRequired} repetitions recorded',
+                '${requirement.repetitionCount} of ${requirement.repetitionsRequired} repetitions approved',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
@@ -360,21 +379,30 @@ class _RequirementSheetState extends State<_RequirementSheet> {
                     : 'This requirement is approved.',
               )
             else if (requirement.isAwaitingReview)
-              const _Notice(
-                icon: Icons.hourglass_top_rounded,
-                text: 'Submitted. Waiting for evaluator review before another attempt can be recorded.',
+              _Notice(
+                icon: requirement.reviewStage == 'SUPERVISOR'
+                    ? Icons.supervisor_account_outlined
+                    : Icons.hourglass_top_rounded,
+                text: '${requirement.reviewLabel}. You can record the next attempt after this review is complete.',
               )
-            else ...[
-              TextField(
-                controller: _notes,
-                minLines: 2,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  labelText: 'Member notes',
-                  hintText: 'What did you complete or demonstrate?',
-                ),
+            else if (requirement.blockedByPrerequisites) ...[
+              _Notice(
+                icon: Icons.lock_outline_rounded,
+                text: 'Complete the prerequisite${requirement.prerequisiteTitles.length == 1 ? '' : 's'} first: ${requirement.prerequisiteTitles.join(', ')}.',
               ),
-              const SizedBox(height: 12),
+            ] else ...[
+              if (requirement.memberNotesAllowed) ...[
+                TextField(
+                  controller: _notes,
+                  minLines: 2,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    labelText: 'Member notes',
+                    hintText: 'What did you complete or demonstrate?',
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               TextField(
                 controller: _evidence,
                 minLines: 2,
@@ -382,8 +410,8 @@ class _RequirementSheetState extends State<_RequirementSheet> {
                 decoration: InputDecoration(
                   labelText: 'Evidence / context',
                   hintText: requirement.evidenceType == 'NONE'
-                      ? 'Optional'
-                      : 'Describe the evidence for the evaluator',
+                      ? 'Optional context for the reviewer'
+                      : 'Describe the evidence for the department reviewer',
                 ),
               ),
               const SizedBox(height: 14),
@@ -396,8 +424,8 @@ class _RequirementSheetState extends State<_RequirementSheet> {
                 ),
                 child: Text(
                   requirement.evaluatorSignOffRequired || requirement.supervisorApprovalRequired
-                      ? 'Submitting records repetition $nextRep of ${requirement.repetitionsRequired} and sends it to the department for review. It does not self-sign the requirement.'
-                      : 'This department configured the item without an evaluator or supervisor sign-off requirement.',
+                      ? _submissionExplanation(requirement, nextRep)
+                      : 'This department configured the item without a separate evaluator or supervisor sign-off. Submitting will record the repetition immediately.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                         height: 1.4,
@@ -426,6 +454,19 @@ class _RequirementSheetState extends State<_RequirementSheet> {
       ),
     );
   }
+}
+
+String _submissionExplanation(DepartmentRequirement requirement, int nextRep) {
+  final repetition = requirement.repetitionsRequired > 1
+      ? 'repetition $nextRep of ${requirement.repetitionsRequired}'
+      : 'this requirement';
+  if (requirement.evaluatorSignOffRequired && requirement.supervisorApprovalRequired) {
+    return 'Submitting $repetition sends it to the evaluator first. After evaluator approval, it moves to supervisor approval. It is not counted complete until the required approval path finishes.';
+  }
+  if (requirement.supervisorApprovalRequired) {
+    return 'Submitting $repetition sends it directly to supervisor approval.';
+  }
+  return 'Submitting $repetition sends it to the evaluator for approval.';
 }
 
 class _Meta extends StatelessWidget {
@@ -506,10 +547,11 @@ class _Notice extends StatelessWidget {
 
 String _requirementStatus(DepartmentRequirement requirement) {
   if (requirement.isFullyApproved) return 'Approved';
-  if (requirement.isAwaitingReview) return 'Awaiting evaluator review';
+  if (requirement.isAwaitingReview) return requirement.reviewLabel;
   if (requirement.completionStatus == 'RETURNED') {
     return 'Returned — ready to revise and resubmit';
   }
+  if (requirement.blockedByPrerequisites) return 'Locked — prerequisite required';
   if (requirement.repetitionCount > 0 && requirement.repetitionsRequired > 1) {
     return '${requirement.repetitionCount} of ${requirement.repetitionsRequired} repetitions approved';
   }
