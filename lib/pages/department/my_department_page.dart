@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/services/department_link_store.dart';
+import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/theme.dart';
 
 class MyDepartmentPage extends StatefulWidget {
@@ -12,9 +15,13 @@ class MyDepartmentPage extends StatefulWidget {
 
 class _MyDepartmentPageState extends State<MyDepartmentPage> {
   final DepartmentLinkStore _store = DepartmentLinkStore();
+  final ResponderRoadmapApi _api = ResponderRoadmapApi();
 
   DepartmentLink? _link;
+  List<DepartmentTaskBookAssignment> _assignments = const [];
   bool _loading = true;
+  bool _syncing = false;
+  String? _loadError;
 
   @override
   void initState() {
@@ -23,90 +30,326 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
   }
 
   Future<void> _load() async {
+    DepartmentLink? stored;
     try {
-      final link = await _store.load();
+      stored = await _store.load();
+      if (await _api.hasStoredToken) {
+        final session = await _api.currentSession();
+        if (session.hasDepartment) {
+          stored = DepartmentLink.fromSession(session);
+          await _store.save(stored);
+          final assignments = await _api.listAssignments();
+          if (!mounted) return;
+          setState(() {
+            _link = stored;
+            _assignments = assignments;
+            _loading = false;
+            _loadError = null;
+          });
+          return;
+        }
+      }
+      if (stored != null) await _store.clear();
+    } on ResponderRoadmapApiException catch (e) {
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        await _store.clear();
+        await _api.disconnect();
+        stored = null;
+      } else {
+        _loadError = e.message;
+      }
+    } catch (e) {
+      _loadError = 'Could not load the department connection.';
+    }
+    if (!mounted) return;
+    setState(() {
+      _link = stored;
+      _loading = false;
+    });
+  }
+
+  Future<void> _connect() async {
+    final credentials = await _showLoginSheet();
+    if (credentials == null) return;
+    setState(() => _syncing = true);
+    try {
+      var session = await _api.login(
+        email: credentials.email,
+        password: credentials.password,
+      );
+
+      if (!session.hasDepartment) {
+        final joinCode = await _showJoinCodeSheet();
+        if (joinCode == null || joinCode.trim().isEmpty) {
+          await _api.disconnect();
+          return;
+        }
+        final joined = await _api.joinDepartment(joinCode);
+        if (!joined.isActive) {
+          await _api.disconnect();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${joined.departmentName} requires approval. Your request was sent. Sign in again after a department administrator approves you.',
+              ),
+              duration: const Duration(seconds: 7),
+            ),
+          );
+          return;
+        }
+        // The initial app token was issued before department membership existed.
+        // Log in one more time to receive fresh department/membership claims.
+        session = await _api.login(
+          email: credentials.email,
+          password: credentials.password,
+        );
+      }
+
+      if (!session.hasDepartment) {
+        throw const ResponderRoadmapApiException(
+          'Your account does not have an active department membership yet.',
+        );
+      }
+
+      final link = DepartmentLink.fromSession(session);
+      await _store.save(link);
+      final assignments = await _api.listAssignments();
       if (!mounted) return;
       setState(() {
         _link = link;
-        _loading = false;
+        _assignments = assignments;
+        _loadError = null;
       });
-    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connected to ${link.departmentName}.')),
+      );
+    } on ResponderRoadmapApiException catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), duration: const Duration(seconds: 6)),
+      );
+    } finally {
+      if (mounted) setState(() => _syncing = false);
     }
   }
 
-  Future<void> _promptForCode({required bool joinStyle}) async {
-    final controller = TextEditingController();
-    final code = await showModalBottomSheet<String>(
+  Future<void> _sync() async {
+    if (_syncing) return;
+    setState(() => _syncing = true);
+    try {
+      final session = await _api.currentSession();
+      if (!session.hasDepartment) {
+        throw const ResponderRoadmapApiException(
+          'Your ResponderRoadmap account is not connected to an active department.',
+        );
+      }
+      final link = DepartmentLink.fromSession(session);
+      final assignments = await _api.listAssignments();
+      await _store.save(link);
+      if (!mounted) return;
+      setState(() {
+        _link = link;
+        _assignments = assignments;
+        _loadError = null;
+      });
+    } on ResponderRoadmapApiException catch (e) {
+      if (!mounted) return;
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        await _api.disconnect();
+        await _store.clear();
+        setState(() {
+          _link = null;
+          _assignments = const [];
+        });
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
+
+  Future<void> _disconnect() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Disconnect department?'),
+        content: const Text(
+          'This removes the department login from this device. Your personal Career Road stays on this device and department records remain in ResponderRoadmap.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Disconnect'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _api.disconnect();
+    await _store.clear();
+    if (!mounted) return;
+    setState(() {
+      _link = null;
+      _assignments = const [];
+    });
+  }
+
+  Future<_Credentials?> _showLoginSheet() async {
+    final email = TextEditingController();
+    final password = TextEditingController();
+    var obscure = true;
+    final result = await showModalBottomSheet<_Credentials>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final viewInsets = MediaQuery.viewInsetsOf(context);
+            return Padding(
+              padding: EdgeInsets.fromLTRB(16, 6, 16, 20 + viewInsets.bottom),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Connect ResponderRoadmap',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Use the same account your department uses on responderroadmap.com.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: email,
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: password,
+                    obscureText: obscure,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      suffixIcon: IconButton(
+                        onPressed: () => setSheetState(() => obscure = !obscure),
+                        icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                      ),
+                    ),
+                    onSubmitted: (_) {
+                      if (email.text.trim().isNotEmpty && password.text.isNotEmpty) {
+                        Navigator.of(context).pop(
+                          _Credentials(email: email.text.trim(), password: password.text),
+                        );
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 54,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        if (email.text.trim().isEmpty || password.text.isEmpty) return;
+                        Navigator.of(context).pop(
+                          _Credentials(email: email.text.trim(), password: password.text),
+                        );
+                      },
+                      icon: const Icon(Icons.link_rounded),
+                      label: const Text('Connect Account'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    email.dispose();
+    password.dispose();
+    return result;
+  }
+
+  Future<String?> _showJoinCodeSheet() async {
+    final code = TextEditingController();
+    final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (context) {
         final viewInsets = MediaQuery.viewInsetsOf(context);
         return Padding(
-          padding: EdgeInsets.fromLTRB(16, 10, 16, 16 + viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(16, 6, 16, 20 + viewInsets.bottom),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                joinStyle ? 'Join Department' : 'Enter Department Code',
+                'Join your department',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 6),
-              Text(
-                'For development, try DEMO-01.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45),
+              const Text(
+                'Your department can give you its ResponderRoadmap join code. Some departments require an administrator to approve the request.',
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               TextField(
-                controller: controller,
+                controller: code,
                 autofocus: true,
                 textCapitalization: TextCapitalization.characters,
                 decoration: const InputDecoration(
-                  labelText: 'Department code',
-                  hintText: 'DEMO-01',
+                  labelText: 'Department join code',
+                  hintText: 'ABC-1234',
                 ),
-                onSubmitted: (v) => Navigator.of(context).pop(v),
+                onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               SizedBox(
-                width: double.infinity,
-                height: 52,
+                height: 54,
                 child: FilledButton.icon(
-                  onPressed: () => Navigator.of(context).pop(controller.text),
-                  icon: const Icon(Icons.check_rounded),
-                  label: Text(joinStyle ? 'Join Department' : 'Continue'),
+                  onPressed: () => Navigator.of(context).pop(code.text.trim()),
+                  icon: const Icon(Icons.group_add_rounded),
+                  label: const Text('Request to Join'),
                 ),
               ),
-              const SizedBox(height: 10),
             ],
           ),
         );
       },
     );
-    final normalized = (code ?? '').trim().toUpperCase();
-    if (normalized.isEmpty) return;
-
-    final resolvedName = _departmentNameForCode(normalized);
-    if (resolvedName == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid code. Try DEMO-01 for development.')),
-      );
-      return;
-    }
-
-    final link = DepartmentLink(code: normalized, departmentName: resolvedName, linkedAt: DateTime.now());
-    await _store.save(link);
-    if (!mounted) return;
-    setState(() => _link = link);
+    code.dispose();
+    return result;
   }
 
-  String? _departmentNameForCode(String code) {
-    if (code == 'DEMO-01') return 'Metro Fire & Rescue';
-    return null;
+  Future<void> _openDashboard() async {
+    final uri = Uri.parse(ResponderRoadmapApi.dashboardUrl);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open responderroadmap.com.')),
+      );
+    }
+  }
+
+  Future<void> _openAssignment(DepartmentTaskBookAssignment assignment) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DepartmentTaskBookPage(assignment: assignment),
+      ),
+    );
+    await _sync();
   }
 
   @override
@@ -116,65 +359,150 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Department'),
+        actions: [
+          if (_link != null)
+            IconButton(
+              tooltip: 'Sync department records',
+              onPressed: _syncing ? null : _sync,
+              icon: _syncing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.sync_rounded),
+            ),
+        ],
       ),
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
-                children: [
-                  if (_link == null) ...[
-                    _ConnectCard(
-                      onJoin: () => _promptForCode(joinStyle: true),
-                      onEnterCode: () => _promptForCode(joinStyle: false),
-                    ),
-                  ] else ...[
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(AppRadius.xl),
-                        border: Border.all(color: cs.onSurface.withValues(alpha: .08)),
+            : RefreshIndicator(
+                onRefresh: _link == null ? () async {} : _sync,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+                  children: [
+                    if (_link == null) ...[
+                      _ConnectCard(
+                        busy: _syncing,
+                        error: _loadError,
+                        onConnect: _connect,
+                        onOpenDashboard: _openDashboard,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.apartment_rounded, color: cs.primary),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _link!.departmentName,
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: cs.primaryContainer.withValues(alpha: .55),
+                          borderRadius: BorderRadius.circular(AppRadius.xl),
+                          border: Border.all(color: cs.primary.withValues(alpha: .14)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.apartment_rounded, color: cs.primary),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _link!.departmentName,
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Connected via code ${_link!.code}.',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: FilledButton.tonalIcon(
-                              onPressed: () async {
-                                await _store.clear();
-                                if (!mounted) return;
-                                setState(() => _link = null);
-                              },
-                              icon: const Icon(Icons.link_off_rounded),
-                              label: const Text('Disconnect'),
+                                const Icon(Icons.verified_rounded),
+                              ],
                             ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _link!.rank?.trim().isNotEmpty == true
+                                  ? '${_link!.userName} · ${_link!.rank}'
+                                  : _link!.userName,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              _link!.email,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: FilledButton.tonalIcon(
+                                    onPressed: _openDashboard,
+                                    icon: const Icon(Icons.open_in_new_rounded),
+                                    label: const Text('Dashboard'),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                IconButton.filledTonal(
+                                  tooltip: 'Disconnect',
+                                  onPressed: _disconnect,
+                                  icon: const Icon(Icons.link_off_rounded),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _PrivacyBoundaryCard(),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Department Task Books',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                          Text(
+                            '${_assignments.length}',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                  fontWeight: FontWeight.w900,
+                                ),
                           ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Assignments here are official department records. Submissions go to ResponderRoadmap for evaluator review.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                              height: 1.4,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_assignments.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerHighest.withValues(alpha: .35),
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.assignment_outlined),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text('No department Task Books are assigned to you yet.'),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        ..._assignments.map(
+                          (assignment) => _AssignmentCard(
+                            assignment: assignment,
+                            onTap: () => _openAssignment(assignment),
+                          ),
+                        ),
+                    ],
                   ],
-                ],
+                ),
               ),
       ),
     );
@@ -182,12 +510,16 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
 }
 
 class _ConnectCard extends StatelessWidget {
-  final VoidCallback onJoin;
-  final VoidCallback onEnterCode;
+  final bool busy;
+  final String? error;
+  final VoidCallback onConnect;
+  final VoidCallback onOpenDashboard;
 
   const _ConnectCard({
-    required this.onJoin,
-    required this.onEnterCode,
+    required this.busy,
+    required this.error,
+    required this.onConnect,
+    required this.onOpenDashboard,
   });
 
   @override
@@ -205,36 +537,179 @@ class _ConnectCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Connect ResponderRoadmap to your department',
+            'Connect to your department',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
           Text(
-            'Your career stays yours\nYour personal Career Road and career history remain separate from department-managed assignments.',
+            'Sign in with your ResponderRoadmap account to receive department Task Books and send work to your evaluator.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
           ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cs.surface.withValues(alpha: .6),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.lock_outline_rounded, size: 20),
+                SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    'Your personal Career Road, Quick Log, career history, and private notes stay on this device. They are not uploaded to your department automatically.',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(error!, style: TextStyle(color: cs.error, fontWeight: FontWeight.w700)),
+          ],
           const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
             height: 54,
             child: FilledButton.icon(
-              onPressed: onJoin,
-              icon: const Icon(Icons.group_add_rounded),
-              label: const Text('Join Department'),
+              onPressed: busy ? null : onConnect,
+              icon: busy
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.link_rounded),
+              label: Text(busy ? 'Connecting…' : 'Connect ResponderRoadmap'),
             ),
           ),
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
-            height: 54,
-            child: FilledButton.tonalIcon(
-              onPressed: onEnterCode,
-              icon: const Icon(Icons.key_rounded),
-              label: const Text('Enter Department Code'),
+            height: 50,
+            child: TextButton.icon(
+              onPressed: onOpenDashboard,
+              icon: const Icon(Icons.open_in_new_rounded),
+              label: const Text('Open Department Dashboard'),
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _PrivacyBoundaryCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer.withValues(alpha: .35),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.shield_outlined),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Connected does not mean shared. Only department Task Book submissions you intentionally send are written to ResponderRoadmap. Personal career records remain separate.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AssignmentCard extends StatelessWidget {
+  final DepartmentTaskBookAssignment assignment;
+  final VoidCallback onTap;
+
+  const _AssignmentCard({required this.assignment, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      assignment.taskBookTitle,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${assignment.progress}%',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
+              Text(
+                '${_humanize(assignment.status)} · Version ${assignment.version}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                value: (assignment.progress / 100).clamp(0, 1),
+                minHeight: 7,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${assignment.complete}/${assignment.totalRequired} approved',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  if (assignment.pendingApproval > 0)
+                    Text(
+                      '${assignment.pendingApproval} awaiting review',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.tertiary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Credentials {
+  final String email;
+  final String password;
+
+  const _Credentials({required this.email, required this.password});
+}
+
+String _humanize(String value) {
+  return value
+      .toLowerCase()
+      .split('_')
+      .map((word) => word.isEmpty ? word : '${word[0].toUpperCase()}${word.substring(1)}')
+      .join(' ');
 }
