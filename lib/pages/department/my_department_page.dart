@@ -666,7 +666,9 @@ class _AssignmentCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               LinearProgressIndicator(
-                value: (assignment.progress / 100).clamp(0, 1),
+                value: (assignment.progress / 100)
+                    .clamp(0.0, 1.0)
+                    .toDouble(),
                 minHeight: 7,
                 borderRadius: BorderRadius.circular(999),
               ),
