@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -342,8 +343,11 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: _dismissKeyboard,
+      child: Scaffold(
+        appBar: AppBar(
         leading: _step == 0
             ? null
             : IconButton(
@@ -374,40 +378,43 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: PageView(
-                controller: _pages,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [_instructionsStep(), _currentSituationStep(), _certStep(), _goalStep()],
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: PageView(
+                  controller: _pages,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [_instructionsStep(), _currentSituationStep(), _certStep(), _goalStep()],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: SizedBox(
-                width: double.infinity,
-                height: 58,
-                child: FilledButton(
-                  onPressed: _saving ? null : _next,
-                  child: Text(
-                    _saving
-                        ? 'Building your path…'
-                        : _step == 3
-                        ? 'Build my Task Book'
-                        : _step == 0
-                        ? 'Continue — Build My Path'
-                        : 'Continue',
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 58,
+                  child: FilledButton(
+                    onPressed: _saving ? null : _next,
+                    child: Text(
+                      _saving
+                          ? 'Building your path…'
+                          : _step == 3
+                          ? 'Build my Task Book'
+                          : _step == 0
+                          ? 'Continue — Build My Path'
+                          : 'Continue',
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
+  void _dismissKeyboard() => FocusManager.instance.primaryFocus?.unfocus();
 
   Widget _instructionsStep() {
     final cs = Theme.of(context).colorScheme;
@@ -605,6 +612,9 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                       child: TextField(
                         controller: _years,
                         keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        onSubmitted: (_) => _dismissKeyboard(),
                         decoration: const InputDecoration(
                           labelText: 'Years of service',
                           hintText: '0+',
@@ -678,6 +688,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                   title: Text(cert),
                   controlAffinity: ListTileControlAffinity.leading,
                   onChanged: (_) => setState(() {
+                    _dismissKeyboard();
                     if (_certs.contains(cert)) {
                       _certs.remove(cert);
                     } else {
@@ -727,7 +738,10 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
               color: _goalId == goal.id ? cs.primaryContainer : cs.surface,
               borderRadius: BorderRadius.circular(AppRadius.lg),
               child: InkWell(
-                onTap: () => setState(() => _goalId = goal.id),
+                  onTap: () {
+                    _dismissKeyboard();
+                    setState(() => _goalId = goal.id);
+                  },
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 child: Container(
                   constraints: const BoxConstraints(minHeight: 64),
@@ -791,6 +805,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
   }
 
   Future<void> _next() async {
+    _dismissKeyboard();
     if (_step == 1 && _roles.isEmpty) {
       _message('Choose at least one current role.');
       return;
@@ -822,6 +837,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
 
   Future<void> _back() async {
     if (_step == 0) return;
+    _dismissKeyboard();
     await _pages.previousPage(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,

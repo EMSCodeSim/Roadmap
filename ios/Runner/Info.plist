@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- Privacy: Required because some plugins (e.g., file pickers/sharing) may reference Photos APIs. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FireOps Career Road needs access to your photo library so you can choose images or files to attach to your career records, exports, and backups.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>FireOps Career Road needs permission to save images or files to your photo library when you export or back up your career documents.</string>
 </dict>
 </plist>

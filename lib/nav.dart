@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import 'package:firepath/pages/bootstrap_page.dart';
 import 'package:firepath/pages/shell/app_shell_page.dart';
@@ -40,6 +41,21 @@ import 'package:firepath/models/prefill.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/services/task_book_navigation.dart';
 
+import 'package:firepath/portal/pages/portal_login_page.dart';
+import 'package:firepath/portal/pages/portal_shell_page.dart';
+import 'package:firepath/portal/pages/dashboard/portal_dashboard_page.dart';
+import 'package:firepath/portal/pages/members/portal_members_page.dart';
+import 'package:firepath/portal/pages/members/portal_member_profile_page.dart';
+import 'package:firepath/portal/pages/task_books/portal_task_books_page.dart';
+import 'package:firepath/portal/pages/task_books/portal_task_book_builder_page.dart';
+import 'package:firepath/portal/pages/assignments/portal_assignments_page.dart';
+import 'package:firepath/portal/pages/signoffs/portal_signoffs_page.dart';
+import 'package:firepath/portal/pages/certifications/portal_certifications_page.dart';
+import 'package:firepath/portal/pages/reports/portal_reports_page.dart';
+import 'package:firepath/portal/pages/department/portal_department_page.dart';
+import 'package:firepath/portal/pages/settings/portal_settings_page.dart';
+import 'package:firepath/portal/state/portal_controller.dart';
+
 class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: AppRoutes.bootstrap,
@@ -55,6 +71,146 @@ class AppRouter {
         name: 'onboarding',
         pageBuilder: (context, state) =>
             const NoTransitionPage(child: OnboardingV2Page()),
+      ),
+
+      // ---------------------------------------------------------------------
+      // ResponderRoadmap Department Portal (desktop/web)
+      // ---------------------------------------------------------------------
+      GoRoute(
+        path: AppRoutes.portalLogin,
+        name: 'portal_login',
+        pageBuilder: (context, state) => const MaterialPage(child: PortalLoginPage()),
+      ),
+      ShellRoute(
+        builder: (context, state, child) => PortalShellPage(child: child),
+        routes: [
+          GoRoute(
+            path: AppRoutes.portal,
+            redirect: (context, state) {
+              final portal = context.read<PortalController>();
+              if (!portal.bootstrapped) return null;
+              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+              return '${AppRoutes.portal}/dashboard';
+            },
+          ),
+          GoRoute(
+            path: '${AppRoutes.portal}/dashboard',
+            name: 'portal_dashboard',
+            redirect: (context, state) {
+              final portal = context.read<PortalController>();
+              if (!portal.bootstrapped) return null;
+              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+              return null;
+            },
+            pageBuilder: (context, state) => const NoTransitionPage(child: PortalDashboardPage()),
+          ),
+          GoRoute(
+            path: '${AppRoutes.portal}/members',
+            name: 'portal_members',
+            redirect: (context, state) {
+              final portal = context.read<PortalController>();
+              if (!portal.bootstrapped) return null;
+              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+              return null;
+            },
+            pageBuilder: (context, state) => const NoTransitionPage(child: PortalMembersPage()),
+            routes: [
+              GoRoute(
+                path: ':id',
+                name: 'portal_member_profile',
+                pageBuilder: (context, state) => MaterialPage(
+                  child: PortalMemberProfilePage(memberId: state.pathParameters['id']!),
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '${AppRoutes.portal}/task-books',
+            name: 'portal_task_books',
+            redirect: (context, state) {
+              final portal = context.read<PortalController>();
+              if (!portal.bootstrapped) return null;
+              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+              return null;
+            },
+            pageBuilder: (context, state) => const NoTransitionPage(child: PortalTaskBooksPage()),
+            routes: [
+              GoRoute(
+                path: ':id',
+                name: 'portal_task_book_builder',
+                pageBuilder: (context, state) => MaterialPage(
+                  child: PortalTaskBookBuilderPage(templateId: state.pathParameters['id']!),
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '${AppRoutes.portal}/assignments',
+            name: 'portal_assignments',
+            redirect: (context, state) {
+              final portal = context.read<PortalController>();
+              if (!portal.bootstrapped) return null;
+              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+              return null;
+            },
+            pageBuilder: (context, state) => const NoTransitionPage(child: PortalAssignmentsPage()),
+          ),
+          GoRoute(
+            path: '${AppRoutes.portal}/signoffs',
+            name: 'portal_signoffs',
+            redirect: (context, state) {
+              final portal = context.read<PortalController>();
+              if (!portal.bootstrapped) return null;
+              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+              return null;
+            },
+            pageBuilder: (context, state) => const NoTransitionPage(child: PortalSignoffsPage()),
+          ),
+          GoRoute(
+            path: '${AppRoutes.portal}/certifications',
+            name: 'portal_certifications',
+            redirect: (context, state) {
+              final portal = context.read<PortalController>();
+              if (!portal.bootstrapped) return null;
+              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+              return null;
+            },
+            pageBuilder: (context, state) => const NoTransitionPage(child: PortalCertificationsPage()),
+          ),
+          GoRoute(
+            path: '${AppRoutes.portal}/reports',
+            name: 'portal_reports',
+            redirect: (context, state) {
+              final portal = context.read<PortalController>();
+              if (!portal.bootstrapped) return null;
+              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+              return null;
+            },
+            pageBuilder: (context, state) => const NoTransitionPage(child: PortalReportsPage()),
+          ),
+          GoRoute(
+            path: '${AppRoutes.portal}/department',
+            name: 'portal_department',
+            redirect: (context, state) {
+              final portal = context.read<PortalController>();
+              if (!portal.bootstrapped) return null;
+              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+              return null;
+            },
+            pageBuilder: (context, state) => const NoTransitionPage(child: PortalDepartmentPage()),
+          ),
+          GoRoute(
+            path: '${AppRoutes.portal}/settings',
+            name: 'portal_settings',
+            redirect: (context, state) {
+              final portal = context.read<PortalController>();
+              if (!portal.bootstrapped) return null;
+              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+              return null;
+            },
+            pageBuilder: (context, state) => const NoTransitionPage(child: PortalSettingsPage()),
+          ),
+        ],
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -403,4 +559,8 @@ class AppRoutes {
   static const String qualificationTaskBook = '/task-book/qualification';
   static const String requirementChecklist = '/task-book/checklist';
   static const String taskDetail = '/task-book/task';
+
+  // Department Portal (web/desktop)
+  static const String portalLogin = '/portal/login';
+  static const String portal = '/portal';
 }

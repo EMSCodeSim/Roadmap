@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
 import 'package:firepath/phone_theme.dart';
+import 'package:firepath/portal/state/portal_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
@@ -15,8 +16,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AppState()..bootstrap(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppState()..bootstrap()),
+        ChangeNotifierProvider(create: (_) => PortalController()..bootstrap()),
+      ],
       child: MaterialApp.router(
         title: 'FireOps Career Road',
         debugShowCheckedModeBanner: false,
