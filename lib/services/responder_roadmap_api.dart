@@ -130,7 +130,9 @@ class DepartmentRequirement {
       evidenceType: (json['evidenceType'] as String?) ?? 'NONE',
       evaluatorSignOffRequired: json['evaluatorSignOffRequired'] != false,
       supervisorApprovalRequired: json['supervisorApprovalRequired'] == true,
-      repetitionsRequired: _asInt(json['repetitionsRequired'], fallback: 1).clamp(1, 999),
+      repetitionsRequired: _asInt(json['repetitionsRequired'], fallback: 1)
+          .clamp(1, 999)
+          .toInt(),
       prerequisites: (json['prerequisites'] as List?)
               ?.whereType<String>()
               .toList(growable: false) ??
@@ -381,7 +383,7 @@ class ResponderRoadmapApi {
       }
     } catch (error) {
       if (error is ResponderRoadmapApiException) rethrow;
-      throw ResponderRoadmapApiException(
+      throw const ResponderRoadmapApiException(
         'Could not reach ResponderRoadmap. Check your connection and try again.',
       );
     }
@@ -394,9 +396,7 @@ class ResponderRoadmapApi {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final errorMessage = decoded is Map
-          ? (decoded['error'] as String?)
-          : null;
+      final errorMessage = decoded is Map ? (decoded['error'] as String?) : null;
       if (response.statusCode == 401) {
         await _secureStorage.delete(key: _tokenKey);
       }
