@@ -83,10 +83,14 @@ class DepartmentRequirement {
   final String description;
   final String instructions;
   final String evidenceType;
+  final bool memberNotesAllowed;
   final bool evaluatorSignOffRequired;
   final bool supervisorApprovalRequired;
   final int repetitionsRequired;
   final List<String> prerequisites;
+  final bool blockedByPrerequisites;
+  final List<String> prerequisiteTitles;
+  final String? reviewStage;
   final String? referenceUrl;
   final String? referenceDocument;
   final String? completionStatus;
@@ -99,10 +103,14 @@ class DepartmentRequirement {
     required this.description,
     required this.instructions,
     required this.evidenceType,
+    required this.memberNotesAllowed,
     required this.evaluatorSignOffRequired,
     required this.supervisorApprovalRequired,
     required this.repetitionsRequired,
     required this.prerequisites,
+    required this.blockedByPrerequisites,
+    required this.prerequisiteTitles,
+    required this.reviewStage,
     required this.referenceUrl,
     required this.referenceDocument,
     required this.completionStatus,
@@ -115,7 +123,15 @@ class DepartmentRequirement {
 
   bool get isAwaitingReview => completionStatus == 'SUBMITTED';
 
-  bool get canSubmit => !isFullyApproved && !isAwaitingReview;
+  bool get canSubmit =>
+      !isFullyApproved && !isAwaitingReview && !blockedByPrerequisites;
+
+  String get reviewLabel {
+    if (reviewStage == 'SUPERVISOR') return 'Waiting for supervisor approval';
+    if (reviewStage == 'EVALUATOR') return 'Waiting for evaluator review';
+    if (isAwaitingReview) return 'Waiting for department review';
+    return '';
+  }
 
   factory DepartmentRequirement.fromJson(Map<String, dynamic> json) {
     final completionRaw = json['completion'];
@@ -128,6 +144,7 @@ class DepartmentRequirement {
       description: (json['description'] as String?) ?? '',
       instructions: (json['instructions'] as String?) ?? '',
       evidenceType: (json['evidenceType'] as String?) ?? 'NONE',
+      memberNotesAllowed: json['memberNotesAllowed'] != false,
       evaluatorSignOffRequired: json['evaluatorSignOffRequired'] != false,
       supervisorApprovalRequired: json['supervisorApprovalRequired'] == true,
       repetitionsRequired: _asInt(json['repetitionsRequired'], fallback: 1)
@@ -137,6 +154,12 @@ class DepartmentRequirement {
               ?.whereType<String>()
               .toList(growable: false) ??
           const <String>[],
+      blockedByPrerequisites: json['blockedByPrerequisites'] == true,
+      prerequisiteTitles: (json['prerequisiteTitles'] as List?)
+              ?.whereType<String>()
+              .toList(growable: false) ??
+          const <String>[],
+      reviewStage: json['reviewStage'] as String?,
       referenceUrl: json['referenceUrl'] as String?,
       referenceDocument: json['referenceDocument'] as String?,
       completionStatus: completion?['status'] as String?,
