@@ -100,7 +100,7 @@ class _PortalNavRail extends StatelessWidget {
                   IconButton(
                     tooltip: 'Settings',
                     onPressed: () {
-                      if (asDrawer) Navigator.of(context).pop();
+                      if (asDrawer) context.pop();
                       context.go('${AppRoutes.portal}/settings');
                     },
                     icon: Icon(Icons.settings, color: cs.onSurfaceVariant),
@@ -118,7 +118,7 @@ class _PortalNavRail extends StatelessWidget {
       selectedIndex: selected,
       onDestinationSelected: (index) {
         final dest = _PortalDest.values[index];
-        if (asDrawer) Navigator.of(context).pop();
+        if (asDrawer) context.pop();
         context.go(dest.path);
       },
       minWidth: 82,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -19,6 +20,13 @@ class _PortalLoginPageState extends State<PortalLoginPage> {
   String? _selectedUserId;
   PortalRole _role = PortalRole.trainingOfficer;
   bool _submitting = false;
+
+  void _navigateAfterFrame(String location) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.go(location);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,10 +126,16 @@ class _PortalLoginPageState extends State<PortalLoginPage> {
                                 setState(() => _submitting = true);
                                 try {
                                   await portal.signInAs(userId: userId, role: _role);
-                                  if (!context.mounted) return;
-                                  context.go('${AppRoutes.portal}/dashboard');
+                                  if (!mounted) return;
+
+                                  // If a dropdown/menu was open, unfocus first to ensure any overlay
+                                  // entries are torn down cleanly before route transition.
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                  setState(() => _submitting = false);
+                                  _navigateAfterFrame('${AppRoutes.portal}/dashboard');
+                                  return;
                                 } finally {
-                                  if (mounted) setState(() => _submitting = false);
+                                  if (mounted && _submitting) setState(() => _submitting = false);
                                 }
                               },
                         icon: const Icon(Icons.login),

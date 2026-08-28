@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
@@ -8,6 +9,30 @@ import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 
 void main() {
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('FlutterError: ${details.exceptionAsString()}');
+    if (details.stack != null) debugPrint(details.stack.toString());
+  };
+
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    debugPrint('ErrorWidget: ${details.exceptionAsString()}');
+    if (details.stack != null) debugPrint(details.stack.toString());
+    return Material(
+      color: Colors.red.shade900,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'Something went wrong.\n\n${details.exceptionAsString()}',
+            style: const TextStyle(color: Colors.white),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  };
+
   runApp(const MyApp());
 }
 
