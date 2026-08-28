@@ -30,6 +30,9 @@ jobs:
       - name: ResponderRoadmap department flow tests
         run: flutter test test/responder_roadmap_department_flow_test.dart
 
+      - name: Task Book focus preference tests
+        run: flutter test test/task_book_focus_store_test.dart
+
   platform-builds:
     needs: validate
     runs-on: ubuntu-latest
