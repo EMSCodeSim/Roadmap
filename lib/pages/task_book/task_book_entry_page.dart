@@ -86,30 +86,48 @@ class _TaskBookFocusBar extends StatelessWidget {
       shadowColor: Colors.black26,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+        padding: const EdgeInsets.fromLTRB(12, 7, 12, 9),
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(color: cs.outlineVariant.withValues(alpha: .7)),
           ),
         ),
-        child: SegmentedButton<TaskBookFocus>(
-          showSelectedIcon: false,
-          segments: const [
-            ButtonSegment<TaskBookFocus>(
-              value: TaskBookFocus.personal,
-              icon: Icon(Icons.person_outline_rounded),
-              label: Text('Personal Task Books'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child: Text(
+                'TASK BOOK FOCUS · REMEMBERED ON THIS DEVICE',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: .35,
+                    ),
+              ),
             ),
-            ButtonSegment<TaskBookFocus>(
-              value: TaskBookFocus.department,
-              icon: Icon(Icons.apartment_rounded),
-              label: Text('Department Task Books'),
+            SegmentedButton<TaskBookFocus>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment<TaskBookFocus>(
+                  value: TaskBookFocus.personal,
+                  icon: Icon(Icons.person_outline_rounded),
+                  label: Text('Personal'),
+                ),
+                ButtonSegment<TaskBookFocus>(
+                  value: TaskBookFocus.department,
+                  icon: Icon(Icons.apartment_rounded),
+                  label: Text('Department'),
+                ),
+              ],
+              selected: {focus},
+              onSelectionChanged: (selection) {
+                if (selection.isNotEmpty) onChanged(selection.first);
+              },
             ),
           ],
-          selected: {focus},
-          onSelectionChanged: (selection) {
-            if (selection.isNotEmpty) onChanged(selection.first);
-          },
         ),
       ),
     );
