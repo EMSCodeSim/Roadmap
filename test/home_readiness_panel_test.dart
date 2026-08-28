@@ -65,6 +65,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Quick Log'), findsOneWidget);
+    expect(find.text('Department'), findsOneWidget);
 
     final quickLogTop = tester.getTopLeft(find.text('Quick Log')).dy;
     expect(
@@ -99,6 +100,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Quick Log'), findsOneWidget);
+    expect(find.text('Department'), findsOneWidget);
     expect(find.text('Build My Task Book'), findsOneWidget);
     expect(find.text('CAREER READINESS'), findsNothing);
   });

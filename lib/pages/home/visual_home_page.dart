@@ -36,9 +36,8 @@ class VisualHomePage extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             _QuickAccessRow(
-              hasRoadmap: hasRoadmap,
               onQuickLog: () => QuickLogLauncher.open(context),
-              onTaskBook: () => context.go(AppRoutes.myPath),
+              onDepartment: () => context.push(AppRoutes.department),
             ),
             const SizedBox(height: 14),
             if (!hasRoadmap)
@@ -97,19 +96,18 @@ class _Header extends StatelessWidget {
 }
 
 class _QuickAccessRow extends StatelessWidget {
-  final bool hasRoadmap;
   final VoidCallback onQuickLog;
-  final VoidCallback onTaskBook;
+  final VoidCallback onDepartment;
 
   const _QuickAccessRow({
-    required this.hasRoadmap,
     required this.onQuickLog,
-    required this.onTaskBook,
+    required this.onDepartment,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      key: const Key('home_quick_access_row'),
       children: [
         Expanded(
           child: SizedBox(
@@ -126,9 +124,9 @@ class _QuickAccessRow extends StatelessWidget {
           child: SizedBox(
             height: 50,
             child: FilledButton.tonalIcon(
-              onPressed: onTaskBook,
-              icon: const Icon(Icons.fact_check_outlined),
-              label: Text(hasRoadmap ? 'Task Book' : 'Build Task Book'),
+              onPressed: onDepartment,
+              icon: const Icon(Icons.apartment_rounded),
+              label: const Text('Department'),
             ),
           ),
         ),
