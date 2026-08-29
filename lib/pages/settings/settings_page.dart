@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:firepath/nav.dart';
-import 'package:firepath/services/notification_preferences_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/widgets/portfolio_backup_sheet.dart';
-import 'package:firepath/widgets/section_header.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -19,34 +18,24 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _resetting = false;
-  final _notificationStore = NotificationPreferencesStore();
-  NotificationPreferences? _notifications;
-  bool _loadingNotifications = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadNotifications();
-  }
+  static final Uri _privacyUrl =
+      Uri.parse('https://fireopssim.com/career-road-privacy.html');
+  static final Uri _supportUrl =
+      Uri.parse('https://fireopssim.com/career-road-support.html');
 
-  Future<void> _loadNotifications() async {
-    final prefs = await _notificationStore.load();
-    if (!mounted) return;
-    setState(() {
-      _notifications = prefs;
-      _loadingNotifications = false;
-    });
-  }
-
-  Future<void> _updateNotifications(NotificationPreferences next) async {
-    setState(() => _notifications = next);
-    await _notificationStore.save(next);
+  Future<void> _openUrl(Uri url) async {
+    final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to open the page. Please try again.')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final notifications = _notifications;
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton.toHome(),
@@ -56,64 +45,38 @@ class _SettingsPageState extends State<SettingsPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
           children: [
-            _SettingsSection(
+            const _SettingsSection(
               title: 'APP',
               children: [
-                const ListTile(
+                ListTile(
                   leading: Icon(Icons.info_outline),
                   title: Text('About FireOps Career Road'),
                   subtitle: Text('Career planning and professional record'),
-                  trailing: Text('1.1.6'),
+                  trailing: Text('1.1.10 (17)'),
                 ),
               ],
             ),
             const SizedBox(height: 18),
-            const SectionHeader(
-              title: 'Reminders',
-              subtitle:
-                  'Preferences only for now. Device notifications will use these toggles in a later release.',
+            _SettingsSection(
+              title: 'PRIVACY & SUPPORT',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: const Text('Privacy Policy'),
+                  subtitle: const Text('How personal and department data are handled'),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => _openUrl(_privacyUrl),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.help_outline),
+                  title: const Text('Support'),
+                  subtitle: const Text('Troubleshooting and help for this app'),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => _openUrl(_supportUrl),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            if (_loadingNotifications || notifications == null)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 18),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else
-              _SettingsSection(
-                title: 'NOTIFICATION PREFERENCES',
-                children: [
-                  SwitchListTile(
-                    secondary: const Icon(Icons.bolt_outlined),
-                    title: const Text('Daily Focus reminders'),
-                    subtitle: const Text('Nudge you to work the next step'),
-                    value: notifications.dailyFocusReminders,
-                    onChanged: (value) => _updateNotifications(
-                      notifications.copyWith(dailyFocusReminders: value),
-                    ),
-                  ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.verified_outlined),
-                    title: const Text('Certification expiry alerts'),
-                    subtitle: const Text('Warn before credentials lapse'),
-                    value: notifications.certificationExpiryAlerts,
-                    onChanged: (value) => _updateNotifications(
-                      notifications.copyWith(
-                        certificationExpiryAlerts: value,
-                      ),
-                    ),
-                  ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.event_outlined),
-                    title: const Text('Target-date risk alerts'),
-                    subtitle: const Text('Flag when the timeline gets tight'),
-                    value: notifications.targetDateRiskAlerts,
-                    onChanged: (value) => _updateNotifications(
-                      notifications.copyWith(targetDateRiskAlerts: value),
-                    ),
-                  ),
-                ],
-              ),
             const SizedBox(height: 18),
             _SettingsSection(
               title: 'BACKUP',
@@ -170,7 +133,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Your data is stored locally on this device in app files. Reset cannot be undone unless you previously saved a backup file.',
+              'Your personal Career Road data is stored locally on this device. Optional department Task Book data is sent to ResponderRoadmap only when you connect a department account and submit department work.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     height: 1.45,
@@ -189,7 +152,7 @@ class _SettingsPageState extends State<SettingsPage> {
         icon: const Icon(Icons.warning_amber_rounded),
         title: const Text('Reset FireOps Career Road?'),
         content: const Text(
-          'This will permanently delete your profile, certifications, career goal, Task Books, progress, Quick Log history, saved apparatus, preferences, and supporting records from this device.',
+          'This will permanently delete your profile, certifications, career goal, personal Task Books, progress, Quick Log history, saved apparatus, preferences, and supporting records from this device. Department records already submitted to ResponderRoadmap are not deleted by this local reset.',
         ),
         actions: [
           TextButton(
