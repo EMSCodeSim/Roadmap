@@ -37,7 +37,6 @@ class VisualHomePage extends StatelessWidget {
             const SizedBox(height: 10),
             _QuickAccessRow(
               onQuickLog: () => QuickLogLauncher.open(context),
-              onDepartment: () => context.push(AppRoutes.department),
             ),
             const SizedBox(height: 14),
             if (!hasRoadmap)
@@ -97,11 +96,9 @@ class _Header extends StatelessWidget {
 
 class _QuickAccessRow extends StatelessWidget {
   final VoidCallback onQuickLog;
-  final VoidCallback onDepartment;
 
   const _QuickAccessRow({
     required this.onQuickLog,
-    required this.onDepartment,
   });
 
   @override
@@ -116,17 +113,6 @@ class _QuickAccessRow extends StatelessWidget {
               onPressed: onQuickLog,
               icon: const Icon(Icons.add_task_outlined),
               label: const Text('Quick Log'),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: SizedBox(
-            height: 50,
-            child: FilledButton.tonalIcon(
-              onPressed: onDepartment,
-              icon: const Icon(Icons.apartment_rounded),
-              label: const Text('Department'),
             ),
           ),
         ),
