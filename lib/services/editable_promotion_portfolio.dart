@@ -267,7 +267,7 @@ class EditablePromotionPortfolio {
               ],
             ),
           ),
-          pw.Text('FireOps Career Road', style: const pw.TextStyle(color: PdfColors.white, fontSize: 9)),
+          pw.Text('Responder Roadmap', style: const pw.TextStyle(color: PdfColors.white, fontSize: 9)),
         ],
       ),
     );

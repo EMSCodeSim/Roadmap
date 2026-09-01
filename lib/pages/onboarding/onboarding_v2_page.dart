@@ -428,7 +428,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
             OnboardingHero(
               headline: 'Your path. Built fast.',
               supporting:
-                  'A 60-second setup to generate your FireOps Career Road + Task Book—based on your role, state, and current certs.',
+                  'A 60-second setup to generate your Responder Roadmap + Task Book—based on your role, state, and current certs.',
               progressValue: 1 / _totalSteps,
               progressLabel: 'Step 1 of $_totalSteps · About 1 minute',
             ),
@@ -717,7 +717,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Choose your Next Level. FireOps Career Road will build your starting Task Book. You can add department requirements later.',
+          'Choose your Next Level. Responder Roadmap will build your starting Task Book. You can add department requirements later.',
           style: Theme.of(context).textTheme.bodyMedium
               ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
         ),

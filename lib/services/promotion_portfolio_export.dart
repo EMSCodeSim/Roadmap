@@ -346,7 +346,7 @@ class PromotionPortfolioExport {
               ],
             ),
           ),
-          pw.Text('FireOps Career Road', style: const pw.TextStyle(color: PdfColors.white, fontSize: 9)),
+          pw.Text('Responder Roadmap', style: const pw.TextStyle(color: PdfColors.white, fontSize: 9)),
         ],
       ),
     );
@@ -515,6 +515,6 @@ class PromotionPortfolioExport {
   static pw.Widget _footer(pw.Context context) => pw.Container(
         alignment: pw.Alignment.centerRight,
         margin: const pw.EdgeInsets.only(top: 8),
-        child: pw.Text('FireOps Career Road • ${context.pageNumber}/${context.pagesCount}', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
+        child: pw.Text('Responder Roadmap • ${context.pageNumber}/${context.pagesCount}', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
       );
 }

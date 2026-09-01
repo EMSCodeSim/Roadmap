@@ -4,7 +4,7 @@ import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 
 /// A compact, consistent primary header for top-level screens.
 ///
-/// - Always displays the full brand title: "FireOps Career Road" (scale-down, no truncation)
+/// - Always displays the full brand title: "Responder Roadmap" (scale-down, no truncation)
 /// - Uses a device-safe raster icon with iOS-friendly fallbacks
 /// - Supports an optional subtitle for the current tab/context
 class FirefighterRoadmapAppBar extends StatelessWidget

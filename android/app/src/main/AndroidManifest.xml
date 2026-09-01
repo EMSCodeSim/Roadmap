@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="FireOps Career Road"
+        android:label="Responder Roadmap"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

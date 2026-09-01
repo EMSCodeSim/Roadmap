@@ -50,7 +50,7 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 ListTile(
                   leading: Icon(Icons.info_outline),
-                  title: Text('About FireOps Career Road'),
+                  title: Text('About Responder Roadmap'),
                   subtitle: Text('Career planning and professional record'),
                   trailing: Text('1.1.10 (17)'),
                 ),
@@ -150,7 +150,7 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         icon: const Icon(Icons.warning_amber_rounded),
-        title: const Text('Reset FireOps Career Road?'),
+        title: const Text('Reset Responder Roadmap?'),
         content: const Text(
           'This will permanently delete your profile, certifications, career goal, personal Task Books, progress, Quick Log history, saved apparatus, preferences, and supporting records from this device.',
         ),

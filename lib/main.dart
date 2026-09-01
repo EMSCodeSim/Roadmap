@@ -47,7 +47,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PortalController()..bootstrap()),
       ],
       child: MaterialApp.router(
-        title: 'FireOps Career Road',
+        title: 'Responder Roadmap',
         debugShowCheckedModeBanner: false,
         theme: phoneFriendlyTheme(lightTheme),
         darkTheme: phoneFriendlyTheme(darkTheme),

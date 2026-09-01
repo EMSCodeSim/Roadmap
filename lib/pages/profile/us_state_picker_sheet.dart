@@ -66,7 +66,7 @@ class _UsStatePickerSheetState extends State<UsStatePickerSheet> {
               borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
             child: Text(
-              'Fire and EMS certification and advancement requirements can vary by state. FireOps Career Road uses your state to improve your Task Book recommendations.',
+              'Fire and EMS certification and advancement requirements can vary by state. Responder Roadmap uses your state to improve your Task Book recommendations.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
             ),
           ),

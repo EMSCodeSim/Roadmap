@@ -147,7 +147,7 @@ class _ChooseGoalCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Build your Task Book first. FireOps Career Road will then turn the next requirement into one clear focus for today.',
+            'Build your Task Book first. Responder Roadmap will then turn the next requirement into one clear focus for today.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: cs.onSurfaceVariant,
                   height: 1.45,

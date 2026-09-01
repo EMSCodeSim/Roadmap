@@ -74,7 +74,7 @@ class CareerBackupService {
         ],
         subject: 'FireOps Career Portfolio backup',
         text:
-            'FireOps Career Road backup. Keep this file somewhere safe; restoring it replaces the portfolio on a device.',
+            'Responder Roadmap backup. Keep this file somewhere safe; restoring it replaces the portfolio on a device.',
         fileNameOverrides: [fileName],
       );
       if (result.status == ShareResultStatus.dismissed) {
