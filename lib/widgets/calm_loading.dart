@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 /// Calm loading panel to avoid "empty white screen" moments.
 class CalmLoading extends StatelessWidget {

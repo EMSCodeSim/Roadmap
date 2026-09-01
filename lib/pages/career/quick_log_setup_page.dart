@@ -5,7 +5,7 @@ import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/quick_log_template.dart';
 import 'package:firepath/models/quick_log_tracker.dart';
 import 'package:firepath/services/quick_log_preferences_store.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class QuickLogSetupPage extends StatefulWidget {
   const QuickLogSetupPage({super.key});

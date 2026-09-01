@@ -12,7 +12,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/task_book_resource_composer.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class GetStartedPage extends StatelessWidget {
   final Object? requirement;

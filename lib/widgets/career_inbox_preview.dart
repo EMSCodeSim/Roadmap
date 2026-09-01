@@ -7,7 +7,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_inbox.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class CareerInboxPreview extends StatefulWidget {
   const CareerInboxPreview({super.key});

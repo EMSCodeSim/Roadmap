@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/portal/state/portal_controller.dart';
 import 'package:firepath/portal/widgets/portal_page_scaffold.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class PortalReportsPage extends StatelessWidget {
   const PortalReportsPage({super.key});

@@ -6,7 +6,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/pages/path/timeline/career_timeline_tab.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class MyPathPage extends StatelessWidget {
   const MyPathPage({super.key});

@@ -8,7 +8,7 @@ import 'package:firepath/models/resource.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/pages/profile/us_state_picker_sheet.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 enum _ResourcesMode { personalized, requirementFilter }
 

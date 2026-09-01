@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class PortalStatCard extends StatelessWidget {
   final IconData icon;

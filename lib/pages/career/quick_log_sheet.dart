@@ -18,7 +18,7 @@ import 'package:firepath/services/quick_log_preferences_store.dart';
 import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/services/quick_log_path_suggester.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 enum QuickLogMode {
   taskBookProgress,

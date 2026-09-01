@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_backup_service.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 /// Phone-friendly backup/restore sheet. File save/share and file pick are
 /// primary; clipboard paste is a fallback for older backups.

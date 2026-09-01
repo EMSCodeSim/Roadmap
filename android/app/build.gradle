@@ -7,9 +7,9 @@ plugins {
 android {
     namespace = "com.fireopssim.careerroadmap"
 
-    // Android 16 / Google Play requirement.
-    // Pin explicitly so the build does not depend on Dreamflow's Flutter defaults.
-    compileSdk = 36
+    // Keep SDK values aligned with the Flutter/Dreamflow template.
+    // Dreamflow's Android inspection reads the effective values from Flutter's toolchain.
+    compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -18,13 +18,14 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17
+        // Kotlin expects a String here; also matches the standard Flutter template.
+        jvmTarget = '17'
     }
 
     defaultConfig {
         applicationId "com.fireopssim.careerroadmap"
         minSdk = flutter.minSdkVersion
-        targetSdk = 36
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

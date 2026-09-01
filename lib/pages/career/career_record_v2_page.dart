@@ -10,7 +10,7 @@ import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 import 'package:firepath/widgets/portfolio_backup_sheet.dart';
 

@@ -12,7 +12,7 @@ import 'package:firepath/services/state_requirement_catalog.dart';
 import 'package:firepath/services/requirement_source_presenter.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/status_pill.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/models/prefill.dart';

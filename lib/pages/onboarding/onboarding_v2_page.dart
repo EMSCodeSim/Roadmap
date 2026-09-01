@@ -8,7 +8,7 @@ import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/pages/profile/us_state_picker_sheet.dart';
 import 'package:firepath/widgets/role_toggle_chip.dart';
 

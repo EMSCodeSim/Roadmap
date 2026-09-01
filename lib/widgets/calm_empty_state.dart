@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 /// Calm, consistent empty-state panel used across top-level screens.
 class CalmEmptyState extends StatelessWidget {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/services/certification_urgency.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/status_pill.dart';
 
 /// High-contrast, mobile-first tile for expiring/expired certifications.

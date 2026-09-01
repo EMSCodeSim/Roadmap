@@ -7,7 +7,7 @@ import 'package:firepath/services/career_pdf_export.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/editable_promotion_portfolio.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
 
 class PromotionPortfolioReviewPage extends StatefulWidget {

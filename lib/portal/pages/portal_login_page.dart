@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/portal/models/portal_user.dart';
 import 'package:firepath/portal/state/portal_controller.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/calm_loading.dart';
 
 class PortalLoginPage extends StatefulWidget {

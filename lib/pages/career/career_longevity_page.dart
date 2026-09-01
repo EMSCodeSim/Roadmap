@@ -7,7 +7,7 @@ import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/career_longevity.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class CareerLongevityPage extends StatefulWidget {
   const CareerLongevityPage({super.key});

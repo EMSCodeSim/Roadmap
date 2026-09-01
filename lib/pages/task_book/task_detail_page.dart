@@ -8,7 +8,7 @@ import 'package:firepath/models/prefill.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/models/resource.dart';
 import 'package:firepath/services/catalog.dart';

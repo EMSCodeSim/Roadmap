@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/services/career_record_store.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 enum SimpleQuickLogResult { moreDetails }
 

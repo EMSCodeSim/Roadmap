@@ -9,7 +9,7 @@ import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/career_inbox.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
 
 class CareerInboxPage extends StatefulWidget {

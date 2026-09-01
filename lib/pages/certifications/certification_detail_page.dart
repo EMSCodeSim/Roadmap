@@ -10,7 +10,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/certification_urgency.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/services/catalog.dart';
 
 class CertificationDetailPage extends StatefulWidget {

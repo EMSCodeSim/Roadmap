@@ -15,7 +15,7 @@ import 'package:firepath/services/smart_next_step.dart';
 import 'package:firepath/widgets/ecosystem_recommendation_card.dart';
 import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 enum DailyFocusMode { fifteen, thirty, sixty, crew }
 

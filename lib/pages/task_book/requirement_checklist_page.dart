@@ -10,7 +10,7 @@ import 'package:firepath/services/national_task_book_baseline.dart';
 import 'package:firepath/services/task_book_checklist_hierarchy.dart';
 import 'package:firepath/services/task_book_navigation.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
 
 /// A requirement-level checklist that can expand one level deeper.

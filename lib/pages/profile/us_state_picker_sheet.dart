@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firepath/services/catalog.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 /// Searchable US state picker used in onboarding and profile edits.
 class UsStatePickerSheet extends StatefulWidget {

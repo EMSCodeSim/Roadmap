@@ -7,7 +7,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/services/advancement_analyzer.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 
 class GrowthOverviewPage extends StatefulWidget {

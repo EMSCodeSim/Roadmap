@@ -5,7 +5,7 @@ import 'package:firepath/portal/models/assignment_models.dart';
 import 'package:firepath/portal/models/task_book_template.dart';
 import 'package:firepath/portal/state/portal_controller.dart';
 import 'package:firepath/portal/widgets/portal_page_scaffold.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/status_pill.dart';
 
 class PortalSignoffsPage extends StatefulWidget {

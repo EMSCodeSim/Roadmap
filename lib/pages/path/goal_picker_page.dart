@@ -7,7 +7,7 @@ import 'package:firepath/models/career_goal.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class GoalPickerPage extends StatefulWidget {
   const GoalPickerPage({super.key});

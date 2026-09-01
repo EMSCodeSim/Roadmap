@@ -6,7 +6,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/services/timeline_planner.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/services/task_book_stage_planner.dart';
 
 class CareerTimelineTab extends StatelessWidget {

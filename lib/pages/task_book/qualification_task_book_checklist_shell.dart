@@ -7,7 +7,7 @@ import 'package:firepath/pages/task_book/qualification_task_book_page.dart'
 import 'package:firepath/pages/task_book/requirement_checklist_page.dart';
 import 'package:firepath/services/national_task_book_baseline.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 /// Keeps the existing qualification-prep screen intact while making the
 /// standards checklist visible from the exact qualification page the user

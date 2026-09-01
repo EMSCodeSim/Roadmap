@@ -12,7 +12,7 @@ import 'package:firepath/services/certification_guide_library.dart';
 import 'package:firepath/services/state_fire_authority_catalog.dart';
 import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class QualificationTaskBookPage extends StatelessWidget {
   final Object? requirement;

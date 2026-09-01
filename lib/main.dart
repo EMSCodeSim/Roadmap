@@ -6,7 +6,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/phone_theme.dart';
 import 'package:firepath/portal/state/portal_controller.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 void main() {
   FlutterError.onError = (FlutterErrorDetails details) {

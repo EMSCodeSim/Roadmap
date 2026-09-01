@@ -6,7 +6,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/portal/models/portal_user.dart';
 import 'package:firepath/portal/state/portal_controller.dart';
 import 'package:firepath/portal/widgets/portal_page_scaffold.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class PortalSettingsPage extends StatelessWidget {
   const PortalSettingsPage({super.key});

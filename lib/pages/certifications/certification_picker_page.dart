@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/catalog.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class CertificationPickerPage extends StatefulWidget {
   final Object? extra;

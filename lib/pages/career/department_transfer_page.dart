@@ -11,7 +11,7 @@ import 'package:firepath/services/career_pdf_export.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/department_transfer_service.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class DepartmentTransferPage extends StatefulWidget {
   const DepartmentTransferPage({super.key});

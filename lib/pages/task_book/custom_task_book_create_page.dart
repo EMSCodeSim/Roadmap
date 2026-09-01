@@ -7,7 +7,7 @@ import 'package:firepath/models/career_goal.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
 
 enum _StartingPoint { blank, copyCareerRoad, copyGoalTemplate }

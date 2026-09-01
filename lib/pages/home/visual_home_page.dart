@@ -8,7 +8,7 @@ import 'package:firepath/services/readiness_action_plan.dart';
 import 'package:firepath/services/readiness_snapshot.dart';
 import 'package:firepath/services/smart_next_step.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/career_inbox_preview.dart';
 import 'package:firepath/widgets/career_readiness_panel.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';

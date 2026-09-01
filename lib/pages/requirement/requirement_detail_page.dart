@@ -13,7 +13,7 @@ import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/services/requirement_source_presenter.dart';
 import 'package:firepath/services/task_book_navigation.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/widgets/progress_ring.dart';
 import 'package:firepath/widgets/status_pill.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:firepath/services/ecosystem_recommendations.dart';
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 class EcosystemRecommendationCard extends StatelessWidget {
   final EcosystemRecommendation recommendation;

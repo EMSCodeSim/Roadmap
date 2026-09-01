@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:firepath/theme.dart';
+import 'package:firepath/services/theme.dart';
 
 /// Compact status chip for readiness, cert health, and story state.
 class StatusPill extends StatelessWidget {
