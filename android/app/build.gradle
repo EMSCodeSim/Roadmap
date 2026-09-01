@@ -6,9 +6,6 @@ plugins {
 
 android {
     namespace = "com.fireopssim.careerroadmap"
-
-    // Keep SDK values aligned with the Flutter/Dreamflow template.
-    // Dreamflow's Android inspection reads the effective values from Flutter's toolchain.
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -18,12 +15,11 @@ android {
     }
 
     kotlinOptions {
-        // Kotlin expects a String here; also matches the standard Flutter template.
-        jvmTarget = '17'
+        jvmTarget = JavaVersion.VERSION_17
     }
 
     defaultConfig {
-        applicationId "com.fireopssim.careerroadmap"
+        applicationId = "com.fireopssim.careerroadmap"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -32,9 +28,6 @@ android {
 
     buildTypes {
         release {
-            // Dreamflow can replace/sign the release artifact in its deployment pipeline.
-            // This fallback keeps a normal Flutter appbundle build from failing when
-            // a local Play upload keystore is not present.
             signingConfig = signingConfigs.debug
         }
     }
