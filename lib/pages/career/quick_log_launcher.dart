@@ -12,23 +12,38 @@ import 'package:firepath/pages/career/simple_quick_log_sheet.dart';
 /// mileage, hours, notes, outcomes, task links, apparatus details, or custom
 /// fields.
 class QuickLogLauncher {
+  /// Changes whenever a Quick Log flow closes.
+  ///
+  /// Long-lived tab pages can listen to this and reload their local career
+  /// records. This matters because the indexed-stack navigation keeps the Log
+  /// tab mounted while Quick Log is opened from Home, Task Book, or another
+  /// screen.
+  static final ValueNotifier<int> recordRevision = ValueNotifier<int>(0);
+
   static Future<void> open(BuildContext context, {LogPrefill? prefill}) async {
-    final result = await showModalBottomSheet<SimpleQuickLogResult>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (sheetContext) => ProductionQuickLogSheet(prefill: prefill),
-    );
+    try {
+      final result = await showModalBottomSheet<SimpleQuickLogResult>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        useSafeArea: true,
+        builder: (sheetContext) => ProductionQuickLogSheet(prefill: prefill),
+      );
 
-    if (result != SimpleQuickLogResult.moreDetails || !context.mounted) return;
+      if (result != SimpleQuickLogResult.moreDetails || !context.mounted) return;
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (sheetContext) => QuickLogSheet(prefill: prefill),
-    );
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        useSafeArea: true,
+        builder: (sheetContext) => QuickLogSheet(prefill: prefill),
+      );
+    } finally {
+      // A dismissal may be a save or a cancel. Reloading on either is cheap and
+      // guarantees that successful Quick Log entries immediately appear in the
+      // persistent Log tab without requiring a pull-to-refresh.
+      recordRevision.value++;
+    }
   }
 }
