@@ -63,7 +63,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.privacy_tip_outlined),
                   title: const Text('Privacy Policy'),
-                  subtitle: const Text('How personal and department data are handled'),
+                  subtitle: const Text('How your local career data is handled'),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => _openUrl(_privacyUrl),
                 ),
@@ -133,7 +133,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Your personal Career Road data is stored locally on this device. Optional department Task Book data is sent to ResponderRoadmap only when you connect a department account and submit department work.',
+              'Your Career Road, personal Task Books, Quick Log history, credentials, goals, and supporting records are stored locally on this device. Backup and export files leave the app only when you choose to save or share them.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     height: 1.45,
@@ -152,7 +152,7 @@ class _SettingsPageState extends State<SettingsPage> {
         icon: const Icon(Icons.warning_amber_rounded),
         title: const Text('Reset FireOps Career Road?'),
         content: const Text(
-          'This will permanently delete your profile, certifications, career goal, personal Task Books, progress, Quick Log history, saved apparatus, preferences, and supporting records from this device. Department records already submitted to ResponderRoadmap are not deleted by this local reset.',
+          'This will permanently delete your profile, certifications, career goal, personal Task Books, progress, Quick Log history, saved apparatus, preferences, and supporting records from this device.',
         ),
         actions: [
           TextButton(
