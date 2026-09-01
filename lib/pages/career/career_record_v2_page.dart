@@ -14,7 +14,17 @@ import 'package:firepath/theme.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 import 'package:firepath/widgets/portfolio_backup_sheet.dart';
 
-enum _CareerFilter { all, calls, skills, training, driving, exposures, leadership, achievements }
+enum _CareerFilter {
+  all,
+  calls,
+  skills,
+  training,
+  driving,
+  taskBook,
+  exposures,
+  leadership,
+  achievements,
+}
 
 extension _CareerFilterX on _CareerFilter {
   String get label => switch (this) {
@@ -23,6 +33,7 @@ extension _CareerFilterX on _CareerFilter {
         _CareerFilter.skills => 'SKILLS',
         _CareerFilter.training => 'TRAINING',
         _CareerFilter.driving => 'DRIVING',
+        _CareerFilter.taskBook => 'TASK BOOK',
         _CareerFilter.exposures => 'EXPOSURES',
         _CareerFilter.leadership => 'LEADERSHIP',
         _CareerFilter.achievements => 'ACHIEVEMENTS',
@@ -49,11 +60,13 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
   void initState() {
     super.initState();
     _search.addListener(_refresh);
+    QuickLogLauncher.recordRevision.addListener(_onQuickLogChanged);
     _load();
   }
 
   @override
   void dispose() {
+    QuickLogLauncher.recordRevision.removeListener(_onQuickLogChanged);
     _search.removeListener(_refresh);
     _search.dispose();
     super.dispose();
@@ -61,6 +74,10 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
 
   void _refresh() {
     if (mounted) setState(() {});
+  }
+
+  void _onQuickLogChanged() {
+    _load();
   }
 
   Future<void> _load() async {
@@ -104,6 +121,9 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
               !CareerStats.isDrivingRecord(record),
         _CareerFilter.training => record.type == CareerRecordType.training,
         _CareerFilter.driving => CareerStats.isDrivingRecord(record),
+        _CareerFilter.taskBook =>
+          record.type == CareerRecordType.taskBookEvidence ||
+              record.tags.contains('task-book'),
         _CareerFilter.exposures => CareerStats.isExposureRecord(record),
         _CareerFilter.leadership =>
           record.type == CareerRecordType.leadership ||
@@ -212,10 +232,12 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
               ),
               const SizedBox(height: 20),
               if (_loading)
-                const Center(child: Padding(
-                  padding: EdgeInsets.all(32),
-                  child: CircularProgressIndicator(),
-                ))
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
               else ...[
                 Text(
                   _career ? 'CAREER SUMMARY' : '$_year SUMMARY',
@@ -309,7 +331,8 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
     for (final entry in grouped.entries) {
       final measured = CareerStats.successFor(entry.value, trackingKey: entry.key);
       if (measured.attempts <= 0) continue;
-      final latest = [...entry.value]..sort((a, b) => b.date.compareTo(a.date));
+      final latest = [...entry.value]
+        ..sort((a, b) => b.date.compareTo(a.date));
       result.add(
         _ProcedureStat(
           title: latest.first.title,
@@ -538,17 +561,34 @@ class _SummaryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = <_SummaryMetric>[
-      _SummaryMetric('Calls', '${stats.calls}', Icons.local_fire_department_outlined),
-      _SummaryMetric('Skill reps', '${stats.skillRepetitions}', Icons.handyman_outlined),
+      _SummaryMetric(
+        'Calls',
+        '${stats.calls}',
+        Icons.local_fire_department_outlined,
+      ),
+      _SummaryMetric(
+        'Skill reps',
+        '${stats.skillRepetitions}',
+        Icons.handyman_outlined,
+      ),
       _SummaryMetric('Training', stats.trainingLabel, Icons.school_outlined),
-      _SummaryMetric('Drive time', stats.driveLabel, Icons.local_shipping_outlined),
+      _SummaryMetric(
+        'Drive time',
+        stats.driveLabel,
+        Icons.local_shipping_outlined,
+      ),
       _SummaryMetric(
         'Exposures',
         '${stats.totalExposures}',
         Icons.health_and_safety_outlined,
-        detail: '${stats.medicalExposures} medical • ${stats.hazardExposures} hazard',
+        detail:
+            '${stats.medicalExposures} medical • ${stats.hazardExposures} hazard',
       ),
-      _SummaryMetric('Leadership', '${stats.leadershipCount}', Icons.groups_outlined),
+      _SummaryMetric(
+        'Leadership',
+        '${stats.leadershipCount}',
+        Icons.groups_outlined,
+      ),
     ].where((metric) => metric.value != '0' && metric.value != '0 hr').toList();
 
     if (metrics.isEmpty) {
@@ -777,9 +817,12 @@ class _RecordCard extends StatelessWidget {
     if (CareerStats.isHazardExposureRecord(record)) {
       return Icons.health_and_safety_outlined;
     }
-    if (CareerStats.isDrivingRecord(record)) return Icons.local_shipping_outlined;
+    if (CareerStats.isDrivingRecord(record)) {
+      return Icons.local_shipping_outlined;
+    }
     return switch (record.type) {
-      CareerRecordType.operationalExperience => Icons.local_fire_department_outlined,
+      CareerRecordType.operationalExperience =>
+        Icons.local_fire_department_outlined,
       CareerRecordType.skill => Icons.handyman_outlined,
       CareerRecordType.training => Icons.school_outlined,
       CareerRecordType.achievement => Icons.emoji_events_outlined,
@@ -884,14 +927,16 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
                     child: TextField(
                       controller: _count,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Attempts / reps'),
+                      decoration:
+                          const InputDecoration(labelText: 'Attempts / reps'),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: TextField(
                       controller: _hours,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       decoration: const InputDecoration(labelText: 'Hours'),
                     ),
                   ),
@@ -902,7 +947,10 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
                 value: _outcome,
                 decoration: const InputDecoration(labelText: 'Outcome'),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('Not tracked')),
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Not tracked'),
+                  ),
                   ...CareerRecordOutcome.values.map(
                     (value) => DropdownMenuItem(
                       value: value,
@@ -954,13 +1002,15 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
       lastDate: DateTime.now(),
     );
     if (picked == null || !mounted) return;
-    setState(() => _date = DateTime(
-          picked.year,
-          picked.month,
-          picked.day,
-          _date.hour,
-          _date.minute,
-        ));
+    setState(
+      () => _date = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        _date.hour,
+        _date.minute,
+      ),
+    );
   }
 
   void _save() {
@@ -969,7 +1019,8 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
     final count = int.tryParse(_count.text.trim()) ?? 1;
     final hoursText = _hours.text.trim();
     final hours = hoursText.isEmpty ? null : double.tryParse(hoursText);
-    if (count <= 0 || (hoursText.isNotEmpty && (hours == null || hours <= 0))) {
+    if (count <= 0 ||
+        (hoursText.isNotEmpty && (hours == null || hours <= 0))) {
       return;
     }
     Navigator.pop(

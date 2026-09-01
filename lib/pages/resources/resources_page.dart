@@ -62,8 +62,9 @@ class _ResourcesPageState extends State<ResourcesPage> {
               .toSet();
         }
         final preset = extra['search'] as String?;
-        if (preset != null && preset.trim().isNotEmpty)
+        if (preset != null && preset.trim().isNotEmpty) {
           _search.text = preset.trim();
+        }
       }
     }
   }
@@ -116,7 +117,8 @@ class _PersonalizedResourcesView extends StatelessWidget {
         final goalId = road?.goal.id;
         final nextCertId =
             road?.nextStep?.requirement.certificationDefinitionId;
-        final userState = FireOpsCatalog.stateCodeFromLegacyValue(state.profile.state);
+        final userState =
+            FireOpsCatalog.stateCodeFromLegacyValue(state.profile.state);
 
         final activeRequirementIds = <String>{};
         if (road != null) {
@@ -152,8 +154,9 @@ class _PersonalizedResourcesView extends StatelessWidget {
           bool onMyPath() {
             if (goalId == null &&
                 nextCertId == null &&
-                activeRequirementIds.isEmpty)
+                activeRequirementIds.isEmpty) {
               return true;
+            }
             final matchesGoal =
                 goalId != null && r.relatedCareerGoalIds.contains(goalId);
             final matchesNext =
@@ -202,18 +205,26 @@ class _PersonalizedResourcesView extends StatelessWidget {
         }
 
         final filtered = items
-            .where((r) => matchText(r, value.text) && matchChips(r))
+            .where(
+              (r) =>
+                  r.url?.trim().isNotEmpty == true &&
+                  matchText(r, value.text) &&
+                  matchChips(r),
+            )
             .toList();
         filtered.sort((a, b) {
           int score(Resource r) {
             int s = 0;
-            if (userState != null && r.state != null && r.state == userState)
+            if (userState != null && r.state != null && r.state == userState) {
               s += 100;
+            }
             if (nextCertId != null &&
-                r.relatedCertificationDefinitionIds.contains(nextCertId))
+                r.relatedCertificationDefinitionIds.contains(nextCertId)) {
               s += 60;
-            if (goalId != null && r.relatedCareerGoalIds.contains(goalId))
+            }
+            if (goalId != null && r.relatedCareerGoalIds.contains(goalId)) {
               s += 30;
+            }
             if (r.type == ResourceType.fireOpsTool) s += 10;
             return -s;
           }
@@ -221,12 +232,12 @@ class _PersonalizedResourcesView extends StatelessWidget {
           return score(a).compareTo(score(b));
         });
 
-        final stateSpecific = userState == null ? <Resource>[] : filtered.where((r) => r.state == userState).toList();
+        final stateSpecific = userState == null
+            ? <Resource>[]
+            : filtered.where((r) => r.state == userState).toList();
         // Never mix other states into the national feed; if we don't have the
         // user's state yet, show only state-neutral resources.
-        final national = userState == null
-            ? filtered.where((r) => r.state == null).toList()
-            : filtered.where((r) => r.state == null).toList();
+        final national = filtered.where((r) => r.state == null).toList();
 
         return Scaffold(
           appBar: AppBar(
@@ -281,7 +292,7 @@ class _PersonalizedResourcesView extends StatelessWidget {
                 if (stateSpecific.isNotEmpty) ...[
                   _SectionHeader(
                     title: '${userState!} RESOURCES',
-                    subtitle: 'State-specific links (when available)',
+                    subtitle: 'State-specific links for your profile',
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   ..._buildCards(context, stateSpecific, limit: 8),
@@ -290,16 +301,26 @@ class _PersonalizedResourcesView extends StatelessWidget {
                 if (userState == null) ...[
                   _SectionHeader(
                     title: 'STATE-SPECIFIC LINKS',
-                    subtitle: 'Select your state to unlock official requirements and training links.',
+                    subtitle:
+                        'Select your state to prioritize official requirements and training links.',
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _PickStateCard(
                     onPick: () async {
-                      final picked = await UsStatePickerSheet.pick(context, selectedCode: null);
+                      final picked = await UsStatePickerSheet.pick(
+                        context,
+                        selectedCode: null,
+                      );
                       if (picked == null) return;
                       final profile = state.profile;
-                      await context.read<AppState>().profileController.updateProfile(
-                            profile.copyWith(state: picked, updatedAt: DateTime.now()),
+                      await context
+                          .read<AppState>()
+                          .profileController
+                          .updateProfile(
+                            profile.copyWith(
+                              state: picked,
+                              updatedAt: DateTime.now(),
+                            ),
                           );
                     },
                   ),
@@ -337,7 +358,7 @@ class _PersonalizedResourcesView extends StatelessWidget {
             border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
           ),
           child: Text(
-            'No matching resources yet. More will be added over time.',
+            'No resources match the current filters. Adjust the filters or verify this requirement with the appropriate certifying authority or training provider.',
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
@@ -370,7 +391,9 @@ class _RequirementResourcesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final userState = FireOpsCatalog.stateCodeFromLegacyValue(context.watch<AppState>().profile.state);
+    final userState = FireOpsCatalog.stateCodeFromLegacyValue(
+      context.watch<AppState>().profile.state,
+    );
     return ValueListenableBuilder(
       valueListenable: searchController,
       builder: (context, value, _) {
@@ -398,9 +421,13 @@ class _RequirementResourcesView extends StatelessWidget {
         }
 
         final filtered = items
-            .where(match)
+            .where(
+              (r) => r.url?.trim().isNotEmpty == true && match(r),
+            )
             .where((r) {
-              if (userState == null || userState.trim().isEmpty) return r.state == null;
+              if (userState == null || userState.trim().isEmpty) {
+                return r.state == null;
+              }
               return r.state == null || r.state == userState;
             })
             .toList();
@@ -436,12 +463,31 @@ class _RequirementResourcesView extends StatelessWidget {
                 const SizedBox(height: AppSpacing.md),
                 _SearchBar(controller: searchController),
                 const SizedBox(height: AppSpacing.lg),
-                ...filtered.map(
-                  (r) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: ResourceCard(resource: r),
+                if (filtered.isEmpty)
+                  Container(
+                    padding: AppSpacing.paddingMd,
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(
+                        color: cs.outline.withValues(alpha: 0.14),
+                      ),
+                    ),
+                    child: Text(
+                      'No mapped resources match this requirement and filter. Verify current information with the appropriate certifying authority or training provider.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.45,
+                      ),
+                    ),
+                  )
+                else
+                  ...filtered.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: ResourceCard(resource: r),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -565,7 +611,9 @@ class ResourceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final url = resource.url;
-    final profileState = FireOpsCatalog.stateCodeFromLegacyValue(context.read<AppState>().profile.state);
+    final profileState = FireOpsCatalog.stateCodeFromLegacyValue(
+      context.read<AppState>().profile.state,
+    );
     return Container(
       padding: AppSpacing.paddingMd,
       decoration: BoxDecoration(
@@ -610,7 +658,11 @@ class ResourceCard extends StatelessWidget {
           FilledButton(
             onPressed: url == null
                 ? null
-                : () => _openResourceUrl(context, resource, profileStateCode: profileState),
+                : () => _openResourceUrl(
+                    context,
+                    resource,
+                    profileStateCode: profileState,
+                  ),
             style: FilledButton.styleFrom(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -664,7 +716,11 @@ class ResourceCard extends StatelessWidget {
       } else if (profileState != stateOnly) {
         // Avoid surprising mismatched state links.
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('This link is for $stateOnly. Your profile is set to $profileState.')),
+          SnackBar(
+            content: Text(
+              'This link is for $stateOnly. Your profile is set to $profileState.',
+            ),
+          ),
         );
       }
     }
@@ -709,11 +765,19 @@ class _PickStateCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Select your state', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                Text(
+                  'Select your state',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   'We’ll prioritize the correct official requirements and training links for your area.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -721,7 +785,11 @@ class _PickStateCard extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           FilledButton(
             onPressed: () => onPick(),
-            style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+            ),
             child: const Text('Pick'),
           ),
         ],

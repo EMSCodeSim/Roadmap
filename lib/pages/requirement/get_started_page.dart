@@ -92,7 +92,7 @@ class GetStartedPage extends StatelessWidget {
               title: 'Review prerequisites',
               child: prereqs.isEmpty
                   ? Text(
-                      'No typical prerequisites listed. Verify with your department and authority.',
+                      'No typical prerequisites are listed for this item. Verify current requirements with your department or certifying authority.',
                       style: Theme.of(
                         context,
                       ).textTheme.bodyMedium?.copyWith(height: 1.5),
@@ -136,8 +136,8 @@ class GetStartedPage extends StatelessWidget {
               child: _ResourceSection(
                 resources: official,
                 emptyText: certId == null
-                    ? 'No official links available for this item yet.'
-                    : 'No official links found yet. Check Resources for options.',
+                    ? 'No mapped official link is available for this item. Verify current requirements with the appropriate certifying authority.'
+                    : 'No mapped official link is available for this item. Check Resources or verify current requirements with your state or certifying authority.',
                 onViewAll: certId == null
                     ? null
                     : () => context.go(
@@ -161,8 +161,8 @@ class GetStartedPage extends StatelessWidget {
               child: _ResourceSection(
                 resources: training,
                 emptyText: certId == null
-                    ? 'No training links available for this item yet.'
-                    : 'No training links found yet. Check Resources for class finders.',
+                    ? 'No mapped training link is available for this item. Use your local academy, department, college, or authorized training provider.'
+                    : 'No mapped training link is available for this item. Check Resources or use your local academy, department, college, or authorized training provider.',
                 onViewAll: certId == null
                     ? null
                     : () => context.go(
@@ -186,8 +186,8 @@ class GetStartedPage extends StatelessWidget {
               child: _ResourceSection(
                 resources: study,
                 emptyText: certId == null
-                    ? 'No study links available for this item yet.'
-                    : 'No study links found yet. Check Resources for study guides.',
+                    ? 'No mapped study resource is available for this item. Use the applicable standard, course material, and local training resources.'
+                    : 'No mapped study resource is available for this item. Check Resources and use the applicable standard, course material, and local training resources.',
                 onViewAll: certId == null
                     ? null
                     : () => context.go(
@@ -207,8 +207,8 @@ class GetStartedPage extends StatelessWidget {
               child: _ResourceSection(
                 resources: practice,
                 emptyText: certId == null
-                    ? 'No practice tools available for this item yet.'
-                    : 'No practice tools found yet. Check Resources for practice tools.',
+                    ? 'No mapped practice tool is available for this item. Use your department or training provider’s approved practice process.'
+                    : 'No mapped practice tool is available for this item. Check Resources or use your department or training provider’s approved practice process.',
                 onViewAll: certId == null
                     ? null
                     : () => context.go(
@@ -227,12 +227,12 @@ class GetStartedPage extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             _StepCard(
               step: 'STEP 6',
-              title: 'Department resource',
+              title: 'Your local resource',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Add a department-specific link (LMS, academy portal, SharePoint, etc.).',
+                    'Save a resource you already use, such as an academy portal, LMS, department intranet, or reference page. This stays with your personal Career Road on this device.',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(height: 1.5),
@@ -244,7 +244,7 @@ class GetStartedPage extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                         child: _ActionButton(
                           label: l.title,
-                          icon: Icons.apartment,
+                          icon: Icons.link,
                           onPressed: l.url == null
                               ? null
                               : () => _openUrl(l.url!),
@@ -254,7 +254,7 @@ class GetStartedPage extends StatelessWidget {
                     const SizedBox(height: AppSpacing.sm),
                   ],
                   _ActionButton(
-                    label: 'Add Department Resource',
+                    label: 'Add Local Resource',
                     icon: Icons.add_link,
                     onPressed: road == null
                         ? null
@@ -364,14 +364,14 @@ class GetStartedPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Add Department Resource',
+                  'Add Local Resource',
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Add a link your department actually uses (LMS, academy portal, SharePoint, etc.).',
+                  'Save a link you already use for this requirement. It stays with your personal Career Road on this device.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: cs.onSurfaceVariant,
                     height: 1.5,
@@ -451,8 +451,12 @@ class _ResourceSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final available = resources.where((resource) {
+      final url = resource.url?.trim();
+      return url != null && url.isNotEmpty;
+    }).toList();
 
-    if (resources.isEmpty) {
+    if (available.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -478,35 +482,24 @@ class _ResourceSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ...resources
+        ...available
             .take(3)
             .map(
               (r) => Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: _ActionButton(
                   label: r.verified ? r.title : '${r.title} (unverified)',
-                  icon: r.url == null ? Icons.lock_outline : Icons.open_in_new,
-                  onPressed: r.url == null
-                      ? null
-                      : () => GetStartedPage._openUrl(r.url!),
+                  icon: Icons.open_in_new,
+                  onPressed: () => GetStartedPage._openUrl(r.url!),
                 ),
               ),
             ),
-        if (resources.length > 3 && onViewAll != null) ...[
+        if (available.length > 3 && onViewAll != null) ...[
           const SizedBox(height: AppSpacing.sm),
           _ActionButton(
             label: 'View all',
             icon: Icons.chevron_right,
             onPressed: onViewAll,
-          ),
-        ],
-        if (resources.any((r) => r.url == null)) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Link coming soon for some items.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
       ],

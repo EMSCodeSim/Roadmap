@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -74,145 +75,161 @@ class AppRouter {
             const NoTransitionPage(child: OnboardingV2Page()),
       ),
 
-      // ---------------------------------------------------------------------
-      // ResponderRoadmap Department Portal (desktop/web)
-      // ---------------------------------------------------------------------
-      GoRoute(
-        path: AppRoutes.portalLogin,
-        name: 'portal_login',
-        pageBuilder: (context, state) => const MaterialPage(child: PortalLoginPage()),
-      ),
-      ShellRoute(
-        builder: (context, state, child) => PortalShellPage(child: child),
-        routes: [
-          GoRoute(
-            path: AppRoutes.portal,
-            redirect: (context, state) {
-              final portal = context.read<PortalController>();
-              if (!portal.bootstrapped) return null;
-              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
-              return '${AppRoutes.portal}/dashboard';
-            },
-          ),
-          GoRoute(
-            path: '${AppRoutes.portal}/dashboard',
-            name: 'portal_dashboard',
-            redirect: (context, state) {
-              final portal = context.read<PortalController>();
-              if (!portal.bootstrapped) return null;
-              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
-              return null;
-            },
-            pageBuilder: (context, state) => const NoTransitionPage(child: PortalDashboardPage()),
-          ),
-          GoRoute(
-            path: '${AppRoutes.portal}/members',
-            name: 'portal_members',
-            redirect: (context, state) {
-              final portal = context.read<PortalController>();
-              if (!portal.bootstrapped) return null;
-              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
-              return null;
-            },
-            pageBuilder: (context, state) => const NoTransitionPage(child: PortalMembersPage()),
-            routes: [
-              GoRoute(
-                path: ':id',
-                name: 'portal_member_profile',
-                pageBuilder: (context, state) => MaterialPage(
-                  child: PortalMemberProfilePage(memberId: state.pathParameters['id']!),
+      // Department portal routes are web-only. They are intentionally omitted
+      // from the mobile route table for the personal-only App Store release.
+      if (kIsWeb) ...[
+        GoRoute(
+          path: AppRoutes.portalLogin,
+          name: 'portal_login',
+          pageBuilder: (context, state) =>
+              const MaterialPage(child: PortalLoginPage()),
+        ),
+        ShellRoute(
+          builder: (context, state, child) => PortalShellPage(child: child),
+          routes: [
+            GoRoute(
+              path: AppRoutes.portal,
+              redirect: (context, state) {
+                final portal = context.read<PortalController>();
+                if (!portal.bootstrapped) return null;
+                if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+                return '${AppRoutes.portal}/dashboard';
+              },
+            ),
+            GoRoute(
+              path: '${AppRoutes.portal}/dashboard',
+              name: 'portal_dashboard',
+              redirect: (context, state) {
+                final portal = context.read<PortalController>();
+                if (!portal.bootstrapped) return null;
+                if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+                return null;
+              },
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: PortalDashboardPage()),
+            ),
+            GoRoute(
+              path: '${AppRoutes.portal}/members',
+              name: 'portal_members',
+              redirect: (context, state) {
+                final portal = context.read<PortalController>();
+                if (!portal.bootstrapped) return null;
+                if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+                return null;
+              },
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: PortalMembersPage()),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  name: 'portal_member_profile',
+                  pageBuilder: (context, state) => MaterialPage(
+                    child: PortalMemberProfilePage(
+                      memberId: state.pathParameters['id']!,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          GoRoute(
-            path: '${AppRoutes.portal}/task-books',
-            name: 'portal_task_books',
-            redirect: (context, state) {
-              final portal = context.read<PortalController>();
-              if (!portal.bootstrapped) return null;
-              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
-              return null;
-            },
-            pageBuilder: (context, state) => const NoTransitionPage(child: PortalTaskBooksPage()),
-            routes: [
-              GoRoute(
-                path: ':id',
-                name: 'portal_task_book_builder',
-                pageBuilder: (context, state) => MaterialPage(
-                  child: PortalTaskBookBuilderPage(templateId: state.pathParameters['id']!),
+              ],
+            ),
+            GoRoute(
+              path: '${AppRoutes.portal}/task-books',
+              name: 'portal_task_books',
+              redirect: (context, state) {
+                final portal = context.read<PortalController>();
+                if (!portal.bootstrapped) return null;
+                if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+                return null;
+              },
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: PortalTaskBooksPage()),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  name: 'portal_task_book_builder',
+                  pageBuilder: (context, state) => MaterialPage(
+                    child: PortalTaskBookBuilderPage(
+                      templateId: state.pathParameters['id']!,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          GoRoute(
-            path: '${AppRoutes.portal}/assignments',
-            name: 'portal_assignments',
-            redirect: (context, state) {
-              final portal = context.read<PortalController>();
-              if (!portal.bootstrapped) return null;
-              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
-              return null;
-            },
-            pageBuilder: (context, state) => const NoTransitionPage(child: PortalAssignmentsPage()),
-          ),
-          GoRoute(
-            path: '${AppRoutes.portal}/signoffs',
-            name: 'portal_signoffs',
-            redirect: (context, state) {
-              final portal = context.read<PortalController>();
-              if (!portal.bootstrapped) return null;
-              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
-              return null;
-            },
-            pageBuilder: (context, state) => const NoTransitionPage(child: PortalSignoffsPage()),
-          ),
-          GoRoute(
-            path: '${AppRoutes.portal}/certifications',
-            name: 'portal_certifications',
-            redirect: (context, state) {
-              final portal = context.read<PortalController>();
-              if (!portal.bootstrapped) return null;
-              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
-              return null;
-            },
-            pageBuilder: (context, state) => const NoTransitionPage(child: PortalCertificationsPage()),
-          ),
-          GoRoute(
-            path: '${AppRoutes.portal}/reports',
-            name: 'portal_reports',
-            redirect: (context, state) {
-              final portal = context.read<PortalController>();
-              if (!portal.bootstrapped) return null;
-              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
-              return null;
-            },
-            pageBuilder: (context, state) => const NoTransitionPage(child: PortalReportsPage()),
-          ),
-          GoRoute(
-            path: '${AppRoutes.portal}/department',
-            name: 'portal_department',
-            redirect: (context, state) {
-              final portal = context.read<PortalController>();
-              if (!portal.bootstrapped) return null;
-              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
-              return null;
-            },
-            pageBuilder: (context, state) => const NoTransitionPage(child: PortalDepartmentPage()),
-          ),
-          GoRoute(
-            path: '${AppRoutes.portal}/settings',
-            name: 'portal_settings',
-            redirect: (context, state) {
-              final portal = context.read<PortalController>();
-              if (!portal.bootstrapped) return null;
-              if (portal.sessionUserId == null) return AppRoutes.portalLogin;
-              return null;
-            },
-            pageBuilder: (context, state) => const NoTransitionPage(child: PortalSettingsPage()),
-          ),
-        ],
-      ),
+              ],
+            ),
+            GoRoute(
+              path: '${AppRoutes.portal}/assignments',
+              name: 'portal_assignments',
+              redirect: (context, state) {
+                final portal = context.read<PortalController>();
+                if (!portal.bootstrapped) return null;
+                if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+                return null;
+              },
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: PortalAssignmentsPage()),
+            ),
+            GoRoute(
+              path: '${AppRoutes.portal}/signoffs',
+              name: 'portal_signoffs',
+              redirect: (context, state) {
+                final portal = context.read<PortalController>();
+                if (!portal.bootstrapped) return null;
+                if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+                return null;
+              },
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: PortalSignoffsPage()),
+            ),
+            GoRoute(
+              path: '${AppRoutes.portal}/certifications',
+              name: 'portal_certifications',
+              redirect: (context, state) {
+                final portal = context.read<PortalController>();
+                if (!portal.bootstrapped) return null;
+                if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+                return null;
+              },
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: PortalCertificationsPage()),
+            ),
+            GoRoute(
+              path: '${AppRoutes.portal}/reports',
+              name: 'portal_reports',
+              redirect: (context, state) {
+                final portal = context.read<PortalController>();
+                if (!portal.bootstrapped) return null;
+                if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+                return null;
+              },
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: PortalReportsPage()),
+            ),
+            GoRoute(
+              path: '${AppRoutes.portal}/department',
+              name: 'portal_department',
+              redirect: (context, state) {
+                final portal = context.read<PortalController>();
+                if (!portal.bootstrapped) return null;
+                if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+                return null;
+              },
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: PortalDepartmentPage()),
+            ),
+            GoRoute(
+              path: '${AppRoutes.portal}/settings',
+              name: 'portal_settings',
+              redirect: (context, state) {
+                final portal = context.read<PortalController>();
+                if (!portal.bootstrapped) return null;
+                if (portal.sessionUserId == null) return AppRoutes.portalLogin;
+                return null;
+              },
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: PortalSettingsPage()),
+            ),
+          ],
+        ),
+      ],
+
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AppShellPage(navigationShell: navigationShell),
@@ -277,11 +294,15 @@ class AppRouter {
             const MaterialPage(child: SettingsPage()),
       ),
 
-      GoRoute(
-        path: AppRoutes.department,
-        name: 'department',
-        pageBuilder: (context, state) => const MaterialPage(child: MyDepartmentPage()),
-      ),
+      // My Department is retained for the web/development surface, but there
+      // is no mobile route to it in the personal-only first App Store release.
+      if (kIsWeb)
+        GoRoute(
+          path: AppRoutes.department,
+          name: 'department',
+          pageBuilder: (context, state) =>
+              const MaterialPage(child: MyDepartmentPage()),
+        ),
 
       GoRoute(path: '/career', redirect: (context, state) => AppRoutes.growth),
       GoRoute(
