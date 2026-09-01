@@ -6,9 +6,10 @@ plugins {
 
 android {
     namespace = "com.fireopssim.careerroadmap"
-    // Keep these aligned with the Flutter toolchain values so Dreamflow can
-    // recognize this as a standard template while still targeting API 36.
-    compileSdk = flutter.compileSdkVersion
+
+    // Android 16 / Google Play requirement.
+    // Pin explicitly so the build does not depend on Dreamflow's Flutter defaults.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -23,15 +24,16 @@ android {
     defaultConfig {
         applicationId "com.fireopssim.careerroadmap"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            // In Dreamflow, signing is handled by the deployment pipeline.
-            // Keep the Android module aligned with the standard Flutter template.
+            // Dreamflow can replace/sign the release artifact in its deployment pipeline.
+            // This fallback keeps a normal Flutter appbundle build from failing when
+            // a local Play upload keystore is not present.
             signingConfig = signingConfigs.debug
         }
     }
