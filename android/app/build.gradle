@@ -6,6 +6,7 @@ plugins {
 
 android {
     namespace = "com.fireopssim.careerroadmap"
+    // Dreamflow deployment/inspection should see concrete Android 16 values.
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
