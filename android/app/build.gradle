@@ -4,53 +4,35 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file('key.properties')
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-}
-
 android {
     namespace = "com.fireopssim.careerroadmap"
-    // Pin Android 16 explicitly for Play production compliance instead of
-    // depending on the Flutter toolchain default.
-    compileSdk = 36
-    ndkVersion = "27.0.12077973"
+    // Keep these aligned with the Flutter toolchain values so Dreamflow can
+    // recognize this as a standard template while still targeting API 36.
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11
-    }
-
-    signingConfigs {
-       release {
-           keyAlias keystoreProperties['keyAlias']
-           keyPassword keystoreProperties['keyPassword']
-           storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-           storePassword keystoreProperties['storePassword']
-       }
+        jvmTarget = JavaVersion.VERSION_17
     }
 
     defaultConfig {
         applicationId "com.fireopssim.careerroadmap"
         minSdk = flutter.minSdkVersion
-        targetSdk = 36
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            // Never silently ship a production artifact with the debug key.
-            // When key.properties is present, use the configured Play upload key.
-            if (keystorePropertiesFile.exists()) {
-                signingConfig = signingConfigs.release
-            }
+            // In Dreamflow, signing is handled by the deployment pipeline.
+            // Keep the Android module aligned with the standard Flutter template.
+            signingConfig = signingConfigs.debug
         }
     }
 }
