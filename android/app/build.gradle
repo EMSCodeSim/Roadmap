@@ -13,7 +13,7 @@ if (keystorePropertiesFile.exists()) {
 def isReleaseTask = gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }
 
 android {
-    namespace = "com.fireopssim.careerroadmap"
+    namespace = "com.responderroadmap.app"
     // Keep this pinned to Android 16 / API 36 so deployment/inspection can verify it.
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
@@ -28,7 +28,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.fireopssim.careerroadmap"
+        applicationId = "com.responderroadmap.app"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode
