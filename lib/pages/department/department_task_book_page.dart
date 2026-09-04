@@ -93,7 +93,9 @@ class _DepartmentTaskBookPageState extends State<DepartmentTaskBookPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Version ${_assignment.version}',
+                          _assignment.isSingleTask
+                              ? 'Single training assignment'
+                              : 'Version ${_assignment.version}',
                           style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                 color: cs.onSurfaceVariant,
                                 fontWeight: FontWeight.w800,
@@ -391,6 +393,52 @@ class _RequirementSheetState extends State<_RequirementSheet> {
                 text: 'Complete the prerequisite${requirement.prerequisiteTitles.length == 1 ? '' : 's'} first: ${requirement.prerequisiteTitles.join(', ')}.',
               ),
             ] else ...[
+              if (requirement.completionStatus == 'RETURNED') ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: cs.errorContainer,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: cs.error.withValues(alpha: .3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Corrections required',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              color: cs.onErrorContainer,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        requirement.correctionNotes.trim().isEmpty
+                            ? 'Contact your evaluator for the required corrections.'
+                            : requirement.correctionNotes,
+                        style: TextStyle(color: cs.onErrorContainer, height: 1.4),
+                      ),
+                      if ((requirement.returnedByName ?? '').trim().isNotEmpty || requirement.returnedAt != null) ...[
+                        const SizedBox(height: 7),
+                        Text(
+                          [
+                            if ((requirement.returnedByName ?? '').trim().isNotEmpty)
+                              'Returned by ${requirement.returnedByName}',
+                            if (requirement.returnedAt != null)
+                              _shortDate(requirement.returnedAt!),
+                          ].join(' · '),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: cs.onErrorContainer,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
               if (requirement.memberNotesAllowed) ...[
                 TextField(
                   controller: _notes,
@@ -445,7 +493,13 @@ class _RequirementSheetState extends State<_RequirementSheet> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.send_rounded),
-                  label: Text(_submitting ? 'Submitting…' : 'Submit for Department Review'),
+                  label: Text(
+                    _submitting
+                        ? 'Submitting…'
+                        : requirement.completionStatus == 'RETURNED'
+                            ? 'Resubmit Corrections'
+                            : 'Submit for Department Review',
+                  ),
                 ),
               ),
             ],

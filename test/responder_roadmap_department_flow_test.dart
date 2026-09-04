@@ -101,5 +101,40 @@ void main() {
       expect(requirement.isFullyApproved, isTrue);
       expect(requirement.canSubmit, isFalse);
     });
+
+    test('returned work preserves correction instructions and reviewer identity', () {
+      final requirement = DepartmentRequirement.fromJson({
+        'id': 'req-6',
+        'title': 'Patient Assessment',
+        'repetitionsRequired': 1,
+        'completion': {
+          'status': 'RETURNED',
+          'repetitionCount': 0,
+          'correction': {
+            'notes': 'Document a complete set of repeat vital signs.',
+            'returnedByName': 'Jordan Evaluator',
+            'returnedAt': '2026-09-04T16:30:00.000Z',
+          },
+        },
+      });
+
+      expect(requirement.canSubmit, isTrue);
+      expect(
+        requirement.correctionNotes,
+        'Document a complete set of repeat vital signs.',
+      );
+      expect(requirement.returnedByName, 'Jordan Evaluator');
+      expect(requirement.returnedAt, isNotNull);
+    });
+
+    test('identifies a standalone training assignment', () {
+      final assignment = DepartmentTaskBookAssignment.fromJson({
+        'id': 'assignment-1',
+        'taskBookTitle': 'Review airway protocol update',
+        'assignmentKind': 'TRAINING_TASK',
+      });
+
+      expect(assignment.isSingleTask, isTrue);
+    });
   });
 }

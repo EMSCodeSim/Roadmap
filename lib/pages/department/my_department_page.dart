@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -26,11 +28,23 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
   bool _loading = true;
   bool _syncing = false;
   String? _loadError;
+  Timer? _autoSyncTimer;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && _link != null && !_syncing) {
+        _sync(showErrors: false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoSyncTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -141,7 +155,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     }
   }
 
-  Future<void> _sync() async {
+  Future<void> _sync({bool showErrors = true}) async {
     if (_syncing) return;
     setState(() => _syncing = true);
     try {
@@ -172,9 +186,11 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
           _assignments = const [];
         });
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
+      if (showErrors) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
     } finally {
       if (mounted) setState(() => _syncing = false);
     }
@@ -450,7 +466,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                         children: [
                           Expanded(
                             child: Text(
-                              'Department Task Books',
+                              'Department Assignments',
                               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                             ),
                           ),
@@ -465,7 +481,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Assignments here are official department records. Submissions go to ResponderRoadmap for evaluator review.',
+                        'Task Books and single training assignments appear here. Submissions are official department records and go to ResponderRoadmap for review.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                               height: 1.4,
@@ -484,7 +500,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                               Icon(Icons.assignment_outlined),
                               SizedBox(width: 10),
                               Expanded(
-                                child: Text('No department Task Books are assigned to you yet.'),
+                                child: Text('No department assignments are assigned to you yet.'),
                               ),
                             ],
                           ),
@@ -637,6 +653,18 @@ class _AssignmentCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: cs.secondaryContainer.withValues(alpha: .7),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      assignment.isSingleTask ? 'Single assignment' : 'Task Book',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     '${assignment.progress}%',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
@@ -645,7 +673,9 @@ class _AssignmentCard extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                '${_humanize(assignment.status)} · Version ${assignment.version}',
+                assignment.isSingleTask
+                    ? _humanize(assignment.status)
+                    : '${_humanize(assignment.status)} · Version ${assignment.version}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 12),
