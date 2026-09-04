@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/state/app_mode_controller.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
 
 class AppShellPage extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -21,6 +22,7 @@ class AppShellPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final mode = context.watch<AppModeController>();
+    final inbox = context.watch<DepartmentInboxController>();
     final elevatedRole = mode.role == 'TRAINING_OFFICER' ||
         mode.role == 'DEPARTMENT_ADMINISTRATOR';
     final fourthLabel = mode.isDepartment
@@ -78,11 +80,15 @@ class AppShellPage extends StatelessWidget {
                   label: 'Log',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(mode.isDepartment
-                      ? mode.canReview
-                          ? Icons.fact_check_outlined
-                          : Icons.apartment_outlined
-                      : Icons.trending_up_outlined),
+                  icon: Badge(
+                    isLabelVisible: mode.isDepartment && (inbox.unreadCount > 0 || inbox.actionCount > 0),
+                    label: Text('${inbox.unreadCount + inbox.actionCount}'),
+                    child: Icon(mode.isDepartment
+                        ? mode.canReview
+                            ? Icons.fact_check_outlined
+                            : Icons.apartment_outlined
+                        : Icons.trending_up_outlined),
+                  ),
                   activeIcon: Icon(mode.isDepartment
                       ? mode.canReview
                           ? Icons.fact_check_rounded

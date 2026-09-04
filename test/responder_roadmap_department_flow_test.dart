@@ -136,5 +136,49 @@ void main() {
 
       expect(assignment.isSingleTask, isTrue);
     });
+
+    test('parses durable inbox, action count, and server timestamp', () {
+      final inbox = DepartmentInbox.fromJson({
+        'unreadCount': 2,
+        'serverTime': '2026-09-04T18:30:00.000Z',
+        'items': [
+          {
+            'id': 'notice-1',
+            'type': 'SUBMISSION_RETURNED',
+            'title': 'Corrections required',
+            'body': 'Repeat the hose deployment.',
+            'createdAt': '2026-09-04T18:29:00.000Z',
+            'pushStatus': 'SENT',
+          }
+        ],
+        'needsAction': [
+          {
+            'id': 'completion-1',
+            'kind': 'MEMBER_CORRECTION',
+            'title': 'Deploy attack line',
+            'subtitle': 'Firefighter I',
+          }
+        ],
+      });
+
+      expect(inbox.unreadCount, 2);
+      expect(inbox.items.single.pushStatus, 'SENT');
+      expect(inbox.needsAction.single.kind, 'MEMBER_CORRECTION');
+      expect(inbox.serverTime, isNotNull);
+    });
+
+    test('parses the server-recorded submission receipt', () {
+      final receipt = DepartmentSubmissionReceipt.fromJson({
+        'receiptId': 'completion-1',
+        'clientRequestId': 'submission-phone-1',
+        'status': 'SUBMITTED',
+        'recordedAt': '2026-09-04T18:30:00.000Z',
+        'recordedByName': 'Taylor Member',
+      });
+
+      expect(receipt.clientRequestId, 'submission-phone-1');
+      expect(receipt.recordedAt, isNotNull);
+      expect(receipt.recordedByName, 'Taylor Member');
+    });
   });
 }

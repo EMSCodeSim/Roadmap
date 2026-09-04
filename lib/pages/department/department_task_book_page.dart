@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/theme.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
 
 class DepartmentTaskBookPage extends StatefulWidget {
   final DepartmentTaskBookAssignment assignment;
@@ -290,7 +291,7 @@ class _RequirementSheetState extends State<_RequirementSheet> {
     if (_submitting || !widget.requirement.canSubmit) return;
     setState(() => _submitting = true);
     try {
-      final assignment = await widget.api.submitRequirement(
+      final result = await widget.api.submitRequirement(
         assignmentId: widget.assignment.id,
         requirementId: widget.requirement.id,
         memberNotes: widget.requirement.memberNotesAllowed ? _notes.text : '',
@@ -298,11 +299,30 @@ class _RequirementSheetState extends State<_RequirementSheet> {
         evidenceType: widget.requirement.evidenceType,
       );
       if (!mounted) return;
-      Navigator.of(context).pop(assignment);
+      await context.read<DepartmentInboxController>().refresh(silent: true);
+      if (!mounted) return;
+      final recordedAt = result.receipt.recordedAt?.toLocal();
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          icon: const Icon(Icons.cloud_done_rounded),
+          title: const Text('Submission received'),
+          content: Text(
+            'ResponderRoadmap recorded this as ${result.receipt.status.toLowerCase()}${recordedAt == null ? '' : ' on ${recordedAt.toString().split('.').first}'}.\n\nReceipt: ${result.receipt.receiptId}',
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done'))],
+        ),
+      );
+      if (mounted) Navigator.of(context).pop(result.assignment);
     } on ResponderRoadmapApiException catch (e) {
       if (!mounted) return;
+      if (e.statusCode == null || e.statusCode == 408 || (e.statusCode != null && e.statusCode! >= 500)) {
+        context.read<DepartmentInboxController>().submissionQueued();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
+        SnackBar(content: Text(e.statusCode == null || (e.statusCode != null && e.statusCode! >= 500)
+            ? 'Saved on this phone. Responder Roadmap will retry automatically when the connection returns.'
+            : e.message)),
       );
     } finally {
       if (mounted) setState(() => _submitting = false);

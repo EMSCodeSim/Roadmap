@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/pages/department/department_task_book_page.dart';
+import 'package:firepath/pages/department/department_inbox_page.dart';
 import 'package:firepath/services/department_link_store.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_mode_controller.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/app_mode_switcher.dart';
 
 class MyDepartmentPage extends StatefulWidget {
@@ -136,6 +138,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
       await _store.save(link);
       await context.read<AppModeController>().setDepartmentLink(link);
       final assignments = await _api.listAssignments();
+      await context.read<DepartmentInboxController>().refresh(silent: true);
       if (!mounted) return;
       setState(() {
         _link = link;
@@ -169,6 +172,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
       final assignments = await _api.listAssignments();
       await _store.save(link);
       await context.read<AppModeController>().setDepartmentLink(link);
+      await context.read<DepartmentInboxController>().refresh(silent: true);
       if (!mounted) return;
       setState(() {
         _link = link;
@@ -371,11 +375,22 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final inbox = context.watch<DepartmentInboxController>();
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.taskBooksOnly ? 'Department Task Books' : 'My Department'),
         actions: [
+          if (_link != null)
+            IconButton(
+              tooltip: 'Assignment inbox',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DepartmentInboxPage())),
+              icon: Badge(
+                isLabelVisible: inbox.unreadCount > 0 || inbox.actionCount > 0,
+                label: Text('${inbox.unreadCount + inbox.actionCount}'),
+                child: const Icon(Icons.notifications_outlined),
+              ),
+            ),
           if (_link != null)
             IconButton(
               tooltip: 'Sync department records',
@@ -410,6 +425,8 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                         onConnect: _connect,
                       ),
                     ] else ...[
+                      _SyncStatusCard(controller: inbox),
+                      const SizedBox(height: 12),
                       if (!widget.taskBooksOnly) Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
@@ -519,6 +536,39 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
       ),
     );
   }
+}
+
+class _SyncStatusCard extends StatelessWidget {
+  final DepartmentInboxController controller;
+  const _SyncStatusCard({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final waiting = controller.syncState == DepartmentSyncState.waitingToUpload;
+    final failed = controller.syncState == DepartmentSyncState.failed;
+    final syncing = controller.syncState == DepartmentSyncState.syncing;
+    final label = waiting ? 'Waiting to upload' : failed ? 'Sync failed' : syncing ? 'Syncing' : 'Synced';
+    final icon = waiting ? Icons.cloud_upload_outlined : failed ? Icons.sync_problem_rounded : syncing ? Icons.sync_rounded : Icons.cloud_done_rounded;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: (waiting || failed ? cs.errorContainer : cs.primaryContainer).withValues(alpha: .45),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Row(children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 9),
+        Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w900))),
+        if (controller.lastSyncedAt != null) Text(_syncTime(controller.lastSyncedAt!), style: Theme.of(context).textTheme.bodySmall),
+      ]),
+    );
+  }
+}
+
+String _syncTime(DateTime value) {
+  final local = value.toLocal();
+  return '${local.month}/${local.day} ${local.hour}:${local.minute.toString().padLeft(2, '0')}';
 }
 
 class _ConnectCard extends StatelessWidget {
