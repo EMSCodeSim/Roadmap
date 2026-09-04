@@ -96,6 +96,9 @@ class DepartmentRequirement {
   final String? completionStatus;
   final int repetitionCount;
   final String memberNotes;
+  final String correctionNotes;
+  final String? returnedByName;
+  final DateTime? returnedAt;
 
   const DepartmentRequirement({
     required this.id,
@@ -116,6 +119,9 @@ class DepartmentRequirement {
     required this.completionStatus,
     required this.repetitionCount,
     required this.memberNotes,
+    required this.correctionNotes,
+    required this.returnedByName,
+    required this.returnedAt,
   });
 
   bool get isFullyApproved =>
@@ -137,6 +143,10 @@ class DepartmentRequirement {
     final completionRaw = json['completion'];
     final completion = completionRaw is Map
         ? Map<String, dynamic>.from(completionRaw)
+        : null;
+    final correctionRaw = completion?['correction'];
+    final correction = correctionRaw is Map
+        ? Map<String, dynamic>.from(correctionRaw)
         : null;
     return DepartmentRequirement(
       id: (json['id'] as String?) ?? '',
@@ -165,6 +175,9 @@ class DepartmentRequirement {
       completionStatus: completion?['status'] as String?,
       repetitionCount: _asInt(completion?['repetitionCount']),
       memberNotes: (completion?['memberNotes'] as String?) ?? '',
+      correctionNotes: (correction?['notes'] as String?) ?? '',
+      returnedByName: correction?['returnedByName'] as String?,
+      returnedAt: DateTime.tryParse((correction?['returnedAt'] as String?) ?? ''),
     );
   }
 }
@@ -203,6 +216,7 @@ class DepartmentTaskBookAssignment {
   final String taskBookTitle;
   final String description;
   final String category;
+  final String assignmentKind;
   final String version;
   final String status;
   final int progress;
@@ -222,6 +236,7 @@ class DepartmentTaskBookAssignment {
     required this.taskBookTitle,
     required this.description,
     required this.category,
+    required this.assignmentKind,
     required this.version,
     required this.status,
     required this.progress,
@@ -237,12 +252,15 @@ class DepartmentTaskBookAssignment {
     required this.sections,
   });
 
+  bool get isSingleTask => assignmentKind == 'TRAINING_TASK';
+
   factory DepartmentTaskBookAssignment.fromJson(Map<String, dynamic> json) {
     return DepartmentTaskBookAssignment(
       id: (json['id'] as String?) ?? '',
       taskBookTitle: (json['taskBookTitle'] as String?) ?? 'Task Book',
       description: (json['description'] as String?) ?? '',
       category: (json['category'] as String?) ?? 'Department',
+      assignmentKind: (json['assignmentKind'] as String?) ?? 'TASK_BOOK',
       version: (json['version'] as String?) ?? '1.0',
       status: (json['status'] as String?) ?? 'NOT_STARTED',
       progress: _asInt(json['progress']),
