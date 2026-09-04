@@ -49,5 +49,9 @@
 	<false/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Responder Roadmap needs access to your photo library so you can attach and upload images as evidence and documents in your career records and department task books.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

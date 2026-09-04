@@ -284,6 +284,93 @@ class DepartmentTaskBookAssignment {
   }
 }
 
+class DepartmentInboxItem {
+  final String id;
+  final String type;
+  final String title;
+  final String body;
+  final String? referenceId;
+  final String? actionPath;
+  final DateTime? createdAt;
+  final DateTime? readAt;
+  final String pushStatus;
+
+  const DepartmentInboxItem({required this.id, required this.type, required this.title, required this.body, required this.referenceId, required this.actionPath, required this.createdAt, required this.readAt, required this.pushStatus});
+
+  factory DepartmentInboxItem.fromJson(Map<String, dynamic> json) => DepartmentInboxItem(
+        id: (json['id'] as String?) ?? '',
+        type: (json['type'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Assignment update',
+        body: (json['body'] as String?) ?? '',
+        referenceId: json['referenceId'] as String?,
+        actionPath: json['actionPath'] as String?,
+        createdAt: DateTime.tryParse((json['createdAt'] as String?) ?? ''),
+        readAt: DateTime.tryParse((json['readAt'] as String?) ?? ''),
+        pushStatus: (json['pushStatus'] as String?) ?? 'PENDING',
+      );
+}
+
+class DepartmentActionItem {
+  final String id;
+  final String kind;
+  final String title;
+  final String subtitle;
+  final DateTime? submittedAt;
+  final String? actionPath;
+
+  const DepartmentActionItem({required this.id, required this.kind, required this.title, required this.subtitle, required this.submittedAt, required this.actionPath});
+
+  factory DepartmentActionItem.fromJson(Map<String, dynamic> json) => DepartmentActionItem(
+        id: (json['id'] as String?) ?? '',
+        kind: (json['kind'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Assignment action',
+        subtitle: (json['subtitle'] as String?) ?? '',
+        submittedAt: DateTime.tryParse((json['submittedAt'] as String?) ?? ''),
+        actionPath: json['actionPath'] as String?,
+      );
+}
+
+class DepartmentInbox {
+  final int unreadCount;
+  final DateTime? serverTime;
+  final List<DepartmentInboxItem> items;
+  final List<DepartmentActionItem> needsAction;
+
+  const DepartmentInbox({required this.unreadCount, required this.serverTime, required this.items, required this.needsAction});
+
+  factory DepartmentInbox.fromJson(Map<String, dynamic> json) => DepartmentInbox(
+        unreadCount: _asInt(json['unreadCount']),
+        serverTime: DateTime.tryParse((json['serverTime'] as String?) ?? ''),
+        items: (json['items'] as List? ?? const []).whereType<Map>().map((item) => DepartmentInboxItem.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+        needsAction: (json['needsAction'] as List? ?? const []).whereType<Map>().map((item) => DepartmentActionItem.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+      );
+}
+
+class DepartmentSubmissionReceipt {
+  final String receiptId;
+  final String? clientRequestId;
+  final String status;
+  final DateTime? recordedAt;
+  final String recordedByName;
+
+  const DepartmentSubmissionReceipt({required this.receiptId, required this.clientRequestId, required this.status, required this.recordedAt, required this.recordedByName});
+
+  factory DepartmentSubmissionReceipt.fromJson(Map<String, dynamic> json) => DepartmentSubmissionReceipt(
+        receiptId: (json['receiptId'] as String?) ?? '',
+        clientRequestId: json['clientRequestId'] as String?,
+        status: (json['status'] as String?) ?? 'SUBMITTED',
+        recordedAt: DateTime.tryParse((json['recordedAt'] as String?) ?? ''),
+        recordedByName: (json['recordedByName'] as String?) ?? '',
+      );
+}
+
+class DepartmentSubmissionResult {
+  final DepartmentTaskBookAssignment assignment;
+  final DepartmentSubmissionReceipt receipt;
+
+  const DepartmentSubmissionResult({required this.assignment, required this.receipt});
+}
+
 class DepartmentEvaluationStep {
   final String id;
   final String text;
@@ -377,6 +464,7 @@ class ResponderRoadmapApi {
   static const String baseUrl = 'https://responderroadmap.com/api/v1';
   static const String dashboardUrl = 'https://responderroadmap.com/';
   static const String _tokenKey = 'fireops.responderRoadmap.token.v1';
+  static const String _pendingSubmissionsKey = 'fireops.responderRoadmap.pendingSubmissions.v1';
 
   final http.Client _client;
   final FlutterSecureStorage _secureStorage;
@@ -438,23 +526,119 @@ class ResponderRoadmapApi {
     return DepartmentTaskBookAssignment.fromJson(_asMap(data));
   }
 
-  Future<DepartmentTaskBookAssignment> submitRequirement({
+  Future<DepartmentSubmissionResult> submitRequirement({
     required String assignmentId,
     required String requirementId,
     String memberNotes = '',
     String evidenceDescription = '',
     String? evidenceType,
+    String? clientRequestId,
   }) async {
-    final data = await _request(
-      'POST',
-      'app/assignments/${Uri.encodeComponent(assignmentId)}/requirements/${Uri.encodeComponent(requirementId)}/submit',
-      body: <String, dynamic>{
-        'memberNotes': memberNotes.trim(),
-        'evidenceDescription': evidenceDescription.trim(),
-        if (evidenceType != null) 'evidenceType': evidenceType,
-      },
+    final requestId = clientRequestId ?? 'submission-${DateTime.now().microsecondsSinceEpoch}';
+    final pending = <String, dynamic>{
+      'clientRequestId': requestId,
+      'assignmentId': assignmentId,
+      'requirementId': requirementId,
+      'memberNotes': memberNotes,
+      'evidenceDescription': evidenceDescription,
+      if (evidenceType != null) 'evidenceType': evidenceType,
+    };
+    await _savePendingSubmission(pending);
+    dynamic data;
+    try {
+      data = await _request(
+        'POST',
+        'app/assignments/${Uri.encodeComponent(assignmentId)}/requirements/${Uri.encodeComponent(requirementId)}/submit',
+        body: <String, dynamic>{
+          'memberNotes': memberNotes.trim(),
+          'evidenceDescription': evidenceDescription.trim(),
+          if (evidenceType != null) 'evidenceType': evidenceType,
+          'clientRequestId': requestId,
+        },
+      );
+    } on ResponderRoadmapApiException catch (error) {
+      if (error.statusCode != null && error.statusCode! >= 400 && error.statusCode! < 500 && error.statusCode != 408) {
+        await _removePendingSubmission(requestId);
+      }
+      rethrow;
+    }
+    await _removePendingSubmission(requestId);
+    final map = _asMap(data);
+    return DepartmentSubmissionResult(
+      assignment: DepartmentTaskBookAssignment.fromJson(_asMap(map['assignment'])),
+      receipt: DepartmentSubmissionReceipt.fromJson(_asMap(map['receipt'])),
     );
-    return DepartmentTaskBookAssignment.fromJson(_asMap(data));
+  }
+
+  Future<List<DepartmentSubmissionResult>> retryPendingSubmissions() async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    dynamic decoded;
+    try {
+      decoded = raw == null ? const <dynamic>[] : jsonDecode(raw);
+    } catch (_) {
+      decoded = const <dynamic>[];
+    }
+    final rows = decoded is List ? decoded.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList() : <Map<String, dynamic>>[];
+    final completed = <DepartmentSubmissionResult>[];
+    for (final row in rows) {
+      try {
+        completed.add(await submitRequirement(
+          assignmentId: (row['assignmentId'] as String?) ?? '',
+          requirementId: (row['requirementId'] as String?) ?? '',
+          memberNotes: (row['memberNotes'] as String?) ?? '',
+          evidenceDescription: (row['evidenceDescription'] as String?) ?? '',
+          evidenceType: row['evidenceType'] as String?,
+          clientRequestId: row['clientRequestId'] as String?,
+        ));
+      } on ResponderRoadmapApiException {
+        // Leave the durable queue intact for the next automatic retry.
+      }
+    }
+    return completed;
+  }
+
+  Future<int> pendingSubmissionCount() async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    if (raw == null) return 0;
+    try { final value = jsonDecode(raw); return value is List ? value.length : 0; } catch (_) { return 0; }
+  }
+
+  Future<void> _savePendingSubmission(Map<String, dynamic> submission) async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    List<dynamic> rows;
+    try { final value = raw == null ? null : jsonDecode(raw); rows = value is List ? value : <dynamic>[]; } catch (_) { rows = <dynamic>[]; }
+    rows.removeWhere((item) => item is Map && item['clientRequestId'] == submission['clientRequestId']);
+    rows.add(submission);
+    await _secureStorage.write(key: _pendingSubmissionsKey, value: jsonEncode(rows));
+  }
+
+  Future<void> _removePendingSubmission(String requestId) async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    if (raw == null) return;
+    try {
+      final value = jsonDecode(raw);
+      if (value is! List) return;
+      value.removeWhere((item) => item is Map && item['clientRequestId'] == requestId);
+      await _secureStorage.write(key: _pendingSubmissionsKey, value: jsonEncode(value));
+    } catch (_) {}
+  }
+
+  Future<DepartmentInbox> getInbox() async => DepartmentInbox.fromJson(_asMap(await _request('GET', 'app/inbox')));
+
+  Future<void> markInboxRead(String id) async {
+    await _request('POST', 'app/inbox/${Uri.encodeComponent(id)}/read');
+  }
+
+  Future<void> markAllInboxRead() async {
+    await _request('POST', 'app/inbox/read-all');
+  }
+
+  Future<void> registerPushDevice({required String token, required String platform}) async {
+    await _request('POST', 'app/push-devices', body: {'token': token, 'platform': platform});
+  }
+
+  Future<void> unregisterPushDevice(String token) async {
+    await _request('POST', 'app/push-devices/unregister', body: {'token': token});
   }
 
   Future<List<DepartmentReviewItem>> listReviewQueue() async {

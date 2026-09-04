@@ -8,6 +8,7 @@ import 'package:firepath/portal/state/portal_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/services/theme.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
 
 void main() {
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -46,6 +47,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AppState()..bootstrap()),
         ChangeNotifierProvider(create: (_) => AppModeController()..bootstrap()),
+        ChangeNotifierProvider(create: (_) => DepartmentInboxController()..bootstrap()),
         ChangeNotifierProvider(create: (_) => PortalController()..bootstrap()),
       ],
       child: MaterialApp.router(
