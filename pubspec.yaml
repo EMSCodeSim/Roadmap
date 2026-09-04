@@ -2,7 +2,7 @@ name: firepath
 description: "Responder Roadmap — career task books, credential tracking, professional growth, and long-term career records for fire and EMS professionals."
 publish_to: "none"
 
-version: 1.1.13+20
+version: 1.1.14+21
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
