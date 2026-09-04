@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firepath/pages/home/visual_home_page.dart';
 import 'package:firepath/state/app_state.dart';
+import 'package:firepath/state/app_mode_controller.dart';
 
 void main() {
   setUp(() {
@@ -16,8 +17,11 @@ void main() {
     await app.bootstrap();
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: app,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: app),
+          ChangeNotifierProvider(create: (_) => AppModeController()),
+        ],
         child: const MaterialApp(home: VisualHomePage()),
       ),
     );
@@ -28,6 +32,10 @@ void main() {
 
     expect(
       find.descendant(of: row, matching: find.text('Department')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: row, matching: find.text('Personal')),
       findsOneWidget,
     );
     expect(

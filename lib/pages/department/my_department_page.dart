@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/services/department_link_store.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/theme.dart';
+import 'package:firepath/state/app_mode_controller.dart';
+import 'package:firepath/widgets/app_mode_switcher.dart';
 
 class MyDepartmentPage extends StatefulWidget {
-  const MyDepartmentPage({super.key});
+  final bool taskBooksOnly;
+
+  const MyDepartmentPage({super.key, this.taskBooksOnly = false});
 
   @override
   State<MyDepartmentPage> createState() => _MyDepartmentPageState();
@@ -38,6 +42,8 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
         if (session.hasDepartment) {
           stored = DepartmentLink.fromSession(session);
           await _store.save(stored);
+          if (!mounted) return;
+          await context.read<AppModeController>().setDepartmentLink(stored);
           final assignments = await _api.listAssignments();
           if (!mounted) return;
           setState(() {
@@ -114,6 +120,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
 
       final link = DepartmentLink.fromSession(session);
       await _store.save(link);
+      await context.read<AppModeController>().setDepartmentLink(link);
       final assignments = await _api.listAssignments();
       if (!mounted) return;
       setState(() {
@@ -147,6 +154,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
       final link = DepartmentLink.fromSession(session);
       final assignments = await _api.listAssignments();
       await _store.save(link);
+      await context.read<AppModeController>().setDepartmentLink(link);
       if (!mounted) return;
       setState(() {
         _link = link;
@@ -158,6 +166,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
       if (e.statusCode == 401 || e.statusCode == 403) {
         await _api.disconnect();
         await _store.clear();
+        await context.read<AppModeController>().setDepartmentLink(null);
         setState(() {
           _link = null;
           _assignments = const [];
@@ -194,6 +203,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     if (confirmed != true) return;
     await _api.disconnect();
     await _store.clear();
+    await context.read<AppModeController>().setDepartmentLink(null);
     if (!mounted) return;
     setState(() {
       _link = null;
@@ -333,16 +343,6 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     return result;
   }
 
-  Future<void> _openDashboard() async {
-    final uri = Uri.parse(ResponderRoadmapApi.dashboardUrl);
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open responderroadmap.com.')),
-      );
-    }
-  }
-
   Future<void> _openAssignment(DepartmentTaskBookAssignment assignment) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -358,7 +358,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Department'),
+        title: Text(widget.taskBooksOnly ? 'Department Task Books' : 'My Department'),
         actions: [
           if (_link != null)
             IconButton(
@@ -383,15 +383,18 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
                   children: [
+                    if (!widget.taskBooksOnly) ...[
+                      const AppModeSwitcher(),
+                      const SizedBox(height: 16),
+                    ],
                     if (_link == null) ...[
                       _ConnectCard(
                         busy: _syncing,
                         error: _loadError,
                         onConnect: _connect,
-                        onOpenDashboard: _openDashboard,
                       ),
                     ] else ...[
-                      Container(
+                      if (!widget.taskBooksOnly) Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           color: cs.primaryContainer.withValues(alpha: .55),
@@ -427,28 +430,21 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                             ),
                             const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: FilledButton.tonalIcon(
-                                    onPressed: _openDashboard,
-                                    icon: const Icon(Icons.open_in_new_rounded),
-                                    label: const Text('Dashboard'),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                IconButton.filledTonal(
-                                  tooltip: 'Disconnect',
-                                  onPressed: _disconnect,
-                                  icon: const Icon(Icons.link_off_rounded),
-                                ),
-                              ],
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _disconnect,
+                                icon: const Icon(Icons.link_off_rounded),
+                                label: const Text('Disconnect Department'),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      _PrivacyBoundaryCard(),
+                      if (!widget.taskBooksOnly) ...[
+                        const SizedBox(height: 16),
+                        _PrivacyBoundaryCard(),
+                      ],
                       const SizedBox(height: 20),
                       Row(
                         children: [
@@ -513,13 +509,11 @@ class _ConnectCard extends StatelessWidget {
   final bool busy;
   final String? error;
   final VoidCallback onConnect;
-  final VoidCallback onOpenDashboard;
 
   const _ConnectCard({
     required this.busy,
     required this.error,
     required this.onConnect,
-    required this.onOpenDashboard,
   });
 
   @override
@@ -579,16 +573,6 @@ class _ConnectCard extends StatelessWidget {
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.link_rounded),
               label: Text(busy ? 'Connecting…' : 'Connect ResponderRoadmap'),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: TextButton.icon(
-              onPressed: onOpenDashboard,
-              icon: const Icon(Icons.open_in_new_rounded),
-              label: const Text('Open Department Dashboard'),
             ),
           ),
         ],

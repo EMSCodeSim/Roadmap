@@ -21,7 +21,7 @@
 ## App Review notes draft
 FireOps Career Road is a local-first professional development and career-record app for fire and EMS professionals. The personal Career Road, personal Task Books, Quick Log history, credentials, goals, and career records work without creating an account and are stored locally on the device.
 
-For this initial App Store submission, the app presents the personal Task Book experience only. Department Task Book, ResponderRoadmap sign-in, My Department, and department portal routes are not included in the mobile route table for the submitted iOS build. No department account or demo credential is required for review.
+Version 1.2 adds an optional native Department workspace. Reviewers can continue using the complete personal Career Road without an account. Department features use a ResponderRoadmap account to load assigned Task Books, submit work, and—when the account role permits—review member submissions without redirecting to a website. Provide an active department demo account in App Review Information when submitting this update.
 
 The app is not an ePCR or patient record. Users are instructed not to enter patient-identifying information.
 

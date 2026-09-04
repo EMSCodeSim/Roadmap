@@ -266,6 +266,83 @@ class DepartmentTaskBookAssignment {
   }
 }
 
+class DepartmentEvaluationStep {
+  final String id;
+  final String text;
+
+  const DepartmentEvaluationStep({required this.id, required this.text});
+
+  factory DepartmentEvaluationStep.fromJson(Map<String, dynamic> json) {
+    return DepartmentEvaluationStep(
+      id: (json['id'] as String?) ?? '',
+      text: (json['text'] as String?) ?? '',
+    );
+  }
+}
+
+class DepartmentReviewItem {
+  final String id;
+  final String memberName;
+  final String taskBookTitle;
+  final String sectionTitle;
+  final String requirementTitle;
+  final String requirementDescription;
+  final String instructions;
+  final String memberNotes;
+  final String reviewStage;
+  final DateTime? submittedAt;
+  final int approvedRepetitions;
+  final int repetitionsRequired;
+  final List<DepartmentEvaluationStep> evaluationSteps;
+  final List<DepartmentEvaluationStep> criticalFailures;
+
+  const DepartmentReviewItem({
+    required this.id,
+    required this.memberName,
+    required this.taskBookTitle,
+    required this.sectionTitle,
+    required this.requirementTitle,
+    required this.requirementDescription,
+    required this.instructions,
+    required this.memberNotes,
+    required this.reviewStage,
+    required this.submittedAt,
+    required this.approvedRepetitions,
+    required this.repetitionsRequired,
+    required this.evaluationSteps,
+    required this.criticalFailures,
+  });
+
+  factory DepartmentReviewItem.fromJson(Map<String, dynamic> json) {
+    List<DepartmentEvaluationStep> steps(Object? raw) => raw is List
+        ? raw
+            .whereType<Map>()
+            .map((item) => DepartmentEvaluationStep.fromJson(
+                  Map<String, dynamic>.from(item),
+                ))
+            .where((item) => item.id.isNotEmpty && item.text.isNotEmpty)
+            .toList(growable: false)
+        : const <DepartmentEvaluationStep>[];
+
+    return DepartmentReviewItem(
+      id: (json['id'] as String?) ?? '',
+      memberName: (json['memberName'] as String?) ?? 'Member',
+      taskBookTitle: (json['taskBookTitle'] as String?) ?? 'Task Book',
+      sectionTitle: (json['sectionTitle'] as String?) ?? '',
+      requirementTitle: (json['requirementTitle'] as String?) ?? 'Requirement',
+      requirementDescription: (json['requirementDescription'] as String?) ?? '',
+      instructions: (json['instructions'] as String?) ?? '',
+      memberNotes: (json['memberNotes'] as String?) ?? '',
+      reviewStage: (json['reviewStage'] as String?) ?? 'EVALUATOR',
+      submittedAt: DateTime.tryParse((json['submittedAt'] as String?) ?? ''),
+      approvedRepetitions: _asInt(json['approvedRepetitions']),
+      repetitionsRequired: _asInt(json['repetitionsRequired'], fallback: 1),
+      evaluationSteps: steps(json['evaluationSteps']),
+      criticalFailures: steps(json['criticalFailures']),
+    );
+  }
+}
+
 int _asInt(Object? value, {int fallback = 0}) {
   if (value is int) return value;
   if (value is num) return value.round();
@@ -360,6 +437,38 @@ class ResponderRoadmapApi {
       },
     );
     return DepartmentTaskBookAssignment.fromJson(_asMap(data));
+  }
+
+  Future<List<DepartmentReviewItem>> listReviewQueue() async {
+    final data = await _request('GET', 'sign-offs');
+    final list = data is List ? data : const <dynamic>[];
+    return list
+        .whereType<Map>()
+        .map((item) => DepartmentReviewItem.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList(growable: false);
+  }
+
+  Future<void> reviewSignOff({
+    required String completionId,
+    required String result,
+    required String notes,
+    required bool attested,
+    List<Map<String, String>> stepResults = const [],
+    List<String> criticalFailuresTriggered = const [],
+  }) async {
+    await _request(
+      'POST',
+      'sign-offs/${Uri.encodeComponent(completionId)}',
+      body: <String, dynamic>{
+        'result': result,
+        'notes': notes.trim(),
+        'attested': attested,
+        'stepResults': stepResults,
+        'criticalFailuresTriggered': criticalFailuresTriggered,
+      },
+    );
   }
 
   Future<void> disconnect() async {

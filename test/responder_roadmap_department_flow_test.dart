@@ -3,6 +3,26 @@ import 'package:firepath/services/responder_roadmap_api.dart';
 
 void main() {
   group('ResponderRoadmap department task flow', () {
+    test('parses evaluator review steps and critical failures', () {
+      final item = DepartmentReviewItem.fromJson({
+        'id': 'completion-1',
+        'memberName': 'Taylor Member',
+        'taskBookTitle': 'Firefighter I',
+        'requirementTitle': 'Deploy attack line',
+        'reviewStage': 'EVALUATOR',
+        'evaluationSteps': [
+          {'id': 'step-1', 'text': 'Select the correct hose line'},
+        ],
+        'criticalFailures': [
+          {'id': 'failure-1', 'text': 'Fails to use required PPE'},
+        ],
+      });
+
+      expect(item.memberName, 'Taylor Member');
+      expect(item.evaluationSteps.single.text, 'Select the correct hose line');
+      expect(item.criticalFailures.single.id, 'failure-1');
+    });
+
     test('shows supervisor approval as a distinct pending stage', () {
       final requirement = DepartmentRequirement.fromJson({
         'id': 'req-1',

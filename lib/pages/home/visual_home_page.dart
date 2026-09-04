@@ -3,22 +3,27 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
-import 'package:firepath/pages/career/quick_log_launcher.dart';
+import 'package:firepath/pages/department/my_department_page.dart';
 import 'package:firepath/services/readiness_action_plan.dart';
 import 'package:firepath/services/readiness_snapshot.dart';
 import 'package:firepath/services/smart_next_step.dart';
 import 'package:firepath/state/app_state.dart';
+import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/career_inbox_preview.dart';
 import 'package:firepath/widgets/career_readiness_panel.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 import 'package:firepath/widgets/needs_attention_preview.dart';
+import 'package:firepath/widgets/app_mode_switcher.dart';
 
 class VisualHomePage extends StatelessWidget {
   const VisualHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final mode = context.watch<AppModeController>();
+    if (mode.isDepartment) return const MyDepartmentPage();
+
     final app = context.watch<AppState>();
     final roadmap = app.roadmap;
     final goal = roadmap?.goal;
@@ -35,9 +40,7 @@ class VisualHomePage extends StatelessWidget {
               onSettings: () => context.push(AppRoutes.settings),
             ),
             const SizedBox(height: 10),
-            _QuickAccessRow(
-              onQuickLog: () => QuickLogLauncher.open(context),
-            ),
+            const AppModeSwitcher(),
             const SizedBox(height: 14),
             if (!hasRoadmap)
               _ChooseGoalCard(
@@ -88,33 +91,6 @@ class _Header extends StatelessWidget {
           tooltip: 'Settings',
           onPressed: onSettings,
           icon: const Icon(Icons.settings_outlined),
-        ),
-      ],
-    );
-  }
-}
-
-class _QuickAccessRow extends StatelessWidget {
-  final VoidCallback onQuickLog;
-
-  const _QuickAccessRow({
-    required this.onQuickLog,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      key: const Key('home_quick_access_row'),
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 50,
-            child: FilledButton.icon(
-              onPressed: onQuickLog,
-              icon: const Icon(Icons.add_task_outlined),
-              label: const Text('Quick Log'),
-            ),
-          ),
         ),
       ],
     );
