@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:firepath/services/storage/file_json_store.dart';
@@ -16,11 +17,21 @@ class PlatformFileJsonStore implements FileJsonStore {
   Directory? _cachedRoot;
   static bool _documentsUnavailable = false;
 
+  static bool get _runningUnderTestBinding {
+    try {
+      return WidgetsBinding.instance.runtimeType
+          .toString()
+          .contains('TestWidgetsFlutterBinding');
+    } catch (_) {
+      // Binding is not initialized (plain unit tests).
+      return true;
+    }
+  }
+
   static final _safeKey = RegExp(r'^fireops\.[A-Za-z0-9._-]+$');
 
   Future<Directory?> _root() async {
     if (_cachedRoot != null) return _cachedRoot;
-    if (_documentsUnavailable) return null;
     try {
       if (rootPath != null) {
         final dir = Directory(rootPath!);
@@ -28,16 +39,29 @@ class PlatformFileJsonStore implements FileJsonStore {
         _cachedRoot = dir;
         return dir;
       }
-      final docs = await getApplicationDocumentsDirectory();
+      if (_documentsUnavailable) return null;
+      if (_runningUnderTestBinding) {
+        _documentsUnavailable = true;
+        return null;
+      }
+      final docs = await getApplicationDocumentsDirectory()
+          .timeout(const Duration(seconds: 2));
       final dir = Directory('${docs.path}/fireops_data');
       if (!await dir.exists()) await dir.create(recursive: true);
       _cachedRoot = dir;
       return dir;
+    } on TimeoutException {
+      _documentsUnavailable = true;
+      return null;
     } on MissingPluginException {
       // Unit tests and hosts without path_provider fall back to prefs.
       _documentsUnavailable = true;
       return null;
     } catch (e) {
+      if (e.toString().contains('Binding has not yet been initialized')) {
+        _documentsUnavailable = true;
+        return null;
+      }
       debugPrint('PlatformFileJsonStore._root failed: $e');
       return null;
     }
