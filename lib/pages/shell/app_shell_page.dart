@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'package:firepath/pages/career/quick_log_launcher.dart';
+import 'package:firepath/state/app_mode_controller.dart';
 
 class AppShellPage extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -16,8 +20,27 @@ class AppShellPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final mode = context.watch<AppModeController>();
+    final elevatedRole = mode.role == 'TRAINING_OFFICER' ||
+        mode.role == 'DEPARTMENT_ADMINISTRATOR';
+    final fourthLabel = mode.isDepartment
+        ? elevatedRole
+            ? 'Admin'
+            : mode.canReview
+                ? 'Review'
+                : 'Department'
+        : 'Advance';
     return Scaffold(
       body: navigationShell,
+      floatingActionButton: navigationShell.currentIndex == 0
+          ? FloatingActionButton(
+              key: const Key('quick_log_fab'),
+              tooltip: 'Quick Log',
+              onPressed: () => QuickLogLauncher.open(context),
+              child: const Icon(Icons.add_task_rounded),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: SafeArea(
         top: false,
         child: DecoratedBox(
@@ -38,28 +61,36 @@ class AppShellPage extends StatelessWidget {
               selectedFontSize: 12,
               unselectedFontSize: 12,
               iconSize: 26,
-              items: const [
-                BottomNavigationBarItem(
+              items: [
+                const BottomNavigationBarItem(
                   icon: Icon(Icons.home_outlined),
                   activeIcon: Icon(Icons.home),
                   label: 'Home',
                 ),
-                BottomNavigationBarItem(
+                const BottomNavigationBarItem(
                   icon: Icon(Icons.route_outlined),
                   activeIcon: Icon(Icons.route),
                   label: 'Task Book',
                 ),
-                BottomNavigationBarItem(
+                const BottomNavigationBarItem(
                   icon: Icon(Icons.add_task_outlined),
                   activeIcon: Icon(Icons.add_task),
                   label: 'Log',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.trending_up_outlined),
-                  activeIcon: Icon(Icons.trending_up),
-                  label: 'Advance',
+                  icon: Icon(mode.isDepartment
+                      ? mode.canReview
+                          ? Icons.fact_check_outlined
+                          : Icons.apartment_outlined
+                      : Icons.trending_up_outlined),
+                  activeIcon: Icon(mode.isDepartment
+                      ? mode.canReview
+                          ? Icons.fact_check_rounded
+                          : Icons.apartment_rounded
+                      : Icons.trending_up),
+                  label: fourthLabel,
                 ),
-                BottomNavigationBarItem(
+                const BottomNavigationBarItem(
                   icon: Icon(Icons.verified_outlined),
                   activeIcon: Icon(Icons.verified),
                   label: 'Certs',
