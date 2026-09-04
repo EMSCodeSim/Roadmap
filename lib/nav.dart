@@ -16,7 +16,6 @@ import 'package:firepath/pages/task_book/custom_task_book_create_page.dart';
 import 'package:firepath/pages/task_book/custom_task_book_builder_page.dart';
 import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
-import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/career_intelligence_page.dart';
 import 'package:firepath/pages/career/career_longevity_page.dart';
 import 'package:firepath/pages/career/daily_focus_page.dart';
@@ -26,6 +25,7 @@ import 'package:firepath/pages/career/career_inbox_page.dart';
 import 'package:firepath/pages/career/promotion_portfolio_review_page.dart';
 import 'package:firepath/pages/career/department_transfer_page.dart';
 import 'package:firepath/pages/department/my_department_page.dart';
+import 'package:firepath/pages/department/mode_aware_advance_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_v2_page.dart';
 import 'package:firepath/pages/career/quick_log_setup_page.dart';
@@ -75,8 +75,8 @@ class AppRouter {
             const NoTransitionPage(child: OnboardingV2Page()),
       ),
 
-      // Department portal routes are web-only. They are intentionally omitted
-      // from the mobile route table for the personal-only App Store release.
+      // The full department administration portal remains web-only. Mobile
+      // members and evaluators use the native Department workspace below.
       if (kIsWeb) ...[
         GoRoute(
           path: AppRoutes.portalLogin,
@@ -270,7 +270,7 @@ class AppRouter {
                 path: AppRoutes.growth,
                 name: 'growth',
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: GrowthOverviewPage()),
+                    const NoTransitionPage(child: ModeAwareAdvancePage()),
               ),
             ],
           ),
@@ -294,15 +294,12 @@ class AppRouter {
             const MaterialPage(child: SettingsPage()),
       ),
 
-      // My Department is retained for the web/development surface, but there
-      // is no mobile route to it in the personal-only first App Store release.
-      if (kIsWeb)
-        GoRoute(
-          path: AppRoutes.department,
-          name: 'department',
-          pageBuilder: (context, state) =>
-              const MaterialPage(child: MyDepartmentPage()),
-        ),
+      GoRoute(
+        path: AppRoutes.department,
+        name: 'department',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: MyDepartmentPage()),
+      ),
 
       GoRoute(path: '/career', redirect: (context, state) => AppRoutes.growth),
       GoRoute(
