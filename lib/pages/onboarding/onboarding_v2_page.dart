@@ -246,41 +246,62 @@ class OnboardingWhyThisMattersCard extends StatelessWidget {
   }
 }
 
-class _TightBulletRow extends StatelessWidget {
+class _WelcomeFeatureCard extends StatelessWidget {
+  const _WelcomeFeatureCard({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
+
   final IconData icon;
   final String title;
   final String detail;
-  const _TightBulletRow({required this.icon, required this.title, required this.detail});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(icon, color: cs.onPrimaryContainer),
           ),
-          child: Icon(icon, size: 18, color: cs.onSurfaceVariant),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: t.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
-              const SizedBox(height: 1),
-              Text(detail, style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35)),
-            ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: t.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  detail,
+                  style: t.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -325,7 +346,8 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
   final TextEditingController _certSearch = TextEditingController();
 
   int _step = 0;
-  static const int _totalSteps = 4;
+  static const int _pageCount = 4;
+  static const int _setupSteps = 3;
   String? _serviceType;
   String? _state;
   String? _goalId;
@@ -348,36 +370,38 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
       onTap: _dismissKeyboard,
       child: Scaffold(
         appBar: AppBar(
-        leading: _step == 0
-            ? null
-            : IconButton(
-                tooltip: 'Back',
-                onPressed: _back,
-                icon: const Icon(Icons.arrow_back),
-              ),
-        title: Text(
-          switch (_step) {
-            0 => 'Welcome',
-            1 => 'Career Setup',
-            2 => 'Certifications',
-            _ => 'Career Goal',
-          },
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Text(
-                'Step ${_step + 1} of $_totalSteps',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(color: cs.onSurfaceVariant),
+          leading: _step == 0
+              ? null
+              : IconButton(
+                  tooltip: 'Back',
+                  onPressed: _back,
+                  icon: const Icon(Icons.arrow_back),
+                ),
+          title: Text(
+            switch (_step) {
+              0 => 'Welcome',
+              1 => 'Career Setup',
+              2 => 'Certifications',
+              _ => 'Career Goal',
+            },
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Text(
+                  _step == 0
+                      ? 'About 1 minute'
+                      : 'Step $_step of $_setupSteps',
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelLarge
+                      ?.copyWith(color: cs.onSurfaceVariant),
+                ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
         body: SafeArea(
           child: Column(
             children: [
@@ -385,7 +409,12 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 child: PageView(
                   controller: _pages,
                   physics: const NeverScrollableScrollPhysics(),
-                  children: [_instructionsStep(), _currentSituationStep(), _certStep(), _goalStep()],
+                  children: [
+                    _instructionsStep(),
+                    _currentSituationStep(),
+                    _certStep(),
+                    _goalStep(),
+                  ],
                 ),
               ),
               Padding(
@@ -399,10 +428,12 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                       _saving
                           ? 'Building your path…'
                           : _step == 3
-                          ? 'Build my Task Book'
-                          : _step == 0
-                          ? 'Continue — Build My Path'
-                          : 'Continue',
+                              ? 'Create my roadmap'
+                              : _step == 0
+                                  ? 'Set up my roadmap'
+                                  : _step == 2
+                                      ? 'Continue — skip if none'
+                                      : 'Continue',
                     ),
                   ),
                 ),
@@ -426,49 +457,33 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             OnboardingHero(
-              headline: 'Your path. Built fast.',
+              headline: 'Your fire service career, organized.',
               supporting:
-                  'A 60-second setup to generate your Responder Roadmap + Task Book—based on your role, state, and current certs.',
-              progressValue: 1 / _totalSteps,
-              progressLabel: 'Step 1 of $_totalSteps · About 1 minute',
+                  'Responder Roadmap keeps your career plan, certifications, experience, task books, and department assignments together in one app.',
+              progressValue: 0,
+              progressLabel:
+                  'Three quick setup steps · You can change everything later',
             ),
             const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'In this quick setup, you’ll get:',
-                      style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 10),
-                    _TightBulletRow(
-                      icon: Icons.check_circle_outline,
-                      title: 'A staged plan to Next Level',
-                      detail: 'Prereqs → certs → training → hours → sign-offs → promo prep.',
-                    ),
-                    const SizedBox(height: 10),
-                    _TightBulletRow(
-                      icon: Icons.bolt,
-                      title: 'Fast “make progress” logging',
-                      detail: 'Quick Logs suggested from what you actually need next.',
-                    ),
-                    const SizedBox(height: 10),
-                    _TightBulletRow(
-                      icon: Icons.public,
-                      title: 'State-aware links & labels',
-                      detail: 'Clear “Required in [State]” vs “Common recommendation”.',
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'You can change anything later—role, state, certs, and department requirements.',
-                      style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
-                    ),
-                  ],
-                ),
-              ),
+            const _WelcomeFeatureCard(
+              icon: Icons.route_outlined,
+              title: 'Build your personal roadmap',
+              detail:
+                  'Choose a goal, see what comes next, and keep a record of training and experience.',
+            ),
+            const SizedBox(height: 8),
+            const _WelcomeFeatureCard(
+              icon: Icons.assignment_turned_in_outlined,
+              title: 'Complete task books and assignments',
+              detail:
+                  'Track each requirement, attach proof, and keep progress from getting lost.',
+            ),
+            const SizedBox(height: 8),
+            const _WelcomeFeatureCard(
+              icon: Icons.groups_outlined,
+              title: 'Connect with your department',
+              detail:
+                  'Receive department work, request an approved evaluator, and follow every approval in the app.',
             ),
             const SizedBox(height: 12),
             Container(
@@ -479,13 +494,17 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.arrow_forward, size: 18, color: cs.onSurfaceVariant),
+                  Icon(Icons.lock_outline, size: 18, color: cs.onSurfaceVariant),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Next up: pick your current level / role.',
-                      style: t.labelLarge?.copyWith(color: cs.onSurfaceVariant),
+                      'Start with a personal roadmap. Connecting a department is optional and can be done later.',
+                      style: t.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.4,
+                      ),
                     ),
                   ),
                 ],
@@ -519,7 +538,8 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           headline: 'Where are you starting from?',
           supporting:
               'This sets the right starting point, state resources, and what counts as “next up.”',
-          progressValue: 2 / _totalSteps,
+          progressValue: 1 / _setupSteps,
+          progressLabel: 'Required: current role and state · Everything else is optional',
         ),
         const SizedBox(height: 14),
         _OnboardingSectionHeader(
@@ -579,7 +599,9 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
+                    border: Border.all(
+                      color: cs.outline.withValues(alpha: 0.10),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -588,10 +610,10 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                       Expanded(
                         child: Text(
                           'Brand new? Prefill a safe starting role and keep going.',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                                height: 1.35,
+                              ),
                         ),
                       ),
                       TextButton(
@@ -612,7 +634,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 DropdownButtonFormField<String?>(
                   value: _serviceType,
                   decoration: const InputDecoration(
-                    labelText: 'Service type',
+                    labelText: 'Service type (optional)',
                     hintText: 'Volunteer, Career, Combination…',
                   ),
                   items: const [
@@ -651,7 +673,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                         onSubmitted: (_) => _dismissKeyboard(),
                         decoration: const InputDecoration(
-                          labelText: 'Years of service',
+                          labelText: 'Years of service (optional)',
                           hintText: '0+',
                         ),
                       ),
@@ -698,17 +720,9 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Select the certs you already hold. Add expiration dates later.',
+                'Optional: select certifications you already hold. You can skip this and add details or expiration dates later.',
                 style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: cs.onSurfaceVariant),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Not sure? Skip — you can add certs later and the roadmap will update.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
               ),
               const SizedBox(height: 14),
               TextField(
@@ -772,7 +786,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Choose your Next Level. Responder Roadmap will build your starting Task Book. You can add department requirements later.',
+          'Choose your next goal. Responder Roadmap will build a personal starting plan; department task books remain separate.',
           style: Theme.of(context).textTheme.bodyMedium
               ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
         ),
@@ -869,7 +883,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
       _message('Select your state to continue.');
       return;
     }
-    if (_step < _totalSteps - 1) {
+    if (_step < _pageCount - 1) {
       await _pages.nextPage(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,
