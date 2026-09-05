@@ -21,6 +21,12 @@ class DepartmentInboxController extends ChangeNotifier {
   DepartmentSyncState _syncState = DepartmentSyncState.disconnected;
   DateTime? _lastSyncedAt;
   String? _lastError;
+  bool _disposed = false;
+
+  void _safeNotify() {
+    if (_disposed) return;
+    notifyListeners();
+  }
 
   DepartmentInbox? get inbox => _inbox;
   int get unreadCount => _inbox?.unreadCount ?? 0;
@@ -35,18 +41,18 @@ class DepartmentInboxController extends ChangeNotifier {
     _lastError = saved?['lastError'] as String?;
     if (await _api.hasStoredToken) await refresh(silent: true);
     _timer = Timer.periodic(const Duration(seconds: 30), (_) => refresh(silent: true));
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> refresh({bool silent = false}) async {
     if (_syncState == DepartmentSyncState.syncing) return;
     if (!await _api.hasStoredToken) {
       _syncState = DepartmentSyncState.disconnected;
-      notifyListeners();
+      _safeNotify();
       return;
     }
     _syncState = DepartmentSyncState.syncing;
-    if (!silent) notifyListeners();
+    if (!silent) _safeNotify();
     try {
       await _api.retryPendingSubmissions();
       final pending = await _api.pendingSubmissionCount();
@@ -65,7 +71,7 @@ class DepartmentInboxController extends ChangeNotifier {
       'lastError': _lastError,
       'state': _syncState.name,
     });
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> markRead(String id) async {
@@ -80,11 +86,12 @@ class DepartmentInboxController extends ChangeNotifier {
 
   void submissionQueued() {
     _syncState = DepartmentSyncState.waitingToUpload;
-    notifyListeners();
+    _safeNotify();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _timer?.cancel();
     super.dispose();
   }

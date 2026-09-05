@@ -23,6 +23,7 @@ class AppModeController extends ChangeNotifier {
   AppExperienceMode _mode = AppExperienceMode.personal;
   DepartmentLink? _departmentLink;
   bool _bootstrapped = false;
+  bool _disposed = false;
 
   AppExperienceMode get mode => _mode;
   bool get isDepartment => _mode == AppExperienceMode.department;
@@ -42,7 +43,7 @@ class AppModeController extends ChangeNotifier {
         ? AppExperienceMode.department
         : AppExperienceMode.personal;
     _bootstrapped = true;
-    notifyListeners();
+    if (!_disposed) notifyListeners();
   }
 
   Future<void> selectPersonal() => _select(AppExperienceMode.personal);
@@ -52,7 +53,7 @@ class AppModeController extends ChangeNotifier {
   Future<void> _select(AppExperienceMode value) async {
     if (_mode == value) return;
     _mode = value;
-    notifyListeners();
+    if (!_disposed) notifyListeners();
     await _localStore.saveJson(
       _modeKey,
       <String, dynamic>{
@@ -65,11 +66,17 @@ class AppModeController extends ChangeNotifier {
 
   Future<void> setDepartmentLink(DepartmentLink? link) async {
     _departmentLink = link;
-    notifyListeners();
+    if (!_disposed) notifyListeners();
   }
 
   Future<void> refreshDepartmentLink() async {
     _departmentLink = await _departmentLinkStore.load();
-    notifyListeners();
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

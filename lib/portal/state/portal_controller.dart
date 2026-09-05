@@ -14,6 +14,13 @@ class PortalController extends ChangeNotifier {
   final PortalStore _store;
   PortalController({PortalStore? store}) : _store = store ?? PortalStore();
 
+  bool _disposed = false;
+
+  void _safeNotify() {
+    if (_disposed) return;
+    notifyListeners();
+  }
+
   bool _bootstrapped = false;
   bool get bootstrapped => _bootstrapped;
 
@@ -49,13 +56,13 @@ class PortalController extends ChangeNotifier {
       debugPrint('PortalController.bootstrap failed: $e');
     } finally {
       _bootstrapped = true;
-      notifyListeners();
+      _safeNotify();
     }
   }
 
   Future<void> reload() async {
     _db = await _store.loadDb();
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> signInAs({required String userId, required PortalRole role}) async {
@@ -64,22 +71,28 @@ class PortalController extends ChangeNotifier {
     final deptId = _activeDepartmentId ?? _db.departments.firstOrNull?.id;
     _activeDepartmentId = deptId;
     await _store.saveSession({'departmentId': deptId, 'userId': userId, 'role': role.name});
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> signOut() async {
     _sessionUserId = null;
     _sessionRole = null;
     await _store.clearSession();
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> resetDemoData() async {
     await signOut();
     await _store.clearDb();
     _bootstrapped = false;
-    notifyListeners();
+    _safeNotify();
     await bootstrap();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   bool hasRole(PortalRole requiredRole) {

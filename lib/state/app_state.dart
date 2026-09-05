@@ -25,10 +25,10 @@ class AppState extends ChangeNotifier {
         certificationController = CertificationController(),
         taskBookController = TaskBookController(),
         careerRecordController = CareerRecordController() {
-    profileController.addListener(notifyListeners);
-    certificationController.addListener(notifyListeners);
-    taskBookController.addListener(notifyListeners);
-    careerRecordController.addListener(notifyListeners);
+    profileController.addListener(_forwardChildChange);
+    certificationController.addListener(_forwardChildChange);
+    taskBookController.addListener(_forwardChildChange);
+    careerRecordController.addListener(_forwardChildChange);
   }
 
   final LocalStore _store = LocalStore();
@@ -39,6 +39,12 @@ class AppState extends ChangeNotifier {
   final CareerRecordController careerRecordController;
 
   bool _bootstrapped = false;
+  bool _disposed = false;
+
+  void _forwardChildChange() {
+    if (_disposed) return;
+    notifyListeners();
+  }
 
   bool get bootstrapped => _bootstrapped;
   bool get onboardingComplete => profileController.onboardingComplete;
@@ -758,5 +764,19 @@ class AppState extends ChangeNotifier {
     await taskBookController.deleteCustomTask(
         goalId: goalId, requirementId: requirementId, taskId: taskId);
     await _persistAll();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    profileController.removeListener(_forwardChildChange);
+    certificationController.removeListener(_forwardChildChange);
+    taskBookController.removeListener(_forwardChildChange);
+    careerRecordController.removeListener(_forwardChildChange);
+    profileController.dispose();
+    certificationController.dispose();
+    taskBookController.dispose();
+    careerRecordController.dispose();
+    super.dispose();
   }
 }
