@@ -280,6 +280,43 @@ class _RequirementSheetState extends State<_RequirementSheet> {
   );
   final TextEditingController _evidence = TextEditingController();
   bool _submitting = false;
+  List<DepartmentEvaluator> _evaluators = const [];
+  String? _evaluatorId;
+  String? _evaluatorError;
+  bool _loadingEvaluators = false;
+  final Set<String> _checkedStepIds = <String>{};
+  bool _memberAttested = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.requirement.evaluatorSignOffRequired) _loadEvaluators();
+  }
+
+  Future<void> _loadEvaluators() async {
+    setState(() => _loadingEvaluators = true);
+    try {
+      final rows = await widget.api.listEvaluators();
+      if (!mounted) return;
+      setState(() {
+        _evaluators = rows;
+        _evaluatorId = rows.length == 1 ? rows.single.id : null;
+        _evaluatorError = rows.isEmpty ? 'No approved evaluators are currently available.' : null;
+      });
+    } on ResponderRoadmapApiException catch (error) {
+      if (mounted) setState(() => _evaluatorError = error.message);
+    } finally {
+      if (mounted) setState(() => _loadingEvaluators = false);
+    }
+  }
+
+  bool get _allStepsChecked => widget.requirement.evaluationSteps.every(
+        (step) => _checkedStepIds.contains(step.id),
+      );
+
+  bool get _readyToSubmit =>
+      _memberAttested && _allStepsChecked &&
+      (!widget.requirement.evaluatorSignOffRequired || _evaluatorId != null);
 
   @override
   void dispose() {
@@ -289,7 +326,7 @@ class _RequirementSheetState extends State<_RequirementSheet> {
   }
 
   Future<void> _submit() async {
-    if (_submitting || !widget.requirement.canSubmit) return;
+    if (_submitting || !widget.requirement.canSubmit || !_readyToSubmit) return;
     setState(() => _submitting = true);
     try {
       final result = await widget.api.submitRequirement(
@@ -298,6 +335,9 @@ class _RequirementSheetState extends State<_RequirementSheet> {
         memberNotes: widget.requirement.memberNotesAllowed ? _notes.text : '',
         evidenceDescription: _evidence.text,
         evidenceType: widget.requirement.evidenceType,
+        evaluatorId: _evaluatorId,
+        checkedStepIds: _checkedStepIds.toList(growable: false),
+        memberAttested: _memberAttested,
       );
       if (!mounted) return;
       await context.read<DepartmentInboxController>().refresh(silent: true);
@@ -472,6 +512,42 @@ class _RequirementSheetState extends State<_RequirementSheet> {
                 ),
                 const SizedBox(height: 12),
               ],
+              if (requirement.evaluationSteps.isNotEmpty) ...[
+                Text(
+                  'Confirm completed steps',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 6),
+                ...requirement.evaluationSteps.map(
+                  (step) => CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: _checkedStepIds.contains(step.id),
+                    title: Text(step.text),
+                    onChanged: _submitting
+                        ? null
+                        : (checked) => setState(() {
+                              if (checked == true) {
+                                _checkedStepIds.add(step.id);
+                              } else {
+                                _checkedStepIds.remove(step.id);
+                              }
+                            }),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _memberAttested,
+                title: const Text('I completed this requirement'),
+                subtitle: const Text('Confirm the work is ready for an evaluator to review.'),
+                onChanged: _submitting
+                    ? null
+                    : (checked) => setState(() => _memberAttested = checked == true),
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: _evidence,
                 minLines: 2,
@@ -483,6 +559,27 @@ class _RequirementSheetState extends State<_RequirementSheet> {
                       : 'Describe the evidence for the department reviewer',
                 ),
               ),
+              if (requirement.evaluatorSignOffRequired) ...[
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: _evaluatorId,
+                  decoration: InputDecoration(
+                    labelText: 'Choose approved evaluator',
+                    helperText: 'This person will receive your evaluation request.',
+                    errorText: _evaluatorError,
+                  ),
+                  items: _evaluators
+                      .map((evaluator) => DropdownMenuItem(
+                            value: evaluator.id,
+                            child: Text('${evaluator.name} · ${_humanize(evaluator.role)}'),
+                          ))
+                      .toList(growable: false),
+                  onChanged: _submitting || _loadingEvaluators
+                      ? null
+                      : (value) => setState(() => _evaluatorId = value),
+                ),
+                if (_loadingEvaluators) const LinearProgressIndicator(),
+              ],
               const SizedBox(height: 14),
               Container(
                 width: double.infinity,
@@ -506,7 +603,7 @@ class _RequirementSheetState extends State<_RequirementSheet> {
                 width: double.infinity,
                 height: 54,
                 child: FilledButton.icon(
-                  onPressed: _submitting ? null : _submit,
+                  onPressed: _submitting || !_readyToSubmit ? null : _submit,
                   icon: _submitting
                       ? const SizedBox(
                           width: 18,
