@@ -180,5 +180,15 @@ void main() {
       expect(receipt.recordedAt, isNotNull);
       expect(receipt.recordedByName, 'Taylor Member');
     });
+
+    test('parses member-controlled certification sharing state', () {
+      final sharing = DepartmentCertificationSharing.fromJson({
+        'sharedSourceIds': ['cert-1', 'cert-2'],
+        'serverTime': '2026-09-05T12:00:00.000Z',
+      });
+
+      expect(sharing.sharedSourceIds, {'cert-1', 'cert-2'});
+      expect(sharing.serverTime, isNotNull);
+    });
   });
 }

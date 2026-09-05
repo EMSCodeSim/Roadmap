@@ -346,6 +346,25 @@ class DepartmentInbox {
       );
 }
 
+class DepartmentCertificationSharing {
+  final Set<String> sharedSourceIds;
+  final DateTime? serverTime;
+
+  const DepartmentCertificationSharing({
+    required this.sharedSourceIds,
+    required this.serverTime,
+  });
+
+  factory DepartmentCertificationSharing.fromJson(Map<String, dynamic> json) {
+    return DepartmentCertificationSharing(
+      sharedSourceIds: (json['sharedSourceIds'] as List? ?? const [])
+          .whereType<String>()
+          .toSet(),
+      serverTime: DateTime.tryParse((json['serverTime'] as String?) ?? ''),
+    );
+  }
+}
+
 class DepartmentSubmissionReceipt {
   final String receiptId;
   final String? clientRequestId;
@@ -624,6 +643,22 @@ class ResponderRoadmapApi {
   }
 
   Future<DepartmentInbox> getInbox() async => DepartmentInbox.fromJson(_asMap(await _request('GET', 'app/inbox')));
+
+  Future<DepartmentCertificationSharing> getCertificationSharing() async {
+    final data = await _request('GET', 'app/certifications/sharing');
+    return DepartmentCertificationSharing.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentCertificationSharing> syncCertificationSharing(
+    List<Map<String, dynamic>> certifications,
+  ) async {
+    final data = await _request(
+      'POST',
+      'app/certifications/sharing',
+      body: <String, dynamic>{'certifications': certifications},
+    );
+    return DepartmentCertificationSharing.fromJson(_asMap(data));
+  }
 
   Future<void> markInboxRead(String id) async {
     await _request('POST', 'app/inbox/${Uri.encodeComponent(id)}/read');
