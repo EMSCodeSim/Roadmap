@@ -99,6 +99,7 @@ class DepartmentRequirement {
   final String correctionNotes;
   final String? returnedByName;
   final DateTime? returnedAt;
+  final List<DepartmentEvaluationStep> evaluationSteps;
 
   const DepartmentRequirement({
     required this.id,
@@ -122,6 +123,7 @@ class DepartmentRequirement {
     required this.correctionNotes,
     required this.returnedByName,
     required this.returnedAt,
+    required this.evaluationSteps,
   });
 
   bool get isFullyApproved =>
@@ -178,8 +180,27 @@ class DepartmentRequirement {
       correctionNotes: (correction?['notes'] as String?) ?? '',
       returnedByName: correction?['returnedByName'] as String?,
       returnedAt: DateTime.tryParse((correction?['returnedAt'] as String?) ?? ''),
+      evaluationSteps: (json['evaluationSteps'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => DepartmentEvaluationStep.fromJson(Map<String, dynamic>.from(item)))
+          .where((item) => item.id.isNotEmpty && item.text.isNotEmpty)
+          .toList(growable: false),
     );
   }
+}
+
+class DepartmentEvaluator {
+  final String id;
+  final String name;
+  final String role;
+
+  const DepartmentEvaluator({required this.id, required this.name, required this.role});
+
+  factory DepartmentEvaluator.fromJson(Map<String, dynamic> json) => DepartmentEvaluator(
+        id: (json['id'] as String?) ?? '',
+        name: (json['name'] as String?) ?? 'Evaluator',
+        role: (json['role'] as String?) ?? 'EVALUATOR',
+      );
 }
 
 class DepartmentTaskSection {
@@ -642,6 +663,9 @@ class ResponderRoadmapApi {
     String evidenceDescription = '',
     String? evidenceType,
     String? clientRequestId,
+    String? evaluatorId,
+    List<String> checkedStepIds = const [],
+    bool memberAttested = false,
   }) async {
     final requestId = clientRequestId ?? 'submission-${DateTime.now().microsecondsSinceEpoch}';
     final pending = <String, dynamic>{
@@ -651,6 +675,9 @@ class ResponderRoadmapApi {
       'memberNotes': memberNotes,
       'evidenceDescription': evidenceDescription,
       if (evidenceType != null) 'evidenceType': evidenceType,
+      if (evaluatorId != null) 'evaluatorId': evaluatorId,
+      'checkedStepIds': checkedStepIds,
+      'memberAttested': memberAttested,
     };
     await _savePendingSubmission(pending);
     dynamic data;
@@ -663,6 +690,9 @@ class ResponderRoadmapApi {
           'evidenceDescription': evidenceDescription.trim(),
           if (evidenceType != null) 'evidenceType': evidenceType,
           'clientRequestId': requestId,
+          if (evaluatorId != null) 'evaluatorId': evaluatorId,
+          'checkedStepIds': checkedStepIds,
+          'memberAttested': memberAttested,
         },
       );
     } on ResponderRoadmapApiException catch (error) {
@@ -698,6 +728,9 @@ class ResponderRoadmapApi {
           evidenceDescription: (row['evidenceDescription'] as String?) ?? '',
           evidenceType: row['evidenceType'] as String?,
           clientRequestId: row['clientRequestId'] as String?,
+          evaluatorId: row['evaluatorId'] as String?,
+          checkedStepIds: (row['checkedStepIds'] as List? ?? const []).whereType<String>().toList(growable: false),
+          memberAttested: row['memberAttested'] == true,
         ));
       } on ResponderRoadmapApiException {
         // Leave the durable queue intact for the next automatic retry.
@@ -733,6 +766,15 @@ class ResponderRoadmapApi {
   }
 
   Future<DepartmentInbox> getInbox() async => DepartmentInbox.fromJson(_asMap(await _request('GET', 'app/inbox')));
+
+  Future<List<DepartmentEvaluator>> listEvaluators() async {
+    final data = await _request('GET', 'app/evaluators');
+    return (data is List ? data : const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => DepartmentEvaluator.fromJson(Map<String, dynamic>.from(item)))
+        .where((item) => item.id.isNotEmpty)
+        .toList(growable: false);
+  }
 
   Future<DepartmentCertificationSharing> getCertificationSharing() async {
     final data = await _request('GET', 'app/certifications/sharing');
