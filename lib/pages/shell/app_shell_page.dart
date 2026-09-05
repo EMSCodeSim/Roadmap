@@ -81,8 +81,8 @@ class AppShellPage extends StatelessWidget {
                 ),
                 BottomNavigationBarItem(
                   icon: Badge(
-                    isLabelVisible: mode.isDepartment && (inbox.unreadCount > 0 || inbox.actionCount > 0),
-                    label: Text('${inbox.unreadCount + inbox.actionCount}'),
+                    isLabelVisible: mode.isDepartment && inbox.unreadCount > 0,
+                    label: Text('${inbox.unreadCount}'),
                     child: Icon(mode.isDepartment
                         ? mode.canReview
                             ? Icons.fact_check_outlined
