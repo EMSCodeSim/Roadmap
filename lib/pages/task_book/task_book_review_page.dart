@@ -271,11 +271,12 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
     setState(() => _finishing = true);
     try {
       await _setupStore.setReviewPending(false);
+      await _setupStore.setGettingStartedPending(true);
       if (!mounted) return;
       // This summary is explicitly for the generated Career Road task book.
       await context.read<AppState>().taskBookController.setActiveTaskBook(null);
       if (!mounted) return;
-      context.go(AppRoutes.myPath);
+      context.go(AppRoutes.home);
     } catch (e) {
       debugPrint('TaskBookReviewPage accept failed: $e');
     } finally {

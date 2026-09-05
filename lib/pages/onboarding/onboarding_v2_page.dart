@@ -573,6 +573,41 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.auto_awesome, size: 18, color: cs.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Brand new? Prefill a safe starting role and keep going.',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          _dismissKeyboard();
+                          setState(() {
+                            _roles
+                              ..clear()
+                              ..add('Recruit / Probationary');
+                          });
+                        },
+                        child: const Text('Use Recruit'),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String?>(
                   value: _serviceType,
@@ -644,16 +679,36 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'What do you already have?',
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w900),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'What do you already have?',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _saving ? null : _next,
+                    child: const Text('Skip for now'),
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
               Text(
                 'Select the certs you already hold. Add expiration dates later.',
                 style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Not sure? Skip — you can add certs later and the roadmap will update.',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
               ),
               const SizedBox(height: 14),
               TextField(

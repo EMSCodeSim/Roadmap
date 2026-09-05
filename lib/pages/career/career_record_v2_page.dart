@@ -56,6 +56,58 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
   int _year = DateTime.now().year;
   _CareerFilter _filter = _CareerFilter.all;
 
+  Future<void> _pickFilter() async {
+    final selected = await showModalBottomSheet<_CareerFilter>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final cs = Theme.of(sheetContext).colorScheme;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Filter records',
+                  style: Theme.of(sheetContext)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Choose one filter to keep the log clean and focused.',
+                  style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.45,
+                      ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _CareerFilter.values
+                      .map(
+                        (filter) => ChoiceChip(
+                          label: Text(filter.label),
+                          selected: filter == _filter,
+                          onSelected: (_) => Navigator.pop(sheetContext, filter),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected != null && mounted) setState(() => _filter = selected);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -213,21 +265,12 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 ),
               ),
               const SizedBox(height: 12),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: _CareerFilter.values
-                      .map(
-                        (filter) => Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(filter.label),
-                            selected: _filter == filter,
-                            onSelected: (_) => setState(() => _filter = filter),
-                          ),
-                        ),
-                      )
-                      .toList(),
+              SizedBox(
+                height: 48,
+                child: FilledButton.tonalIcon(
+                  onPressed: _pickFilter,
+                  icon: const Icon(Icons.filter_alt_outlined),
+                  label: Text('Filter: ${_filter.label}'),
                 ),
               ),
               const SizedBox(height: 20),

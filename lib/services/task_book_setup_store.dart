@@ -4,6 +4,7 @@ class TaskBookSetupStore {
   static const String _reviewPendingKey = 'task_book_review_pending_v1';
   static const String _missingStatePromptKey = 'profile_missing_state_prompt_dismissed_v1';
   static const String _lastKnownStateKey = 'profile_last_known_state_v1';
+  static const String _gettingStartedPendingKey = 'getting_started_pending_v1';
 
   Future<bool> isReviewPending() async {
     final prefs = await SharedPreferences.getInstance();
@@ -37,5 +38,15 @@ class TaskBookSetupStore {
       return;
     }
     await prefs.setString(_lastKnownStateKey, code);
+  }
+
+  Future<bool> isGettingStartedPending() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_gettingStartedPendingKey) ?? false;
+  }
+
+  Future<void> setGettingStartedPending(bool pending) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_gettingStartedPendingKey, pending);
   }
 }

@@ -74,14 +74,14 @@ class _CareerHubPageState extends State<CareerHubPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => dialogContext.pop(),
             child: const Text('Close'),
           ),
           FilledButton.icon(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: brief));
               if (!dialogContext.mounted) return;
-              Navigator.pop(dialogContext);
+              dialogContext.pop();
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Promotion brief copied.')),

@@ -346,6 +346,7 @@ class AppState extends ChangeNotifier {
           })
           .toList(),
     );
+    await TaskBookSetupStore().setGettingStartedPending(true);
     await profileController.setOnboardingComplete(true);
     _ensureCustomGoalStarterRequirements(profileController.profile.primaryGoalId);
     await _persistAll();
