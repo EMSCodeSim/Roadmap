@@ -467,6 +467,96 @@ class DepartmentReviewItem {
   }
 }
 
+class DepartmentClassSummary {
+  final String id;
+  final String title;
+  final String classType;
+  final String checklistTitle;
+  final String status;
+  final DateTime? startsAt;
+  final String location;
+  final int rosterCount;
+  final int completeCount;
+
+  const DepartmentClassSummary({required this.id, required this.title, required this.classType, required this.checklistTitle, required this.status, required this.startsAt, required this.location, required this.rosterCount, required this.completeCount});
+
+  factory DepartmentClassSummary.fromJson(Map<String, dynamic> json) => DepartmentClassSummary(
+        id: (json['id'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Class',
+        classType: (json['classType'] as String?) ?? 'GENERAL',
+        checklistTitle: (json['checklistTitle'] as String?) ?? 'Checklist',
+        status: (json['status'] as String?) ?? 'DRAFT',
+        startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        location: (json['location'] as String?) ?? '',
+        rosterCount: _asInt(json['rosterCount']),
+        completeCount: _asInt(json['completeCount']),
+      );
+}
+
+class DepartmentClassSkill {
+  final String id;
+  final String title;
+  final String description;
+  final bool required;
+  const DepartmentClassSkill({required this.id, required this.title, required this.description, required this.required});
+  factory DepartmentClassSkill.fromJson(Map<String, dynamic> json) => DepartmentClassSkill(id: (json['id'] as String?) ?? '', title: (json['title'] as String?) ?? 'Skill', description: (json['description'] as String?) ?? '', required: json['required'] != false);
+}
+
+class DepartmentClassSection {
+  final String id;
+  final String title;
+  final List<DepartmentClassSkill> skills;
+  const DepartmentClassSection({required this.id, required this.title, required this.skills});
+  factory DepartmentClassSection.fromJson(Map<String, dynamic> json) => DepartmentClassSection(
+        id: (json['id'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Skills',
+        skills: (json['skills'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSkill.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+      );
+}
+
+class DepartmentClassSkillResult {
+  final String requirementId;
+  final String result;
+  final String notes;
+  final String evaluatorName;
+  final DateTime? evaluatedAt;
+  const DepartmentClassSkillResult({required this.requirementId, required this.result, required this.notes, required this.evaluatorName, required this.evaluatedAt});
+  factory DepartmentClassSkillResult.fromJson(Map<String, dynamic> json) => DepartmentClassSkillResult(requirementId: (json['requirementId'] as String?) ?? '', result: (json['result'] as String?) ?? 'NOT_EVALUATED', notes: (json['notes'] as String?) ?? '', evaluatorName: (json['evaluatorName'] as String?) ?? '', evaluatedAt: DateTime.tryParse((json['evaluatedAt'] as String?) ?? ''));
+}
+
+class DepartmentClassStudent {
+  final String id;
+  final String name;
+  final String email;
+  final String attendance;
+  final double? writtenScore;
+  final double? ccfScore;
+  final String finalResult;
+  final List<DepartmentClassSkillResult> results;
+  const DepartmentClassStudent({required this.id, required this.name, required this.email, required this.attendance, required this.writtenScore, required this.ccfScore, required this.finalResult, required this.results});
+  factory DepartmentClassStudent.fromJson(Map<String, dynamic> json) => DepartmentClassStudent(
+        id: (json['id'] as String?) ?? '', name: (json['name'] as String?) ?? 'Student', email: (json['email'] as String?) ?? '', attendance: (json['attendance'] as String?) ?? 'REGISTERED',
+        writtenScore: (json['writtenScore'] as num?)?.toDouble(), ccfScore: (json['ccfScore'] as num?)?.toDouble(), finalResult: (json['finalResult'] as String?) ?? 'PENDING',
+        results: (json['results'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSkillResult.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+      );
+}
+
+class DepartmentClassDetail {
+  final String id;
+  final String title;
+  final String classType;
+  final String checklistTitle;
+  final String status;
+  final List<DepartmentClassSection> sections;
+  final List<DepartmentClassStudent> roster;
+  const DepartmentClassDetail({required this.id, required this.title, required this.classType, required this.checklistTitle, required this.status, required this.sections, required this.roster});
+  factory DepartmentClassDetail.fromJson(Map<String, dynamic> json) => DepartmentClassDetail(
+        id: (json['id'] as String?) ?? '', title: (json['title'] as String?) ?? 'Class', classType: (json['classType'] as String?) ?? 'GENERAL', checklistTitle: (json['checklistTitle'] as String?) ?? 'Checklist', status: (json['status'] as String?) ?? 'DRAFT',
+        sections: (json['sections'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSection.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+        roster: (json['roster'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassStudent.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+      );
+}
+
 int _asInt(Object? value, {int fallback = 0}) {
   if (value is int) return value;
   if (value is num) return value.round();
@@ -685,6 +775,26 @@ class ResponderRoadmapApi {
               Map<String, dynamic>.from(item),
             ))
         .toList(growable: false);
+  }
+
+  Future<List<DepartmentClassSummary>> listClasses() async {
+    final data = await _request('GET', 'classes');
+    return (data is List ? data : const <dynamic>[]).whereType<Map>().map((item) => DepartmentClassSummary.fromJson(Map<String, dynamic>.from(item))).toList(growable: false);
+  }
+
+  Future<DepartmentClassDetail> getClass(String classId) async {
+    final data = await _request('GET', 'classes/${Uri.encodeComponent(classId)}');
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> recordClassSkill({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}/skills/${Uri.encodeComponent(requirementId)}', body: {'result': result, 'notes': notes.trim()});
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> updateClassStudent({required String classId, required String enrollmentId, required String attendance}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}', body: {'attendance': attendance});
+    return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
   Future<void> reviewSignOff({

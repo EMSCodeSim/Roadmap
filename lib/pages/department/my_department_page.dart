@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_inbox_page.dart';
+import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/services/department_link_store.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/theme.dart';
@@ -558,6 +559,19 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                           error: _sharingError,
                           onChanged: _setCertificationShared,
                         ),
+                        if (const ['EVALUATOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'].contains(_link!.role)) ...[
+                          const SizedBox(height: 12),
+                          Card(
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(14),
+                              leading: const Icon(Icons.fact_check_outlined),
+                              title: const Text('Proctor class rosters', style: TextStyle(fontWeight: FontWeight.w800)),
+                              subtitle: const Text('Check off skills for students assigned to your testing station.'),
+                              trailing: const Icon(Icons.chevron_right_rounded),
+                              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DepartmentClassesPage())),
+                            ),
+                          ),
+                        ],
                       ],
                       const SizedBox(height: 20),
                       Row(

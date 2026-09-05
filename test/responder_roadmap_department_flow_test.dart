@@ -190,5 +190,17 @@ void main() {
       expect(sharing.sharedSourceIds, {'cert-1', 'cert-2'});
       expect(sharing.serverTime, isNotNull);
     });
+
+    test('parses a proctor class roster and recorded skill result', () {
+      final detail = DepartmentClassDetail.fromJson({
+        'id': 'class-1', 'title': 'CPR Skills Day', 'classType': 'CPR', 'checklistTitle': 'BLS Provider', 'status': 'ACTIVE',
+        'sections': [{'id': 'adult', 'title': 'Adult CPR', 'skills': [{'id': 'compressions', 'title': 'Adult compressions', 'required': true}]}],
+        'roster': [{'id': 'enrollment-1', 'name': 'Taylor Member', 'email': 'taylor@example.com', 'attendance': 'PRESENT', 'finalResult': 'PENDING', 'results': [{'requirementId': 'compressions', 'result': 'PASS', 'evaluatorName': 'Jordan Proctor', 'evaluatedAt': '2026-09-05T18:00:00.000Z'}]}],
+      });
+
+      expect(detail.sections.single.skills.single.required, isTrue);
+      expect(detail.roster.single.attendance, 'PRESENT');
+      expect(detail.roster.single.results.single.evaluatorName, 'Jordan Proctor');
+    });
   });
 }
