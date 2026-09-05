@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/models/certification.dart';
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_inbox_page.dart';
+import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/services/department_link_store.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_mode_controller.dart';
+import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/app_mode_switcher.dart';
 
@@ -30,6 +33,10 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
   bool _loading = true;
   bool _syncing = false;
   String? _loadError;
+  Set<String> _sharedCertificationIds = <String>{};
+  bool _sharingLoaded = false;
+  bool _sharingSaving = false;
+  String? _sharingError;
   Timer? _autoSyncTimer;
 
   @override
@@ -61,10 +68,13 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
           if (!mounted) return;
           await context.read<AppModeController>().setDepartmentLink(stored);
           final assignments = await _api.listAssignments();
+          final sharing = await _api.getCertificationSharing();
           if (!mounted) return;
           setState(() {
             _link = stored;
             _assignments = assignments;
+            _sharedCertificationIds = sharing.sharedSourceIds;
+            _sharingLoaded = true;
             _loading = false;
             _loadError = null;
           });
@@ -138,11 +148,14 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
       await _store.save(link);
       await context.read<AppModeController>().setDepartmentLink(link);
       final assignments = await _api.listAssignments();
+      final sharing = await _api.getCertificationSharing();
       await context.read<DepartmentInboxController>().refresh(silent: true);
       if (!mounted) return;
       setState(() {
         _link = link;
         _assignments = assignments;
+        _sharedCertificationIds = sharing.sharedSourceIds;
+        _sharingLoaded = true;
         _loadError = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -170,6 +183,22 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
       }
       final link = DepartmentLink.fromSession(session);
       final assignments = await _api.listAssignments();
+      var sharedIds = _sharedCertificationIds;
+      if (!_sharingLoaded) {
+        sharedIds = (await _api.getCertificationSharing()).sharedSourceIds;
+      }
+      final app = context.read<AppState>();
+      if (app.bootstrapped) {
+        final availableIds = app.certifications.map((cert) => cert.id).toSet();
+        sharedIds = sharedIds.intersection(availableIds);
+        final sharing = await _api.syncCertificationSharing(
+          app.certifications
+              .where((cert) => sharedIds.contains(cert.id))
+              .map(_sharedCertificationPayload)
+              .toList(growable: false),
+        );
+        sharedIds = sharing.sharedSourceIds;
+      }
       await _store.save(link);
       await context.read<AppModeController>().setDepartmentLink(link);
       await context.read<DepartmentInboxController>().refresh(silent: true);
@@ -177,6 +206,8 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
       setState(() {
         _link = link;
         _assignments = assignments;
+        _sharedCertificationIds = sharedIds;
+        _sharingLoaded = true;
         _loadError = null;
       });
     } on ResponderRoadmapApiException catch (e) {
@@ -188,6 +219,8 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
         setState(() {
           _link = null;
           _assignments = const [];
+          _sharedCertificationIds = <String>{};
+          _sharingLoaded = false;
         });
       }
       if (showErrors) {
@@ -228,7 +261,47 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     setState(() {
       _link = null;
       _assignments = const [];
+      _sharedCertificationIds = <String>{};
+      _sharingLoaded = false;
     });
+  }
+
+  Future<void> _setCertificationShared(Certification certification, bool share) async {
+    if (_sharingSaving) return;
+    final next = Set<String>.from(_sharedCertificationIds);
+    share ? next.add(certification.id) : next.remove(certification.id);
+    setState(() {
+      _sharingSaving = true;
+      _sharingError = null;
+    });
+    try {
+      final app = context.read<AppState>();
+      final result = await _api.syncCertificationSharing(
+        app.certifications
+            .where((cert) => next.contains(cert.id))
+            .map(_sharedCertificationPayload)
+            .toList(growable: false),
+      );
+      if (!mounted) return;
+      setState(() {
+        _sharedCertificationIds = result.sharedSourceIds;
+        _sharingLoaded = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            share
+                ? '${certification.name} is now shared with your department.'
+                : '${certification.name} is no longer shared with your department.',
+          ),
+        ),
+      );
+    } on ResponderRoadmapApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _sharingError = error.message);
+    } finally {
+      if (mounted) setState(() => _sharingSaving = false);
+    }
   }
 
   Future<_Credentials?> _showLoginSheet() async {
@@ -386,8 +459,8 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
               tooltip: 'Assignment inbox',
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DepartmentInboxPage())),
               icon: Badge(
-                isLabelVisible: inbox.unreadCount > 0 || inbox.actionCount > 0,
-                label: Text('${inbox.unreadCount + inbox.actionCount}'),
+                isLabelVisible: inbox.unreadCount > 0,
+                label: Text('${inbox.unreadCount}'),
                 child: const Icon(Icons.notifications_outlined),
               ),
             ),
@@ -477,6 +550,28 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                       if (!widget.taskBooksOnly) ...[
                         const SizedBox(height: 16),
                         _PrivacyBoundaryCard(),
+                        const SizedBox(height: 12),
+                        _CertificationSharingCard(
+                          certifications: context.watch<AppState>().certifications,
+                          sharedIds: _sharedCertificationIds,
+                          loading: !_sharingLoaded,
+                          saving: _sharingSaving,
+                          error: _sharingError,
+                          onChanged: _setCertificationShared,
+                        ),
+                        if (const ['EVALUATOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'].contains(_link!.role)) ...[
+                          const SizedBox(height: 12),
+                          Card(
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(14),
+                              leading: const Icon(Icons.fact_check_outlined),
+                              title: const Text('Proctor class rosters', style: TextStyle(fontWeight: FontWeight.w800)),
+                              subtitle: const Text('Check off skills for students assigned to your testing station.'),
+                              trailing: const Icon(Icons.chevron_right_rounded),
+                              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DepartmentClassesPage())),
+                            ),
+                          ),
+                        ],
                       ],
                       const SizedBox(height: 20),
                       Row(
@@ -664,7 +759,7 @@ class _PrivacyBoundaryCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Connected does not mean shared. Only department Task Book submissions you intentionally send are written to ResponderRoadmap. Personal career records remain separate.',
+              'Connected does not mean shared. Department Task Book submissions and only the certifications you select below are written to ResponderRoadmap. Other personal career records remain separate.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4),
             ),
           ),
@@ -673,6 +768,110 @@ class _PrivacyBoundaryCard extends StatelessWidget {
     );
   }
 }
+
+Map<String, dynamic> _sharedCertificationPayload(Certification certification) => {
+      'id': certification.id,
+      'name': certification.name,
+      'issuer': certification.issuingOrganization,
+      'issueDate': certification.issueDate?.toIso8601String(),
+      'expirationDate': certification.expirationDate?.toIso8601String(),
+      'doesNotExpire': certification.doesNotExpire,
+      'updatedAt': certification.updatedAt.toIso8601String(),
+    };
+
+class _CertificationSharingCard extends StatelessWidget {
+  final List<Certification> certifications;
+  final Set<String> sharedIds;
+  final bool loading;
+  final bool saving;
+  final String? error;
+  final Future<void> Function(Certification certification, bool share) onChanged;
+
+  const _CertificationSharingCard({
+    required this.certifications,
+    required this.sharedIds,
+    required this.loading,
+    required this.saving,
+    required this.error,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      child: ExpansionTile(
+        leading: const Icon(Icons.verified_user_outlined),
+        title: const Text(
+          'Share certifications',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        subtitle: Text(
+          loading
+              ? 'Loading sharing choices…'
+              : '${sharedIds.length} of ${certifications.length} shared with your department',
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: Text(
+              'You choose each certification. Only its name, issuer, issue date, and expiration status are shared. Credential numbers and personal notes stay private. Shared records require department verification.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+            ),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                error!,
+                style: TextStyle(color: cs.error, fontWeight: FontWeight.w700),
+              ),
+            ),
+          if (certifications.isEmpty)
+            const ListTile(
+              leading: Icon(Icons.info_outline),
+              title: Text('No personal certifications to share'),
+              subtitle: Text('Add certifications in your personal Career Road first.'),
+            )
+          else
+            ...certifications.map((certification) {
+              final expiration = certification.doesNotExpire
+                  ? 'Does not expire'
+                  : certification.expirationDate == null
+                      ? 'No expiration entered'
+                      : 'Expires ${_shortDate(certification.expirationDate!)}';
+              final shared = sharedIds.contains(certification.id);
+              return SwitchListTile(
+                value: shared,
+                onChanged: loading || saving
+                    ? null
+                    : (value) => onChanged(certification, value),
+                title: Text(
+                  certification.name,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(expiration),
+                secondary: Icon(
+                  shared ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+                ),
+              );
+            }),
+          if (saving)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: LinearProgressIndicator(),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+String _shortDate(DateTime value) => '${value.month}/${value.day}/${value.year}';
 
 class _AssignmentCard extends StatelessWidget {
   final DepartmentTaskBookAssignment assignment;
