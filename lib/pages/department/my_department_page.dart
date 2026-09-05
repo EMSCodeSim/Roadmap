@@ -459,8 +459,8 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
               tooltip: 'Assignment inbox',
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DepartmentInboxPage())),
               icon: Badge(
-                isLabelVisible: inbox.unreadCount > 0 || inbox.actionCount > 0,
-                label: Text('${inbox.unreadCount + inbox.actionCount}'),
+                isLabelVisible: inbox.unreadCount > 0,
+                label: Text('${inbox.unreadCount}'),
                 child: const Icon(Icons.notifications_outlined),
               ),
             ),
