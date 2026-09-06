@@ -9,6 +9,8 @@ import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/certification_urgency.dart';
+import 'package:firepath/services/department_certification_sharing.dart';
+import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/services/catalog.dart';
@@ -40,6 +42,14 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
   DateTime? _issueDate;
   DateTime? _expirationDate;
   bool _doesNotExpire = false;
+  final ResponderRoadmapApi _departmentApi = ResponderRoadmapApi();
+  Set<String> _sharedCertificationIds = <String>{};
+  bool _sharingInitialized = false;
+  bool _sharingLoading = false;
+  bool _sharingSaving = false;
+  bool _departmentConnected = false;
+  String? _departmentName;
+  String? _sharingError;
 
   @override
   void initState() {
@@ -97,6 +107,11 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
         _showRenewalUpdateSheet();
       });
     }
+
+    if (widget.certId != 'new' && !_sharingInitialized) {
+      _sharingInitialized = true;
+      _loadDepartmentSharing();
+    }
   }
 
   @override
@@ -130,6 +145,127 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
     );
     if (picked == null) return;
     setState(() => _expirationDate = picked);
+  }
+
+  Future<void> _loadDepartmentSharing() async {
+    setState(() {
+      _sharingLoading = true;
+      _sharingError = null;
+    });
+    try {
+      if (!await _departmentApi.hasStoredToken) {
+        if (!mounted) return;
+        setState(() {
+          _departmentConnected = false;
+          _sharingLoading = false;
+        });
+        return;
+      }
+      final session = await _departmentApi.currentSession();
+      if (!session.hasDepartment) {
+        if (!mounted) return;
+        setState(() {
+          _departmentConnected = false;
+          _sharingLoading = false;
+        });
+        return;
+      }
+      final sharing = await _departmentApi.getCertificationSharing();
+      if (!mounted) return;
+      setState(() {
+        _departmentConnected = true;
+        _departmentName = session.departmentName;
+        _sharedCertificationIds = sharing.sharedSourceIds;
+        _sharingLoading = false;
+      });
+    } on ResponderRoadmapApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _departmentConnected = false;
+        _sharingLoading = false;
+        _sharingError = error.statusCode == 401 || error.statusCode == 403
+            ? 'Sign in again from the Department tab to manage sharing.'
+            : error.message;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _sharingPayloads(
+    Set<String> sharedIds, {
+    Certification? replacement,
+  }) {
+    final certifications = context.read<AppState>().certifications;
+    return certifications
+        .where((certification) => sharedIds.contains(certification.id))
+        .map(
+          (certification) => departmentCertificationPayload(
+            replacement?.id == certification.id
+                ? replacement!
+                : certification,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<void> _setDepartmentShared(bool share) async {
+    if (_sharingSaving || !_departmentConnected) return;
+    final next = Set<String>.from(_sharedCertificationIds);
+    share ? next.add(_cert.id) : next.remove(_cert.id);
+    setState(() {
+      _sharingSaving = true;
+      _sharingError = null;
+    });
+    try {
+      final result = await _departmentApi.syncCertificationSharing(
+        _sharingPayloads(next),
+      );
+      if (!mounted) return;
+      setState(() => _sharedCertificationIds = result.sharedSourceIds);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            share
+                ? '${_cert.name} and its expiration date are shared with ${_departmentName ?? 'your department'}.'
+                : '${_cert.name} is no longer shared with ${_departmentName ?? 'your department'}.',
+          ),
+        ),
+      );
+    } on ResponderRoadmapApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _sharingError = error.message);
+    } finally {
+      if (mounted) setState(() => _sharingSaving = false);
+    }
+  }
+
+  Future<bool> _syncSharedUpdate(Certification updated) async {
+    if (!_departmentConnected ||
+        !_sharedCertificationIds.contains(updated.id)) {
+      return true;
+    }
+    try {
+      final result = await _departmentApi.syncCertificationSharing(
+        _sharingPayloads(_sharedCertificationIds, replacement: updated),
+      );
+      if (!mounted) return true;
+      setState(() {
+        _sharedCertificationIds = result.sharedSourceIds;
+        _sharingError = null;
+      });
+      return true;
+    } on ResponderRoadmapApiException catch (error) {
+      if (!mounted) return false;
+      setState(() => _sharingError = error.message);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Certification saved on this device, but the department update failed: ${error.message}',
+          ),
+          duration: const Duration(seconds: 7),
+        ),
+      );
+      return false;
+    }
   }
 
   Future<void> _save() async {
@@ -201,6 +337,9 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
       clearExpirationDate: _doesNotExpire,
     );
     await context.read<AppState>().upsertCertification(updated);
+    if (!mounted) return;
+    _cert = updated;
+    if (!await _syncSharedUpdate(updated)) return;
     if (!mounted) return;
 
     final extra = widget.extra;
@@ -372,6 +511,8 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
                           _doesNotExpire = updated.doesNotExpire;
                           if (note.isNotEmpty) _notes.text = note;
                         });
+                        await _syncSharedUpdate(updated);
+                        if (!mounted) return;
                         if (sheetContext.mounted) sheetContext.pop();
                       },
                       icon: const Icon(Icons.check_circle_outline),
@@ -555,6 +696,35 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
       },
     );
     if (confirm != true) return;
+    if (_departmentConnected &&
+        _sharedCertificationIds.contains(_cert.id)) {
+      setState(() {
+        _sharingSaving = true;
+        _sharingError = null;
+      });
+      try {
+        final next = Set<String>.from(_sharedCertificationIds)
+          ..remove(_cert.id);
+        final result = await _departmentApi.syncCertificationSharing(
+          _sharingPayloads(next),
+        );
+        if (!mounted) return;
+        setState(() => _sharedCertificationIds = result.sharedSourceIds);
+      } on ResponderRoadmapApiException catch (error) {
+        if (!mounted) return;
+        setState(() => _sharingError = error.message);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Could not remove this certification from your department: ${error.message}',
+            ),
+          ),
+        );
+        return;
+      } finally {
+        if (mounted) setState(() => _sharingSaving = false);
+      }
+    }
     await context.read<AppState>().deleteCertification(_cert.id);
     if (!mounted) return;
     context.pop();
@@ -723,6 +893,20 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
                 title: const Text('Does Not Expire'),
                 contentPadding: EdgeInsets.zero,
               ),
+              if (widget.certId != 'new') ...[
+                const SizedBox(height: AppSpacing.md),
+                _DepartmentSharingCard(
+                  connected: _departmentConnected,
+                  departmentName: _departmentName,
+                  shared: _sharedCertificationIds.contains(_cert.id),
+                  loading: _sharingLoading,
+                  saving: _sharingSaving,
+                  error: _sharingError,
+                  expirationDate: _cert.expirationDate,
+                  doesNotExpire: _cert.doesNotExpire,
+                  onChanged: _setDepartmentShared,
+                ),
+              ],
               const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: _notes,
@@ -746,6 +930,98 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DepartmentSharingCard extends StatelessWidget {
+  final bool connected;
+  final String? departmentName;
+  final bool shared;
+  final bool loading;
+  final bool saving;
+  final String? error;
+  final DateTime? expirationDate;
+  final bool doesNotExpire;
+  final ValueChanged<bool> onChanged;
+
+  const _DepartmentSharingCard({
+    required this.connected,
+    required this.departmentName,
+    required this.shared,
+    required this.loading,
+    required this.saving,
+    required this.error,
+    required this.expirationDate,
+    required this.doesNotExpire,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final expiration = doesNotExpire
+        ? 'Does not expire'
+        : expirationDate == null
+            ? 'No expiration date entered'
+            : 'Expires ${_DateTile._formatDate(expirationDate!)}';
+    final destination = departmentName?.trim().isNotEmpty == true
+        ? departmentName!
+        : 'your department';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SwitchListTile(
+            value: shared,
+            onChanged: loading || saving || !connected ? null : onChanged,
+            secondary: Icon(
+              shared ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+            ),
+            title: const Text(
+              'Share with department',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+            subtitle: Text(
+              loading
+                  ? 'Checking department sharing…'
+                  : connected
+                      ? shared
+                          ? 'Shared with $destination · $expiration'
+                          : 'Share this certification and its expiration date with $destination.'
+                      : 'Sign in from the Department tab to enable sharing.',
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: Text(
+              'The department receives the certification name, issuer, issue date, and expiration date or does-not-expire status. Your credential number and personal notes stay private.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+            ),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              child: Text(
+                error!,
+                style: TextStyle(
+                  color: cs.error,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          if (saving) const LinearProgressIndicator(),
+        ],
       ),
     );
   }
