@@ -27,6 +27,8 @@ class MyDepartmentPage extends StatefulWidget {
 class _MyDepartmentPageState extends State<MyDepartmentPage> {
   final DepartmentLinkStore _store = DepartmentLinkStore();
   final ResponderRoadmapApi _api = ResponderRoadmapApi();
+  final GlobalKey _taskBooksSectionKey = GlobalKey();
+  final GlobalKey _assignmentsSectionKey = GlobalKey();
 
   DepartmentLink? _link;
   List<DepartmentTaskBookAssignment> _assignments = const [];
@@ -237,9 +239,9 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Disconnect department?'),
+        title: const Text('Sign out of department?'),
         content: const Text(
-          'This removes the department login from this device. Your personal Career Road stays on this device and department records remain in ResponderRoadmap.',
+          'This removes the department login from this device. Your personal roadmap stays on this device, and official department records remain safely stored.',
         ),
         actions: [
           TextButton(
@@ -248,7 +250,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Disconnect'),
+            child: const Text('Sign out'),
           ),
         ],
       ),
@@ -323,12 +325,12 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Connect ResponderRoadmap',
+                    'Sign in to your department',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Use the same account your department uses on responderroadmap.com.',
+                    'Use the email and password from your Responder Roadmap department account.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
                   ),
                   const SizedBox(height: 16),
@@ -370,7 +372,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                         );
                       },
                       icon: const Icon(Icons.link_rounded),
-                      label: const Text('Connect Account'),
+                      label: const Text('Sign In'),
                     ),
                   ),
                 ],
@@ -445,25 +447,43 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     await _sync();
   }
 
+  Future<void> _openInbox() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const DepartmentInboxPage()),
+    );
+    if (mounted) {
+      await context.read<DepartmentInboxController>().refresh(silent: true);
+    }
+  }
+
+  void _scrollTo(GlobalKey key) {
+    final target = key.currentContext;
+    if (target == null) return;
+    Scrollable.ensureVisible(
+      target,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+      alignment: 0.08,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final inbox = context.watch<DepartmentInboxController>();
+    final taskBooks = _assignments
+        .where((assignment) => !assignment.isSingleTask)
+        .toList(growable: false);
+    final trainingAssignments = _assignments
+        .where((assignment) => assignment.isSingleTask)
+        .toList(growable: false);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.taskBooksOnly ? 'Department Task Books' : 'My Department'),
+        title: Text(
+          widget.taskBooksOnly ? 'Department Task Books' : 'Department',
+        ),
         actions: [
-          if (_link != null)
-            IconButton(
-              tooltip: 'Assignment inbox',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DepartmentInboxPage())),
-              icon: Badge(
-                isLabelVisible: inbox.unreadCount > 0,
-                label: Text('${inbox.unreadCount}'),
-                child: const Icon(Icons.notifications_outlined),
-              ),
-            ),
           if (_link != null)
             IconButton(
               tooltip: 'Sync department records',
@@ -497,10 +517,13 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                         error: _loadError,
                         onConnect: _connect,
                       ),
+                      const SizedBox(height: 12),
+                      const _DepartmentSetupGuide(),
                     ] else ...[
                       _SyncStatusCard(controller: inbox),
                       const SizedBox(height: 12),
-                      if (!widget.taskBooksOnly) Container(
+                      if (!widget.taskBooksOnly)
+                        Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           color: cs.primaryContainer.withValues(alpha: .55),
@@ -511,6 +534,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Icon(Icons.apartment_rounded, color: cs.primary),
                                 const SizedBox(width: 10),
@@ -520,7 +544,11 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                                     style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                                   ),
                                 ),
-                                const Icon(Icons.verified_rounded),
+                                TextButton.icon(
+                                  onPressed: _disconnect,
+                                  icon: const Icon(Icons.logout_rounded, size: 18),
+                                  label: const Text('Sign out'),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -532,23 +560,28 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              _link!.email,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _disconnect,
-                                icon: const Icon(Icons.link_off_rounded),
-                                label: const Text('Disconnect Department'),
-                              ),
+                              '${_humanize(_link!.role)} · ${_link!.email}',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
                             ),
                           ],
                         ),
                       ),
                       if (!widget.taskBooksOnly) ...[
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
+                        _DepartmentOverview(
+                          taskBookCount: taskBooks.length,
+                          assignmentCount: trainingAssignments.length,
+                          unreadCount: inbox.unreadCount,
+                          actionCount: inbox.actionCount,
+                          onTaskBooks: () => _scrollTo(_taskBooksSectionKey),
+                          onAssignments: () =>
+                              _scrollTo(_assignmentsSectionKey),
+                          onMessages: _openInbox,
+                          onNeedsAction: _openInbox,
+                        ),
+                        const SizedBox(height: 12),
                         _PrivacyBoundaryCard(),
                         const SizedBox(height: 12),
                         _CertificationSharingCard(
@@ -574,56 +607,29 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                         ],
                       ],
                       const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Department Assignments',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-                            ),
-                          ),
-                          Text(
-                            '${_assignments.length}',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                          ),
-                        ],
+                      _DepartmentAssignmentSection(
+                        key: _taskBooksSectionKey,
+                        title: 'Task Books',
+                        description:
+                            'Department-issued task books and approved progress.',
+                        emptyMessage:
+                            'No department Task Books are assigned to you yet.',
+                        assignments: taskBooks,
+                        onOpen: _openAssignment,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Task Books and single training assignments appear here. Submissions are official department records and go to ResponderRoadmap for review.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                              height: 1.4,
-                            ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (_assignments.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest.withValues(alpha: .35),
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.assignment_outlined),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: Text('No department assignments are assigned to you yet.'),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        ..._assignments.map(
-                          (assignment) => _AssignmentCard(
-                            assignment: assignment,
-                            onTap: () => _openAssignment(assignment),
-                          ),
+                      if (!widget.taskBooksOnly) ...[
+                        const SizedBox(height: 18),
+                        _DepartmentAssignmentSection(
+                          key: _assignmentsSectionKey,
+                          title: 'Training Assignments',
+                          description:
+                              'Single tasks from your Training Captain that do not require a full Task Book.',
+                          emptyMessage:
+                              'No single training assignments are waiting for you.',
+                          assignments: trainingAssignments,
+                          onOpen: _openAssignment,
                         ),
+                      ],
                     ],
                   ],
                 ),
@@ -661,6 +667,221 @@ class _SyncStatusCard extends StatelessWidget {
   }
 }
 
+class _DepartmentOverview extends StatelessWidget {
+  const _DepartmentOverview({
+    required this.taskBookCount,
+    required this.assignmentCount,
+    required this.unreadCount,
+    required this.actionCount,
+    required this.onTaskBooks,
+    required this.onAssignments,
+    required this.onMessages,
+    required this.onNeedsAction,
+  });
+
+  final int taskBookCount;
+  final int assignmentCount;
+  final int unreadCount;
+  final int actionCount;
+  final VoidCallback onTaskBooks;
+  final VoidCallback onAssignments;
+  final VoidCallback onMessages;
+  final VoidCallback onNeedsAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Department overview',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _DepartmentOverviewTile(
+                icon: Icons.menu_book_outlined,
+                value: taskBookCount,
+                label: 'Task Books',
+                onTap: onTaskBooks,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _DepartmentOverviewTile(
+                icon: Icons.assignment_outlined,
+                value: assignmentCount,
+                label: 'Assignments',
+                onTap: onAssignments,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _DepartmentOverviewTile(
+                icon: Icons.notifications_outlined,
+                value: unreadCount,
+                label: 'Unread messages',
+                emphasize: unreadCount > 0,
+                onTap: onMessages,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _DepartmentOverviewTile(
+                icon: Icons.pending_actions_outlined,
+                value: actionCount,
+                label: 'Needs my action',
+                emphasize: actionCount > 0,
+                onTap: onNeedsAction,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DepartmentOverviewTile extends StatelessWidget {
+  const _DepartmentOverviewTile({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.onTap,
+    this.emphasize = false,
+  });
+
+  final IconData icon;
+  final int value;
+  final String label;
+  final VoidCallback onTap;
+  final bool emphasize;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: emphasize
+          ? cs.tertiaryContainer.withValues(alpha: .65)
+          : cs.surfaceContainerHighest.withValues(alpha: .35),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 98),
+          child: Padding(
+            padding: const EdgeInsets.all(13),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 21),
+                    const Spacer(),
+                    const Icon(Icons.chevron_right_rounded, size: 20),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$value',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                Text(label, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DepartmentAssignmentSection extends StatelessWidget {
+  const _DepartmentAssignmentSection({
+    super.key,
+    required this.title,
+    required this.description,
+    required this.emptyMessage,
+    required this.assignments,
+    required this.onOpen,
+  });
+
+  final String title;
+  final String description;
+  final String emptyMessage;
+  final List<DepartmentTaskBookAssignment> assignments;
+  final Future<void> Function(DepartmentTaskBookAssignment assignment) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
+            ),
+            Text(
+              '${assignments.length}',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          description,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                height: 1.4,
+              ),
+        ),
+        const SizedBox(height: 10),
+        if (assignments.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: .35),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: Text(emptyMessage),
+          )
+        else
+          ...assignments.map(
+            (assignment) => _AssignmentCard(
+              assignment: assignment,
+              onTap: () => onOpen(assignment),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 String _syncTime(DateTime value) {
   final local = value.toLocal();
   return '${local.month}/${local.day} ${local.hour}:${local.minute.toString().padLeft(2, '0')}';
@@ -692,12 +913,12 @@ class _ConnectCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Connect to your department',
+            'Your department workspace',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
           Text(
-            'Sign in with your ResponderRoadmap account to receive department Task Books and send work to your evaluator.',
+            'Sign in to receive Task Books and training assignments, read department messages, and send completed work to an approved evaluator.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
           ),
           const SizedBox(height: 12),
@@ -733,7 +954,120 @@ class _ConnectCard extends StatelessWidget {
               icon: busy
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.link_rounded),
-              label: Text(busy ? 'Connecting…' : 'Connect ResponderRoadmap'),
+              label: Text(busy ? 'Signing in…' : 'Sign in to department'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DepartmentSetupGuide extends StatelessWidget {
+  const _DepartmentSetupGuide();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'How department access works',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 12),
+            const _SetupStep(
+              number: '1',
+              title: 'Your department enrolls',
+              detail:
+                  'A Training Captain or administrator creates the department dashboard at responderroadmap.com and receives its join code.',
+            ),
+            const _SetupStep(
+              number: '2',
+              title: 'You receive access',
+              detail:
+                  'Use the department invitation to create your account, or sign in with an existing account and enter the join code.',
+            ),
+            const _SetupStep(
+              number: '3',
+              title: 'Approval may be required',
+              detail:
+                  'If your request is pending, a department administrator must approve it before assignments appear.',
+            ),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cs.secondaryContainer.withValues(alpha: .4),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+              child: const Text(
+                'Need access? Ask your Training Captain or department administrator for an invitation or join code.',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SetupStep extends StatelessWidget {
+  const _SetupStep({
+    required this.number,
+    required this.title,
+    required this.detail,
+  });
+
+  final String number;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 13),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 15,
+            backgroundColor: cs.primaryContainer,
+            child: Text(
+              number,
+              style: TextStyle(
+                color: cs.onPrimaryContainer,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  detail,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                ),
+              ],
             ),
           ),
         ],
