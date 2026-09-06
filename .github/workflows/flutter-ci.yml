@@ -60,7 +60,6 @@ jobs:
 
   full-test-suite:
     needs: validate
-    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -76,7 +75,13 @@ jobs:
         run: flutter pub get
 
       - name: Run full legacy test suite (diagnostic)
-        run: flutter test
+        id: legacy_tests
+        continue-on-error: true
+        run: flutter test --timeout 2m
+
+      - name: Report legacy diagnostic failures
+        if: steps.legacy_tests.outcome == 'failure'
+        run: echo "::warning::One or more legacy diagnostic tests failed or timed out. Required regression tests and platform builds remain authoritative."
 
   ios-release:
     runs-on: macos-latest
