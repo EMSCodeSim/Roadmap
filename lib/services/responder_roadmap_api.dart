@@ -809,7 +809,7 @@ class ResponderRoadmapApi {
   }
 
   Future<List<DepartmentReviewItem>> listReviewQueue() async {
-    final data = await _request('GET', 'sign-offs');
+    final data = await _request('GET', 'sign-offs?view=mine');
     final list = data is List ? data : const <dynamic>[];
     return list
         .whereType<Map>()
@@ -820,7 +820,7 @@ class ResponderRoadmapApi {
   }
 
   Future<List<DepartmentClassSummary>> listClasses() async {
-    final data = await _request('GET', 'classes');
+    final data = await _request('GET', 'classes?view=mine');
     return (data is List ? data : const <dynamic>[]).whereType<Map>().map((item) => DepartmentClassSummary.fromJson(Map<String, dynamic>.from(item))).toList(growable: false);
   }
 

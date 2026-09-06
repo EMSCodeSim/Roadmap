@@ -31,21 +31,21 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
         ..._classes!.map((row) => Card(child: ListTile(
           contentPadding: const EdgeInsets.all(14), leading: const Icon(Icons.fact_check_outlined), title: Text(row.title, style: const TextStyle(fontWeight: FontWeight.w800)),
           subtitle: Text('${row.checklistTitle}\n${row.completeCount} of ${row.rosterCount} students complete · ${row.status}'), isThreeLine: true,
-          trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => _DepartmentClassDetailPage(classId: row.id))),
+          trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentClassDetailPage(classId: row.id))),
         ))),
       ]),
     ),
   );
 }
 
-class _DepartmentClassDetailPage extends StatefulWidget {
+class DepartmentClassDetailPage extends StatefulWidget {
   final String classId;
-  const _DepartmentClassDetailPage({required this.classId});
+  const DepartmentClassDetailPage({super.key, required this.classId});
   @override
-  State<_DepartmentClassDetailPage> createState() => _DepartmentClassDetailPageState();
+  State<DepartmentClassDetailPage> createState() => _DepartmentClassDetailPageState();
 }
 
-class _DepartmentClassDetailPageState extends State<_DepartmentClassDetailPage> {
+class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   final _api = ResponderRoadmapApi();
   DepartmentClassDetail? _detail;
   String? _studentId;

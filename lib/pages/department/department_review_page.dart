@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_mode_controller.dart';
@@ -16,6 +17,7 @@ class DepartmentReviewPage extends StatefulWidget {
 class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
   final ResponderRoadmapApi _api = ResponderRoadmapApi();
   List<DepartmentReviewItem> _items = const [];
+  List<DepartmentClassSummary> _classes = const [];
   bool _loading = true;
   String? _error;
 
@@ -37,8 +39,12 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
     });
     try {
       final items = await _api.listReviewQueue();
+      final classes = await _api.listClasses();
       if (!mounted) return;
-      setState(() => _items = items);
+      setState(() {
+        _items = items;
+        _classes = classes;
+      });
     } on ResponderRoadmapApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
@@ -57,6 +63,15 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
     if (changed == true) await _load();
   }
 
+  Future<void> _openClass(DepartmentClassSummary item) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DepartmentClassDetailPage(classId: item.id),
+      ),
+    );
+    await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final mode = context.watch<AppModeController>();
@@ -66,7 +81,7 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(elevatedRole ? 'Department Admin' : 'Evaluator Review'),
+        title: Text(elevatedRole ? 'Department Admin' : 'Evaluator Work'),
         actions: [
           if (mode.canReview)
             IconButton(
@@ -98,18 +113,37 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
             else if (_error != null)
               _MessageCard(
                 icon: Icons.sync_problem_rounded,
-                title: 'Could not load reviews',
+                title: 'Could not load assigned work',
                 message: _error!,
-              )
-            else if (_items.isEmpty)
-              const _MessageCard(
-                icon: Icons.task_alt_rounded,
-                title: 'Review queue is clear',
-                message: 'There are no department Task Book submissions waiting for you.',
               )
             else ...[
               Text(
-                '${_items.length} waiting for review',
+                'Work assigned to you',
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Approve submitted requirements and complete the class checklists where you are an assigned evaluator or proctor.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+              ),
+              const SizedBox(height: 14),
+              _AssignedWorkSummary(
+                signOffCount: _items.length,
+                rosterCount: _classes.length,
+                studentCount: _classes.fold<int>(
+                  0,
+                  (total, item) => total + item.rosterCount,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                'Sign-offs assigned to you',
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge
@@ -117,43 +151,205 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Open a submission to document the observed steps and record your decision.',
+                '${_items.length} waiting · Open a submission to view the complete checklist and record your decision.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                       height: 1.4,
                     ),
               ),
               const SizedBox(height: 12),
-              ..._items.map(
-                (item) => Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(14),
-                    onTap: () => _open(item),
-                    leading: CircleAvatar(
-                      child: Text(
-                        item.memberName.trim().isEmpty
-                            ? '?'
-                            : item.memberName.trim()[0].toUpperCase(),
+              if (_items.isEmpty)
+                const _MessageCard(
+                  icon: Icons.task_alt_rounded,
+                  title: 'Sign-off queue is clear',
+                  message:
+                      'No Task Book or assignment submissions are waiting for your approval.',
+                )
+              else
+                ..._items.map(
+                  (item) => Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(14),
+                      onTap: () => _open(item),
+                      leading: CircleAvatar(
+                        child: Text(
+                          item.memberName.trim().isEmpty
+                              ? '?'
+                              : item.memberName.trim()[0].toUpperCase(),
+                        ),
                       ),
-                    ),
-                    title: Text(
-                      item.requirementTitle,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: Text(
-                        '${item.memberName} · ${item.taskBookTitle}\n${_stageLabel(item.reviewStage)}',
+                      title: Text(
+                        item.requirementTitle,
+                        style: const TextStyle(fontWeight: FontWeight.w900),
                       ),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: Text(
+                          '${item.memberName} · ${item.taskBookTitle}\n'
+                          '${_stageLabel(item.reviewStage)} · '
+                          '${item.evaluationSteps.length} checklist steps',
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
                     ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
                   ),
                 ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Assigned checklists and rosters',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  Text(
+                    '${_classes.length}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 5),
+              Text(
+                'Open a roster, select a student, and record each skill result at your assigned station.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              if (_classes.isEmpty)
+                const _MessageCard(
+                  icon: Icons.groups_outlined,
+                  title: 'No assigned rosters',
+                  message:
+                      'Class checklists will appear here when you are assigned as a proctor.',
+                )
+              else
+                ..._classes.map(
+                  (item) => Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(14),
+                      onTap: () => _openClass(item),
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.fact_check_outlined),
+                      ),
+                      title: Text(
+                        item.title,
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: Text(
+                          '${item.checklistTitle}\n'
+                          '${item.completeCount} of ${item.rosterCount} students complete'
+                          '${item.location.trim().isEmpty ? '' : ' · ${item.location}'}',
+                        ),
+                      ),
+                      isThreeLine: true,
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ),
+                ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AssignedWorkSummary extends StatelessWidget {
+  const _AssignedWorkSummary({
+    required this.signOffCount,
+    required this.rosterCount,
+    required this.studentCount,
+  });
+
+  final int signOffCount;
+  final int rosterCount;
+  final int studentCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _SummaryTile(
+            icon: Icons.approval_outlined,
+            value: signOffCount,
+            label: 'Sign-offs',
+            urgent: signOffCount > 0,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _SummaryTile(
+            icon: Icons.assignment_turned_in_outlined,
+            value: rosterCount,
+            label: 'Rosters',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _SummaryTile(
+            icon: Icons.groups_outlined,
+            value: studentCount,
+            label: 'Students',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryTile extends StatelessWidget {
+  const _SummaryTile({
+    required this.icon,
+    required this.value,
+    required this.label,
+    this.urgent = false,
+  });
+
+  final IconData icon;
+  final int value;
+  final String label;
+  final bool urgent;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 96),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: urgent
+            ? cs.tertiaryContainer.withValues(alpha: .7)
+            : cs.surfaceContainerHighest.withValues(alpha: .4),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 21),
+          const SizedBox(height: 7),
+          Text(
+            '$value',
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
+        ],
       ),
     );
   }
