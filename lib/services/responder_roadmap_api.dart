@@ -77,6 +77,34 @@ class DepartmentJoinResult {
   }
 }
 
+class DepartmentCodeValidation {
+  final String departmentName;
+  final String joinCode;
+
+  const DepartmentCodeValidation({required this.departmentName, required this.joinCode});
+
+  factory DepartmentCodeValidation.fromJson(Map<String, dynamic> json) {
+    return DepartmentCodeValidation(
+      departmentName: (json['departmentName'] as String?) ?? 'Department',
+      joinCode: (json['joinCode'] as String?) ?? '',
+    );
+  }
+}
+
+class DepartmentRegistrationResult {
+  final String departmentName;
+  final bool approvalPending;
+
+  const DepartmentRegistrationResult({required this.departmentName, required this.approvalPending});
+
+  factory DepartmentRegistrationResult.fromJson(Map<String, dynamic> json) {
+    return DepartmentRegistrationResult(
+      departmentName: (json['departmentName'] as String?) ?? 'Department',
+      approvalPending: json['approvalPending'] == true,
+    );
+  }
+}
+
 class DepartmentRequirement {
   final String id;
   final String title;
@@ -626,6 +654,36 @@ class ResponderRoadmapApi {
   Future<ResponderRoadmapSession> currentSession() async {
     final data = await _request('GET', 'auth/me');
     return ResponderRoadmapSession.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentCodeValidation> validateDepartmentCode(String joinCode) async {
+    final data = await _request(
+      'POST',
+      'auth/department-code',
+      body: <String, dynamic>{'joinCode': joinCode.trim().toUpperCase()},
+      authenticated: false,
+    );
+    return DepartmentCodeValidation.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentRegistrationResult> registerWithDepartmentCode({
+    required String joinCode,
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    final data = await _request(
+      'POST',
+      'auth/app-register',
+      body: <String, dynamic>{
+        'joinCode': joinCode.trim().toUpperCase(),
+        'name': name.trim(),
+        'email': email.trim(),
+        'password': password,
+      },
+      authenticated: false,
+    );
+    return DepartmentRegistrationResult.fromJson(_asMap(data));
   }
 
   Future<DepartmentJoinResult> joinDepartment(String joinCode) async {

@@ -1,9 +1,29 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
-import 'package:firepath/services/responder_roadmap_api.dart' as rr;
 
 void main() {
   group('ResponderRoadmap department task flow', () {
+    test('parses accepted department join codes', () {
+      final result = DepartmentCodeValidation.fromJson({
+        'departmentName': 'North Metro Fire Rescue',
+        'joinCode': 'NFR-4821',
+        'approvalRequired': true,
+      });
+
+      expect(result.departmentName, 'North Metro Fire Rescue');
+      expect(result.joinCode, 'NFR-4821');
+    });
+
+    test('parses pending account registration', () {
+      final result = DepartmentRegistrationResult.fromJson({
+        'departmentName': 'North Metro Fire Rescue',
+        'approvalPending': true,
+      });
+
+      expect(result.departmentName, 'North Metro Fire Rescue');
+      expect(result.approvalPending, isTrue);
+    });
+
     test('parses evaluator review steps and critical failures', () {
       final item = DepartmentReviewItem.fromJson({
         'id': 'completion-1',
@@ -139,7 +159,7 @@ void main() {
     });
 
     test('parses durable inbox, action count, and server timestamp', () {
-      final inbox = rr.DepartmentInbox.fromJson({
+      final inbox = DepartmentInbox.fromJson({
         'unreadCount': 2,
         'serverTime': '2026-09-04T18:30:00.000Z',
         'items': [
@@ -169,7 +189,7 @@ void main() {
     });
 
     test('parses the server-recorded submission receipt', () {
-      final receipt = rr.DepartmentSubmissionReceipt.fromJson({
+      final receipt = DepartmentSubmissionReceipt.fromJson({
         'receiptId': 'completion-1',
         'clientRequestId': 'submission-phone-1',
         'status': 'SUBMITTED',

@@ -161,6 +161,43 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     }
   }
 
+  Future<void> _createDepartmentAccount() async {
+    final code = await _showJoinCodeSheet();
+    if (code == null || code.trim().isEmpty) return;
+    setState(() => _syncing = true);
+    try {
+      final department = await _api.validateDepartmentCode(code);
+      if (!mounted) return;
+      setState(() => _syncing = false);
+      final registration = await _showRegistrationSheet(department);
+      if (registration == null) return;
+      setState(() => _syncing = true);
+      final result = await _api.registerWithDepartmentCode(
+        joinCode: department.joinCode,
+        name: registration.name,
+        email: registration.email,
+        password: registration.password,
+      );
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          icon: const Icon(Icons.hourglass_top_rounded),
+          title: const Text('Account created'),
+          content: Text(
+            'Your request to join ${result.departmentName} was sent. A Training Officer must approve it before you can sign in to department mode.',
+          ),
+          actions: [FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Done'))],
+        ),
+      );
+    } on ResponderRoadmapApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message), duration: const Duration(seconds: 7)));
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
+
   Future<void> _sync({bool showErrors = true}) async {
     if (_syncing) return;
     setState(() => _syncing = true);
@@ -335,7 +372,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Your department can give you its ResponderRoadmap join code. Some departments require an administrator to approve the request.',
+                'Enter the private ResponderRoadmap code provided by your department. Every join-code request requires Training Officer approval.',
               ),
               const SizedBox(height: 16),
               TextField(
@@ -353,8 +390,8 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                 height: 54,
                 child: FilledButton.icon(
                   onPressed: () => Navigator.of(context).pop(code.text.trim()),
-                  icon: const Icon(Icons.group_add_rounded),
-                  label: const Text('Request to Join'),
+                  icon: const Icon(Icons.verified_outlined),
+                  label: const Text('Check Department Code'),
                 ),
               ),
             ],
@@ -363,6 +400,74 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
       },
     );
     code.dispose();
+    return result;
+  }
+
+  Future<_RegistrationCredentials?> _showRegistrationSheet(DepartmentCodeValidation department) async {
+    final name = TextEditingController();
+    final email = TextEditingController();
+    final password = TextEditingController();
+    final confirmPassword = TextEditingController();
+    var obscure = true;
+    String? validationError;
+    final result = await showModalBottomSheet<_RegistrationCredentials>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final viewInsets = MediaQuery.viewInsetsOf(context);
+          void submit() {
+            if (name.text.trim().isEmpty || email.text.trim().isEmpty || password.text.length < 8) {
+              setSheetState(() => validationError = 'Enter your name, email, and a password of at least 8 characters.');
+              return;
+            }
+            if (password.text != confirmPassword.text) {
+              setSheetState(() => validationError = 'The passwords do not match.');
+              return;
+            }
+            Navigator.of(context).pop(_RegistrationCredentials(
+              name: name.text.trim(),
+              email: email.text.trim(),
+              password: password.text,
+            ));
+          }
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(16, 6, 16, 20 + viewInsets.bottom),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Code accepted', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 4),
+                Text(department.departmentName, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 6),
+                const Text('Create your account. Department access begins only after a Training Officer approves your request.'),
+                if (validationError != null) ...[
+                  const SizedBox(height: 12),
+                  Text(validationError!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w700)),
+                ],
+                const SizedBox(height: 16),
+                TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Full name'), textInputAction: TextInputAction.next),
+                const SizedBox(height: 12),
+                TextField(controller: email, keyboardType: TextInputType.emailAddress, autocorrect: false, decoration: const InputDecoration(labelText: 'Email'), textInputAction: TextInputAction.next),
+                const SizedBox(height: 12),
+                TextField(controller: password, obscureText: obscure, autocorrect: false, enableSuggestions: false, decoration: InputDecoration(labelText: 'Password (8+ characters)', suffixIcon: IconButton(onPressed: () => setSheetState(() => obscure = !obscure), icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined))), textInputAction: TextInputAction.next),
+                const SizedBox(height: 12),
+                TextField(controller: confirmPassword, obscureText: obscure, autocorrect: false, enableSuggestions: false, decoration: const InputDecoration(labelText: 'Confirm password'), onSubmitted: (_) => submit()),
+                const SizedBox(height: 18),
+                SizedBox(height: 54, child: FilledButton.icon(onPressed: submit, icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('Create Account and Request Approval'))),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    name.dispose();
+    email.dispose();
+    password.dispose();
+    confirmPassword.dispose();
     return result;
   }
 
@@ -444,6 +549,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                         busy: _syncing,
                         error: _loadError,
                         onConnect: _connect,
+                        onCreateAccount: _createDepartmentAccount,
                       ),
                       const SizedBox(height: 12),
                       const _DepartmentSetupGuide(),
@@ -810,11 +916,13 @@ class _ConnectCard extends StatelessWidget {
   final bool busy;
   final String? error;
   final VoidCallback onConnect;
+  final VoidCallback onCreateAccount;
 
   const _ConnectCard({
     required this.busy,
     required this.error,
     required this.onConnect,
+    required this.onCreateAccount,
   });
 
   @override
@@ -876,6 +984,16 @@ class _ConnectCard extends StatelessWidget {
               label: Text(busy ? 'Signing in…' : 'Sign in to department'),
             ),
           ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: busy ? null : onCreateAccount,
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+              label: const Text('Create account with department code'),
+            ),
+          ),
         ],
       ),
     );
@@ -912,13 +1030,13 @@ class _DepartmentSetupGuide extends StatelessWidget {
               number: '2',
               title: 'You receive access',
               detail:
-                  'Use the department invitation to create your account, or sign in with an existing account and enter the join code.',
+                  'Enter the private join code. After it is accepted, create your account in the app or website.',
             ),
             const _SetupStep(
               number: '3',
-              title: 'Approval may be required',
+              title: 'Training Officer approval',
               detail:
-                  'If your request is pending, a department administrator must approve it before assignments appear.',
+                  'Every join-code account remains pending until a Training Officer approves it. Then sign in to receive assignments.',
             ),
             const SizedBox(height: 4),
             Container(
@@ -1118,6 +1236,14 @@ class _Credentials {
   final String password;
 
   const _Credentials({required this.email, required this.password});
+}
+
+class _RegistrationCredentials {
+  final String name;
+  final String email;
+  final String password;
+
+  const _RegistrationCredentials({required this.name, required this.email, required this.password});
 }
 
 String _humanize(String value) {
