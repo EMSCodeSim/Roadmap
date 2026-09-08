@@ -376,6 +376,20 @@ class _RequirementSheetState extends State<_RequirementSheet> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  Future<void> _openFireOpsSim(DepartmentRequirement requirement) async {
+    final uri = Uri.https(
+      'fireopssim.com',
+      '/roadmap-support.html',
+      <String, String>{
+        'source': 'responderroadmap',
+        'task': requirement.title,
+        'goal': widget.assignment.taskBookTitle,
+        'requirement_id': requirement.id,
+      },
+    );
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   @override
   Widget build(BuildContext context) {
     final requirement = widget.requirement;
@@ -433,6 +447,58 @@ class _RequirementSheetState extends State<_RequirementSheet> {
                   ),
                 ),
             ],
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: .45),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: cs.primary.withValues(alpha: .16)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.school_outlined, color: cs.primary),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          'Need help before the evaluation?',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Open matching FireOpsSim study, drills, and practice tools. Return here to document the work and request official sign-off.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openFireOpsSim(requirement),
+                      icon: const Icon(Icons.open_in_new_rounded),
+                      label: const Text('Study or practice in FireOpsSim'),
+                    ),
+                  ),
+                  Text(
+                    'Practice never marks this department requirement complete.',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 18),
             if (requirement.isFullyApproved)
               _Notice(
