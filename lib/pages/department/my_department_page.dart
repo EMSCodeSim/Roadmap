@@ -502,7 +502,6 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final inbox = context.watch<DepartmentInboxController>();
     final taskBooks = _assignments
         .where((assignment) => !assignment.isSingleTask)
@@ -554,55 +553,25 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                       const SizedBox(height: 12),
                       const _DepartmentSetupGuide(),
                     ] else ...[
-                      _SyncStatusCard(controller: inbox),
-                      const SizedBox(height: 12),
-                      if (!widget.taskBooksOnly)
-                        Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: cs.primaryContainer.withValues(alpha: .55),
-                          borderRadius: BorderRadius.circular(AppRadius.xl),
-                          border: Border.all(color: cs.primary.withValues(alpha: .14)),
+                      if (widget.taskBooksOnly)
+                        _SyncStatusCard(controller: inbox)
+                      else
+                        _DepartmentConnectionCard(
+                          link: _link!,
+                          controller: inbox,
+                          syncing: _syncing,
+                          onSync: _sync,
+                          onSignOut: _disconnect,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(Icons.apartment_rounded, color: cs.primary),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    _link!.departmentName,
-                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-                                  ),
-                                ),
-                                TextButton.icon(
-                                  onPressed: _disconnect,
-                                  icon: const Icon(Icons.logout_rounded, size: 18),
-                                  label: const Text('Sign out'),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _link!.rank?.trim().isNotEmpty == true
-                                  ? '${_link!.userName} · ${_link!.rank}'
-                                  : _link!.userName,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              '${_humanize(_link!.role)} · ${_link!.email}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
                       if (!widget.taskBooksOnly) ...[
+                        const SizedBox(height: 12),
+                        _DepartmentNextAction(
+                          assignments: _assignments,
+                          unreadCount: inbox.unreadCount,
+                          actionCount: inbox.actionCount,
+                          onOpenInbox: _openInbox,
+                          onOpenAssignment: _openAssignment,
+                        ),
                         const SizedBox(height: 12),
                         _DepartmentOverview(
                           taskBookCount: taskBooks.length,
@@ -659,6 +628,249 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                   ],
                 ),
               ),
+      ),
+    );
+  }
+}
+
+class _DepartmentConnectionCard extends StatelessWidget {
+  const _DepartmentConnectionCard({
+    required this.link,
+    required this.controller,
+    required this.syncing,
+    required this.onSync,
+    required this.onSignOut,
+  });
+
+  final DepartmentLink link;
+  final DepartmentInboxController controller;
+  final bool syncing;
+  final VoidCallback onSync;
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final memberLabel = link.rank?.trim().isNotEmpty == true
+        ? '${link.userName} · ${link.rank}'
+        : link.userName;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer.withValues(alpha: .55),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.primary.withValues(alpha: .14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.apartment_rounded, color: cs.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Connected to ${link.departmentName}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      memberLabel,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      '${_humanize(link.role)} · ${link.email}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: cs.surface.withValues(alpha: .72),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'Same account',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Assignments, evaluation requests, returned work, approvals, and receipts here are the same official records your Training Captain sees on the department dashboard.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.45,
+                ),
+          ),
+          const SizedBox(height: 12),
+          _SyncStatusCard(controller: controller),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: syncing ? null : onSync,
+                icon: const Icon(Icons.sync_rounded, size: 18),
+                label: Text(syncing ? 'Refreshing…' : 'Refresh now'),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: onSignOut,
+                icon: const Icon(Icons.logout_rounded, size: 18),
+                label: const Text('Sign out'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DepartmentNextAction extends StatelessWidget {
+  const _DepartmentNextAction({
+    required this.assignments,
+    required this.unreadCount,
+    required this.actionCount,
+    required this.onOpenInbox,
+    required this.onOpenAssignment,
+  });
+
+  final List<DepartmentTaskBookAssignment> assignments;
+  final int unreadCount;
+  final int actionCount;
+  final VoidCallback onOpenInbox;
+  final Future<void> Function(DepartmentTaskBookAssignment assignment)
+      onOpenAssignment;
+
+  @override
+  Widget build(BuildContext context) {
+    DepartmentTaskBookAssignment? next;
+    for (final assignment in assignments) {
+      if (assignment.status != 'COMPLETE' && assignment.progress < 100) {
+        next = assignment;
+        break;
+      }
+    }
+
+    late final IconData icon;
+    late final String title;
+    late final String body;
+    late final String actionLabel;
+    late final VoidCallback onTap;
+    var emphasize = false;
+
+    if (actionCount > 0) {
+      icon = Icons.pending_actions_rounded;
+      title = actionCount == 1
+          ? '1 item needs your action'
+          : '$actionCount items need your action';
+      body =
+          'Open your queue to review a sign-off or correct returned work before it gets delayed.';
+      actionLabel = 'Open action queue';
+      onTap = onOpenInbox;
+      emphasize = true;
+    } else if (unreadCount > 0) {
+      icon = Icons.mark_email_unread_outlined;
+      title = unreadCount == 1
+          ? '1 unread department update'
+          : '$unreadCount unread department updates';
+      body =
+          'Read the latest assignment, return, approval, or department message.';
+      actionLabel = 'Open inbox';
+      onTap = onOpenInbox;
+      emphasize = true;
+    } else if (next != null) {
+      final selected = next;
+      icon = selected.isSingleTask
+          ? Icons.assignment_outlined
+          : Icons.menu_book_outlined;
+      title = 'Continue ${selected.taskBookTitle}';
+      body = selected.pendingApproval > 0
+          ? '${selected.pendingApproval} requirement(s) are waiting for evaluation. You can still review the submission receipt and remaining work.'
+          : '${selected.complete} of ${selected.totalRequired} requirements are approved. Open it to see the next required step.';
+      actionLabel = selected.pendingApproval > 0
+          ? 'View status'
+          : 'Continue work';
+      onTap = () {
+        onOpenAssignment(selected);
+      };
+    } else {
+      icon = Icons.task_alt_rounded;
+      title = 'You are caught up';
+      body =
+          'There is no department action waiting right now. Pull down or tap Refresh now for the latest records.';
+      actionLabel = 'Open inbox';
+      onTap = onOpenInbox;
+    }
+
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      color: emphasize
+          ? cs.tertiaryContainer.withValues(alpha: .55)
+          : cs.surfaceContainerHighest.withValues(alpha: .32),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: emphasize ? cs.tertiary : cs.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'NEXT DEPARTMENT ACTION',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: .7,
+                        ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    title,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    body,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(height: 1.4),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: onTap,
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                    label: Text(actionLabel),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
