@@ -464,6 +464,9 @@ class DepartmentReviewItem {
   final String memberNotes;
   final String reviewStage;
   final DateTime? submittedAt;
+  final int waitingHours;
+  final int escalationHours;
+  final bool escalated;
   final int approvedRepetitions;
   final int repetitionsRequired;
   final List<DepartmentEvaluationStep> evaluationSteps;
@@ -480,6 +483,9 @@ class DepartmentReviewItem {
     required this.memberNotes,
     required this.reviewStage,
     required this.submittedAt,
+    required this.waitingHours,
+    required this.escalationHours,
+    required this.escalated,
     required this.approvedRepetitions,
     required this.repetitionsRequired,
     required this.evaluationSteps,
@@ -508,6 +514,9 @@ class DepartmentReviewItem {
       memberNotes: (json['memberNotes'] as String?) ?? '',
       reviewStage: (json['reviewStage'] as String?) ?? 'EVALUATOR',
       submittedAt: DateTime.tryParse((json['submittedAt'] as String?) ?? ''),
+      waitingHours: _asInt(json['waitingHours']),
+      escalationHours: _asInt(json['escalationHours'], fallback: 48),
+      escalated: json['escalated'] == true,
       approvedRepetitions: _asInt(json['approvedRepetitions']),
       repetitionsRequired: _asInt(json['repetitionsRequired'], fallback: 1),
       evaluationSteps: steps(json['evaluationSteps']),

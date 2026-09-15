@@ -135,6 +135,7 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
               const SizedBox(height: 14),
               _AssignedWorkSummary(
                 signOffCount: _items.length,
+                urgentCount: _items.where((item) => item.escalated).length,
                 rosterCount: _classes.length,
                 studentCount: _classes.fold<int>(
                   0,
@@ -169,6 +170,9 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
                 ..._items.map(
                   (item) => Card(
                     margin: const EdgeInsets.only(bottom: 12),
+                    color: item.escalated
+                        ? cs.errorContainer.withValues(alpha: .35)
+                        : null,
                     child: ListTile(
                       contentPadding: const EdgeInsets.all(14),
                       onTap: () => _open(item),
@@ -188,7 +192,8 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
                         child: Text(
                           '${item.memberName} · ${item.taskBookTitle}\n'
                           '${_stageLabel(item.reviewStage)} · '
-                          '${item.evaluationSteps.length} checklist steps',
+                          '${item.evaluationSteps.length} checklist steps\n'
+                          '${_waitingLabel(item)}',
                         ),
                       ),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -270,41 +275,60 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
 class _AssignedWorkSummary extends StatelessWidget {
   const _AssignedWorkSummary({
     required this.signOffCount,
+    required this.urgentCount,
     required this.rosterCount,
     required this.studentCount,
   });
 
   final int signOffCount;
+  final int urgentCount;
   final int rosterCount;
   final int studentCount;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _SummaryTile(
-            icon: Icons.approval_outlined,
-            value: signOffCount,
-            label: 'Sign-offs',
-            urgent: signOffCount > 0,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _SummaryTile(
+                icon: Icons.approval_outlined,
+                value: signOffCount,
+                label: 'Sign-offs',
+                urgent: signOffCount > 0,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _SummaryTile(
+                icon: Icons.notification_important_outlined,
+                value: urgentCount,
+                label: 'Escalated',
+                urgent: urgentCount > 0,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _SummaryTile(
-            icon: Icons.assignment_turned_in_outlined,
-            value: rosterCount,
-            label: 'Rosters',
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _SummaryTile(
-            icon: Icons.groups_outlined,
-            value: studentCount,
-            label: 'Students',
-          ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _SummaryTile(
+                icon: Icons.assignment_turned_in_outlined,
+                value: rosterCount,
+                label: 'Rosters',
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _SummaryTile(
+                icon: Icons.groups_outlined,
+                value: studentCount,
+                label: 'Students',
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -443,6 +467,24 @@ class _ReviewSheetState extends State<_ReviewSheet> {
             const SizedBox(height: 5),
             Text('${item.memberName} · ${item.taskBookTitle}',
                 style: TextStyle(color: cs.onSurfaceVariant, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: item.escalated
+                    ? cs.errorContainer.withValues(alpha: .6)
+                    : cs.surfaceContainerHighest.withValues(alpha: .45),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Text(
+                _waitingLabel(item),
+                style: TextStyle(
+                  color: item.escalated ? cs.error : cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
             if (item.requirementDescription.trim().isNotEmpty)
               Text(item.requirementDescription, style: const TextStyle(height: 1.4)),
@@ -565,6 +607,14 @@ class _MessageCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _waitingLabel(DepartmentReviewItem item) {
+  if (item.escalated) {
+    return 'Escalated · ${item.waitingHours}h waiting · ${item.escalationHours}h department target';
+  }
+  if (item.waitingHours <= 0) return 'Submitted less than an hour ago';
+  return '${item.waitingHours}h waiting · ${item.escalationHours}h department target';
 }
 
 String _stageLabel(String stage) {
