@@ -47,8 +47,21 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Responder Roadmap uses the camera to scan secure QR codes for web sign-in and class registration.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Responder Roadmap needs access to your photo library so you can attach and upload images as evidence and documents in your career records and department task books.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.fireopssim.careerroadmap.websignin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>responderroadmap</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
