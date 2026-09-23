@@ -665,6 +665,20 @@ class ResponderRoadmapApi {
     return ResponderRoadmapSession.fromJson(_asMap(data));
   }
 
+  Future<void> approveWebSignIn({
+    required String requestId,
+    required String approvalToken,
+  }) async {
+    await _request(
+      'POST',
+      'auth/web-signin/approve',
+      body: <String, dynamic>{
+        'requestId': requestId,
+        'approvalToken': approvalToken,
+      },
+    );
+  }
+
   Future<DepartmentCodeValidation> validateDepartmentCode(String joinCode) async {
     final data = await _request(
       'POST',
