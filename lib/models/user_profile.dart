@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import 'package:firepath/models/career_path.dart';
 
 enum TimelineStatus { onTrack, needsAttention, atRisk, noTargetDate }
