@@ -1178,7 +1178,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         certifications: certifications,
       );
       if (!mounted) return;
-      context.go(AppRoutes.taskBookReview);
+      context.go(AppRoutes.home);
     } catch (_) {
       if (mounted) _message('Setup could not be completed. Please try again.');
     } finally {
