@@ -525,6 +525,22 @@ class DepartmentReviewItem {
   }
 }
 
+class DepartmentClassSetup {
+  final List<Map<String, dynamic>> checklists;
+  final List<Map<String, dynamic>> members;
+  final List<Map<String, dynamic>> proctors;
+  final List<String> requiredFields;
+
+  const DepartmentClassSetup({required this.checklists, required this.members, required this.proctors, required this.requiredFields});
+
+  factory DepartmentClassSetup.fromJson(Map<String, dynamic> json) => DepartmentClassSetup(
+        checklists: (json['checklists'] as List? ?? const []).whereType<Map>().map((v) => Map<String, dynamic>.from(v)).toList(growable: false),
+        members: (json['members'] as List? ?? const []).whereType<Map>().map((v) => Map<String, dynamic>.from(v)).toList(growable: false),
+        proctors: (json['proctors'] as List? ?? const []).whereType<Map>().map((v) => Map<String, dynamic>.from(v)).toList(growable: false),
+        requiredFields: (json['requiredFields'] as List? ?? const []).map((v) => v.toString().toUpperCase()).toList(growable: false),
+      );
+}
+
 class DepartmentClassSummary {
   final String id;
   final String title;
@@ -884,6 +900,46 @@ class ResponderRoadmapApi {
               Map<String, dynamic>.from(item),
             ))
         .toList(growable: false);
+  }
+
+  Future<DepartmentClassSetup> getClassSetup() async {
+    final data = await _request('GET', 'classes/setup');
+    return DepartmentClassSetup.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassSummary> createTrainingSheet({
+    required String title,
+    required String startsAt,
+    String classType = 'GENERAL',
+    String trainingCategory = 'COMPANY',
+    String checklistVersionId = '',
+    double creditHours = 0,
+    String? endsAt,
+    String location = '',
+    String notes = '',
+    List<String> membershipIds = const [],
+    List<String> proctorUserIds = const [],
+    bool selfRegistration = true,
+  }) async {
+    final data = await _request('POST', 'classes', body: {
+      'title': title.trim(),
+      'classType': classType,
+      'trainingCategory': trainingCategory,
+      'checklistVersionId': checklistVersionId,
+      'creditHours': creditHours,
+      'startsAt': startsAt,
+      'endsAt': endsAt,
+      'location': location.trim(),
+      'notes': notes.trim(),
+      'membershipIds': membershipIds,
+      'proctorUserIds': proctorUserIds,
+      'selfRegistration': selfRegistration,
+    });
+    final map = _asMap(data);
+    // Creation returns the canonical class id; fetch the scoped server summary
+    // through the normal list endpoint so mobile never invents a local record.
+    final rows = await listClasses();
+    return rows.firstWhere((row) => row.id == (map['id'] as String? ?? ''));
   }
 
   Future<List<DepartmentClassSummary>> listClasses() async {
