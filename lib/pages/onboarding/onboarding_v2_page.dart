@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/models/career_path.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/nav.dart';
@@ -26,12 +27,14 @@ class OnboardingHero extends StatelessWidget {
     required this.supporting,
     required this.progressValue,
     this.progressLabel,
+    this.icon = Icons.route,
   });
 
   final String headline;
   final String supporting;
   final double progressValue;
   final String? progressLabel;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +68,7 @@ class OnboardingHero extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
                 ),
-                child: Icon(Icons.local_fire_department, color: cs.onSurface),
+                child: Icon(icon, color: cs.onSurface),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -346,8 +349,10 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
   final TextEditingController _certSearch = TextEditingController();
 
   int _step = 0;
-  static const int _pageCount = 4;
-  static const int _setupSteps = 3;
+  static const int _pageCount = 5;
+  static const int _setupSteps = 4;
+  CareerPath? _careerPath;
+  CareerPath? _primaryTrack;
   String? _serviceType;
   String? _state;
   String? _goalId;
@@ -380,8 +385,9 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           title: Text(
             switch (_step) {
               0 => 'Welcome',
-              1 => 'Career Setup',
-              2 => 'Certifications',
+              1 => 'Career Path',
+              2 => 'Career Setup',
+              3 => 'Certifications',
               _ => 'Career Goal',
             },
           ),
@@ -411,6 +417,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
                     _instructionsStep(),
+                    _careerPathStep(),
                     _currentSituationStep(),
                     _certStep(),
                     _goalStep(),
@@ -427,11 +434,11 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                     child: Text(
                       _saving
                           ? 'Building your path…'
-                          : _step == 3
-                              ? 'Create my roadmap'
+                          : _step == 4
+                              ? 'Build My Roadmap'
                               : _step == 0
                                   ? 'Set up my roadmap'
-                                  : _step == 2
+                                  : _step == 3
                                       ? 'Continue — skip if none'
                                       : 'Continue',
                     ),
@@ -457,19 +464,19 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             OnboardingHero(
-              headline: 'Your fire service career, organized.',
+              headline: 'Your career roadmap, organized.',
               supporting:
-                  'Responder Roadmap keeps your career plan, certifications, experience, task books, and department assignments together in one app.',
+                  'Responder Roadmap keeps your Fire and EMS career plan, certifications, experience, task books, and department assignments together in one app.',
               progressValue: 0,
               progressLabel:
-                  'Three quick setup steps · You can change everything later',
+                  'Four quick setup steps · You can change everything later',
             ),
             const SizedBox(height: 12),
             const _WelcomeFeatureCard(
               icon: Icons.route_outlined,
               title: 'Build your personal roadmap',
               detail:
-                  'Choose a goal, see what comes next, and keep a record of training and experience.',
+                  'Choose a Fire, EMS, or combined path, set a goal, and keep a record of training and experience.',
             ),
             const SizedBox(height: 8),
             const _WelcomeFeatureCard(
@@ -526,11 +533,161 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
     );
   }
 
+  Widget _careerPathStep() {
+    final cs = Theme.of(context).colorScheme;
+    final paths = CareerPath.values;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 30),
+      children: [
+        OnboardingHero(
+          headline: 'What career path are you building?',
+          supporting:
+              'Pick Fire, EMS, or both. This filters roles, certifications, and goals for your personal roadmap — not department mode.',
+          progressValue: 1 / _setupSteps,
+          progressLabel: 'Required · You can change this later in Profile',
+        ),
+        const SizedBox(height: 14),
+        ...paths.map((path) {
+          final selected = _careerPath == path;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Material(
+              color: selected ? cs.primaryContainer : cs.surface,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              child: InkWell(
+                onTap: () => _selectCareerPath(path),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 80),
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(
+                      color: selected
+                          ? cs.primary.withValues(alpha: 0.45)
+                          : cs.outline.withValues(alpha: 0.14),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        path.choiceEmoji,
+                        style: const TextStyle(fontSize: 28),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              path.choiceTitle,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              path.choiceSubtitle,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                    height: 1.35,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        selected
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                        color: selected ? cs.primary : cs.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+        if (_careerPath == CareerPath.both) ...[
+          const SizedBox(height: 6),
+          _OnboardingSectionHeader(
+            title: 'Primary path',
+            subtitle: 'Which track should your personal home emphasize first?',
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _PrimaryTrackChip(
+                  label: 'Fire',
+                  emoji: '🚒',
+                  selected: _primaryTrack == CareerPath.fire,
+                  onTap: () => setState(() => _primaryTrack = CareerPath.fire),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _PrimaryTrackChip(
+                  label: 'EMS',
+                  emoji: '🚑',
+                  selected: _primaryTrack == CareerPath.ems,
+                  onTap: () => setState(() => _primaryTrack = CareerPath.ems),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _selectCareerPath(CareerPath path) {
+    setState(() {
+      final pathChanged = _careerPath != path;
+      _careerPath = path;
+      if (path != CareerPath.both) {
+        _primaryTrack = null;
+      }
+      if (pathChanged) {
+        final allowedRoles = FireOpsCatalog.rolesForPath(path)
+            .where((r) => !r.toLowerCase().contains('custom'))
+            .toSet();
+        // Keep custom-added roles; drop catalog roles that no longer apply.
+        _roles.removeWhere(
+          (role) =>
+              !allowedRoles.contains(role) &&
+              FireOpsCatalog.commonRoles.contains(role),
+        );
+        // Recruit shortcut is Fire-oriented; clear if switching away from Fire.
+        if (path == CareerPath.ems &&
+            _roles.contains('Recruit / Probationary')) {
+          _roles.remove('Recruit / Probationary');
+        }
+        final goals = FireOpsCatalog.goalsForPath(path);
+        final goalIds = goals.map((g) => g.id).toSet();
+        if (_goalId != null &&
+            !_goalId!.startsWith('custom:') &&
+            !goalIds.contains(_goalId)) {
+          _goalId = null;
+        }
+      }
+    });
+  }
+
   Widget _currentSituationStep() {
     final cs = Theme.of(context).colorScheme;
-    final commonRoles = FireOpsCatalog.commonRoles
+    final path = _careerPath ?? CareerPath.fire;
+    final commonRoles = FireOpsCatalog.rolesForPath(path)
         .where((role) => !role.toLowerCase().contains('custom'))
         .toList();
+    final useEmsStudentShortcut = path == CareerPath.ems;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 30),
       children: [
@@ -538,7 +695,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           headline: 'Where are you starting from?',
           supporting:
               'This sets the right starting point, state resources, and what counts as “next up.”',
-          progressValue: 1 / _setupSteps,
+          progressValue: 2 / _setupSteps,
           progressLabel: 'Required: current role and state · Everything else is optional',
         ),
         const SizedBox(height: 14),
@@ -609,7 +766,9 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Brand new? Prefill a safe starting role and keep going.',
+                          useEmsStudentShortcut
+                              ? 'Brand new? Prefill EMT Student and keep going.'
+                              : 'Brand new? Prefill a safe starting role and keep going.',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: cs.onSurfaceVariant,
                                 height: 1.35,
@@ -622,10 +781,16 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                           setState(() {
                             _roles
                               ..clear()
-                              ..add('Recruit / Probationary');
+                              ..add(
+                                useEmsStudentShortcut
+                                    ? 'EMT Student'
+                                    : 'Recruit / Probationary',
+                              );
                           });
                         },
-                        child: const Text('Use Recruit'),
+                        child: Text(
+                          useEmsStudentShortcut ? 'Use Student' : 'Use Recruit',
+                        ),
                       ),
                     ],
                   ),
@@ -691,7 +856,8 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
   Widget _certStep() {
     final cs = Theme.of(context).colorScheme;
     final query = _certSearch.text.trim().toLowerCase();
-    final certs = FireOpsCatalog.commonCertifications
+    final path = _careerPath ?? CareerPath.fire;
+    final certs = FireOpsCatalog.certificationsForPath(path)
         .where((cert) => query.isEmpty || cert.toLowerCase().contains(query))
         .toList();
     return Column(
@@ -775,7 +941,89 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
 
   Widget _goalStep() {
     final cs = Theme.of(context).colorScheme;
-    final goals = FireOpsCatalog.goals();
+    final path = _careerPath ?? CareerPath.fire;
+    final goals = FireOpsCatalog.goalsForPath(path);
+    final showCategoryLabels = path == CareerPath.both;
+
+    final List<Widget> goalTiles = [];
+    String? lastCategory;
+    for (final goal in goals) {
+      if (showCategoryLabels && goal.category != lastCategory) {
+        lastCategory = goal.category;
+        goalTiles.add(
+          Padding(
+            padding: EdgeInsets.only(
+              top: goalTiles.isEmpty ? 0 : 10,
+              bottom: 8,
+            ),
+            child: Text(
+              goal.category,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: cs.onSurfaceVariant,
+                  ),
+            ),
+          ),
+        );
+      }
+      goalTiles.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Material(
+            color: _goalId == goal.id ? cs.primaryContainer : cs.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            child: InkWell(
+              onTap: () {
+                _dismissKeyboard();
+                setState(() => _goalId = goal.id);
+              },
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 64),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(
+                    color: _goalId == goal.id
+                        ? cs.primary.withValues(alpha: 0.45)
+                        : cs.outline.withValues(alpha: 0.14),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _goalId == goal.id
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            goal.title,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          if ((goal.subtitle ?? '').isNotEmpty)
+                            Text(
+                              goal.subtitle!,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: cs.onSurfaceVariant),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
       children: [
@@ -800,62 +1048,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           ),
         ),
         const SizedBox(height: 10),
-        ...goals.map(
-          (goal) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Material(
-              color: _goalId == goal.id ? cs.primaryContainer : cs.surface,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              child: InkWell(
-                  onTap: () {
-                    _dismissKeyboard();
-                    setState(() => _goalId = goal.id);
-                  },
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                child: Container(
-                  constraints: const BoxConstraints(minHeight: 64),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(
-                      color: _goalId == goal.id
-                          ? cs.primary.withValues(alpha: 0.45)
-                          : cs.outline.withValues(alpha: 0.14),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _goalId == goal.id
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_unchecked,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              goal.title,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            if ((goal.subtitle ?? '').isNotEmpty)
-                              Text(
-                                goal.subtitle!,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: cs.onSurfaceVariant),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+        ...goalTiles,
         const SizedBox(height: 14),
         SizedBox(
           height: 54,
@@ -875,11 +1068,23 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
 
   Future<void> _next() async {
     _dismissKeyboard();
-    if (_step == 1 && _roles.isEmpty) {
+    if (_step == 1) {
+      if (_careerPath == null) {
+        _message('Choose a career path to continue.');
+        return;
+      }
+      if (_careerPath == CareerPath.both &&
+          (_primaryTrack != CareerPath.fire &&
+              _primaryTrack != CareerPath.ems)) {
+        _message('Choose your primary path (Fire or EMS).');
+        return;
+      }
+    }
+    if (_step == 2 && _roles.isEmpty) {
       _message('Choose at least one current role.');
       return;
     }
-    if (_step == 1 && !_isStateValidForSetup()) {
+    if (_step == 2 && !_isStateValidForSetup()) {
       _message('Select your state to continue.');
       return;
     }
@@ -936,6 +1141,10 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         serviceType: _serviceType,
         departmentName: null,
         state: _state,
+        careerPath: _careerPath,
+        primaryTrack:
+            _careerPath == CareerPath.both ? _primaryTrack : null,
+        careerPathConfirmed: true,
         createdAt: now,
         updatedAt: now,
       );
@@ -1057,6 +1266,58 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
 
   void _message(String text) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+}
+
+class _PrimaryTrackChip extends StatelessWidget {
+  const _PrimaryTrackChip({
+    required this.label,
+    required this.emoji,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String emoji;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? cs.primaryContainer : cs.surface,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 72),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(
+              color: selected
+                  ? cs.primary.withValues(alpha: 0.45)
+                  : cs.outline.withValues(alpha: 0.14),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 22)),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
