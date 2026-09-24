@@ -121,7 +121,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: _loading
-            ? const ListView(children: [SizedBox(height: 220), Center(child: CircularProgressIndicator())])
+            ? ListView(children: [SizedBox(height: 220), Center(child: CircularProgressIndicator())])
             : ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),

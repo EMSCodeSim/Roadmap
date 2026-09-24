@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/models/career_record.dart';
 import 'package:firepath/nav.dart';
-import 'package:firepath/pages/department/department_training_home_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
+import 'package:firepath/pages/department/department_training_home_page.dart';
 import 'package:firepath/pages/department/department_review_page.dart';
+import 'package:firepath/pages/department/my_department_page.dart';
+import 'package:firepath/services/career_inbox.dart';
+import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/needs_attention_engine.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/services/readiness_action_plan.dart';
 import 'package:firepath/services/readiness_snapshot.dart';
@@ -18,6 +23,7 @@ import 'package:firepath/widgets/career_readiness_panel.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 import 'package:firepath/widgets/needs_attention_preview.dart';
 import 'package:firepath/widgets/app_mode_switcher.dart';
+import 'package:firepath/widgets/status_pill.dart';
 
 class VisualHomePage extends StatelessWidget {
   const VisualHomePage({super.key});
@@ -49,6 +55,16 @@ class VisualHomePage extends StatelessWidget {
             const SizedBox(height: 10),
             const AppModeSwitcher(),
             const SizedBox(height: 14),
+            _TodayRail(
+              hasRoadmap: hasRoadmap,
+              goalTitle: goal?.title,
+              nextTitle: smartNext?.focusTitle ?? next?.name,
+              nextReason: smartNext?.reason,
+              onDailyFocus: () => context.push(AppRoutes.dailyFocus),
+              onQuickLog: () => context.go(AppRoutes.personalLog),
+              onMyPath: () => context.go(AppRoutes.myPath),
+            ),
+            const SizedBox(height: 14),
             const _GettingStartedCard(),
             const SizedBox(height: 14),
             if (!hasRoadmap)
@@ -56,13 +72,6 @@ class VisualHomePage extends StatelessWidget {
                 onChooseGoal: () => context.go(AppRoutes.myPath),
               )
             else ...[
-              _DailyFocusCta(
-                goalTitle: goal?.title,
-                nextTitle: smartNext?.focusTitle ?? next?.name,
-                nextReason: smartNext?.reason,
-                onStart: () => context.push(AppRoutes.dailyFocus),
-              ),
-              const SizedBox(height: 14),
               CareerReadinessPanel(
                 snapshot: CareerReadinessSnapshot.fromRoadmap(roadmap),
                 actionPlan: CareerReadinessActionPlan.fromState(app),
@@ -78,6 +87,271 @@ class VisualHomePage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TodayRail extends StatelessWidget {
+  final bool hasRoadmap;
+  final String? goalTitle;
+  final String? nextTitle;
+  final String? nextReason;
+  final VoidCallback onDailyFocus;
+  final VoidCallback onQuickLog;
+  final VoidCallback onMyPath;
+
+  const _TodayRail({
+    required this.hasRoadmap,
+    required this.goalTitle,
+    required this.nextTitle,
+    required this.nextReason,
+    required this.onDailyFocus,
+    required this.onQuickLog,
+    required this.onMyPath,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+
+    final headline = hasRoadmap
+        ? (nextTitle?.trim().isNotEmpty == true ? nextTitle!.trim() : 'Pick one win for today')
+        : 'Set up your Task Book in a few taps';
+    final sub = hasRoadmap
+        ? (nextReason?.trim().isNotEmpty == true
+            ? nextReason!.trim()
+            : 'Do one small step — the plan updates automatically.')
+        : 'Start with a goal, then log progress and follow next steps.';
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, child) {
+        return Opacity(
+          opacity: v,
+          child: Transform.translate(offset: Offset(0, 10 * (1 - v)), child: child),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              cs.secondaryContainer.withValues(alpha: 0.55),
+              cs.surfaceContainerHighest.withValues(alpha: 0.70),
+            ],
+          ),
+          border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: cs.surface.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
+                  ),
+                  child: Icon(Icons.today_rounded, color: cs.onSurface),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Today',
+                        style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      if ((goalTitle ?? '').trim().isNotEmpty)
+                        Text(
+                          goalTitle!.trim(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              headline,
+              style: t.titleLarge?.copyWith(fontWeight: FontWeight.w900, height: 1.15),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              sub,
+              style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+            ),
+            const SizedBox(height: 12),
+            _TodayPrimaryActions(
+              onDailyFocus: onDailyFocus,
+              onQuickLog: onQuickLog,
+              onMyPath: onMyPath,
+            ),
+            const SizedBox(height: 12),
+            const _HomeStatusStrip(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayPrimaryActions extends StatelessWidget {
+  final VoidCallback onDailyFocus;
+  final VoidCallback onQuickLog;
+  final VoidCallback onMyPath;
+
+  const _TodayPrimaryActions({
+    required this.onDailyFocus,
+    required this.onQuickLog,
+    required this.onMyPath,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: onDailyFocus,
+                  icon: Icon(Icons.track_changes, color: cs.onPrimary),
+                  label: Text('Daily Focus', style: TextStyle(color: cs.onPrimary)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: onQuickLog,
+                  icon: Icon(Icons.note_alt_outlined, color: cs.primary),
+                  label: Text('Quick Log', style: TextStyle(color: cs.primary)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 48,
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: onMyPath,
+            icon: Icon(Icons.route_outlined, size: 18, color: cs.primary),
+            label: Text('My Path', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w900)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeStatusStrip extends StatefulWidget {
+  const _HomeStatusStrip();
+
+  @override
+  State<_HomeStatusStrip> createState() => _HomeStatusStripState();
+}
+
+class _HomeStatusStripState extends State<_HomeStatusStrip> {
+  final CareerRecordStore _store = CareerRecordStore();
+  bool _loading = true;
+  List<CareerRecord> _records = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final records = await _store.load();
+      if (!mounted) return;
+      setState(() {
+        _records = records;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const SizedBox(
+        height: 26,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+      );
+    }
+
+    final app = context.watch<AppState>();
+    final inboxItems = CareerInbox.build(app: app, records: _records);
+    final needsItems = NeedsAttentionEngine.analyze(app: app, records: _records);
+    final needsNow = needsItems.where((e) => e.urgency == NeedsAttentionUrgency.now).length;
+
+    // If nothing exists, keep the rail clean.
+    if (inboxItems.isEmpty && needsItems.isEmpty) return const SizedBox.shrink();
+
+    final cs = Theme.of(context).colorScheme;
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        if (inboxItems.isNotEmpty)
+          InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: () => context.push(AppRoutes.careerInbox),
+            child: StatusPill(
+              icon: Icons.inbox_outlined,
+              text: 'Inbox ${inboxItems.length}',
+              backgroundColor: cs.secondaryContainer.withValues(alpha: 0.55),
+              foregroundColor: cs.onSecondaryContainer,
+              maxWidth: 140,
+            ),
+          ),
+        if (needsItems.isNotEmpty)
+          InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: () => context.push(AppRoutes.needsAttention),
+            child: StatusPill(
+              icon: needsNow > 0 ? Icons.notifications_active_outlined : Icons.notifications_none_rounded,
+              text: needsNow > 0 ? 'Now $needsNow' : 'Needs ${needsItems.length}',
+              backgroundColor: cs.errorContainer.withValues(alpha: 0.38),
+              foregroundColor: cs.error,
+              maxWidth: 150,
+            ),
+          ),
+      ],
     );
   }
 }
@@ -429,98 +703,6 @@ class _ChooseGoalCard extends StatelessWidget {
               onPressed: onChooseGoal,
               icon: const Icon(Icons.route_outlined),
               label: const Text('Build My Task Book'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DailyFocusCta extends StatelessWidget {
-  final String? goalTitle;
-  final String? nextTitle;
-  final String? nextReason;
-  final VoidCallback onStart;
-
-  const _DailyFocusCta({
-    required this.goalTitle,
-    required this.nextTitle,
-    required this.nextReason,
-    required this.onStart,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: cs.primary.withValues(alpha: .16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.bolt_rounded, size: 20, color: cs.primary),
-              const SizedBox(width: 6),
-              Text(
-                'TODAY',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: .9,
-                      color: cs.primary,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 9),
-          Text(
-            nextTitle ?? 'Continue your next requirement',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-          if (goalTitle != null && goalTitle!.trim().isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Moving you toward $goalTitle',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ],
-          if (nextReason != null && nextReason!.trim().isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text(
-              nextReason!,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-          ],
-          const SizedBox(height: 9),
-          Text(
-            'Choose 15 min, 30 min, 1 hour, or a crew drill. Career Road will turn this requirement into a focused Learn → Practice → Record session.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.45,
-                ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: FilledButton.icon(
-              onPressed: onStart,
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text("Start Today's Focus"),
             ),
           ),
         ],

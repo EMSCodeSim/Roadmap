@@ -565,6 +565,19 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                         ),
                       if (!widget.taskBooksOnly) ...[
                         const SizedBox(height: 12),
+                        _DepartmentOverview(
+                          taskBookCount: taskBooks.length,
+                          assignmentCount: trainingAssignments.length,
+                          unreadCount: inbox.unreadCount,
+                          actionCount: inbox.actionCount,
+                          // Even when counts are 0, these tiles should still take
+                          // members straight to the relevant section.
+                          onTaskBooks: () => _scrollTo(_taskBooksSectionKey),
+                          onAssignments: () => _scrollTo(_assignmentsSectionKey),
+                          onMessages: _openInbox,
+                          onNeedsAction: _openInbox,
+                        ),
+                        const SizedBox(height: 12),
                         _DepartmentNextAction(
                           assignments: _assignments,
                           unreadCount: inbox.unreadCount,
@@ -572,20 +585,6 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                           onOpenInbox: _openInbox,
                           onOpenAssignment: _openAssignment,
                         ),
-                        const SizedBox(height: 12),
-                        _DepartmentOverview(
-                          taskBookCount: taskBooks.length,
-                          assignmentCount: trainingAssignments.length,
-                          unreadCount: inbox.unreadCount,
-                          actionCount: inbox.actionCount,
-                          onTaskBooks: () => _scrollTo(_taskBooksSectionKey),
-                          onAssignments: () =>
-                              _scrollTo(_assignmentsSectionKey),
-                          onMessages: _openInbox,
-                          onNeedsAction: _openInbox,
-                        ),
-                        const SizedBox(height: 12),
-                        _PrivacyBoundaryCard(),
                         if (const ['EVALUATOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'].contains(_link!.role)) ...[
                           const SizedBox(height: 12),
                           Card(
@@ -624,6 +623,10 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                           onOpen: _openAssignment,
                         ),
                       ],
+                      if (!widget.taskBooksOnly) ...[
+                        const SizedBox(height: 14),
+                        _PrivacyBoundaryCard(),
+                      ],
                     ],
                   ],
                 ),
@@ -656,7 +659,7 @@ class _DepartmentConnectionCard extends StatelessWidget {
         : link.userName;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cs.primaryContainer.withValues(alpha: .55),
         borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -678,8 +681,8 @@ class _DepartmentConnectionCard extends StatelessWidget {
                       'Connected to ${link.departmentName}',
                       style: Theme.of(context)
                           .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w900),
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w900, height: 1.1),
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -706,7 +709,7 @@ class _DepartmentConnectionCard extends StatelessWidget {
                 ),
                 child: const Text(
                   'Same account',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900),
                 ),
               ),
             ],
