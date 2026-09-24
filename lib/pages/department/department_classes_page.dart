@@ -14,21 +14,30 @@ class DepartmentClassesPage extends StatefulWidget {
 class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
   final _api = ResponderRoadmapApi();
   List<DepartmentClassSummary>? _classes;
+  DepartmentClassSetup? _setup;
   String? _error;
 
   @override
   void initState() { super.initState(); _load(); }
-  Future<void> _load() async { try { final rows = await _api.listClasses(); if (mounted) setState(() { _classes = rows; _error = null; }); } catch (e) { if (mounted) setState(() { _classes = const []; _error = e.toString(); }); } }
+  Future<void> _load() async { try { final rows = await _api.listClasses(); DepartmentClassSetup? setup; try { setup = await _api.getClassSetup(); } catch (_) {} if (mounted) setState(() { _classes = rows; _setup = setup; _error = null; }); } catch (e) { if (mounted) setState(() { _classes = const []; _error = e.toString(); }); } }
+
+  Future<void> _createTraining() async {
+    final setup = _setup;
+    if (setup == null) return;
+    final created = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup));
+    if (created == true && mounted) await _load();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('My Classes')),
+    appBar: AppBar(title: const Text('My Classes'), actions: [if (context.watch<AppModeController>().isInstructor && _setup != null) IconButton(tooltip: 'Create training', onPressed: _createTraining, icon: const Icon(Icons.add_rounded))]),
     body: _classes == null ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(16), children: [
         Text('My Classes', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
         const SizedBox(height: 6), Text(context.watch<AppModeController>().isInstructor ? 'Classes you created, teach, or proctor. Open a class to manage its roster and document skill results.' : 'Assigned class rosters and skill checklists.'),
         if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
+        if (context.watch<AppModeController>().isInstructor && _setup != null) ...[const SizedBox(height: 14), FilledButton.icon(onPressed: _createTraining, icon: const Icon(Icons.add_rounded), label: const Text('Create Training Sheet'))],
         const SizedBox(height: 16),
         if (_classes!.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('No classes are assigned to you yet. Classes you create, teach, or proctor will appear here.'))),
         ..._classes!.map((row) => Card(child: ListTile(
@@ -38,6 +47,53 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
         ))),
       ]),
     ),
+  );
+}
+
+
+class _CreateTrainingSheet extends StatefulWidget {
+  const _CreateTrainingSheet({required this.api, required this.setup});
+  final ResponderRoadmapApi api;
+  final DepartmentClassSetup setup;
+  @override State<_CreateTrainingSheet> createState() => _CreateTrainingSheetState();
+}
+
+class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
+  final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
+  bool busy = false, qr = true; String? error; String category = 'COMPANY'; String checklist = '';
+  @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); super.dispose(); }
+  bool req(String key) => widget.setup.requiredFields.contains(key);
+  Future<void> save() async {
+    if(title.text.trim().isEmpty){setState(()=>error='Training title is required.'); return;}
+    if(req('LOCATION') && location.text.trim().isEmpty){setState(()=>error='Location is required by your department.'); return;}
+    if(req('DESCRIPTION') && notes.text.trim().isEmpty){setState(()=>error='Description / notes are required by your department.'); return;}
+    final h=double.tryParse(hours.text.trim())??0;
+    if(req('HOURS') && h<=0){setState(()=>error='Training hours are required by your department.'); return;}
+    final mode=context.read<AppModeController>();
+    final me=widget.setup.proctors.where((p)=>(p['userId']?.toString()??'')==mode.departmentLink?.userId).toList();
+    if(me.isEmpty){setState(()=>error='Your instructor account is not available as an approved proctor.'); return;}
+    setState((){busy=true;error=null;});
+    try {
+      await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:[me.first['userId'].toString()], selfRegistration:qr);
+      if(mounted) Navigator.pop(context,true);
+    } catch(e){if(mounted)setState(()=>error=e.toString());}
+    finally{if(mounted)setState(()=>busy=false);}
+  }
+  @override Widget build(BuildContext context)=>Padding(
+    padding: EdgeInsets.fromLTRB(20,16,20,MediaQuery.viewInsetsOf(context).bottom+24),
+    child: SingleChildScrollView(child: Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+      Text('Create Training Sheet',style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
+      const SizedBox(height:6), const Text('Field entry uses your department’s RMS requirements. QR sign-in is on by default.'),
+      if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
+      const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
+      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const ['COMPANY','EMS','FIRE','DRIVER_OPERATOR','HAZMAT','TECHNICAL_RESCUE','WILDLAND','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setState(()=>category=v??'COMPANY')),
+      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v)=>setState(()=>checklist=v??'')),
+      const SizedBox(height:12),TextField(controller:location,decoration:InputDecoration(labelText:'Location${req('LOCATION')?' *':''}')),
+      const SizedBox(height:12),TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:InputDecoration(labelText:'Training hours${req('HOURS')?' *':''}')),
+      const SizedBox(height:12),TextField(controller:notes,maxLines:3,decoration:InputDecoration(labelText:'Description / notes${req('DESCRIPTION')?' *':''}')),
+      const SizedBox(height:8),SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v)=>setState(()=>qr=v),title:const Text('Allow QR self-registration'),subtitle:const Text('Crew can scan in from their phones.')),
+      const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Start Training')),
+    ])),
   );
 }
 
