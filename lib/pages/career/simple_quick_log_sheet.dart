@@ -4,6 +4,7 @@ import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/theme.dart';
+import 'package:firepath/widgets/keyboard_aware_form.dart';
 
 enum SimpleQuickLogResult { moreDetails }
 
@@ -490,9 +491,8 @@ class _ConfirmStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return KeyboardAwareFormBody(
+      padding: EdgeInsets.zero,
       children: [
         Row(
           children: [
@@ -521,6 +521,8 @@ class _ConfirmStep extends StatelessWidget {
           minLines: 2,
           maxLines: 4,
           textCapitalization: TextCapitalization.sentences,
+          textInputAction: TextInputAction.done,
+          onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
           decoration: const InputDecoration(
             labelText: 'Notes',
             hintText: 'Anything worth remembering later…',
@@ -563,6 +565,9 @@ class _ConfirmStep extends StatelessWidget {
                   controller: miles,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
                   decoration: const InputDecoration(
                     labelText: 'Miles driven',
                     border: OutlineInputBorder(),
@@ -614,6 +619,8 @@ class _ConfirmStep extends StatelessWidget {
           TextField(
             controller: role,
             textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
+            onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
             decoration: const InputDecoration(
               labelText: 'Role / assignment',
               hintText: 'Medic, driver, nozzle, command…',
@@ -641,6 +648,9 @@ class _ConfirmStep extends StatelessWidget {
                 child: TextField(
                   controller: repetitions,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
                   decoration: const InputDecoration(
                     labelText: 'Attempts / reps',
                     border: OutlineInputBorder(),
@@ -683,6 +693,8 @@ class _ConfirmStep extends StatelessWidget {
             controller: durationMinutes,
             keyboardType:
                 const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.next,
+            onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
             decoration: const InputDecoration(
               labelText: 'Duration (minutes)',
               border: OutlineInputBorder(),
@@ -695,6 +707,8 @@ class _ConfirmStep extends StatelessWidget {
             controller: durationMinutes,
             keyboardType:
                 const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.next,
+            onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
             decoration: const InputDecoration(
               labelText: 'Time spent (minutes, optional)',
               border: OutlineInputBorder(),
@@ -707,6 +721,8 @@ class _ConfirmStep extends StatelessWidget {
             controller: durationMinutes,
             keyboardType:
                 const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.next,
+            onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
             decoration: const InputDecoration(
               labelText: 'Time spent (minutes, optional)',
               border: OutlineInputBorder(),
