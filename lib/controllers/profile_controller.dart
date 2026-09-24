@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:firepath/models/career_goal.dart';
+import 'package:firepath/models/career_path.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/services/state_requirement_catalog.dart';
 import 'package:firepath/services/state_fire_authority_catalog.dart';
@@ -17,16 +18,6 @@ class ProfileController extends ChangeNotifier {
       : _store = store ?? LocalStore(),
         _taskBookSetupStore = taskBookSetupStore ?? TaskBookSetupStore();
 
-  static const List<String> _operationsCareerLadder = <String>[
-    'ops_firefighter',
-    'ops_engineer',
-    'ops_company_officer',
-    'ops_battalion_chief',
-    'ops_division_chief',
-    'ops_deputy_chief',
-    'ops_fire_chief',
-  ];
-
   final LocalStore _store;
   final TaskBookSetupStore _taskBookSetupStore;
 
@@ -36,14 +27,23 @@ class ProfileController extends ChangeNotifier {
   bool get onboardingComplete => _onboardingComplete;
   UserProfile get profile => _profile;
 
-  List<CareerGoal> get availableGoals => FireOpsCatalog.goals();
+  /// Goals available for the user's Personal career path (Fire / EMS / Both).
+  List<CareerGoal> get availableGoals =>
+      FireOpsCatalog.goalsForPath(_profile.effectiveCareerPath);
 
   CareerGoal? selectedGoal() {
     final id = _profile.primaryGoalId;
     if (id == null) return null;
-    final existing =
+    // Prefer path-filtered goals, but still resolve a goal the user already
+    // selected even if they later switch paths (progress is never deleted).
+    final fromPath =
         availableGoals.where((g) => g.id == id).cast<CareerGoal?>().firstOrNull;
-    if (existing != null) return existing;
+    if (fromPath != null) return fromPath;
+    final fromAll = FireOpsCatalog.goals()
+        .where((g) => g.id == id)
+        .cast<CareerGoal?>()
+        .firstOrNull;
+    if (fromAll != null) return fromAll;
 
     if (id.startsWith('custom:')) {
       final name = id.substring('custom:'.length).trim();
@@ -68,20 +68,11 @@ class ProfileController extends ChangeNotifier {
 
   /// Returns the selected goal resolved for the user's selected state.
   ///
-  /// Operations goals are cumulative. A user targeting Battalion Chief, for
-  /// example, receives the Firefighter -> Engineer -> Company Officer ->
-  /// Battalion Chief pathway instead of jumping directly to the final-stage
-  /// Fire Officer II requirement. Existing certifications still satisfy their
-  /// matching requirements normally, so the resulting Task Book starts at the
-  /// first real gap for that user.
+  /// Fire Operations and EMS ladder goals are cumulative. A user targeting a
+  /// later stage receives requirements from earlier stages on the same ladder.
+  /// Specialty EMS goals remain single-stage so branches can expand later.
   ///
-  /// Rules:
-  /// - A requirement sourced to one state is never shown to a user in another.
-  /// - Verified state requirements replace their matching common requirement.
-  /// - State-dependent common guidance is attached to the correct official
-  ///   state fire-service authority so every state points at its own source.
-  /// - Common guidance is never silently promoted to a legal/statewide mandate;
-  ///   the source note tells the user when department/AHJ rules still control.
+  /// Existing certifications still satisfy matching requirements normally.
   CareerGoal? selectedGoalResolved() {
     final target = selectedGoal();
     if (target == null) return null;
@@ -100,13 +91,16 @@ class ProfileController extends ChangeNotifier {
   }
 
   List<CareerGoal> _careerStagesThrough(CareerGoal target) {
-    final targetIndex = _operationsCareerLadder.indexOf(target.id);
+    final ladder = FireOpsCatalog.ladderContaining(target.id);
+    if (ladder == null) return <CareerGoal>[target];
+
+    final targetIndex = ladder.indexOf(target.id);
     if (targetIndex < 0) return <CareerGoal>[target];
 
     final byId = <String, CareerGoal>{
-      for (final goal in availableGoals) goal.id: goal,
+      for (final goal in FireOpsCatalog.goals()) goal.id: goal,
     };
-    return _operationsCareerLadder
+    return ladder
         .take(targetIndex + 1)
         .map((id) => byId[id])
         .whereType<CareerGoal>()
@@ -247,7 +241,8 @@ class ProfileController extends ChangeNotifier {
   Future<void> bootstrap() async {
     _onboardingComplete = await _store.getOnboardingComplete();
     final profileJson = await _store.loadProfile();
-    _profile = profileJson == null ? UserProfile.empty() : UserProfile.fromJson(profileJson);
+    _profile =
+        profileJson == null ? UserProfile.empty() : UserProfile.fromJson(profileJson);
 
     // Silent migration: normalize state to a canonical code.
     final normalizedState = FireOpsCatalog.stateCodeFromLegacyValue(_profile.state);
@@ -259,7 +254,8 @@ class ProfileController extends ChangeNotifier {
     // Keep a record for state-change detection prompts.
     try {
       final last = await _taskBookSetupStore.lastKnownState();
-      if ((last ?? '').trim().isEmpty && (normalizedState ?? '').trim().isNotEmpty) {
+      if ((last ?? '').trim().isEmpty &&
+          (normalizedState ?? '').trim().isNotEmpty) {
         await _taskBookSetupStore.setLastKnownState(normalizedState);
       }
     } catch (e) {
@@ -305,13 +301,40 @@ class ProfileController extends ChangeNotifier {
         await _taskBookSetupStore.setLastKnownState(newState);
         await _taskBookSetupStore.setReviewPending(true);
       } catch (e) {
-        debugPrint('ProfileController.updateProfile state-change flag failed: $e');
+        debugPrint(
+            'ProfileController.updateProfile state-change flag failed: $e');
       }
     }
   }
 
   Future<void> setCurrentRoles(List<String> roles) =>
       updateProfile(_profile.copyWith(currentRoles: roles, updatedAt: DateTime.now()));
+
+  /// Updates Personal career path without deleting logs, certs, or progress.
+  Future<void> setCareerPath({
+    required CareerPath careerPath,
+    CareerPath? primaryTrack,
+    bool confirmed = true,
+  }) async {
+    CareerPath? track = primaryTrack;
+    if (careerPath == CareerPath.both) {
+      track ??= _profile.primaryTrack ?? CareerPath.fire;
+      if (track != CareerPath.fire && track != CareerPath.ems) {
+        track = CareerPath.fire;
+      }
+    } else {
+      track = null;
+    }
+    await updateProfile(
+      _profile.copyWith(
+        careerPath: careerPath,
+        primaryTrack: track,
+        clearPrimaryTrack: careerPath != CareerPath.both,
+        careerPathConfirmed: confirmed,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
 
   Future<void> setPrimaryGoal(String goalId) async {
     final now = DateTime.now();
@@ -325,7 +348,8 @@ class ProfileController extends ChangeNotifier {
           ? TimelineStatus.noTargetDate
           : existingPlan.timelineStatus,
     );
-    await updateProfile(_profile.copyWith(primaryGoalId: goalId, careerPlan: plan, updatedAt: now));
+    await updateProfile(
+        _profile.copyWith(primaryGoalId: goalId, careerPlan: plan, updatedAt: now));
   }
 
   Future<void> setTargetReadyDate(DateTime? targetDate) async {
