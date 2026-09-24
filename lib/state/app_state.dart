@@ -5,6 +5,7 @@ import 'package:firepath/controllers/certification_controller.dart';
 import 'package:firepath/controllers/profile_controller.dart';
 import 'package:firepath/controllers/task_book_controller.dart';
 import 'package:firepath/models/career_goal.dart';
+import 'package:firepath/models/career_path.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/requirement.dart';
@@ -355,6 +356,20 @@ class AppState extends ChangeNotifier {
   Future<void> setPrimaryGoal(String goalId) async {
     await profileController.setPrimaryGoal(goalId);
     _ensureCustomGoalStarterRequirements(goalId);
+    await _persistAll();
+  }
+
+  /// Personal career path only — never touches Department Mode.
+  Future<void> setCareerPath({
+    required CareerPath careerPath,
+    CareerPath? primaryTrack,
+    bool confirmed = true,
+  }) async {
+    await profileController.setCareerPath(
+      careerPath: careerPath,
+      primaryTrack: primaryTrack,
+      confirmed: confirmed,
+    );
     await _persistAll();
   }
 
