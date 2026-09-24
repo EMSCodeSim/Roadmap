@@ -81,7 +81,7 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(elevatedRole ? 'Department Admin' : 'Evaluator Work'),
+        title: Text(elevatedRole ? 'Department Admin' : 'Evaluations'),
         actions: [
           if (mode.canReview)
             IconButton(
@@ -118,7 +118,7 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
               )
             else ...[
               Text(
-                'Work assigned to you',
+                elevatedRole ? 'Needs department action' : 'Evaluations',
                 style: Theme.of(context)
                     .textTheme
                     .headlineSmall
@@ -126,7 +126,7 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
               ),
               const SizedBox(height: 5),
               Text(
-                'Approve submitted requirements and complete the class checklists where you are an assigned evaluator or proctor.',
+                elevatedRole ? 'Review department items that need approval. Day-to-day evaluator work stays here while broader configuration remains in Admin.' : 'Review submissions assigned to you. Class rosters stay with My Classes so this screen remains focused on evaluation work.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: cs.onSurfaceVariant,
                       height: 1.4,
@@ -200,6 +200,7 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
                     ),
                   ),
                 ),
+              if (elevatedRole) ...[
               const SizedBox(height: 22),
               Row(
                 children: [
@@ -264,7 +265,8 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
                     ),
                   ),
                 ),
-            ],
+
+              ],            ],
           ],
         ),
       ),
