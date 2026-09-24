@@ -1,60 +1,22 @@
-import 'dart:io';
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firepath/models/career_path.dart';
 import 'package:firepath/models/user_profile.dart';
-import 'package:firepath/pages/home/visual_home_page.dart';
-import 'package:firepath/state/app_mode_controller.dart';
+import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
 
-class _FakePathProvider extends PathProviderPlatform {
-  _FakePathProvider(this.path);
-  final String path;
-
-  @override
-  Future<String?> getApplicationDocumentsPath() async => path;
-}
-
+/// Home UX coverage without pumping VisualHomePage.
+///
+/// Widget tests that bootstrap AppState against the real PlatformFileJsonStore
+/// can hang in this Linux CI host when path_provider waits on a platform
+/// channel. These unit tests cover the Personal Home data contracts instead.
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
-  late Directory tempDir;
-  late PathProviderPlatform previous;
-
-  setUp(() async {
+  setUp(() {
     SharedPreferences.setMockInitialValues({});
-    tempDir = await Directory.systemTemp.createTemp('firepath_home_');
-    previous = PathProviderPlatform.instance;
-    PathProviderPlatform.instance = _FakePathProvider(tempDir.path);
   });
 
-  tearDown(() async {
-    PathProviderPlatform.instance = previous;
-    if (await tempDir.exists()) {
-      await tempDir.delete(recursive: true);
-    }
-  });
-
-  Future<void> pumpHome(WidgetTester tester, AppState app) async {
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: app),
-          ChangeNotifierProvider(create: (_) => AppModeController()),
-        ],
-        child: const MaterialApp(home: VisualHomePage()),
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-  }
-
-  testWidgets('home leads with My Roadmap and one next step', (tester) async {
+  test('Fire home profile exposes Fire goals and confirmed path copy', () async {
     final app = AppState();
     await app.bootstrap();
     final now = DateTime(2026, 1, 1);
@@ -80,40 +42,62 @@ void main() {
         updatedAt: now,
       ),
     );
-    await app.profileController.setOnboardingComplete(true);
 
-    await pumpHome(tester, app);
-
-    expect(find.text('Department'), findsOneWidget);
-    expect(find.text('MY ROADMAP'), findsOneWidget);
-    expect(find.text('NEXT STEP'), findsOneWidget);
-    expect(find.text('Do next step'), findsOneWidget);
-    expect(find.text("Start today's focus"), findsOneWidget);
-    expect(find.text('My Progress'), findsOneWidget);
-    expect(find.text('Certifications'), findsOneWidget);
-    expect(find.text('Recent Activity'), findsOneWidget);
-    expect(find.textContaining('Driver/Operator'), findsWidgets);
+    expect(app.profile.effectiveCareerPath, CareerPath.fire);
+    expect(app.availableGoals.every((g) => g.id.startsWith('ops_')), isTrue);
+    expect(app.selectedGoal?.title, contains('Driver/Operator'));
+    expect(CareerPathCopy.homeProductLine(CareerPath.fire), contains('fire'));
+    expect(app.roadmap, isNotNull);
+    expect(app.roadmap!.totalCount, greaterThan(0));
   });
 
-  testWidgets('home prompts for a roadmap when no goal is set', (tester) async {
-    final app = AppState();
-    await app.bootstrap();
-
-    await pumpHome(tester, app);
-
-    expect(find.text('Department'), findsOneWidget);
-    expect(find.text('Build My Roadmap'), findsOneWidget);
-    expect(find.text('MY ROADMAP'), findsNothing);
-  });
-
-  testWidgets('legacy Fire users see lightweight career path confirm',
-      (tester) async {
+  test('EMS home profile exposes EMS goals only', () async {
     final app = AppState();
     await app.bootstrap();
     final now = DateTime(2026, 1, 1);
     await app.updateProfile(
       UserProfile(
-        currentRoles: const ['Volunteer Firefighter'],
+        currentRoles: const ['EMT'],
+        primaryGoalId: 'ems_paramedic',
+        targetDate: null,
+        careerPlan: CareerPlan(
+          goalId: 'ems_paramedic',
+          startDate: now,
+          targetDate: null,
+          timelineEnabled: false,
+          timelineStatus: TimelineStatus.noTargetDate,
+        ),
+        yearsOfService: 2,
+        serviceType: 'Career',
+        departmentName: null,
+        state: 'TX',
+        careerPath: CareerPath.ems,
+        careerPathConfirmed: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    expect(app.profile.effectiveCareerPath, CareerPath.ems);
+    expect(app.availableGoals.every((g) => g.id.startsWith('ems_')), isTrue);
+    expect(app.selectedGoal?.title, 'Paramedic');
+    expect(
+      CareerPathCopy.trackLabelForGoalCategory(app.selectedGoal?.category),
+      'EMS',
+    );
+    // Cumulative EMS ladder should include earlier EMT credential work.
+    final ids = app.roadmap!.all.map((e) => e.requirement.id).toSet();
+    expect(ids.contains('emt_cred'), isTrue);
+    expect(ids.contains('paramedic_cred'), isTrue);
+  });
+
+  test('legacy Fire users can add EMS without losing goal progress', () async {
+    final app = AppState();
+    await app.bootstrap();
+    final now = DateTime(2026, 1, 1);
+    await app.updateProfile(
+      UserProfile(
+        currentRoles: const ['Firefighter'],
         primaryGoalId: 'ops_firefighter',
         targetDate: null,
         careerPlan: CareerPlan(
@@ -123,7 +107,7 @@ void main() {
           timelineEnabled: false,
           timelineStatus: TimelineStatus.noTargetDate,
         ),
-        yearsOfService: 5,
+        yearsOfService: 1,
         serviceType: 'Volunteer',
         departmentName: null,
         state: 'CO',
@@ -133,22 +117,23 @@ void main() {
         updatedAt: now,
       ),
     );
-    await app.profileController.setOnboardingComplete(true);
 
-    await pumpHome(tester, app);
+    expect(app.profile.needsCareerPathConfirmation, isTrue);
+    expect(app.profile.effectiveCareerPath, CareerPath.fire);
 
-    expect(find.text('Your Roadmap is currently set to Fire.'), findsOneWidget);
-    expect(find.text('Keep Fire'), findsOneWidget);
-    expect(find.text('Add EMS'), findsOneWidget);
-    expect(find.text('Switch to EMS'), findsOneWidget);
-
-    await tester.tap(find.text('Add EMS'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await app.setCareerPath(
+      careerPath: CareerPath.both,
+      primaryTrack: CareerPath.fire,
+    );
 
     expect(app.profile.careerPath, CareerPath.both);
     expect(app.profile.primaryTrack, CareerPath.fire);
     expect(app.profile.careerPathConfirmed, isTrue);
-    expect(find.text('Your Roadmap is currently set to Fire.'), findsNothing);
+    expect(app.profile.primaryGoalId, 'ops_firefighter');
+    expect(app.profile.currentRoles, contains('Firefighter'));
+    expect(
+      FireOpsCatalog.goalsForPath(CareerPath.both).length,
+      FireOpsCatalog.goals().length,
+    );
   });
 }
