@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/widgets/app_back_button.dart';
+import 'package:firepath/models/career_path.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/models/requirement.dart';
@@ -82,7 +83,12 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
       (sum, record) => sum + (record.hours ?? 0),
     );
     final focusTopic = smartNext?.focusTitle ?? task?.title ?? next?.name;
-    final ecosystemRecommendation = next == null
+    final path = app.profile.effectiveCareerPath;
+    final goalCategory = roadmap?.goal.category ?? '';
+    final suppressExternalLearning = path == CareerPath.ems ||
+        (path == CareerPath.both &&
+            CareerPathCopy.trackLabelForGoalCategory(goalCategory) == 'EMS');
+    final ecosystemRecommendation = suppressExternalLearning || next == null
         ? null
         : EcosystemRecommendations.forDailyFocus(
               topic: focusTopic ?? next.name,
