@@ -31,6 +31,9 @@ class AppModeController extends ChangeNotifier {
   bool get bootstrapped => _bootstrapped;
   DepartmentLink? get departmentLink => _departmentLink;
   String get role => _departmentLink?.role ?? 'MEMBER';
+  bool get isInstructor => role == 'INSTRUCTOR';
+  bool get isEvaluator => role == 'EVALUATOR';
+  bool get isAdmin => const {'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role);
   bool get canReview => const {
         'EVALUATOR',
         'TRAINING_OFFICER',

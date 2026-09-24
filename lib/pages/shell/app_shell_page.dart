@@ -28,9 +28,11 @@ class AppShellPage extends StatelessWidget {
     final fourthLabel = mode.isDepartment
         ? elevatedRole
             ? 'Admin'
-            : mode.canReview
-                ? 'Review'
-                : 'Department'
+            : mode.isEvaluator
+                ? 'Evaluations'
+                : mode.isInstructor
+                    ? 'My Classes'
+                    : 'Department'
         : 'Advance';
     return Scaffold(
       body: navigationShell,
@@ -67,7 +69,13 @@ class AppShellPage extends StatelessWidget {
                 const BottomNavigationBarItem(
                   icon: Icon(Icons.home_outlined),
                   activeIcon: Icon(Icons.home),
-                  label: 'Home',
+                  label: mode.isDepartment
+                      ? mode.isInstructor
+                          ? 'My Classes'
+                          : mode.isEvaluator
+                              ? 'Evaluations'
+                              : 'My Training'
+                      : 'Home',
                 ),
                 const BottomNavigationBarItem(
                   icon: Icon(Icons.route_outlined),
@@ -84,15 +92,23 @@ class AppShellPage extends StatelessWidget {
                     isLabelVisible: mode.isDepartment && inbox.unreadCount > 0,
                     label: Text('${inbox.unreadCount}'),
                     child: Icon(mode.isDepartment
-                        ? mode.canReview
+                        ? mode.isEvaluator
                             ? Icons.fact_check_outlined
-                            : Icons.apartment_outlined
+                            : mode.isInstructor
+                                ? Icons.class_outlined
+                                : elevatedRole
+                                    ? Icons.admin_panel_settings_outlined
+                                    : Icons.apartment_outlined
                         : Icons.trending_up_outlined),
                   ),
                   activeIcon: Icon(mode.isDepartment
-                      ? mode.canReview
+                      ? mode.isEvaluator
                           ? Icons.fact_check_rounded
-                          : Icons.apartment_rounded
+                          : mode.isInstructor
+                              ? Icons.class_rounded
+                              : elevatedRole
+                                  ? Icons.admin_panel_settings_rounded
+                                  : Icons.apartment_rounded
                       : Icons.trending_up),
                   label: fourthLabel,
                 ),
