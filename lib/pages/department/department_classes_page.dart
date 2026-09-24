@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:firepath/state/app_mode_controller.dart';
 
@@ -115,6 +116,35 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
   void _setDetail(DepartmentClassDetail detail) { if (!mounted) return; setState(() { _detail = detail; _studentId = detail.roster.any((item) => item.id == _studentId) ? _studentId : (detail.roster.isEmpty ? null : detail.roster.first.id); _error = null; }); }
   DepartmentClassStudent? get _student { for (final item in _detail?.roster ?? const <DepartmentClassStudent>[]) { if (item.id == _studentId) return item; } return null; }
+  String get _registrationUrl => _detail?.registrationToken.isNotEmpty == true ? 'https://responderroadmap.com/class-register/${_detail!.registrationToken}' : '';
+
+  Future<void> _registration(String action) async {
+    if (_detail == null || _busy) return; setState(()=>_busy=true);
+    try { _setDetail(await _api.manageClassRegistration(classId: widget.classId, action: action)); }
+    catch(e){if(mounted)setState(()=>_error=e.toString());}
+    finally{if(mounted)setState(()=>_busy=false);}
+  }
+
+  Future<void> _closeTraining() async {
+    final d=_detail; if(d==null||_busy)return;
+    final unresolved=d.roster.where((s)=>s.attendance=='REGISTERED').length;
+    final required=d.sections.expand((s)=>s.skills).where((s)=>s.required).map((s)=>s.id).toSet();
+    final incomplete=d.roster.where((s)=>s.attendance=='PRESENT' && required.any((id)=>!s.results.any((r)=>r.requirementId==id && r.result!='NOT_EVALUATED'))).length;
+    final ok=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:const Text('Close Training?'),content:Text('Roster: ${d.roster.length}\nAttendance still unresolved: $unresolved\nPresent members needing required skill results: $incomplete\n\nClosing finalizes the official digital training sheet and stops QR registration.'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Keep Open')),FilledButton(onPressed:unresolved>0||incomplete>0?null:()=>Navigator.pop(context,true),child:const Text('Finalize & Close'))]))??false;
+    if(!ok)return; setState(()=>_busy=true);
+    try{_setDetail(await _api.updateClassStatus(classId:widget.classId,status:'COMPLETE'));}
+    catch(e){if(mounted)setState(()=>_error=e.toString());}
+    finally{if(mounted)setState(()=>_busy=false);}
+  }
+
+  Future<void> _showQr() async {
+    final d=_detail; if(d==null)return;
+    if(!d.registrationEnabled || d.registrationToken.isEmpty) await _registration('OPEN');
+    if(!mounted||_registrationUrl.isEmpty)return;
+    await showDialog<void>(context:context,builder:(context)=>AlertDialog(title:const Text('Crew QR Sign-in'),content:Column(mainAxisSize:MainAxisSize.min,children:[QrImageView(data:_registrationUrl,size:240),const SizedBox(height:12),const Text('Have attendees scan this code to join the live roster.',textAlign:TextAlign.center)]),actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Done'))]));
+    await _load();
+  }
+
 
   Future<String?> _correctionNotes(String title) async {
     final controller = TextEditingController();
@@ -132,7 +162,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   Widget build(BuildContext context) {
     final detail = _detail; final student = _student;
     return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Class roster')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
-      Text(detail.checklistTitle, style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 12),
+      Text(detail.checklistTitle, style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 10),
+      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.check_circle_outline_rounded), label: const Text('Close Training'))]),
+      if (detail.status == 'COMPLETE') const Card(child: Padding(padding: EdgeInsets.all(14), child: Row(children:[Icon(Icons.verified_rounded),SizedBox(width:10),Expanded(child:Text('Training closed — official digital training sheet finalized.'))]))),
+      const SizedBox(height: 12),
       DropdownButtonFormField<String>(value: _studentId, decoration: const InputDecoration(labelText: 'Student'), items: detail.roster.map((item) => DropdownMenuItem(value: item.id, child: Text('${item.name} · ${item.finalResult.replaceAll('_', ' ')}'))).toList(), onChanged: (value) => setState(() => _studentId = value)),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
       if (student != null) ...[

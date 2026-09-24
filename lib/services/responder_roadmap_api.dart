@@ -621,11 +621,13 @@ class DepartmentClassDetail {
   final String classType;
   final String checklistTitle;
   final String status;
+  final bool registrationEnabled;
+  final String registrationToken;
   final List<DepartmentClassSection> sections;
   final List<DepartmentClassStudent> roster;
-  const DepartmentClassDetail({required this.id, required this.title, required this.classType, required this.checklistTitle, required this.status, required this.sections, required this.roster});
+  const DepartmentClassDetail({required this.id, required this.title, required this.classType, required this.checklistTitle, required this.status, required this.registrationEnabled, required this.registrationToken, required this.sections, required this.roster});
   factory DepartmentClassDetail.fromJson(Map<String, dynamic> json) => DepartmentClassDetail(
-        id: (json['id'] as String?) ?? '', title: (json['title'] as String?) ?? 'Class', classType: (json['classType'] as String?) ?? 'GENERAL', checklistTitle: (json['checklistTitle'] as String?) ?? 'Checklist', status: (json['status'] as String?) ?? 'DRAFT',
+        id: (json['id'] as String?) ?? '', title: (json['title'] as String?) ?? 'Class', classType: (json['classType'] as String?) ?? 'GENERAL', checklistTitle: (json['checklistTitle'] as String?) ?? 'Checklist', status: (json['status'] as String?) ?? 'DRAFT', registrationEnabled: json['registrationEnabled'] == true, registrationToken: (json['registrationToken'] as String?) ?? '',
         sections: (json['sections'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSection.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
         roster: (json['roster'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassStudent.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
       );
@@ -959,6 +961,16 @@ class ResponderRoadmapApi {
 
   Future<DepartmentClassDetail> updateClassStudent({required String classId, required String enrollmentId, required String attendance}) async {
     final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}', body: {'attendance': attendance});
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> manageClassRegistration({required String classId, required String action}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/registration', body: {'action': action});
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> updateClassStatus({required String classId, required String status}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/status', body: {'status': status});
     return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
