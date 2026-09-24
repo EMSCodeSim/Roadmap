@@ -1,107 +1,154 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:firepath/models/certification.dart';
+import 'package:firepath/models/career_path.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/pages/home/visual_home_page.dart';
+import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 
+class _FakePathProvider extends PathProviderPlatform {
+  _FakePathProvider(this.path);
+  final String path;
+
+  @override
+  Future<String?> getApplicationDocumentsPath() async => path;
+}
+
 void main() {
-  setUp(() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late Directory tempDir;
+  late PathProviderPlatform previous;
+
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    tempDir = await Directory.systemTemp.createTemp('firepath_home_');
+    previous = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = _FakePathProvider(tempDir.path);
   });
 
-  Certification cert(String name) {
-    final now = DateTime(2026, 1, 1);
-    return Certification(
-      id: 'c_$name',
-      name: name,
-      certificationDefinitionId: null,
-      issuingOrganization: null,
-      certificationNumber: null,
-      issueDate: null,
-      expirationDate: null,
-      doesNotExpire: true,
-      notes: null,
-      renewalHistory: const [],
-      createdAt: now,
-      updatedAt: now,
-    );
-  }
+  tearDown(() async {
+    PathProviderPlatform.instance = previous;
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
+  });
 
-  UserProfile volunteerProfile() {
-    final now = DateTime(2026, 1, 1);
-    return UserProfile(
-      currentRoles: const ['Volunteer Firefighter'],
-      primaryGoalId: null,
-      targetDate: null,
-      careerPlan: CareerPlan.empty(),
-      yearsOfService: 5,
-      serviceType: 'Volunteer',
-      departmentName: null,
-      state: 'CO',
-      createdAt: now,
-      updatedAt: now,
-    );
-  }
-
-  testWidgets('home keeps Quick Log immediately accessible with an active goal', (tester) async {
-    final app = AppState();
-    await app.bootstrap();
-    await app.completeOnboarding(
-      profile: volunteerProfile(),
-      certifications: [cert('FF I'), cert('FF II')],
-    );
-    await app.setPrimaryGoal('ops_engineer');
-
+  Future<void> pumpHome(WidgetTester tester, AppState app) async {
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: app,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: app),
+          ChangeNotifierProvider(create: (_) => AppModeController()),
+        ],
         child: const MaterialApp(home: VisualHomePage()),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+  }
 
-    expect(find.text('Quick Log'), findsOneWidget);
-    expect(find.text('Department'), findsOneWidget);
-
-    final quickLogTop = tester.getTopLeft(find.text('Quick Log')).dy;
-    expect(
-      quickLogTop,
-      lessThan(180),
-      reason: 'Quick Log should be reachable from Home without scrolling.',
+  testWidgets('home leads with My Roadmap and one next step', (tester) async {
+    final app = AppState();
+    await app.bootstrap();
+    final now = DateTime(2026, 1, 1);
+    await app.updateProfile(
+      UserProfile(
+        currentRoles: const ['Volunteer Firefighter'],
+        primaryGoalId: 'ops_engineer',
+        targetDate: null,
+        careerPlan: CareerPlan(
+          goalId: 'ops_engineer',
+          startDate: now,
+          targetDate: null,
+          timelineEnabled: false,
+          timelineStatus: TimelineStatus.noTargetDate,
+        ),
+        yearsOfService: 5,
+        serviceType: 'Volunteer',
+        departmentName: null,
+        state: 'CO',
+        careerPath: CareerPath.fire,
+        careerPathConfirmed: true,
+        createdAt: now,
+        updatedAt: now,
+      ),
     );
+    await app.profileController.setOnboardingComplete(true);
 
+    await pumpHome(tester, app);
+
+    expect(find.text('Department'), findsOneWidget);
+    expect(find.text('MY ROADMAP'), findsOneWidget);
+    expect(find.text('NEXT STEP'), findsOneWidget);
+    expect(find.text('Do next step'), findsOneWidget);
+    expect(find.text("Start today's focus"), findsOneWidget);
+    expect(find.text('My Progress'), findsOneWidget);
+    expect(find.text('Certifications'), findsOneWidget);
+    expect(find.text('Recent Activity'), findsOneWidget);
     expect(find.textContaining('Driver/Operator'), findsWidgets);
-    expect(find.text('CAREER READINESS'), findsOneWidget);
-    expect(find.text('MAJOR GAPS'), findsOneWidget);
-
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.text("Start Today's Focus"),
-      300,
-      scrollable: scrollable,
-    );
-    expect(find.text("Start Today's Focus"), findsOneWidget);
   });
 
-  testWidgets('home prompts for a Task Book when no goal is set', (tester) async {
+  testWidgets('home prompts for a roadmap when no goal is set', (tester) async {
     final app = AppState();
     await app.bootstrap();
 
-    await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: app,
-        child: const MaterialApp(home: VisualHomePage()),
+    await pumpHome(tester, app);
+
+    expect(find.text('Department'), findsOneWidget);
+    expect(find.text('Build My Roadmap'), findsOneWidget);
+    expect(find.text('MY ROADMAP'), findsNothing);
+  });
+
+  testWidgets('legacy Fire users see lightweight career path confirm',
+      (tester) async {
+    final app = AppState();
+    await app.bootstrap();
+    final now = DateTime(2026, 1, 1);
+    await app.updateProfile(
+      UserProfile(
+        currentRoles: const ['Volunteer Firefighter'],
+        primaryGoalId: 'ops_firefighter',
+        targetDate: null,
+        careerPlan: CareerPlan(
+          goalId: 'ops_firefighter',
+          startDate: now,
+          targetDate: null,
+          timelineEnabled: false,
+          timelineStatus: TimelineStatus.noTargetDate,
+        ),
+        yearsOfService: 5,
+        serviceType: 'Volunteer',
+        departmentName: null,
+        state: 'CO',
+        careerPath: null,
+        careerPathConfirmed: false,
+        createdAt: now,
+        updatedAt: now,
       ),
     );
-    await tester.pumpAndSettle();
+    await app.profileController.setOnboardingComplete(true);
 
-    expect(find.text('Quick Log'), findsOneWidget);
-    expect(find.text('Department'), findsOneWidget);
-    expect(find.text('Build My Task Book'), findsOneWidget);
-    expect(find.text('CAREER READINESS'), findsNothing);
+    await pumpHome(tester, app);
+
+    expect(find.text('Your Roadmap is currently set to Fire.'), findsOneWidget);
+    expect(find.text('Keep Fire'), findsOneWidget);
+    expect(find.text('Add EMS'), findsOneWidget);
+    expect(find.text('Switch to EMS'), findsOneWidget);
+
+    await tester.tap(find.text('Add EMS'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(app.profile.careerPath, CareerPath.both);
+    expect(app.profile.primaryTrack, CareerPath.fire);
+    expect(app.profile.careerPathConfirmed, isTrue);
+    expect(find.text('Your Roadmap is currently set to Fire.'), findsNothing);
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:firepath/models/career_path.dart';
 import 'package:firepath/services/catalog.dart';
 
 /// Guardrail: when the career catalog is slimmed or expanded, these expectations
@@ -21,7 +22,45 @@ void main() {
         'ops_fire_chief',
       ]),
     );
-    expect(ids.length, 7);
+  });
+
+  test('catalog exposes the EMS career ladder and specialty branch', () {
+    final goals = FireOpsCatalog.goals();
+    final ids = goals.map((g) => g.id).toList();
+
+    expect(
+      ids,
+      containsAll(<String>[
+        'ems_explorer',
+        'ems_emt_student',
+        'ems_emt',
+        'ems_aemt',
+        'ems_paramedic',
+        'ems_experienced_paramedic',
+        'ems_fto',
+        'ems_instructor',
+        'ems_supervisor',
+        'ems_captain',
+        'ems_chief',
+        'ems_specialty_critical_care',
+      ]),
+    );
+    expect(
+      FireOpsCatalog.goalsForPath(CareerPath.ems).every(
+        (g) => g.id.startsWith('ems_'),
+      ),
+      isTrue,
+    );
+    expect(
+      FireOpsCatalog.goalsForPath(CareerPath.fire).every(
+        (g) => g.id.startsWith('ops_'),
+      ),
+      isTrue,
+    );
+    expect(
+      FireOpsCatalog.goalsForPath(CareerPath.both).length,
+      FireOpsCatalog.goals().length,
+    );
   });
 
   test('commonRoles include company through chief titles', () {

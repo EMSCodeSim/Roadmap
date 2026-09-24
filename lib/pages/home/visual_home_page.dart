@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/models/career_path.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/department/department_training_home_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
@@ -14,7 +15,6 @@ import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/career_inbox_preview.dart';
-import 'package:firepath/widgets/career_readiness_panel.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 import 'package:firepath/widgets/needs_attention_preview.dart';
 import 'package:firepath/widgets/app_mode_switcher.dart';
@@ -32,11 +32,23 @@ class VisualHomePage extends StatelessWidget {
     }
 
     final app = context.watch<AppState>();
+    final profile = app.profile;
+    final path = profile.effectiveCareerPath;
     final roadmap = app.roadmap;
     final goal = roadmap?.goal;
     final smartNext = SmartNextStepEngine.resolve(app);
     final next = smartNext?.requirement;
     final hasRoadmap = roadmap != null && roadmap.totalCount > 0;
+    final currentPosition = profile.currentRoles.isEmpty
+        ? 'Not set'
+        : profile.currentRoles.first;
+    final trackLabel = path == CareerPath.both
+        ? CareerPathCopy.trackLabelForGoalCategory(goal?.category)
+        : '';
+    final snapshot =
+        hasRoadmap ? CareerReadinessSnapshot.fromRoadmap(roadmap) : null;
+    final actionPlan =
+        hasRoadmap ? CareerReadinessActionPlan.fromState(app) : null;
 
     return Scaffold(
       body: SafeArea(
@@ -44,33 +56,60 @@ class VisualHomePage extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
           children: [
             _Header(
+              path: path,
               onSettings: () => context.push(AppRoutes.settings),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              CareerPathCopy.homeProductLine(path),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
             ),
             const SizedBox(height: 10),
             const AppModeSwitcher(),
+            if (profile.needsCareerPathConfirmation) ...[
+              const SizedBox(height: 14),
+              const _CareerPathConfirmBanner(),
+            ],
             const SizedBox(height: 14),
             const _GettingStartedCard(),
             const SizedBox(height: 14),
             if (!hasRoadmap)
               _ChooseGoalCard(
+                path: path,
                 onChooseGoal: () => context.go(AppRoutes.myPath),
               )
             else ...[
-              _DailyFocusCta(
-                goalTitle: goal?.title,
+              _MyRoadmapCard(
+                currentPosition: currentPosition,
+                goalTitle: goal?.title ?? 'Career Goal',
+                trackLabel: trackLabel,
                 nextTitle: smartNext?.focusTitle ?? next?.name,
                 nextReason: smartNext?.reason,
-                onStart: () => context.push(AppRoutes.dailyFocus),
+                progressLabel: snapshot == null
+                    ? null
+                    : '${snapshot.completedCount}/${snapshot.totalCount} complete',
+                onOpenNext: () {
+                  if (next != null) {
+                    AppRouter.openRequirement(context, next);
+                  } else {
+                    context.push(AppRoutes.dailyFocus);
+                  }
+                },
+                onStartFocus: () => context.push(AppRoutes.dailyFocus),
+                onViewPath: () => context.go(AppRoutes.myPath),
               ),
               const SizedBox(height: 14),
-              CareerReadinessPanel(
-                snapshot: CareerReadinessSnapshot.fromRoadmap(roadmap),
-                actionPlan: CareerReadinessActionPlan.fromState(app),
-                goalTitle: goal?.title ?? 'Career Road',
-                onViewPath: () => context.go(AppRoutes.myPath),
-                onActionTap: (item) {
-                  AppRouter.openRequirement(context, item.requirement);
-                },
+              _SecondaryLinks(
+                progressPercent: snapshot?.percentComplete,
+                topActionTitle: actionPlan?.items.isNotEmpty == true
+                    ? actionPlan!.items.first.requirement.name
+                    : null,
+                onProgress: () => context.go(AppRoutes.myPath),
+                onCerts: () => context.go(AppRoutes.certifications),
+                onActivity: () => context.go(AppRoutes.personalLog),
               ),
             ],
             const SizedBox(height: 14),
@@ -368,9 +407,10 @@ class _UpdatesHeader extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
+  final CareerPath path;
   final VoidCallback onSettings;
 
-  const _Header({required this.onSettings});
+  const _Header({required this.path, required this.onSettings});
 
   @override
   Widget build(BuildContext context) {
@@ -379,6 +419,11 @@ class _Header extends StatelessWidget {
         const Expanded(
           child: FirefighterRoadmapWordmark(),
         ),
+        if (path != CareerPath.fire)
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: _TrackChip(label: path.shortLabel),
+          ),
         IconButton(
           tooltip: 'Settings',
           onPressed: onSettings,
@@ -389,10 +434,95 @@ class _Header extends StatelessWidget {
   }
 }
 
+class _TrackChip extends StatelessWidget {
+  final String label;
+  const _TrackChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
+  }
+}
+
+class _CareerPathConfirmBanner extends StatelessWidget {
+  const _CareerPathConfirmBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final app = context.watch<AppState>();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Your Roadmap is currently set to Fire.',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Keep Fire, add EMS, or switch to EMS. Your logs, certifications, and progress stay intact.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.4,
+                ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton(
+                onPressed: () => app.setCareerPath(careerPath: CareerPath.fire),
+                child: const Text('Keep Fire'),
+              ),
+              OutlinedButton(
+                onPressed: () => app.setCareerPath(
+                  careerPath: CareerPath.both,
+                  primaryTrack: CareerPath.fire,
+                ),
+                child: const Text('Add EMS'),
+              ),
+              TextButton(
+                onPressed: () => app.setCareerPath(careerPath: CareerPath.ems),
+                child: const Text('Switch to EMS'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ChooseGoalCard extends StatelessWidget {
+  final CareerPath path;
   final VoidCallback onChooseGoal;
 
-  const _ChooseGoalCard({required this.onChooseGoal});
+  const _ChooseGoalCard({required this.path, required this.onChooseGoal});
 
   @override
   Widget build(BuildContext context) {
@@ -408,14 +538,18 @@ class _ChooseGoalCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Choose what you are working toward.',
+            'Choose where you want to go.',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w900,
                 ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Build your Task Book first. Responder Roadmap will then turn the next requirement into one clear focus for today.',
+            path == CareerPath.ems
+                ? 'Pick an EMS career goal. Responder Roadmap will build your personal Task Book and show what to work on next.'
+                : path == CareerPath.both
+                    ? 'Pick a Fire or EMS goal. You can manage both sides of your career in one personal roadmap.'
+                    : 'Pick a career goal. Responder Roadmap will build your personal Task Book and show what to work on next.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: cs.onSurfaceVariant,
                   height: 1.45,
@@ -428,7 +562,7 @@ class _ChooseGoalCard extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onChooseGoal,
               icon: const Icon(Icons.route_outlined),
-              label: const Text('Build My Task Book'),
+              label: const Text('Build My Roadmap'),
             ),
           ),
         ],
@@ -437,93 +571,278 @@ class _ChooseGoalCard extends StatelessWidget {
   }
 }
 
-class _DailyFocusCta extends StatelessWidget {
-  final String? goalTitle;
+class _MyRoadmapCard extends StatelessWidget {
+  final String currentPosition;
+  final String goalTitle;
+  final String trackLabel;
   final String? nextTitle;
   final String? nextReason;
-  final VoidCallback onStart;
+  final String? progressLabel;
+  final VoidCallback onOpenNext;
+  final VoidCallback onStartFocus;
+  final VoidCallback onViewPath;
 
-  const _DailyFocusCta({
+  const _MyRoadmapCard({
+    required this.currentPosition,
     required this.goalTitle,
+    required this.trackLabel,
     required this.nextTitle,
     required this.nextReason,
-    required this.onStart,
+    required this.progressLabel,
+    required this.onOpenNext,
+    required this.onStartFocus,
+    required this.onViewPath,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
-        color: cs.primaryContainer,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: cs.primary.withValues(alpha: .16)),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Icon(Icons.bolt_rounded, size: 20, color: cs.primary),
-              const SizedBox(width: 6),
-              Text(
-                'TODAY',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: .9,
-                      color: cs.primary,
-                    ),
+              Expanded(
+                child: Text(
+                  'MY ROADMAP',
+                  style: t.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: cs.primary,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: onViewPath,
+                child: const Text('Task Book'),
               ),
             ],
           ),
-          const SizedBox(height: 9),
-          Text(
-            nextTitle ?? 'Continue your next requirement',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+          const SizedBox(height: 8),
+          _MetaRow(label: 'Current position', value: currentPosition),
+          const SizedBox(height: 6),
+          _MetaRow(
+            label: 'Goal',
+            value: goalTitle,
+            badge: trackLabel.isEmpty ? null : trackLabel,
           ),
-          if (goalTitle != null && goalTitle!.trim().isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Moving you toward $goalTitle',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                  ),
+          if (progressLabel != null) ...[
+            const SizedBox(height: 6),
+            _MetaRow(label: 'My Progress', value: progressLabel!),
+          ],
+          const SizedBox(height: 16),
+          Text(
+            'NEXT STEP',
+            style: t.labelLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.8,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            nextTitle ?? 'Continue your Task Book',
+            style: t.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          if (trackLabel.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _TrackChip(label: trackLabel),
             ),
           ],
-          if (nextReason != null && nextReason!.trim().isNotEmpty) ...[
-            const SizedBox(height: 5),
+          if ((nextReason ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
             Text(
               nextReason!,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: t.bodySmall?.copyWith(
+                color: cs.primary,
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+              ),
             ),
           ],
-          const SizedBox(height: 9),
-          Text(
-            'Choose 15 min, 30 min, 1 hour, or a crew drill. Career Road will turn this requirement into a focused Learn → Practice → Record session.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.45,
-                ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           SizedBox(
-            width: double.infinity,
-            height: 56,
+            height: 54,
             child: FilledButton.icon(
-              onPressed: onStart,
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text("Start Today's Focus"),
+              onPressed: onOpenNext,
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: const Text('Do next step'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: onStartFocus,
+              icon: const Icon(Icons.bolt_rounded),
+              label: const Text("Start today's focus"),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MetaRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final String? badge;
+
+  const _MetaRow({required this.label, required this.value, this.badge});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 118,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ),
+        if ((badge ?? '').isNotEmpty) ...[
+          const SizedBox(width: 8),
+          _TrackChip(label: badge!),
+        ],
+      ],
+    );
+  }
+}
+
+class _SecondaryLinks extends StatelessWidget {
+  final double? progressPercent;
+  final String? topActionTitle;
+  final VoidCallback onProgress;
+  final VoidCallback onCerts;
+  final VoidCallback onActivity;
+
+  const _SecondaryLinks({
+    required this.progressPercent,
+    required this.topActionTitle,
+    required this.onProgress,
+    required this.onCerts,
+    required this.onActivity,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = progressPercent;
+    final progressSubtitle = percent == null
+        ? 'Open your Task Book'
+        : '${percent.round()}% of mapped requirements';
+
+    return Column(
+      children: [
+        _LinkTile(
+          icon: Icons.playlist_add_check_circle_outlined,
+          title: 'My Progress',
+          subtitle: topActionTitle == null
+              ? progressSubtitle
+              : 'Next up: $topActionTitle',
+          onTap: onProgress,
+        ),
+        const SizedBox(height: 8),
+        _LinkTile(
+          icon: Icons.verified_outlined,
+          title: 'Certifications',
+          subtitle: 'Credentials and renewals',
+          onTap: onCerts,
+        ),
+        const SizedBox(height: 8),
+        _LinkTile(
+          icon: Icons.history_edu_outlined,
+          title: 'Recent Activity',
+          subtitle: 'Personal logs and Quick Log history',
+          onTap: onActivity,
+        ),
+      ],
+    );
+  }
+}
+
+class _LinkTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _LinkTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surface,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 64),
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: cs.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
     );
   }

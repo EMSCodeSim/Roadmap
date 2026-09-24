@@ -6,8 +6,8 @@ import 'package:firepath/pages/career/simple_quick_log_sheet.dart';
 /// Scroll-safe production wrapper for the simplified Quick Log.
 ///
 /// Bottom sheets can be short in landscape, on smaller phones, or when text
-/// scaling is increased. Giving the simplified logger an outer scroll view
-/// prevents category buttons from being pushed off-screen or overflowing.
+/// scaling is increased. The confirm step inside [SimpleQuickLogSheet] applies
+/// keyboard viewInsets so Save Log stays reachable while typing.
 class ProductionQuickLogSheet extends StatelessWidget {
   final LogPrefill? prefill;
 
@@ -15,6 +15,8 @@ class ProductionQuickLogSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Do not nest another viewInsets pad here — confirm/detail steps already
+    // scroll with MediaQuery.viewInsets so the primary action stays reachable.
     return SingleChildScrollView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       child: SimpleQuickLogSheet(prefill: prefill),

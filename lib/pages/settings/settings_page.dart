@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:firepath/models/career_path.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
@@ -33,9 +34,115 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _changeCareerPath() async {
+    final app = context.read<AppState>();
+    final current = app.profile.effectiveCareerPath;
+    final currentPrimary = app.profile.primaryTrack ?? CareerPath.fire;
+
+    CareerPath selected = current;
+    CareerPath primary =
+        currentPrimary == CareerPath.ems ? CareerPath.ems : CareerPath.fire;
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final bottom = MediaQuery.viewInsetsOf(context).bottom;
+            return Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottom),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Personal career path',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'This only changes your Personal Roadmap. Department Mode stays separate. Logs, certifications, and progress are kept.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                  ),
+                  const SizedBox(height: 14),
+                  for (final path in CareerPath.values) ...[
+                    _PathOptionTile(
+                      path: path,
+                      selected: selected == path,
+                      onTap: () => setModalState(() => selected = path),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (selected == CareerPath.both) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Primary path (emphasized on Home)',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<CareerPath>(
+                      segments: const [
+                        ButtonSegment(
+                          value: CareerPath.fire,
+                          label: Text('Fire'),
+                        ),
+                        ButtonSegment(
+                          value: CareerPath.ems,
+                          label: Text('EMS'),
+                        ),
+                      ],
+                      selected: {primary},
+                      onSelectionChanged: (value) {
+                        setModalState(() => primary = value.first);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  SizedBox(
+                    height: 52,
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Save career path'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result != true || !mounted) return;
+    await app.setCareerPath(
+      careerPath: selected,
+      primaryTrack: selected == CareerPath.both ? primary : null,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Personal path set to ${selected.shortLabel}.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final profile = context.watch<AppState>().profile;
+    final path = profile.effectiveCareerPath;
+    final pathSubtitle = path == CareerPath.both
+        ? 'Fire & EMS · Primary: ${profile.emphasisTrack.shortLabel}'
+        : path.shortLabel;
+
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton.toHome(),
@@ -53,6 +160,19 @@ class _SettingsPageState extends State<SettingsPage> {
                   title: Text('About Responder Roadmap'),
                   subtitle: Text('Career planning and professional record'),
                   trailing: Text('1.1.10 (17)'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _SettingsSection(
+              title: 'PERSONAL ROADMAP',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.route_outlined),
+                  title: const Text('Career path'),
+                  subtitle: Text(pathSubtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _changeCareerPath,
                 ),
               ],
             ),
@@ -133,7 +253,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Your Career Road, personal Task Books, Quick Log history, credentials, goals, and supporting records are stored locally on this device. Backup and export files leave the app only when you choose to save or share them.',
+              'Your Career Road, personal Task Books, Quick Log history, credentials, goals, and supporting records are stored locally on this device. Backup and export files leave the app only when you choose to save or share them. Personal activity is never an official department record unless you use the existing sharing workflow.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     height: 1.45,
@@ -209,6 +329,73 @@ class _SettingsPageState extends State<SettingsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('The app could not be fully reset. Please try again.'),
+      ),
+    );
+  }
+}
+
+class _PathOptionTile extends StatelessWidget {
+  final CareerPath path;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PathOptionTile({
+    required this.path,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? cs.primaryContainer : cs.surface,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 64),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(
+              color: selected
+                  ? cs.primary.withValues(alpha: 0.45)
+                  : cs.outline.withValues(alpha: 0.14),
+            ),
+          ),
+          child: Row(
+            children: [
+              Text(path.choiceEmoji, style: const TextStyle(fontSize: 22)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      path.choiceTitle,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    Text(
+                      path.choiceSubtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

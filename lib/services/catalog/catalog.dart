@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:firepath/models/career_goal.dart';
+import 'package:firepath/models/career_path.dart';
 import 'package:firepath/models/certification_definition.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/resource.dart';
@@ -11,6 +12,43 @@ class FireOpsCatalog {
 
   static const String otherStateCode = 'OTHER';
 
+  /// Fire operations roles shown during Personal setup.
+  static const List<String> fireRoles = <String>[
+    'Firefighter',
+    'Firefighter (Probationary)',
+    'Driver/Operator',
+    'Engineer',
+    'Company Officer',
+    'Lieutenant',
+    'Captain',
+    'Battalion Chief',
+    'Division Chief',
+    'Assistant Chief',
+    'Deputy Chief',
+    'Fire Chief',
+    'Training Officer',
+    'Wildland Firefighter',
+    'Other (Custom)',
+  ];
+
+  /// EMS career roles shown during Personal setup.
+  static const List<String> emsRoles = <String>[
+    'EMS Explorer / Student',
+    'EMT Student',
+    'EMT',
+    'Advanced EMT',
+    'Paramedic',
+    'Experienced Paramedic',
+    'FTO / Preceptor',
+    'EMS Instructor',
+    'EMS Supervisor',
+    'EMS Lieutenant',
+    'EMS Captain',
+    'EMS Chief / Director',
+    'Other (Custom)',
+  ];
+
+  /// Combined list kept for back-compat callers.
   static const List<String> commonRoles = <String>[
     'Firefighter',
     'Firefighter (Probationary)',
@@ -26,8 +64,41 @@ class FireOpsCatalog {
     'Fire Chief',
     'Training Officer',
     'EMS Provider',
+    'EMS Explorer / Student',
+    'EMT Student',
+    'EMT',
+    'Advanced EMT',
+    'Paramedic',
+    'Experienced Paramedic',
+    'FTO / Preceptor',
+    'EMS Instructor',
+    'EMS Supervisor',
+    'EMS Lieutenant',
+    'EMS Captain',
+    'EMS Chief / Director',
     'Wildland Firefighter',
     'Other (Custom)',
+  ];
+
+  static const List<String> fireCertifications = <String>[
+    'Firefighter I',
+    'Firefighter II',
+    'HazMat Awareness',
+    'HazMat Operations',
+    'Driver/Operator – Pumper',
+    'Incident Command (ICS 100/200)',
+    'Fire Officer I',
+    'Fire Instructor I',
+    'CPR / BLS',
+    'EVOC',
+  ];
+
+  static const List<String> emsCertifications = <String>[
+    'EMT',
+    'AEMT',
+    'Paramedic',
+    'CPR / BLS',
+    'EVOC',
   ];
 
   static const List<String> commonCertifications = <String>[
@@ -42,6 +113,35 @@ class FireOpsCatalog {
     'Paramedic',
     'CPR / BLS',
     'EVOC',
+  ];
+
+  /// Cumulative Fire operations ladder used by [ProfileController].
+  static const List<String> fireOperationsLadder = <String>[
+    'ops_firefighter',
+    'ops_engineer',
+    'ops_company_officer',
+    'ops_battalion_chief',
+    'ops_division_chief',
+    'ops_deputy_chief',
+    'ops_fire_chief',
+  ];
+
+  /// Cumulative EMS clinician → leadership ladder.
+  ///
+  /// Specialty goals (Critical Care, Community Paramedicine, etc.) stay off
+  /// this list so they remain single-stage branches that can grow later.
+  static const List<String> emsCareerLadder = <String>[
+    'ems_explorer',
+    'ems_emt_student',
+    'ems_emt',
+    'ems_aemt',
+    'ems_paramedic',
+    'ems_experienced_paramedic',
+    'ems_fto',
+    'ems_instructor',
+    'ems_supervisor',
+    'ems_captain',
+    'ems_chief',
   ];
 
   static final List<UsStateOption> usStateOptions = <UsStateOption>[
@@ -91,6 +191,67 @@ class FireOpsCatalog {
 
   static List<Resource> resources() => _resources;
   static List<CareerGoal> goals() => _goals;
+
+  static List<CareerGoal> goalsForPath(CareerPath path) {
+    switch (path) {
+      case CareerPath.fire:
+        return _goals.where(_isFireGoal).toList();
+      case CareerPath.ems:
+        return _goals.where(_isEmsGoal).toList();
+      case CareerPath.both:
+        return List<CareerGoal>.from(_goals);
+    }
+  }
+
+  static List<String> rolesForPath(CareerPath path) {
+    switch (path) {
+      case CareerPath.fire:
+        return fireRoles;
+      case CareerPath.ems:
+        return emsRoles;
+      case CareerPath.both:
+        // Fire first, then EMS titles not already present.
+        final seen = <String>{};
+        final out = <String>[];
+        for (final role in [...fireRoles, ...emsRoles]) {
+          if (role == 'Other (Custom)') continue;
+          if (seen.add(role)) out.add(role);
+        }
+        out.add('Other (Custom)');
+        return out;
+    }
+  }
+
+  static List<String> certificationsForPath(CareerPath path) {
+    switch (path) {
+      case CareerPath.fire:
+        return fireCertifications;
+      case CareerPath.ems:
+        return emsCertifications;
+      case CareerPath.both:
+        final seen = <String>{};
+        final out = <String>[];
+        for (final cert in [...fireCertifications, ...emsCertifications]) {
+          if (seen.add(cert)) out.add(cert);
+        }
+        return out;
+    }
+  }
+
+  /// Ladder IDs for a goal, if it sits on a cumulative Personal path.
+  static List<String>? ladderContaining(String goalId) {
+    if (fireOperationsLadder.contains(goalId)) return fireOperationsLadder;
+    if (emsCareerLadder.contains(goalId)) return emsCareerLadder;
+    return null;
+  }
+
+  static bool _isFireGoal(CareerGoal goal) =>
+      goal.id.startsWith('ops_') || goal.category == 'Operations';
+
+  static bool _isEmsGoal(CareerGoal goal) =>
+      goal.id.startsWith('ems_') ||
+      goal.category == 'EMS' ||
+      goal.category == 'EMS Specialty';
 
   static void validateCatalog() {
     assert(() {
@@ -248,7 +409,13 @@ final List<CertificationDefinition> _certifications = <CertificationDefinition>[
     typicalRenewalYears: 2,
     nationalCredential: true,
     issuingOrganizations: const ['NREMT', 'State EMS office'],
-    relatedCareerGoalIds: const ['ops_firefighter', 'ops_engineer'],
+    relatedCareerGoalIds: const [
+      'ops_firefighter',
+      'ops_engineer',
+      'ems_emt',
+      'ems_aemt',
+      'ems_paramedic',
+    ],
     searchKeywords: const ['emt', 'nremt'],
     renewalDescription: 'Renewal rules vary. Track your CE and follow your state/NREMT policy.',
     continuingEducationNotes: 'Confirm current CE hour distribution and skills verification rules for your state and NREMT.',
@@ -264,7 +431,12 @@ final List<CertificationDefinition> _certifications = <CertificationDefinition>[
     typicalRenewalYears: 2,
     nationalCredential: true,
     issuingOrganizations: const ['NREMT', 'State EMS office'],
-    relatedCareerGoalIds: const ['ops_firefighter', 'ops_engineer'],
+    relatedCareerGoalIds: const [
+      'ops_firefighter',
+      'ops_engineer',
+      'ems_aemt',
+      'ems_paramedic',
+    ],
     searchKeywords: const ['aemt', 'advanced emt'],
     renewalDescription: 'Renewal rules vary. Track your CE and follow your state/NREMT policy.',
     continuingEducationNotes: 'Confirm current CE hour distribution and skills verification rules for your state and NREMT.',
@@ -280,7 +452,14 @@ final List<CertificationDefinition> _certifications = <CertificationDefinition>[
     typicalRenewalYears: 2,
     nationalCredential: true,
     issuingOrganizations: const ['NREMT', 'State EMS office'],
-    relatedCareerGoalIds: const ['ops_firefighter', 'ops_engineer'],
+    relatedCareerGoalIds: const [
+      'ops_firefighter',
+      'ops_engineer',
+      'ems_paramedic',
+      'ems_experienced_paramedic',
+      'ems_fto',
+      'ems_specialty_critical_care',
+    ],
     searchKeywords: const ['paramedic', 'medic'],
     renewalDescription: 'Renewal rules vary. Track your CE and follow your state/NREMT policy.',
     continuingEducationNotes: 'Confirm current CE hour distribution and skills verification rules for your state and NREMT.',
@@ -420,6 +599,26 @@ final List<Resource> _resources = <Resource>[
     createdAt: _seedNow,
     updatedAt: _seedNow,
   ),
+  Resource(
+    id: 'state_ems_authority',
+    title: 'Your state EMS office',
+    description: 'Find the official source for EMT/AEMT/Paramedic certification, CE, and scope-of-practice rules.',
+    type: ResourceType.officialStateAgency,
+    url: null,
+    state: null,
+    relatedCertificationDefinitionIds: const ['emt', 'aemt', 'paramedic'],
+    relatedCareerGoalIds: const [
+      'ems_emt',
+      'ems_aemt',
+      'ems_paramedic',
+      'ems_experienced_paramedic',
+    ],
+    verified: true,
+    lastVerifiedDate: _seedNow,
+    sourceType: ResourceSourceType.official,
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
 ];
 
 final List<CareerGoal> _goals = <CareerGoal>[
@@ -551,6 +750,237 @@ final List<CareerGoal> _goals = <CareerGoal>[
     ],
     recommendedExperience: const [],
     resourceIds: const ['state_fire_authority'],
+    nextRoles: const [],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+
+  // ── EMS career ladder ───────────────────────────────────────────────────
+  CareerGoal(
+    id: 'ems_explorer',
+    title: 'EMS Explorer / Student',
+    category: 'EMS',
+    description: 'Explore EMS careers and build readiness for EMT school.',
+    subtitle: 'Curiosity → committed student',
+    typicalPrerequisiteRoles: const [],
+    requirements: <Requirement>[
+      _reqCourse('ems_explore_ride', 'Observe or ride-along exposure', sortOrder: 10, description: 'Document observation time with an EMS agency when available.'),
+      _reqCourse('ems_cpr_first_aid', 'CPR / First Aid readiness', sortOrder: 20, description: 'Complete current CPR/BLS (and first aid if required by your program).'),
+      _reqCourse('ems_school_research', 'Research EMT programs', sortOrder: 30, description: 'Compare accredited EMT programs, schedules, and prerequisites.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
+    nextRoles: const ['EMT Student'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ems_emt_student',
+    title: 'EMT Student',
+    category: 'EMS',
+    description: 'Complete EMT education and clinical/field requirements.',
+    subtitle: 'In EMT school',
+    typicalPrerequisiteRoles: const ['EMS Explorer / Student'],
+    requirements: <Requirement>[
+      _reqCourse('emt_course', 'Complete EMT course', sortOrder: 10, description: 'Finish didactic and skills lab requirements for your EMT program.'),
+      _reqCourse('emt_clinical', 'Clinical / field internship hours', sortOrder: 20, description: 'Log required hospital and ambulance internship hours.'),
+      _reqCourse('emt_cognitive_exam', 'NREMT / state cognitive exam prep', sortOrder: 30, description: 'Prepare for and schedule the written exam used in your jurisdiction.'),
+      _reqCourse('emt_psychomotor', 'Psychomotor / skills verification', sortOrder: 40, description: 'Complete skills testing required by your program or state.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
+    nextRoles: const ['EMT'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ems_emt',
+    title: 'EMT',
+    category: 'EMS',
+    description: 'Establish a solid EMT practice foundation and renewal discipline.',
+    subtitle: 'Licensed / certified EMT',
+    typicalPrerequisiteRoles: const ['EMT Student'],
+    requirements: <Requirement>[
+      _reqCert('emt_cred', 'EMT', defId: 'emt', sortOrder: 10, stateDependent: true),
+      _reqCourse('emt_agency_onboard', 'Agency onboarding / protocols', sortOrder: 20, description: 'Complete orientation, protocols, and ride-time expectations for your agency.'),
+      _reqCourse('emt_ce_plan', 'CE / renewal plan', sortOrder: 30, description: 'Track continuing education toward your next renewal cycle.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
+    nextRoles: const ['Advanced EMT', 'Paramedic', 'EMS Instructor'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ems_aemt',
+    title: 'Advanced EMT',
+    category: 'EMS',
+    description: 'Advance clinical capability beyond EMT while building toward paramedic or specialty work.',
+    subtitle: 'AEMT pathway',
+    typicalPrerequisiteRoles: const ['EMT'],
+    requirements: <Requirement>[
+      _reqCert('aemt_cred', 'AEMT', defId: 'aemt', sortOrder: 10, stateDependent: true),
+      _reqCourse('aemt_protocol', 'AEMT protocol competency', sortOrder: 20, description: 'Document protocol review and skills sign-off for advanced interventions authorized in your system.'),
+      _reqCourse('aemt_ce', 'AEMT CE / skills maintenance', sortOrder: 30, description: 'Maintain CE and skills verification for AEMT renewal.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
+    nextRoles: const ['Paramedic'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ems_paramedic',
+    title: 'Paramedic',
+    category: 'EMS',
+    description: 'Complete paramedic education and enter practice as a paramedic.',
+    subtitle: 'Paramedic credential',
+    typicalPrerequisiteRoles: const ['EMT', 'Advanced EMT'],
+    requirements: <Requirement>[
+      _reqCert('paramedic_cred', 'Paramedic', defId: 'paramedic', sortOrder: 10, stateDependent: true),
+      _reqCourse('medic_program', 'Paramedic program completion', sortOrder: 20, description: 'Finish accredited paramedic coursework, clinicals, and field internship.'),
+      _reqCourse('medic_exam', 'NREMT / state paramedic exam', sortOrder: 30, description: 'Pass the cognitive and skills requirements used in your jurisdiction.'),
+      _reqCourse('medic_onboard', 'Agency paramedic onboarding', sortOrder: 40, description: 'Complete protocol, skills, and clearance steps for independent paramedic practice.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
+    nextRoles: const [
+      'Experienced Paramedic',
+      'FTO / Preceptor',
+      'EMS Supervisor',
+      'Critical Care / Specialty EMS',
+    ],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ems_experienced_paramedic',
+    title: 'Experienced Paramedic',
+    category: 'EMS',
+    description: 'Build depth: complex calls, mentoring readiness, and specialty interest.',
+    subtitle: 'Seasoned clinician',
+    typicalPrerequisiteRoles: const ['Paramedic'],
+    requirements: <Requirement>[
+      _reqCourse('medic_complex_calls', 'Document complex / high-acuity experience', sortOrder: 10, description: 'Log challenging medical, trauma, and multi-patient incidents with reflection.'),
+      _reqCourse('medic_ce_depth', 'Advanced CE / specialty education', sortOrder: 20, description: 'Complete advanced CE toward critical care, education, or leadership interests.'),
+      _reqCourse('medic_peer_support', 'Peer coaching or mentoring hours', sortOrder: 30, description: 'Support newer clinicians through informal coaching or shift mentoring.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
+    nextRoles: const ['FTO / Preceptor', 'EMS Instructor', 'EMS Supervisor'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ems_fto',
+    title: 'FTO / Preceptor',
+    category: 'EMS',
+    description: 'Train and evaluate new EMS clinicians in the field.',
+    subtitle: 'Field training officer',
+    typicalPrerequisiteRoles: const ['Paramedic', 'Experienced Paramedic'],
+    requirements: <Requirement>[
+      _reqCourse('fto_course', 'FTO / preceptor course', sortOrder: 10, description: 'Complete your agency or state field-training officer / preceptor program.'),
+      _reqCourse('fto_evals', 'Document trainee evaluations', sortOrder: 20, description: 'Complete structured evaluations and coaching notes for assigned trainees.'),
+      _reqCourse('fto_feedback', 'Receive FTO program feedback', sortOrder: 30, description: 'Review program feedback and refine coaching approach.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
+    nextRoles: const ['EMS Instructor', 'EMS Supervisor'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ems_instructor',
+    title: 'EMS Instructor',
+    category: 'EMS',
+    description: 'Teach EMS courses and contribute to workforce development.',
+    subtitle: 'EMS education track',
+    typicalPrerequisiteRoles: const ['EMT', 'Paramedic', 'FTO / Preceptor'],
+    requirements: <Requirement>[
+      _reqCourse('ems_instructor_cred', 'EMS instructor credential / approval', sortOrder: 10, description: 'Meet state or program requirements to instruct EMS courses.'),
+      _reqCourse('ems_teach_hours', 'Documented teaching hours', sortOrder: 20, description: 'Log classroom, skills-lab, or clinical instruction hours.'),
+      _reqCourse('ems_curriculum', 'Course / skills-lab preparation', sortOrder: 30, description: 'Prepare lesson plans, skills sheets, and evaluations for a course you support.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
+    nextRoles: const ['EMS Supervisor', 'EMS leadership'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ems_supervisor',
+    title: 'EMS Supervisor',
+    category: 'EMS',
+    description: 'Shift or program supervision: people, quality, and daily operations.',
+    subtitle: 'Front-line EMS leadership',
+    typicalPrerequisiteRoles: const ['Paramedic', 'FTO / Preceptor', 'Experienced Paramedic'],
+    requirements: <Requirement>[
+      _reqCourse('ems_sup_leadership', 'Supervisory / leadership course', sortOrder: 10, description: 'Complete leadership, ICS, or supervisor coursework expected by your agency.'),
+      _reqCourse('ems_sup_qa', 'QA / QI participation', sortOrder: 20, description: 'Document involvement in quality assurance or improvement reviews.'),
+      _reqCourse('ems_sup_acting', 'Acting supervisor / charge experience', sortOrder: 30, description: 'Log supervised acting-supervisor or charge assignments.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
+    nextRoles: const ['EMS Captain / Lieutenant', 'EMS Chief / Director'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ems_captain',
+    title: 'EMS Captain / Lieutenant',
+    category: 'EMS',
+    description: 'Company- or shift-level EMS command and crew leadership.',
+    subtitle: 'Company / shift officer',
+    typicalPrerequisiteRoles: const ['EMS Supervisor', 'Paramedic'],
+    requirements: <Requirement>[
+      _reqCourse('ems_co_ops', 'Shift / company operations ownership', sortOrder: 10, description: 'Document ownership of staffing, readiness, and operational decisions for a crew or shift.'),
+      _reqCourse('ems_co_training', 'Crew training coordination', sortOrder: 20, description: 'Plan and deliver recurring crew training or drills.'),
+      _reqCourse('ems_co_promo', 'Officer promotional prep', sortOrder: 30, description: 'Prepare for written, assessment, or interview processes used for EMS officer roles.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
+    nextRoles: const ['EMS Chief / Director'],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  CareerGoal(
+    id: 'ems_chief',
+    title: 'EMS Chief / Director',
+    category: 'EMS',
+    description: 'Executive EMS leadership: strategy, systems, and community accountability.',
+    subtitle: 'EMS system executive',
+    typicalPrerequisiteRoles: const ['EMS Captain', 'EMS Supervisor', 'EMS Lieutenant'],
+    requirements: <Requirement>[
+      _reqCourse('ems_exec_strategy', 'Strategic / system planning', sortOrder: 10, description: 'Evidence of strategic planning, system design, or major program ownership.'),
+      _reqCourse('ems_exec_budget', 'Budget / policy / labor exposure', sortOrder: 20, description: 'Documented involvement in budget, policy, labor, or board processes.'),
+      _reqCourse('ems_exec_external', 'External / community leadership', sortOrder: 30, description: 'Work with hospitals, medical directors, elected officials, or regional partners.'),
+      _reqCourse('ems_exec_prep', 'Chief / director selection prep', sortOrder: 40, description: 'Executive interview and portfolio preparation for EMS chief or director roles.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
+    nextRoles: const [],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+
+  // Specialty branches stay off the cumulative EMS ladder so they can expand
+  // later (Community Paramedicine, Tactical, Flight, Education, Leadership)
+  // without rewriting Personal navigation.
+  CareerGoal(
+    id: 'ems_specialty_critical_care',
+    title: 'Critical Care / Specialty EMS',
+    category: 'EMS Specialty',
+    description: 'Prepare for critical care, CCT, or other specialty paramedic practice.',
+    subtitle: 'Specialty branch · extensible',
+    typicalPrerequisiteRoles: const ['Paramedic', 'Experienced Paramedic'],
+    requirements: <Requirement>[
+      _reqCert('paramedic_cc', 'Paramedic', defId: 'paramedic', sortOrder: 10, stateDependent: true),
+      _reqCourse('cc_course', 'Critical care / specialty course', sortOrder: 20, description: 'Complete a critical care, CCT, or agency specialty program recognized in your system.'),
+      _reqCourse('cc_clinical', 'Specialty clinical / transport experience', sortOrder: 30, description: 'Document required specialty clinical or transport hours.'),
+      _reqCourse('cc_protocol', 'Specialty protocol competency', sortOrder: 40, description: 'Complete protocol and equipment competencies for the specialty assignment.'),
+    ],
+    recommendedExperience: const [],
+    resourceIds: const ['state_ems_authority'],
     nextRoles: const [],
     createdAt: _seedNow,
     updatedAt: _seedNow,
