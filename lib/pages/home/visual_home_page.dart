@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
-import 'package:firepath/pages/department/my_department_page.dart';
+import 'package:firepath/pages/department/department_training_home_page.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/services/readiness_action_plan.dart';
 import 'package:firepath/services/readiness_snapshot.dart';
@@ -23,7 +23,7 @@ class VisualHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mode = context.watch<AppModeController>();
-    if (mode.isDepartment) return const MyDepartmentPage();
+    if (mode.isDepartment) return const DepartmentTrainingHomePage();
 
     final app = context.watch<AppState>();
     final roadmap = app.roadmap;

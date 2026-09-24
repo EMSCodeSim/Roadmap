@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:firepath/services/department_link_store.dart';
 import 'package:firepath/services/local_store.dart';
+import 'package:firepath/services/responder_roadmap_api.dart';
 
 enum AppExperienceMode { personal, department }
 
@@ -65,6 +66,14 @@ class AppModeController extends ChangeNotifier {
   }
 
   Future<void> setDepartmentLink(DepartmentLink? link) async {
+    _departmentLink = link;
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> refreshFromSession(ResponderRoadmapSession session) async {
+    if (!session.hasDepartment) return;
+    final link = DepartmentLink.fromSession(session);
+    await _departmentLinkStore.save(link);
     _departmentLink = link;
     if (!_disposed) notifyListeners();
   }
