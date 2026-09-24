@@ -25,6 +25,7 @@ import 'package:firepath/pages/career/career_inbox_page.dart';
 import 'package:firepath/pages/career/promotion_portfolio_review_page.dart';
 import 'package:firepath/pages/career/department_transfer_page.dart';
 import 'package:firepath/pages/department/my_department_page.dart';
+import 'package:firepath/pages/department/web_signin_page.dart';
 import 'package:firepath/pages/department/mode_aware_advance_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_v2_page.dart';
@@ -73,6 +74,17 @@ class AppRouter {
         name: 'onboarding',
         pageBuilder: (context, state) =>
             const NoTransitionPage(child: OnboardingV2Page()),
+      ),
+
+      GoRoute(
+        path: AppRoutes.webSignIn,
+        name: 'web_signin',
+        pageBuilder: (context, state) => MaterialPage(
+          child: WebSignInPage(
+            requestId: state.uri.queryParameters['id'],
+            approvalToken: state.uri.queryParameters['token'],
+          ),
+        ),
       ),
 
       // The full department administration portal remains web-only. Mobile
@@ -555,6 +567,7 @@ class AppRoutes {
   static const String settings = '/settings';
 
   static const String department = '/department';
+  static const String webSignIn = '/web-signin';
 
   static const String career = growth;
   static const String careerVault = personalLog;

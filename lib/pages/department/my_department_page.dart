@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_inbox_page.dart';
+import 'package:firepath/pages/department/web_signin_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/services/department_link_store.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
@@ -562,6 +563,11 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                           syncing: _syncing,
                           onSync: _sync,
                           onSignOut: _disconnect,
+                          onWebSignIn: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const WebSignInPage(),
+                            ),
+                          ),
                         ),
                       if (!widget.taskBooksOnly) ...[
                         const SizedBox(height: 12),
@@ -640,6 +646,7 @@ class _DepartmentConnectionCard extends StatelessWidget {
     required this.syncing,
     required this.onSync,
     required this.onSignOut,
+    required this.onWebSignIn,
   });
 
   final DepartmentLink link;
@@ -647,6 +654,7 @@ class _DepartmentConnectionCard extends StatelessWidget {
   final bool syncing;
   final VoidCallback onSync;
   final VoidCallback onSignOut;
+  final VoidCallback onWebSignIn;
 
   @override
   Widget build(BuildContext context) {
@@ -736,6 +744,15 @@ class _DepartmentConnectionCard extends StatelessWidget {
                 label: const Text('Sign out'),
               ),
             ],
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onWebSignIn,
+              icon: const Icon(Icons.qr_code_scanner_rounded),
+              label: const Text('Sign in to web with QR'),
+            ),
           ),
         ],
       ),
