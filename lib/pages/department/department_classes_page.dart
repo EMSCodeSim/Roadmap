@@ -25,7 +25,31 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
   Future<void> _createTraining() async {
     final setup = _setup;
     if (setup == null) return;
-    final created = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup));
+    DepartmentTrainingSheetTemplate? selected;
+    try {
+      final templates = await _api.listTrainingSheetTemplates();
+      if (!mounted) return;
+      selected = await showModalBottomSheet<DepartmentTrainingSheetTemplate?>(
+        context: context, useSafeArea: true,
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text('Create Training Sheet', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            FilledButton.icon(onPressed: ()=>Navigator.pop(context), icon: const Icon(Icons.note_add_outlined), label: const Text('Blank Training Sheet')),
+            if (templates.isNotEmpty) ...[
+              const SizedBox(height: 16), const Text('From Template', style: TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              ...templates.take(8).map((t)=>ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.copy_all_outlined), title: Text(t.name), subtitle: Text(t.defaultTitle.isEmpty ? t.trainingCategory.replaceAll('_',' ') : t.defaultTitle), onTap: ()=>Navigator.pop(context,t))),
+            ],
+          ]),
+        ),
+      );
+    } catch (_) {
+      // Template API may not be deployed yet; Blank remains a safe fallback.
+    }
+    if (!mounted) return;
+    final created = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected));
     if (created == true && mounted) await _load();
   }
 
@@ -75,15 +99,25 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
 
 
 class _CreateTrainingSheet extends StatefulWidget {
-  const _CreateTrainingSheet({required this.api, required this.setup});
+  const _CreateTrainingSheet({required this.api, required this.setup, this.template});
   final ResponderRoadmapApi api;
   final DepartmentClassSetup setup;
+  final DepartmentTrainingSheetTemplate? template;
   @override State<_CreateTrainingSheet> createState() => _CreateTrainingSheetState();
 }
 
 class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
   bool busy = false, qr = true; String? error; String category = 'COMPANY'; String checklist = '';
+  @override void initState() {
+    super.initState();
+    final t=widget.template;
+    if(t!=null){
+      title.text=t.defaultTitle; location.text=t.location; notes.text=t.notes;
+      hours.text=t.creditHours > 0 ? t.creditHours.toString() : '';
+      category=t.trainingCategory; checklist=t.checklistVersionId; qr=t.selfRegistration;
+    }
+  }
   @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); super.dispose(); }
   bool req(String key) => widget.setup.requiredFields.contains(key);
   Future<void> save() async {
@@ -94,10 +128,12 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(req('HOURS') && h<=0){setState(()=>error='Training hours are required by your department.'); return;}
     final mode=context.read<AppModeController>();
     final me=widget.setup.proctors.where((p)=>(p['userId']?.toString()??'')==mode.departmentLink?.userId).toList();
-    if(me.isEmpty){setState(()=>error='Your instructor account is not available as an approved proctor.'); return;}
+    final defaults=widget.template?.proctorUserIds.where((id)=>widget.setup.proctors.any((p)=>p['userId']?.toString()==id)).toList() ?? const <String>[];
+    final proctors=defaults.isNotEmpty ? defaults : me.map((p)=>p['userId'].toString()).toList();
+    if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:[me.first['userId'].toString()], selfRegistration:qr);
+      await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
       if(mounted) Navigator.pop(context,true);
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
@@ -105,7 +141,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   @override Widget build(BuildContext context)=>Padding(
     padding: EdgeInsets.fromLTRB(20,16,20,MediaQuery.viewInsetsOf(context).bottom+24),
     child: SingleChildScrollView(child: Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-      Text('Create Training Sheet',style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
+      Text(widget.template==null?'Blank Training Sheet':'From Template · ${widget.template!.name}',style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
       const SizedBox(height:6), const Text('Field entry uses your department’s RMS requirements. QR sign-in is on by default.'),
       if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
       const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
