@@ -689,7 +689,7 @@ class DepartmentCloseValidation {
   final bool canClose;
   final List<DepartmentCloseValidationItem> missing;
   const DepartmentCloseValidation({required this.canClose,required this.missing});
-  factory DepartmentCloseValidation.fromJson(Map<String,dynamic> json)=>DepartmentCloseValidation(canClose:json['canClose']==true,missing:(json['missing'] as List???const[]).whereType<Map>().map((e)=>DepartmentCloseValidationItem.fromJson(Map<String,dynamic>.from(e))).toList(growable:false));
+  factory DepartmentCloseValidation.fromJson(Map<String,dynamic> json)=>DepartmentCloseValidation(canClose:json['canClose']==true,missing:(json['missing'] as List? ?? const []).whereType<Map>().map((e)=>DepartmentCloseValidationItem.fromJson(Map<String,dynamic>.from(e))).toList(growable:false));
 }
 
 class DepartmentClassDetail {
