@@ -678,6 +678,20 @@ class DepartmentClassStudent {
       );
 }
 
+class DepartmentCloseValidationItem {
+  final String code;
+  final String message;
+  final String action;
+  const DepartmentCloseValidationItem({required this.code, required this.message, required this.action});
+  factory DepartmentCloseValidationItem.fromJson(Map<String,dynamic> json)=>DepartmentCloseValidationItem(code:(json['code'] as String?)??'MISSING',message:(json['message'] as String?)??'Required information is missing.',action:(json['action'] as String?)??'Complete the missing information.');
+}
+class DepartmentCloseValidation {
+  final bool canClose;
+  final List<DepartmentCloseValidationItem> missing;
+  const DepartmentCloseValidation({required this.canClose,required this.missing});
+  factory DepartmentCloseValidation.fromJson(Map<String,dynamic> json)=>DepartmentCloseValidation(canClose:json['canClose']==true,missing:(json['missing'] as List???const[]).whereType<Map>().map((e)=>DepartmentCloseValidationItem.fromJson(Map<String,dynamic>.from(e))).toList(growable:false));
+}
+
 class DepartmentClassDetail {
   final String id;
   final String title;
@@ -1184,6 +1198,11 @@ class ResponderRoadmapApi {
     return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
+  Future<DepartmentCloseValidation> validateClassClosure(String classId) async {
+    final data=await _request('GET','classes/${Uri.encodeComponent(classId)}/close-validation');
+    return DepartmentCloseValidation.fromJson(_asMap(data));
+  }
+
   Future<DepartmentClassDetail> updateClassStatus({required String classId, required String status}) async {
     final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/status', body: {'status': status});
     return DepartmentClassDetail.fromJson(_asMap(data));
@@ -1209,6 +1228,17 @@ class ResponderRoadmapApi {
       },
     );
   }
+
+  Future<List<int>> downloadClosedTrainingCsv(String classId) async {
+    final token=(await _secureStorage.read(key:_tokenKey))?.trim()??'';
+    if(token.isEmpty)throw const ResponderRoadmapApiException('Connect your ResponderRoadmap account first.',statusCode:401);
+    final response=await _client.get(Uri.parse('$baseUrl/classes/${Uri.encodeComponent(classId)}/export.csv'),headers:{'Accept':'text/csv','Authorization':'Bearer $token'});
+    if(response.statusCode<200||response.statusCode>=300)throw ResponderRoadmapApiException('Could not export this training record (${response.statusCode}).',statusCode:response.statusCode);
+    return response.bodyBytes;
+  }
+
+  Future<Map<String,dynamic>> getClosedTrainingExportRecord(String classId) async =>
+      _asMap(await _request('GET','classes/${Uri.encodeComponent(classId)}/export'));
 
   Future<void> disconnect() async {
     await _secureStorage.delete(key: _tokenKey);
