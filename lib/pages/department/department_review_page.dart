@@ -8,7 +8,8 @@ import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/widgets/app_mode_switcher.dart';
 
 class DepartmentReviewPage extends StatefulWidget {
-  const DepartmentReviewPage({super.key});
+  final String? initialReviewId;
+  const DepartmentReviewPage({super.key, this.initialReviewId});
 
   @override
   State<DepartmentReviewPage> createState() => _DepartmentReviewPageState();
@@ -20,6 +21,7 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
   List<DepartmentClassSummary> _classes = const [];
   bool _loading = true;
   String? _error;
+  bool _initialReviewOpened = false;
 
   @override
   void initState() {
@@ -45,6 +47,15 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
         _items = items;
         _classes = classes;
       });
+      if (!_initialReviewOpened && widget.initialReviewId != null) {
+        final matching = items.where((item) => item.id == widget.initialReviewId).firstOrNull;
+        if (matching != null) {
+          _initialReviewOpened = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _open(matching);
+          });
+        }
+      }
     } on ResponderRoadmapApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);

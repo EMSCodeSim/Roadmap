@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/pages/department/department_task_book_page.dart';
+import 'package:firepath/pages/department/department_classes_page.dart';
+import 'package:firepath/pages/department/department_review_page.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
@@ -20,6 +22,8 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     with WidgetsBindingObserver {
   final _api = ResponderRoadmapApi();
   List<DepartmentTaskBookAssignment> _assignments = const [];
+  List<DepartmentReviewItem> _reviews = const [];
+  List<DepartmentClassSummary> _classes = const [];
   bool _loading = true;
   bool _refreshing = false;
   String? _error;
@@ -48,11 +52,20 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     try {
       final session = await _api.currentSession();
       final items = await _api.listAssignments();
+      List<DepartmentReviewItem> reviews = const [];
+      List<DepartmentClassSummary> classes = const [];
+      final role = (session.role ?? '').toUpperCase();
+      if (const {'EVALUATOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
+        try { reviews = await _api.listReviewQueue(); } catch (_) {}
+      }
+      if (const {'INSTRUCTOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
+        try { classes = await _api.listClasses(); } catch (_) {}
+      }
       await context.read<DepartmentInboxController>().refresh(silent: true);
       if (!mounted) return;
       await context.read<AppModeController>().refreshFromSession(session);
       items.sort(_priorityCompare);
-      setState(() { _assignments = items; _error = null; _loading = false; });
+      setState(() { _assignments = items; _reviews = reviews; _classes = classes; _error = null; _loading = false; });
     } on ResponderRoadmapApiException catch (e) {
       if (!mounted) return;
       setState(() { _error = e.message; _loading = false; });
@@ -101,6 +114,9 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     final waiting = _assignments.where((a) => _status(a) == 'Waiting for evaluator').toList();
     final completed = _assignments.where((a) => _status(a) == 'Complete').take(5).toList();
     final next = active.where((a) => _status(a) != 'Waiting for evaluator').firstOrNull;
+    final returned = active.where((a) => _status(a).startsWith('Returned')).toList();
+    final overdue = active.where((a) => _status(a) == 'Overdue').toList();
+    final openClasses = _classes.where((c) => c.status != 'COMPLETE').toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -134,6 +150,16 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   )),
                   _SyncLine(inbox: inbox),
+                  const SizedBox(height: 12),
+                  _NeedsAttention(
+                    returned: returned,
+                    overdue: overdue,
+                    reviews: _reviews,
+                    classes: openClasses,
+                    onAssignment: _open,
+                    onReview: (item) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentReviewPage(initialReviewId: item.id))),
+                    onClass: (item) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentClassDetailPage(classId: item.id))),
+                  ),
                   const SizedBox(height: 12),
                   if (next != null) _NextCard(item: next, status: _status(next), onTap: () => _open(next))
                   else if (waiting.isNotEmpty)
@@ -222,4 +248,100 @@ class _Section extends StatelessWidget {
       ),
     )),
   ]);
+}
+
+
+class _NeedsAttention extends StatelessWidget {
+  final List<DepartmentTaskBookAssignment> returned;
+  final List<DepartmentTaskBookAssignment> overdue;
+  final List<DepartmentReviewItem> reviews;
+  final List<DepartmentClassSummary> classes;
+  final Future<void> Function(DepartmentTaskBookAssignment) onAssignment;
+  final void Function(DepartmentReviewItem) onReview;
+  final void Function(DepartmentClassSummary) onClass;
+
+  const _NeedsAttention({
+    required this.returned,
+    required this.overdue,
+    required this.reviews,
+    required this.classes,
+    required this.onAssignment,
+    required this.onReview,
+    required this.onClass,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final count = returned.length + overdue.length + reviews.length + classes.length;
+    if (count == 0) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(children: [
+            const Icon(Icons.check_circle_outline_rounded),
+            const SizedBox(width: 10),
+            Expanded(child: Text('Needs Attention', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
+            const Text('Nothing urgent'),
+          ]),
+        ),
+      );
+    }
+
+    final tiles = <Widget>[];
+    for (final item in returned.take(2)) {
+      tiles.add(ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.assignment_return_outlined),
+        title: Text(item.taskBookTitle),
+        subtitle: const Text('Returned — correction needed'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => onAssignment(item),
+      ));
+    }
+    for (final item in overdue.take(2)) {
+      tiles.add(ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.schedule_rounded),
+        title: Text(item.taskBookTitle),
+        subtitle: const Text('Overdue training'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => onAssignment(item),
+      ));
+    }
+    for (final item in reviews.take(2)) {
+      tiles.add(ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.fact_check_outlined),
+        title: Text(item.requirementTitle),
+        subtitle: Text('${item.memberName} · evaluation waiting'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => onReview(item),
+      ));
+    }
+    for (final item in classes.take(2)) {
+      tiles.add(ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.groups_2_outlined),
+        title: Text(item.title),
+        subtitle: Text('${item.completeCount} of ${item.rosterCount} complete · ${item.status}'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => onClass(item),
+      ));
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text('Needs Attention', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
+            Text('$count', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+          ]),
+          const SizedBox(height: 4),
+          Text('Open the item that needs action now.', style: Theme.of(context).textTheme.bodySmall),
+          ...tiles,
+        ]),
+      ),
+    );
+  }
 }
