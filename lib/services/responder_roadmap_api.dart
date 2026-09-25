@@ -587,13 +587,6 @@ class DepartmentClassSummary {
   final String title;
   final String classType;
   final String checklistTitle;
-  final String checklistVersionId;
-  final String trainingCategory;
-  final double creditHours;
-  final DateTime? startsAt;
-  final String location;
-  final String notes;
-  final List<String> proctorUserIds;
   final String status;
   final DateTime? startsAt;
   final String location;
@@ -668,14 +661,57 @@ class DepartmentClassDetail {
   final String title;
   final String classType;
   final String checklistTitle;
+  final String checklistVersionId;
+  final String trainingCategory;
+  final double creditHours;
+  final DateTime? startsAt;
+  final String location;
+  final String notes;
+  final List<String> proctorUserIds;
   final String status;
   final bool registrationEnabled;
   final String registrationToken;
   final List<DepartmentClassSection> sections;
   final List<DepartmentClassStudent> roster;
-  const DepartmentClassDetail({required this.id, required this.title, required this.classType, required this.checklistTitle, required this.checklistVersionId, required this.trainingCategory, required this.creditHours, required this.startsAt, required this.location, required this.notes, required this.proctorUserIds, required this.status, required this.registrationEnabled, required this.registrationToken, required this.sections, required this.roster});
+
+  const DepartmentClassDetail({
+    required this.id,
+    required this.title,
+    required this.classType,
+    required this.checklistTitle,
+    required this.checklistVersionId,
+    required this.trainingCategory,
+    required this.creditHours,
+    required this.startsAt,
+    required this.location,
+    required this.notes,
+    required this.proctorUserIds,
+    required this.status,
+    required this.registrationEnabled,
+    required this.registrationToken,
+    required this.sections,
+    required this.roster,
+  });
+
   factory DepartmentClassDetail.fromJson(Map<String, dynamic> json) => DepartmentClassDetail(
-        id: (json['id'] as String?) ?? '', title: (json['title'] as String?) ?? 'Class', classType: (json['classType'] as String?) ?? 'GENERAL', checklistTitle: (json['checklistTitle'] as String?) ?? 'Checklist', checklistVersionId: (json['checklistVersionId'] as String?) ?? '', trainingCategory: (json['trainingCategory'] as String?) ?? 'COMPANY', creditHours: (json['creditHours'] as num?)?.toDouble() ?? 0, startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''), location: (json['location'] as String?) ?? '', notes: (json['notes'] as String?) ?? '', proctorUserIds: (json['proctors'] as List? ?? const []).whereType<Map>().map((v)=>v['userId']?.toString()??'').where((v)=>v.isNotEmpty).toList(growable:false), status: (json['status'] as String?) ?? 'DRAFT', registrationEnabled: json['registrationEnabled'] == true, registrationToken: (json['registrationToken'] as String?) ?? '',
+        id: (json['id'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Class',
+        classType: (json['classType'] as String?) ?? 'GENERAL',
+        checklistTitle: (json['checklistTitle'] as String?) ?? 'Checklist',
+        checklistVersionId: (json['checklistVersionId'] as String?) ?? '',
+        trainingCategory: (json['trainingCategory'] as String?) ?? 'COMPANY',
+        creditHours: (json['creditHours'] as num?)?.toDouble() ?? 0,
+        startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        location: (json['location'] as String?) ?? '',
+        notes: (json['notes'] as String?) ?? '',
+        proctorUserIds: (json['proctors'] as List? ?? const [])
+            .whereType<Map>()
+            .map((v) => v['userId']?.toString() ?? '')
+            .where((v) => v.isNotEmpty)
+            .toList(growable: false),
+        status: (json['status'] as String?) ?? 'DRAFT',
+        registrationEnabled: json['registrationEnabled'] == true,
+        registrationToken: (json['registrationToken'] as String?) ?? '',
         sections: (json['sections'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSection.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
         roster: (json['roster'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassStudent.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
       );
