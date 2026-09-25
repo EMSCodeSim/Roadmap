@@ -235,15 +235,67 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   }
 
   Future<void> _closeTraining() async {
-    final d=_detail; if(d==null||_busy)return;
-    final unresolved=d.roster.where((s)=>s.attendance=='REGISTERED').length;
-    final required=d.sections.expand((s)=>s.skills).where((s)=>s.required).map((s)=>s.id).toSet();
-    final incomplete=d.roster.where((s)=>s.attendance=='PRESENT' && required.any((id)=>!s.results.any((r)=>r.requirementId==id && r.result!='NOT_EVALUATED'))).length;
-    final ok=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:const Text('Close Training?'),content:Text('Roster: ${d.roster.length}\nAttendance still unresolved: $unresolved\nPresent members needing required skill results: $incomplete\n\nClosing finalizes the official digital training sheet and stops QR registration.'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Keep Open')),FilledButton(onPressed:unresolved>0||incomplete>0?null:()=>Navigator.pop(context,true),child:const Text('Finalize & Close'))]))??false;
-    if(!ok)return; setState(()=>_busy=true);
-    try{_setDetail(await _api.updateClassStatus(classId:widget.classId,status:'COMPLETE'));}
-    catch(e){if(mounted)setState(()=>_error=e.toString());}
-    finally{if(mounted)setState(()=>_busy=false);}
+    final d=_detail;
+    if(d==null||_busy)return;
+    setState(()=>_busy=true);
+    try{
+      final validation=await _api.validateClassClosure(widget.classId);
+      if(!mounted)return;
+      if(!validation.canClose){
+        await showDialog<void>(
+          context:context,
+          builder:(context)=>AlertDialog(
+            title:const Text('Training is not ready to close'),
+            content:SizedBox(
+              width:420,
+              child:SingleChildScrollView(
+                child:Column(
+                  mainAxisSize:MainAxisSize.min,
+                  crossAxisAlignment:CrossAxisAlignment.start,
+                  children:[
+                    const Text('Complete these items before this becomes an official training record.'),
+                    const SizedBox(height:12),
+                    ...validation.missing.map((item)=>Padding(
+                      padding:const EdgeInsets.only(bottom:12),
+                      child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                        const Padding(padding:EdgeInsets.only(top:2),child:Icon(Icons.error_outline_rounded,size:20)),
+                        const SizedBox(width:10),
+                        Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                          Text(item.message,style:const TextStyle(fontWeight:FontWeight.w800)),
+                          const SizedBox(height:2),
+                          Text(item.action),
+                        ])),
+                      ]),
+                    )),
+                  ],
+                ),
+              ),
+            ),
+            actions:[FilledButton(onPressed:()=>Navigator.pop(context),child:const Text('Fix Missing Items'))],
+          ),
+        );
+        return;
+      }
+      final ok=await showDialog<bool>(
+        context:context,
+        builder:(context)=>AlertDialog(
+          title:const Text('Close Training?'),
+          content:Text('Roster: ${d.roster.length}\n\nAll required fields, attendance, proctors and skill results are complete. Closing finalizes the official digital training sheet and stops QR registration.'),
+          actions:[
+            TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Keep Open')),
+            FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Finalize & Close')),
+          ],
+        ),
+      )??false;
+      if(!ok)return;
+      _setDetail(await _api.updateClassStatus(classId:widget.classId,status:'COMPLETE'));
+    }on ResponderRoadmapApiException catch(e){
+      if(mounted)setState(()=>_error=e.message);
+    }catch(e){
+      if(mounted)setState(()=>_error=e.toString());
+    }finally{
+      if(mounted)setState(()=>_busy=false);
+    }
   }
 
   Future<void> _showQr() async {
