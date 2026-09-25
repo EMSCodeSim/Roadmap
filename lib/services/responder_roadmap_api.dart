@@ -656,6 +656,35 @@ class DepartmentClassStudent {
       );
 }
 
+class DepartmentCloseValidationItem {
+  final String code;
+  final String message;
+  final String action;
+  const DepartmentCloseValidationItem({required this.code, required this.message, required this.action});
+
+  factory DepartmentCloseValidationItem.fromJson(Map<String, dynamic> json) =>
+      DepartmentCloseValidationItem(
+        code: (json['code'] as String?) ?? 'MISSING',
+        message: (json['message'] as String?) ?? 'Required information is missing.',
+        action: (json['action'] as String?) ?? 'Complete the missing information.',
+      );
+}
+
+class DepartmentCloseValidation {
+  final bool canClose;
+  final List<DepartmentCloseValidationItem> missing;
+  const DepartmentCloseValidation({required this.canClose, required this.missing});
+
+  factory DepartmentCloseValidation.fromJson(Map<String, dynamic> json) =>
+      DepartmentCloseValidation(
+        canClose: json['canClose'] == true,
+        missing: (json['missing'] as List? ?? const [])
+            .whereType<Map>()
+            .map((item) => DepartmentCloseValidationItem.fromJson(Map<String, dynamic>.from(item)))
+            .toList(growable: false),
+      );
+}
+
 class DepartmentClassDetail {
   final String id;
   final String title;
@@ -1035,6 +1064,11 @@ class ResponderRoadmapApi {
   Future<DepartmentClassDetail> manageClassRegistration({required String classId, required String action}) async {
     final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/registration', body: {'action': action});
     return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentCloseValidation> validateClassClosure(String classId) async {
+    final data = await _request('GET', 'classes/${Uri.encodeComponent(classId)}/close-validation');
+    return DepartmentCloseValidation.fromJson(_asMap(data));
   }
 
   Future<DepartmentClassDetail> updateClassStatus({required String classId, required String status}) async {
