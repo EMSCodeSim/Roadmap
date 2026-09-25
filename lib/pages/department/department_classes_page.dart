@@ -246,6 +246,24 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     finally{if(mounted)setState(()=>_busy=false);}
   }
 
+  Future<void> _repeatTraining() async {
+    final d=_detail; if(d==null||_busy)return;
+    final date=await showDatePicker(context:context,initialDate:DateTime.now().add(const Duration(days:7)),firstDate:DateTime.now(),lastDate:DateTime.now().add(const Duration(days:730)));
+    if(date==null||!mounted)return;
+    final time=await showTimePicker(context:context,initialTime:TimeOfDay.fromDateTime(d.startsAt?.toLocal()??DateTime.now()));
+    if(time==null||!mounted)return;
+    final when=DateTime(date.year,date.month,date.day,time.hour,time.minute);
+    final ok=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:const Text('Repeat Training?'),content:Text('Create a new training sheet for ${d.title} on ${when.toLocal()}?\n\nThe setup is copied. Roster, attendance, skill results, signatures, completion status and old timestamps are not copied.'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Create Repeat'))]))??false;
+    if(!ok)return;
+    setState(()=>_busy=true);
+    try{
+      final created=await _api.createTrainingSheet(title:d.title,startsAt:when.toUtc().toIso8601String(),trainingCategory:d.trainingCategory,checklistVersionId:d.checklistVersionId,creditHours:d.creditHours,location:d.location,notes:d.notes,proctorUserIds:d.proctorUserIds,selfRegistration:false);
+      if(!mounted)return;
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder:(_)=>DepartmentClassDetailPage(classId:created.id)));
+    }catch(e){if(mounted)setState(()=>_error=e.toString());}
+    finally{if(mounted)setState(()=>_busy=false);}
+  }
+
   Future<void> _showQr() async {
     final d=_detail; if(d==null)return;
     if(!d.registrationEnabled || d.registrationToken.isEmpty) await _registration('OPEN');
@@ -273,7 +291,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Class roster')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       Text(detail.checklistTitle, style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 10),
       if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.check_circle_outline_rounded), label: const Text('Close Training'))]),
-      if (detail.status == 'COMPLETE') const Card(child: Padding(padding: EdgeInsets.all(14), child: Row(children:[Icon(Icons.verified_rounded),SizedBox(width:10),Expanded(child:Text('Training closed — official digital training sheet finalized.'))]))),
+      if (detail.status == 'COMPLETE') ...[const Card(child: Padding(padding: EdgeInsets.all(14), child: Row(children:[Icon(Icons.verified_rounded),SizedBox(width:10),Expanded(child:Text('Training closed — official digital training sheet finalized.'))]))), const SizedBox(height:8), OutlinedButton.icon(onPressed:_busy?null:_repeatTraining,icon:const Icon(Icons.replay_rounded),label:const Text('Repeat Training'))],
       const SizedBox(height: 12),
       DropdownButtonFormField<String>(value: _studentId, decoration: const InputDecoration(labelText: 'Student'), items: detail.roster.map((item) => DropdownMenuItem(value: item.id, child: Text('${item.name} · ${item.finalResult.replaceAll('_', ' ')}'))).toList(), onChanged: (value) => setState(() => _studentId = value)),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
