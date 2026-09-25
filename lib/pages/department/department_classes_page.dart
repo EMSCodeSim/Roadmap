@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -266,12 +269,32 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
 
   Future<void> _closeTraining() async {
     final d=_detail; if(d==null||_busy)return;
-    final unresolved=d.roster.where((s)=>s.attendance=='REGISTERED').length;
-    final required=d.sections.expand((s)=>s.skills).where((s)=>s.required).map((s)=>s.id).toSet();
-    final incomplete=d.roster.where((s)=>s.attendance=='PRESENT' && required.any((id)=>!s.results.any((r)=>r.requirementId==id && r.result!='NOT_EVALUATED'))).length;
-    final ok=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:const Text('Close Training?'),content:Text('Roster: ${d.roster.length}\nAttendance still unresolved: $unresolved\nPresent members needing required skill results: $incomplete\n\nClosing finalizes the official digital training sheet and stops QR registration.'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Keep Open')),FilledButton(onPressed:unresolved>0||incomplete>0?null:()=>Navigator.pop(context,true),child:const Text('Finalize & Close'))]))??false;
-    if(!ok)return; setState(()=>_busy=true);
-    try{_setDetail(await _api.updateClassStatus(classId:widget.classId,status:'COMPLETE'));}
+    setState(()=>_busy=true);
+    try{
+      final validation=await _api.validateClassClosure(widget.classId);
+      if(!mounted)return;
+      if(!validation.canClose){
+        await showDialog<void>(context:context,builder:(context)=>AlertDialog(
+          title:const Text('Training is not ready to close'),
+          content:SizedBox(width:420,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+            const Text('Complete these items before this becomes an official training record.'),const SizedBox(height:12),
+            ...validation.missing.map((item)=>Padding(padding:const EdgeInsets.only(bottom:12),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              const Padding(padding:EdgeInsets.only(top:2),child:Icon(Icons.error_outline_rounded,size:20)),const SizedBox(width:10),
+              Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(item.message,style:const TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:2),Text(item.action)])),
+            ]))),
+          ]))),
+          actions:[FilledButton(onPressed:()=>Navigator.pop(context),child:const Text('Fix Missing Items'))],
+        ));
+        return;
+      }
+      final ok=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(
+        title:const Text('Close Training?'),
+        content:Text('Roster: ${d.roster.length}\n\nAll required fields, attendance, proctors and skill results are complete. Closing finalizes the official digital training sheet and stops QR registration.'),
+        actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Keep Open')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Finalize & Close'))],
+      ))??false;
+      if(!ok)return;
+      _setDetail(await _api.updateClassStatus(classId:widget.classId,status:'COMPLETE'));
+    }on ResponderRoadmapApiException catch(e){if(mounted)setState(()=>_error=e.message);}
     catch(e){if(mounted)setState(()=>_error=e.toString());}
     finally{if(mounted)setState(()=>_busy=false);}
   }
@@ -290,6 +313,20 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       final created=await _api.createTrainingSheet(title:d.title,startsAt:when.toUtc().toIso8601String(),trainingCategory:d.trainingCategory,checklistVersionId:d.checklistVersionId,creditHours:d.creditHours,location:d.location,notes:d.notes,proctorUserIds:d.proctorUserIds,selfRegistration:false);
       if(!mounted)return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(builder:(_)=>DepartmentClassDetailPage(classId:created.id)));
+    }catch(e){if(mounted)setState(()=>_error=e.toString());}
+    finally{if(mounted)setState(()=>_busy=false);}
+  }
+
+  Future<void> _exportCsv() async {
+    final d=_detail; if(d==null||d.status!='COMPLETE'||_busy)return;
+    setState(()=>_busy=true);
+    try{
+      final bytes=await _api.downloadClosedTrainingCsv(widget.classId);
+      final dir=await getTemporaryDirectory();
+      final safe=d.title.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'),'_');
+      final file=File('${dir.path}/${safe.isEmpty?'training':safe}_${d.id}.csv');
+      await file.writeAsBytes(bytes,flush:true);
+      await Share.shareXFiles([XFile(file.path,mimeType:'text/csv')],subject:'${d.title} training record',text:'Closed Responder Roadmap training record for retention or manual RMS entry.');
     }catch(e){if(mounted)setState(()=>_error=e.toString());}
     finally{if(mounted)setState(()=>_busy=false);}
   }
@@ -333,7 +370,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       }),
 
       if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.check_circle_outline_rounded), label: const Text('Close Training'))]),
-      if (detail.status == 'COMPLETE') ...[const Card(child: Padding(padding: EdgeInsets.all(14), child: Row(children:[Icon(Icons.verified_rounded),SizedBox(width:10),Expanded(child:Text('Training closed — official digital training sheet finalized.'))]))), const SizedBox(height:8), OutlinedButton.icon(onPressed:_busy?null:_repeatTraining,icon:const Icon(Icons.replay_rounded),label:const Text('Repeat Training'))],
+      if (detail.status == 'COMPLETE') ...[const Card(child: Padding(padding:EdgeInsets.all(14),child:Row(children:[Icon(Icons.verified_rounded),SizedBox(width:10),Expanded(child:Text('Training closed — official digital training sheet finalized.'))]))), const SizedBox(height:8), Wrap(spacing:8,runSpacing:8,children:[OutlinedButton.icon(onPressed:_busy?null:_repeatTraining,icon:const Icon(Icons.replay_rounded),label:const Text('Repeat Training')),OutlinedButton.icon(onPressed:_busy?null:_exportCsv,icon:const Icon(Icons.table_view_outlined),label:const Text('Export CSV for RMS')),OutlinedButton.icon(onPressed:_busy?null:()=>Share.share('Open the canonical training record at https://responderroadmap.com/classes/${detail.id} to print/save as PDF.',subject:'${detail.title} training record'),icon:const Icon(Icons.picture_as_pdf_outlined),label:const Text('PDF / Print Record'))])],
       const SizedBox(height: 12),
       DropdownButtonFormField<String>(value: _studentId, decoration: const InputDecoration(labelText: 'Student'), items: detail.roster.map((item) => DropdownMenuItem(value: item.id, child: Text('${item.name} · ${item.finalResult.replaceAll('_', ' ')}'))).toList(), onChanged: (value) => setState(() => _studentId = value)),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
