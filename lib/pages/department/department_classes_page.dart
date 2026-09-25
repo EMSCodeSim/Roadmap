@@ -25,13 +25,51 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
   Future<void> _createTraining() async {
     final setup = _setup;
     if (setup == null) return;
-    final created = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup));
+    DepartmentTrainingSheetTemplate? selected;
+    try {
+      final templates = await _api.listTrainingSheetTemplates();
+      if (!mounted) return;
+      selected = await showModalBottomSheet<DepartmentTrainingSheetTemplate?>(
+        context: context, useSafeArea: true,
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text('Create Training Sheet', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            FilledButton.icon(onPressed: ()=>Navigator.pop(context), icon: const Icon(Icons.note_add_outlined), label: const Text('Blank Training Sheet')),
+            if (templates.isNotEmpty) ...[
+              const SizedBox(height: 16), const Text('From Template', style: TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              ...templates.take(8).map((t)=>ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.copy_all_outlined), title: Text(t.name), subtitle: Text(t.defaultTitle.isEmpty ? t.trainingCategory.replaceAll('_',' ') : t.defaultTitle), onTap: ()=>Navigator.pop(context,t))),
+            ],
+          ]),
+        ),
+      );
+    } catch (_) {
+      // Template API may not be deployed yet; Blank remains a safe fallback.
+    }
+    if (!mounted) return;
+    if (selected == null) {
+      final templatesAvailable = await _api.listTrainingSheetTemplates().then((v)=>v.isNotEmpty).catchError((_)=>false);
+      if (templatesAvailable && mounted) {
+        // A null result can mean Blank or the picker was dismissed. Ask explicitly.
+        final blank = await showDialog<bool>(context: context, builder: (context)=>AlertDialog(title:const Text('Blank Training Sheet?'),content:const Text('Start without a saved template?'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Start Blank'))]));
+        if(blank!=true)return;
+      }
+    }
+    final created = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected));
     if (created == true && mounted) await _load();
+  }
+
+
+  Future<void> _manageTemplates() async {
+    final setup=_setup; if(setup==null)return;
+    await Navigator.of(context).push(MaterialPageRoute(builder:(_)=>_TrainingSheetTemplatesPage(api:_api,setup:setup)));
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('My Classes'), actions: [if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) IconButton(tooltip: 'Create training', onPressed: _createTraining, icon: const Icon(Icons.add_rounded))]),
+    appBar: AppBar(title: const Text('My Classes'), actions: [if (context.watch<AppModeController>().isAdmin && _setup != null) IconButton(tooltip: 'Training Sheet templates', onPressed: _manageTemplates, icon: const Icon(Icons.library_books_outlined)), if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) IconButton(tooltip: 'Create training', onPressed: _createTraining, icon: const Icon(Icons.add_rounded))]),
     body: _classes == null ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(16), children: [
@@ -74,16 +112,63 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
 }
 
 
+
+class _TrainingSheetTemplatesPage extends StatefulWidget {
+  const _TrainingSheetTemplatesPage({required this.api,required this.setup});
+  final ResponderRoadmapApi api; final DepartmentClassSetup setup;
+  @override State<_TrainingSheetTemplatesPage> createState()=>_TrainingSheetTemplatesPageState();
+}
+class _TrainingSheetTemplatesPageState extends State<_TrainingSheetTemplatesPage>{
+  List<DepartmentTrainingSheetTemplate>? rows; String? error;
+  @override void initState(){super.initState();load();}
+  Future<void> load()async{try{final v=await widget.api.listTrainingSheetTemplates();if(mounted)setState((){rows=v;error=null;});}catch(e){if(mounted)setState((){rows=[];error=e.toString();});}}
+  Future<void> add()async{
+    final name=TextEditingController(),title=TextEditingController(),hours=TextEditingController(),location=TextEditingController(),notes=TextEditingController();
+    String category='COMPANY',checklist=''; bool qr=true;
+    final ok=await showDialog<bool>(context:context,builder:(context)=>StatefulBuilder(builder:(context,setLocal)=>AlertDialog(
+      title:const Text('New Training Sheet Template'),scrollable:true,content:Column(mainAxisSize:MainAxisSize.min,children:[
+        TextField(controller:name,decoration:const InputDecoration(labelText:'Template name *')),
+        const SizedBox(height:10),TextField(controller:title,decoration:const InputDecoration(labelText:'Default training title')),
+        const SizedBox(height:10),DropdownButtonFormField<String>(value:category,decoration:const InputDecoration(labelText:'Category'),items:const ['COMPANY','EMS','FIRE','DRIVER_OPERATOR','HAZMAT','TECHNICAL_RESCUE','WILDLAND','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setLocal(()=>category=v??'COMPANY')),
+        const SizedBox(height:10),DropdownButtonFormField<String>(value:checklist,decoration:const InputDecoration(labelText:'Checklist'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v)=>setLocal(()=>checklist=v??'')),
+        const SizedBox(height:10),TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Default hours')),
+        const SizedBox(height:10),TextField(controller:location,decoration:const InputDecoration(labelText:'Default location')),
+        const SizedBox(height:10),TextField(controller:notes,maxLines:3,decoration:const InputDecoration(labelText:'Default notes')),
+        SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v)=>setLocal(()=>qr=v),title:const Text('QR self-registration')),
+      ]),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Save Template'))])));
+    if(ok!=true||name.text.trim().isEmpty)return;
+    try{await widget.api.createTrainingSheetTemplate(name:name.text,defaultTitle:title.text,trainingCategory:category,creditHours:double.tryParse(hours.text)??0,checklistVersionId:checklist,location:location.text,notes:notes.text,requiredFields:widget.setup.requiredFields,selfRegistration:qr);await load();}catch(e){if(mounted)setState(()=>error=e.toString());}
+  }
+  Future<void> archive(DepartmentTrainingSheetTemplate t)async{final ok=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(title:const Text('Archive template?'),content:Text('Archive "${t.name}"? Existing training records are not affected.'),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Archive'))]))??false;if(!ok)return;try{await widget.api.archiveTrainingSheetTemplate(t.id);await load();}catch(e){if(mounted)setState(()=>error=e.toString());}}
+  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Training Sheet Templates')),floatingActionButton:FloatingActionButton.extended(onPressed:add,icon:const Icon(Icons.add),label:const Text('New Template')),body:rows==null?const Center(child:CircularProgressIndicator()):RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.all(16),children:[
+    const Text('Save the setup you reuse. Attendance, skill results and signatures are never part of a template.'),
+    if(error!=null)Padding(padding:const EdgeInsets.only(top:10),child:Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))),
+    const SizedBox(height:12),
+    if(rows!.isEmpty)const Card(child:Padding(padding:EdgeInsets.all(18),child:Text('No templates yet. Create one for recurring drills, EMS CE, driver training, or company training.'))),
+    ...rows!.map((t)=>Card(child:ListTile(leading:const Icon(Icons.description_outlined),title:Text(t.name,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text([t.defaultTitle,t.trainingCategory.replaceAll('_',' '),if(t.creditHours>0)'${t.creditHours} hr'].where((v)=>v.isNotEmpty).join(' · ')),trailing:PopupMenuButton<String>(onSelected:(v){if(v=='archive')archive(t);},itemBuilder:(_)=>const [PopupMenuItem(value:'archive',child:Text('Archive'))])))),
+  ])));
+}
+
 class _CreateTrainingSheet extends StatefulWidget {
-  const _CreateTrainingSheet({required this.api, required this.setup});
+  const _CreateTrainingSheet({required this.api, required this.setup, this.template});
   final ResponderRoadmapApi api;
   final DepartmentClassSetup setup;
+  final DepartmentTrainingSheetTemplate? template;
   @override State<_CreateTrainingSheet> createState() => _CreateTrainingSheetState();
 }
 
 class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
   bool busy = false, qr = true; String? error; String category = 'COMPANY'; String checklist = '';
+  @override void initState() {
+    super.initState();
+    final t=widget.template;
+    if(t!=null){
+      title.text=t.defaultTitle; location.text=t.location; notes.text=t.notes;
+      hours.text=t.creditHours > 0 ? t.creditHours.toString() : '';
+      category=t.trainingCategory; checklist=t.checklistVersionId; qr=t.selfRegistration;
+    }
+  }
   @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); super.dispose(); }
   bool req(String key) => widget.setup.requiredFields.contains(key);
   Future<void> save() async {
@@ -94,10 +179,12 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(req('HOURS') && h<=0){setState(()=>error='Training hours are required by your department.'); return;}
     final mode=context.read<AppModeController>();
     final me=widget.setup.proctors.where((p)=>(p['userId']?.toString()??'')==mode.departmentLink?.userId).toList();
-    if(me.isEmpty){setState(()=>error='Your instructor account is not available as an approved proctor.'); return;}
+    final defaults=widget.template?.proctorUserIds.where((id)=>widget.setup.proctors.any((p)=>p['userId']?.toString()==id)).toList() ?? const <String>[];
+    final proctors=defaults.isNotEmpty ? defaults : me.map((p)=>p['userId'].toString()).toList();
+    if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:[me.first['userId'].toString()], selfRegistration:qr);
+      await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
       if(mounted) Navigator.pop(context,true);
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
@@ -105,7 +192,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   @override Widget build(BuildContext context)=>Padding(
     padding: EdgeInsets.fromLTRB(20,16,20,MediaQuery.viewInsetsOf(context).bottom+24),
     child: SingleChildScrollView(child: Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-      Text('Create Training Sheet',style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
+      Text(widget.template==null?'Blank Training Sheet':'From Template · ${widget.template!.name}',style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
       const SizedBox(height:6), const Text('Field entry uses your department’s RMS requirements. QR sign-in is on by default.'),
       if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
       const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
