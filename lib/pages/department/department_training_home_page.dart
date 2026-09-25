@@ -150,6 +150,19 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   )),
                   _SyncLine(inbox: inbox),
+                  if (mode.isAdmin) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const DepartmentClassesPage()),
+                        ),
+                        icon: const Icon(Icons.note_add_outlined),
+                        label: const Text('Create Training Sheet'),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   _NeedsAttention(
                     returned: returned,
