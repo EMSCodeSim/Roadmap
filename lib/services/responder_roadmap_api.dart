@@ -525,6 +525,47 @@ class DepartmentReviewItem {
   }
 }
 
+class DepartmentTrainingSheetTemplate {
+  final String id;
+  final String name;
+  final String defaultTitle;
+  final String classType;
+  final String trainingCategory;
+  final double creditHours;
+  final String checklistVersionId;
+  final String location;
+  final String notes;
+  final List<String> requiredFields;
+  final bool selfRegistration;
+  final List<String> proctorUserIds;
+  final bool archived;
+
+  const DepartmentTrainingSheetTemplate({
+    required this.id, required this.name, required this.defaultTitle,
+    required this.classType, required this.trainingCategory, required this.creditHours,
+    required this.checklistVersionId, required this.location, required this.notes,
+    required this.requiredFields, required this.selfRegistration,
+    required this.proctorUserIds, required this.archived,
+  });
+
+  factory DepartmentTrainingSheetTemplate.fromJson(Map<String, dynamic> json) =>
+      DepartmentTrainingSheetTemplate(
+        id: (json['id'] as String?) ?? '',
+        name: (json['name'] as String?) ?? 'Template',
+        defaultTitle: (json['defaultTitle'] as String?) ?? '',
+        classType: (json['classType'] as String?) ?? 'GENERAL',
+        trainingCategory: (json['trainingCategory'] as String?) ?? 'COMPANY',
+        creditHours: (json['creditHours'] as num?)?.toDouble() ?? 0,
+        checklistVersionId: (json['checklistVersionId'] as String?) ?? '',
+        location: (json['location'] as String?) ?? '',
+        notes: (json['notes'] as String?) ?? '',
+        requiredFields: (json['requiredFields'] as List? ?? const []).map((v)=>v.toString()).toList(growable:false),
+        selfRegistration: json['selfRegistration'] == true,
+        proctorUserIds: (json['proctorUserIds'] as List? ?? const []).map((v)=>v.toString()).toList(growable:false),
+        archived: json['archived'] == true,
+      );
+}
+
 class DepartmentClassSetup {
   final List<Map<String, dynamic>> checklists;
   final List<Map<String, dynamic>> members;
@@ -902,6 +943,33 @@ class ResponderRoadmapApi {
               Map<String, dynamic>.from(item),
             ))
         .toList(growable: false);
+  }
+
+  Future<List<DepartmentTrainingSheetTemplate>> listTrainingSheetTemplates({bool includeArchived = false}) async {
+    final data = await _request('GET', 'training-sheet-templates${includeArchived ? '?archived=all' : ''}');
+    return (data is List ? data : const <dynamic>[]).whereType<Map>().map((item) => DepartmentTrainingSheetTemplate.fromJson(Map<String, dynamic>.from(item))).toList(growable: false);
+  }
+
+  Future<DepartmentTrainingSheetTemplate> createTrainingSheetTemplate({
+    required String name, String defaultTitle = '', String classType = 'GENERAL',
+    String trainingCategory = 'COMPANY', double creditHours = 0,
+    String checklistVersionId = '', String location = '', String notes = '',
+    List<String> requiredFields = const [], bool selfRegistration = true,
+    List<String> proctorUserIds = const [],
+  }) async {
+    final data = await _request('POST', 'training-sheet-templates', body: {
+      'name': name.trim(), 'defaultTitle': defaultTitle.trim(), 'classType': classType,
+      'trainingCategory': trainingCategory, 'creditHours': creditHours,
+      'checklistVersionId': checklistVersionId, 'location': location.trim(),
+      'notes': notes.trim(), 'requiredFields': requiredFields,
+      'selfRegistration': selfRegistration, 'proctorUserIds': proctorUserIds,
+    });
+    return DepartmentTrainingSheetTemplate.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentTrainingSheetTemplate> archiveTrainingSheetTemplate(String id) async {
+    final data = await _request('POST', 'training-sheet-templates/${Uri.encodeComponent(id)}/archive', body: const {});
+    return DepartmentTrainingSheetTemplate.fromJson(_asMap(data));
   }
 
   Future<DepartmentClassSetup> getClassSetup() async {
