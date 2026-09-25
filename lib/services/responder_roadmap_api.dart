@@ -1063,6 +1063,23 @@ class ResponderRoadmapApi {
     );
   }
 
+  Future<List<int>> downloadClosedTrainingCsv(String classId) async {
+    final token = (await _secureStorage.read(key: _tokenKey))?.trim() ?? '';
+    if (token.isEmpty) throw const ResponderRoadmapApiException('Connect your ResponderRoadmap account first.', statusCode: 401);
+    final response = await _client.get(
+      Uri.parse('$baseUrl/classes/${Uri.encodeComponent(classId)}/export.csv'),
+      headers: {'Accept': 'text/csv', 'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ResponderRoadmapApiException('Could not export this training record (${response.statusCode}).', statusCode: response.statusCode);
+    }
+    return response.bodyBytes;
+  }
+
+  Future<Map<String, dynamic>> getClosedTrainingExportRecord(String classId) async {
+    return _asMap(await _request('GET', 'classes/${Uri.encodeComponent(classId)}/export'));
+  }
+
   Future<void> disconnect() async {
     await _secureStorage.delete(key: _tokenKey);
   }
