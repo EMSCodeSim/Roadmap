@@ -55,14 +55,15 @@ class DepartmentInboxController extends ChangeNotifier {
     if (!silent) _safeNotify();
     try {
       await _api.retryPendingSubmissions();
-      final pending = await _api.pendingSubmissionCount();
+      await _api.retryPendingClassMutations();
+      final pending = await _api.pendingSubmissionCount() + await _api.pendingClassMutationCount();
       _inbox = await _api.getInbox();
       _lastSyncedAt = _inbox?.serverTime ?? DateTime.now();
       _lastError = null;
       _syncState = pending > 0 ? DepartmentSyncState.waitingToUpload : DepartmentSyncState.synced;
       await PushNotificationService.configure(api: _api, onMessage: () => refresh(silent: true));
     } on ResponderRoadmapApiException catch (error) {
-      final pending = await _api.pendingSubmissionCount();
+      final pending = await _api.pendingSubmissionCount() + await _api.pendingClassMutationCount();
       _lastError = error.message;
       _syncState = pending > 0 ? DepartmentSyncState.waitingToUpload : DepartmentSyncState.failed;
     }
