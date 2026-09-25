@@ -62,6 +62,35 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
   }
 
 
+  Future<void> _configureAgency() async {
+    try {
+      final current=await _api.getDepartmentConfiguration();
+      if(!mounted)return;
+      final selected=await showModalBottomSheet<String>(
+        context:context,useSafeArea:true,
+        builder:(context)=>Padding(
+          padding:const EdgeInsets.all(20),
+          child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+            Text('Department setup',style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
+            const SizedBox(height:6),const Text('Choose a starting preset. Existing custom capabilities are preserved and everything remains editable.'),
+            const SizedBox(height:14),
+            for(final item in const [('FIRE','Fire'),('EMS','EMS'),('FIRE_EMS','Fire & EMS')])
+              ListTile(title:Text(item.$2),trailing:current.agencyType==item.$1?const Icon(Icons.check_circle):const Icon(Icons.chevron_right),onTap:()=>Navigator.pop(context,item.$1)),
+          ]),
+        ),
+      );
+      if(selected==null||!mounted)return;
+      const defaults={
+        'FIRE':['STRUCTURAL_FIRE','DRIVER_OPERATOR'],
+        'EMS':['EMS_BLS','EMS_ALS'],
+        'FIRE_EMS':['STRUCTURAL_FIRE','DRIVER_OPERATOR','EMS_BLS','EMS_ALS'],
+      };
+      final merged=<String>{...current.operationalCapabilities,...(defaults[selected]??const[])};
+      await _api.updateDepartmentConfiguration(agencyType:selected,operationalCapabilities:merged.toList(),customCapabilities:current.customCapabilities);
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Department preset updated. Existing capabilities were preserved.')));
+    }catch(e){if(mounted)setState(()=>_error=e.toString());}
+  }
+
   Future<void> _manageTemplates() async {
     final setup=_setup; if(setup==null)return;
     await Navigator.of(context).push(MaterialPageRoute(builder:(_)=>_TrainingSheetTemplatesPage(api:_api,setup:setup)));
@@ -69,7 +98,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('My Classes'), actions: [if (context.watch<AppModeController>().isAdmin && _setup != null) IconButton(tooltip: 'Training Sheet templates', onPressed: _manageTemplates, icon: const Icon(Icons.library_books_outlined)), if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) IconButton(tooltip: 'Create training', onPressed: _createTraining, icon: const Icon(Icons.add_rounded))]),
+    appBar: AppBar(title: const Text('My Classes'), actions: [if (context.watch<AppModeController>().isAdmin) IconButton(tooltip:'Department setup',onPressed:_configureAgency,icon:const Icon(Icons.tune_rounded)), if (context.watch<AppModeController>().isAdmin && _setup != null) IconButton(tooltip: 'Training Sheet templates', onPressed: _manageTemplates, icon: const Icon(Icons.library_books_outlined)), if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) IconButton(tooltip: 'Create training', onPressed: _createTraining, icon: const Icon(Icons.add_rounded))]),
     body: _classes == null ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(16), children: [
