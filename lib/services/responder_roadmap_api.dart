@@ -566,6 +566,28 @@ class DepartmentTrainingSheetTemplate {
       );
 }
 
+class DepartmentClassMutationResult {
+  final DepartmentClassDetail? detail;
+  final bool queued;
+  const DepartmentClassMutationResult({required this.detail, required this.queued});
+}
+
+class DepartmentConfiguration {
+  final String agencyType;
+  final List<String> operationalCapabilities;
+  final List<String> customCapabilities;
+  const DepartmentConfiguration({required this.agencyType, required this.operationalCapabilities, required this.customCapabilities});
+  factory DepartmentConfiguration.fromJson(Map<String,dynamic> json)=>DepartmentConfiguration(
+    agencyType:(json['agencyType'] as String?)??'FIRE_EMS',
+    operationalCapabilities:_decodeStringArray(json['operationalCapabilitiesJson']),
+    customCapabilities:_decodeStringArray(json['customCapabilitiesJson']),
+  );
+  static List<String> _decodeStringArray(Object? raw){
+    if(raw is! String||raw.isEmpty)return const[];
+    try{final value=jsonDecode(raw);return value is List?value.map((e)=>e.toString()).toList(growable:false):const[];}catch(_){return const[];}
+  }
+}
+
 class DepartmentClassSetup {
   final List<Map<String, dynamic>> checklists;
   final List<Map<String, dynamic>> members;
@@ -656,6 +678,20 @@ class DepartmentClassStudent {
       );
 }
 
+class DepartmentCloseValidationItem {
+  final String code;
+  final String message;
+  final String action;
+  const DepartmentCloseValidationItem({required this.code, required this.message, required this.action});
+  factory DepartmentCloseValidationItem.fromJson(Map<String,dynamic> json)=>DepartmentCloseValidationItem(code:(json['code'] as String?)??'MISSING',message:(json['message'] as String?)??'Required information is missing.',action:(json['action'] as String?)??'Complete the missing information.');
+}
+class DepartmentCloseValidation {
+  final bool canClose;
+  final List<DepartmentCloseValidationItem> missing;
+  const DepartmentCloseValidation({required this.canClose,required this.missing});
+  factory DepartmentCloseValidation.fromJson(Map<String,dynamic> json)=>DepartmentCloseValidation(canClose:json['canClose']==true,missing:(json['missing'] as List? ?? const []).whereType<Map>().map((e)=>DepartmentCloseValidationItem.fromJson(Map<String,dynamic>.from(e))).toList(growable:false));
+}
+
 class DepartmentClassDetail {
   final String id;
   final String title;
@@ -734,6 +770,7 @@ class ResponderRoadmapApi {
   static const String dashboardUrl = 'https://responderroadmap.com/';
   static const String _tokenKey = 'fireops.responderRoadmap.token.v1';
   static const String _pendingSubmissionsKey = 'fireops.responderRoadmap.pendingSubmissions.v1';
+  static const String _pendingClassMutationsKey = 'fireops.responderRoadmap.pendingClassMutations.v1';
 
   final http.Client _client;
   final FlutterSecureStorage _secureStorage;
@@ -1015,6 +1052,23 @@ class ResponderRoadmapApi {
     return DepartmentTrainingSheetTemplate.fromJson(_asMap(data));
   }
 
+  Future<DepartmentConfiguration> getDepartmentConfiguration() async {
+    return DepartmentConfiguration.fromJson(_asMap(await _request('GET','department')));
+  }
+
+  Future<DepartmentConfiguration> updateDepartmentConfiguration({
+    required String agencyType,
+    required List<String> operationalCapabilities,
+    required List<String> customCapabilities,
+  }) async {
+    final data=await _request('PATCH','department',body:{
+      'agencyType':agencyType,
+      'operationalCapabilities':operationalCapabilities,
+      'customCapabilities':customCapabilities,
+    });
+    return DepartmentConfiguration.fromJson(_asMap(data));
+  }
+
   Future<DepartmentClassSetup> getClassSetup() async {
     final data = await _request('GET', 'classes/setup');
     return DepartmentClassSetup.fromJson(_asMap(data));
@@ -1065,6 +1119,70 @@ class ResponderRoadmapApi {
     return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
+  Future<DepartmentClassMutationResult> recordClassSkillDurable({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
+    final key='skill:$classId:$enrollmentId:$requirementId';
+    final row={'key':key,'kind':'skill','classId':classId,'enrollmentId':enrollmentId,'requirementId':requirementId,'result':result,'notes':notes.trim(),'queuedAt':DateTime.now().toUtc().toIso8601String()};
+    try {
+      final detail=await recordClassSkill(classId:classId,enrollmentId:enrollmentId,requirementId:requirementId,result:result,notes:notes);
+      await _removePendingClassMutation(key);
+      return DepartmentClassMutationResult(detail:detail,queued:false);
+    } on ResponderRoadmapApiException {
+      await _savePendingClassMutation(row);
+      return const DepartmentClassMutationResult(detail:null,queued:true);
+    }
+  }
+
+  Future<DepartmentClassMutationResult> updateClassStudentDurable({required String classId, required String enrollmentId, required String attendance}) async {
+    final key='attendance:$classId:$enrollmentId';
+    final row={'key':key,'kind':'attendance','classId':classId,'enrollmentId':enrollmentId,'attendance':attendance,'queuedAt':DateTime.now().toUtc().toIso8601String()};
+    try {
+      final detail=await updateClassStudent(classId:classId,enrollmentId:enrollmentId,attendance:attendance);
+      await _removePendingClassMutation(key);
+      return DepartmentClassMutationResult(detail:detail,queued:false);
+    } on ResponderRoadmapApiException {
+      await _savePendingClassMutation(row);
+      return const DepartmentClassMutationResult(detail:null,queued:true);
+    }
+  }
+
+  Future<int> pendingClassMutationCount() async {
+    final rows=await _pendingClassMutations();
+    return rows.length;
+  }
+
+  Future<int> retryPendingClassMutations() async {
+    final rows=await _pendingClassMutations();
+    var completed=0;
+    for(final row in rows){
+      final key=(row['key'] as String?)??'';
+      try{
+        if(row['kind']=='attendance'){
+          await updateClassStudent(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',attendance:(row['attendance'] as String?)??'REGISTERED');
+        }else if(row['kind']=='skill'){
+          await recordClassSkill(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',requirementId:(row['requirementId'] as String?)??'',result:(row['result'] as String?)??'NOT_EVALUATED',notes:(row['notes'] as String?)??'');
+        }else{continue;}
+        await _removePendingClassMutation(key); completed++;
+      }on ResponderRoadmapApiException{/* keep durable mutation for Retry */}
+    }
+    return completed;
+  }
+
+  Future<List<Map<String,dynamic>>> _pendingClassMutations() async {
+    final raw=await _secureStorage.read(key:_pendingClassMutationsKey);
+    try{final value=raw==null?null:jsonDecode(raw);return value is List?value.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():<Map<String,dynamic>>[];}catch(_){return <Map<String,dynamic>>[];}
+  }
+  Future<void> _savePendingClassMutation(Map<String,dynamic> row) async {
+    final rows=await _pendingClassMutations();
+    rows.removeWhere((item)=>item['key']==row['key']);
+    rows.add(row);
+    await _secureStorage.write(key:_pendingClassMutationsKey,value:jsonEncode(rows));
+  }
+  Future<void> _removePendingClassMutation(String key) async {
+    final rows=await _pendingClassMutations();
+    rows.removeWhere((item)=>item['key']==key);
+    await _secureStorage.write(key:_pendingClassMutationsKey,value:jsonEncode(rows));
+  }
+
   Future<DepartmentClassDetail> recordClassSkill({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
     final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}/skills/${Uri.encodeComponent(requirementId)}', body: {'result': result, 'notes': notes.trim()});
     return DepartmentClassDetail.fromJson(_asMap(data));
@@ -1078,6 +1196,11 @@ class ResponderRoadmapApi {
   Future<DepartmentClassDetail> manageClassRegistration({required String classId, required String action}) async {
     final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/registration', body: {'action': action});
     return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentCloseValidation> validateClassClosure(String classId) async {
+    final data=await _request('GET','classes/${Uri.encodeComponent(classId)}/close-validation');
+    return DepartmentCloseValidation.fromJson(_asMap(data));
   }
 
   Future<DepartmentClassDetail> updateClassStatus({required String classId, required String status}) async {
@@ -1105,6 +1228,17 @@ class ResponderRoadmapApi {
       },
     );
   }
+
+  Future<List<int>> downloadClosedTrainingCsv(String classId) async {
+    final token=(await _secureStorage.read(key:_tokenKey))?.trim()??'';
+    if(token.isEmpty)throw const ResponderRoadmapApiException('Connect your ResponderRoadmap account first.',statusCode:401);
+    final response=await _client.get(Uri.parse('$baseUrl/classes/${Uri.encodeComponent(classId)}/export.csv'),headers:{'Accept':'text/csv','Authorization':'Bearer $token'});
+    if(response.statusCode<200||response.statusCode>=300)throw ResponderRoadmapApiException('Could not export this training record (${response.statusCode}).',statusCode:response.statusCode);
+    return response.bodyBytes;
+  }
+
+  Future<Map<String,dynamic>> getClosedTrainingExportRecord(String classId) async =>
+      _asMap(await _request('GET','classes/${Uri.encodeComponent(classId)}/export'));
 
   Future<void> disconnect() async {
     await _secureStorage.delete(key: _tokenKey);

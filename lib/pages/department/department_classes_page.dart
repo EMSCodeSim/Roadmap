@@ -1,8 +1,12 @@
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:firepath/state/app_mode_controller.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
 
@@ -62,6 +66,35 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
   }
 
 
+  Future<void> _configureAgency() async {
+    try {
+      final current=await _api.getDepartmentConfiguration();
+      if(!mounted)return;
+      final selected=await showModalBottomSheet<String>(
+        context:context,useSafeArea:true,
+        builder:(context)=>Padding(
+          padding:const EdgeInsets.all(20),
+          child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+            Text('Department setup',style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
+            const SizedBox(height:6),const Text('Choose a starting preset. Existing custom capabilities are preserved and everything remains editable.'),
+            const SizedBox(height:14),
+            for(final item in const [('FIRE','Fire'),('EMS','EMS'),('FIRE_EMS','Fire & EMS')])
+              ListTile(title:Text(item.$2),trailing:current.agencyType==item.$1?const Icon(Icons.check_circle):const Icon(Icons.chevron_right),onTap:()=>Navigator.pop(context,item.$1)),
+          ]),
+        ),
+      );
+      if(selected==null||!mounted)return;
+      const defaults={
+        'FIRE':['STRUCTURAL_FIRE','DRIVER_OPERATOR'],
+        'EMS':['EMS_BLS','EMS_ALS'],
+        'FIRE_EMS':['STRUCTURAL_FIRE','DRIVER_OPERATOR','EMS_BLS','EMS_ALS'],
+      };
+      final merged=<String>{...current.operationalCapabilities,...(defaults[selected]??const[])};
+      await _api.updateDepartmentConfiguration(agencyType:selected,operationalCapabilities:merged.toList(),customCapabilities:current.customCapabilities);
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Department preset updated. Existing capabilities were preserved.')));
+    }catch(e){if(mounted)setState(()=>_error=e.toString());}
+  }
+
   Future<void> _manageTemplates() async {
     final setup=_setup; if(setup==null)return;
     await Navigator.of(context).push(MaterialPageRoute(builder:(_)=>_TrainingSheetTemplatesPage(api:_api,setup:setup)));
@@ -69,7 +102,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('My Classes'), actions: [if (context.watch<AppModeController>().isAdmin && _setup != null) IconButton(tooltip: 'Training Sheet templates', onPressed: _manageTemplates, icon: const Icon(Icons.library_books_outlined)), if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) IconButton(tooltip: 'Create training', onPressed: _createTraining, icon: const Icon(Icons.add_rounded))]),
+    appBar: AppBar(title: const Text('My Classes'), actions: [if (context.watch<AppModeController>().isAdmin) IconButton(tooltip:'Department setup',onPressed:_configureAgency,icon:const Icon(Icons.tune_rounded)), if (context.watch<AppModeController>().isAdmin && _setup != null) IconButton(tooltip: 'Training Sheet templates', onPressed: _manageTemplates, icon: const Icon(Icons.library_books_outlined)), if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) IconButton(tooltip: 'Create training', onPressed: _createTraining, icon: const Icon(Icons.add_rounded))]),
     body: _classes == null ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(16), children: [
@@ -236,12 +269,32 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
 
   Future<void> _closeTraining() async {
     final d=_detail; if(d==null||_busy)return;
-    final unresolved=d.roster.where((s)=>s.attendance=='REGISTERED').length;
-    final required=d.sections.expand((s)=>s.skills).where((s)=>s.required).map((s)=>s.id).toSet();
-    final incomplete=d.roster.where((s)=>s.attendance=='PRESENT' && required.any((id)=>!s.results.any((r)=>r.requirementId==id && r.result!='NOT_EVALUATED'))).length;
-    final ok=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:const Text('Close Training?'),content:Text('Roster: ${d.roster.length}\nAttendance still unresolved: $unresolved\nPresent members needing required skill results: $incomplete\n\nClosing finalizes the official digital training sheet and stops QR registration.'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Keep Open')),FilledButton(onPressed:unresolved>0||incomplete>0?null:()=>Navigator.pop(context,true),child:const Text('Finalize & Close'))]))??false;
-    if(!ok)return; setState(()=>_busy=true);
-    try{_setDetail(await _api.updateClassStatus(classId:widget.classId,status:'COMPLETE'));}
+    setState(()=>_busy=true);
+    try{
+      final validation=await _api.validateClassClosure(widget.classId);
+      if(!mounted)return;
+      if(!validation.canClose){
+        await showDialog<void>(context:context,builder:(context)=>AlertDialog(
+          title:const Text('Training is not ready to close'),
+          content:SizedBox(width:420,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
+            const Text('Complete these items before this becomes an official training record.'),const SizedBox(height:12),
+            ...validation.missing.map((item)=>Padding(padding:const EdgeInsets.only(bottom:12),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              const Padding(padding:EdgeInsets.only(top:2),child:Icon(Icons.error_outline_rounded,size:20)),const SizedBox(width:10),
+              Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(item.message,style:const TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:2),Text(item.action)])),
+            ]))),
+          ]))),
+          actions:[FilledButton(onPressed:()=>Navigator.pop(context),child:const Text('Fix Missing Items'))],
+        ));
+        return;
+      }
+      final ok=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(
+        title:const Text('Close Training?'),
+        content:Text('Roster: ${d.roster.length}\n\nAll required fields, attendance, proctors and skill results are complete. Closing finalizes the official digital training sheet and stops QR registration.'),
+        actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Keep Open')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Finalize & Close'))],
+      ))??false;
+      if(!ok)return;
+      _setDetail(await _api.updateClassStatus(classId:widget.classId,status:'COMPLETE'));
+    }on ResponderRoadmapApiException catch(e){if(mounted)setState(()=>_error=e.message);}
     catch(e){if(mounted)setState(()=>_error=e.toString());}
     finally{if(mounted)setState(()=>_busy=false);}
   }
@@ -264,6 +317,20 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     finally{if(mounted)setState(()=>_busy=false);}
   }
 
+  Future<void> _exportCsv() async {
+    final d=_detail; if(d==null||d.status!='COMPLETE'||_busy)return;
+    setState(()=>_busy=true);
+    try{
+      final bytes=await _api.downloadClosedTrainingCsv(widget.classId);
+      final dir=await getTemporaryDirectory();
+      final safe=d.title.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'),'_');
+      final file=File('${dir.path}/${safe.isEmpty?'training':safe}_${d.id}.csv');
+      await file.writeAsBytes(bytes,flush:true);
+      await Share.shareXFiles([XFile(file.path,mimeType:'text/csv')],subject:'${d.title} training record',text:'Closed Responder Roadmap training record for retention or manual RMS entry.');
+    }catch(e){if(mounted)setState(()=>_error=e.toString());}
+    finally{if(mounted)setState(()=>_busy=false);}
+  }
+
   Future<void> _showQr() async {
     final d=_detail; if(d==null)return;
     if(!d.registrationEnabled || d.registrationToken.isEmpty) await _registration('OPEN');
@@ -282,7 +349,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final student = _student; if (student == null || _detail == null) return;
     var notes = ''; if (result == 'FAIL' || result == 'NEEDS_REMEDIATION') { final entered = await _correctionNotes(result == 'FAIL' ? 'Record failed skill' : 'Remediation required'); if (entered == null) return; notes = entered; }
     setState(() => _busy = true);
-    try { _setDetail(await _api.recordClassSkill(classId: widget.classId, enrollmentId: student.id, requirementId: skill.id, result: result, notes: notes)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); }
+    try { final saved=await _api.recordClassSkillDurable(classId: widget.classId, enrollmentId: student.id, requirementId: skill.id, result: result, notes: notes); if(saved.detail!=null)_setDetail(saved.detail!); if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — skill result saved safely on this device.')));} } catch (e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); }
   }
 
   @override
@@ -290,13 +357,25 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final detail = _detail; final student = _student;
     return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Class roster')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       Text(detail.checklistTitle, style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 10),
+      Consumer<DepartmentInboxController>(builder:(context,sync,_) {
+        final waiting=sync.syncState==DepartmentSyncState.waitingToUpload;
+        final failed=sync.syncState==DepartmentSyncState.failed;
+        if(!waiting&&!failed)return const SizedBox.shrink();
+        return Card(child:Padding(padding:const EdgeInsets.all(12),child:Row(children:[
+          Icon(waiting?Icons.cloud_upload_outlined:Icons.cloud_off_outlined),
+          const SizedBox(width:10),
+          Expanded(child:Text(waiting?'Waiting to Sync — field changes are saved on this device and will retry automatically.':'Sync Failed — your saved field changes are still on this device.')),
+          TextButton(onPressed:()=>sync.refresh(),child:const Text('Retry')),
+        ])));
+      }),
+
       if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.check_circle_outline_rounded), label: const Text('Close Training'))]),
-      if (detail.status == 'COMPLETE') ...[const Card(child: Padding(padding: EdgeInsets.all(14), child: Row(children:[Icon(Icons.verified_rounded),SizedBox(width:10),Expanded(child:Text('Training closed — official digital training sheet finalized.'))]))), const SizedBox(height:8), OutlinedButton.icon(onPressed:_busy?null:_repeatTraining,icon:const Icon(Icons.replay_rounded),label:const Text('Repeat Training'))],
+      if (detail.status == 'COMPLETE') ...[const Card(child: Padding(padding:EdgeInsets.all(14),child:Row(children:[Icon(Icons.verified_rounded),SizedBox(width:10),Expanded(child:Text('Training closed — official digital training sheet finalized.'))]))), const SizedBox(height:8), Wrap(spacing:8,runSpacing:8,children:[OutlinedButton.icon(onPressed:_busy?null:_repeatTraining,icon:const Icon(Icons.replay_rounded),label:const Text('Repeat Training')),OutlinedButton.icon(onPressed:_busy?null:_exportCsv,icon:const Icon(Icons.table_view_outlined),label:const Text('Export CSV for RMS')),OutlinedButton.icon(onPressed:_busy?null:()=>Share.share('Open the canonical training record at https://responderroadmap.com/classes/${detail.id} to print/save as PDF.',subject:'${detail.title} training record'),icon:const Icon(Icons.picture_as_pdf_outlined),label:const Text('PDF / Print Record'))])],
       const SizedBox(height: 12),
       DropdownButtonFormField<String>(value: _studentId, decoration: const InputDecoration(labelText: 'Student'), items: detail.roster.map((item) => DropdownMenuItem(value: item.id, child: Text('${item.name} · ${item.finalResult.replaceAll('_', ' ')}'))).toList(), onChanged: (value) => setState(() => _studentId = value)),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
       if (student != null) ...[
-        const SizedBox(height: 12), DropdownButtonFormField<String>(value: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { _setDetail(await _api.updateClassStudent(classId: detail.id, enrollmentId: student.id, attendance: value)); } finally { if (mounted) setState(() => _busy = false); } }),
+        const SizedBox(height: 12), DropdownButtonFormField<String>(value: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null)_setDetail(saved.detail!); if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } finally { if (mounted) setState(() => _busy = false); } }),
         const SizedBox(height: 18),
         ...detail.sections.map((section) => Card(margin: const EdgeInsets.only(bottom: 14), clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(width: double.infinity, padding: const EdgeInsets.all(14), color: Theme.of(context).colorScheme.surfaceContainerHighest, child: Text(section.title, style: const TextStyle(fontWeight: FontWeight.w900))),
