@@ -11,7 +11,8 @@ import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 
 class DepartmentClassesPage extends StatefulWidget {
-  const DepartmentClassesPage({super.key});
+  const DepartmentClassesPage({super.key, this.openCreateTraining = false});
+  final bool openCreateTraining;
   @override
   State<DepartmentClassesPage> createState() => _DepartmentClassesPageState();
 }
@@ -24,7 +25,22 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
 
   @override
   void initState() { super.initState(); _load(); }
-  Future<void> _load() async { try { final rows = await _api.listClasses(); DepartmentClassSetup? setup; try { setup = await _api.getClassSetup(); } catch (_) {} if (mounted) setState(() { _classes = rows; _setup = setup; _error = null; }); } catch (e) { if (mounted) setState(() { _classes = const []; _error = e.toString(); }); } }
+  Future<void> _load() async {
+    try {
+      final rows = await _api.listClasses();
+      DepartmentClassSetup? setup;
+      try { setup = await _api.getClassSetup(); } catch (_) {}
+      if (!mounted) return;
+      setState(() { _classes = rows; _setup = setup; _error = null; });
+      if (widget.openCreateTraining && setup != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _createTraining();
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _classes = const []; _error = e.toString(); });
+    }
+  }
 
   Future<void> _createTraining() async {
     final setup = _setup;

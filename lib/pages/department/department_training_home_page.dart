@@ -156,7 +156,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                       width: double.infinity,
                       child: FilledButton.icon(
                         onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const DepartmentClassesPage()),
+                          MaterialPageRoute(builder: (_) => const DepartmentClassesPage(openCreateTraining: true)),
                         ),
                         icon: const Icon(Icons.note_add_outlined),
                         label: const Text('Create Training Sheet'),
