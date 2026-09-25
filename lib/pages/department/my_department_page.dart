@@ -11,7 +11,6 @@ import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
-import 'package:firepath/widgets/app_mode_switcher.dart';
 
 class MyDepartmentPage extends StatefulWidget {
   final bool taskBooksOnly;
@@ -539,10 +538,6 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
                   children: [
-                    if (!widget.taskBooksOnly) ...[
-                      const AppModeSwitcher(),
-                      const SizedBox(height: 16),
-                    ],
                     if (_link == null) ...[
                       _ConnectCard(
                         busy: _syncing,

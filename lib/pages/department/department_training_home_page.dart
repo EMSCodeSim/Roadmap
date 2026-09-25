@@ -5,6 +5,7 @@ import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
+import 'package:firepath/widgets/app_mode_switcher.dart';
 
 /// Canonical department home for members. Official department records are read
 /// from responderroadmap.com; no local department database is used here.
@@ -126,6 +127,8 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                 children: [
+                  const AppModeSwitcher(),
+                  const SizedBox(height: 12),
                   if (_error != null) Card(child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
