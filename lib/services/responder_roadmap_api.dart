@@ -566,6 +566,12 @@ class DepartmentTrainingSheetTemplate {
       );
 }
 
+class DepartmentClassMutationResult {
+  final DepartmentClassDetail? detail;
+  final bool queued;
+  const DepartmentClassMutationResult({required this.detail, required this.queued});
+}
+
 class DepartmentConfiguration {
   final String agencyType;
   final List<String> operationalCapabilities;
@@ -750,6 +756,7 @@ class ResponderRoadmapApi {
   static const String dashboardUrl = 'https://responderroadmap.com/';
   static const String _tokenKey = 'fireops.responderRoadmap.token.v1';
   static const String _pendingSubmissionsKey = 'fireops.responderRoadmap.pendingSubmissions.v1';
+  static const String _pendingClassMutationsKey = 'fireops.responderRoadmap.pendingClassMutations.v1';
 
   final http.Client _client;
   final FlutterSecureStorage _secureStorage;
@@ -1096,6 +1103,70 @@ class ResponderRoadmapApi {
   Future<DepartmentClassDetail> getClass(String classId) async {
     final data = await _request('GET', 'classes/${Uri.encodeComponent(classId)}');
     return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassMutationResult> recordClassSkillDurable({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
+    final key='skill:$classId:$enrollmentId:$requirementId';
+    final row={'key':key,'kind':'skill','classId':classId,'enrollmentId':enrollmentId,'requirementId':requirementId,'result':result,'notes':notes.trim(),'queuedAt':DateTime.now().toUtc().toIso8601String()};
+    try {
+      final detail=await recordClassSkill(classId:classId,enrollmentId:enrollmentId,requirementId:requirementId,result:result,notes:notes);
+      await _removePendingClassMutation(key);
+      return DepartmentClassMutationResult(detail:detail,queued:false);
+    } on ResponderRoadmapApiException {
+      await _savePendingClassMutation(row);
+      return const DepartmentClassMutationResult(detail:null,queued:true);
+    }
+  }
+
+  Future<DepartmentClassMutationResult> updateClassStudentDurable({required String classId, required String enrollmentId, required String attendance}) async {
+    final key='attendance:$classId:$enrollmentId';
+    final row={'key':key,'kind':'attendance','classId':classId,'enrollmentId':enrollmentId,'attendance':attendance,'queuedAt':DateTime.now().toUtc().toIso8601String()};
+    try {
+      final detail=await updateClassStudent(classId:classId,enrollmentId:enrollmentId,attendance:attendance);
+      await _removePendingClassMutation(key);
+      return DepartmentClassMutationResult(detail:detail,queued:false);
+    } on ResponderRoadmapApiException {
+      await _savePendingClassMutation(row);
+      return const DepartmentClassMutationResult(detail:null,queued:true);
+    }
+  }
+
+  Future<int> pendingClassMutationCount() async {
+    final rows=await _pendingClassMutations();
+    return rows.length;
+  }
+
+  Future<int> retryPendingClassMutations() async {
+    final rows=await _pendingClassMutations();
+    var completed=0;
+    for(final row in rows){
+      final key=(row['key'] as String?)??'';
+      try{
+        if(row['kind']=='attendance'){
+          await updateClassStudent(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',attendance:(row['attendance'] as String?)??'REGISTERED');
+        }else if(row['kind']=='skill'){
+          await recordClassSkill(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',requirementId:(row['requirementId'] as String?)??'',result:(row['result'] as String?)??'NOT_EVALUATED',notes:(row['notes'] as String?)??'');
+        }else{continue;}
+        await _removePendingClassMutation(key); completed++;
+      }on ResponderRoadmapApiException{/* keep durable mutation for Retry */}
+    }
+    return completed;
+  }
+
+  Future<List<Map<String,dynamic>>> _pendingClassMutations() async {
+    final raw=await _secureStorage.read(key:_pendingClassMutationsKey);
+    try{final value=raw==null?null:jsonDecode(raw);return value is List?value.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():<Map<String,dynamic>>[];}catch(_){return <Map<String,dynamic>>[];}
+  }
+  Future<void> _savePendingClassMutation(Map<String,dynamic> row) async {
+    final rows=await _pendingClassMutations();
+    rows.removeWhere((item)=>item['key']==row['key']);
+    rows.add(row);
+    await _secureStorage.write(key:_pendingClassMutationsKey,value:jsonEncode(rows));
+  }
+  Future<void> _removePendingClassMutation(String key) async {
+    final rows=await _pendingClassMutations();
+    rows.removeWhere((item)=>item['key']==key);
+    await _secureStorage.write(key:_pendingClassMutationsKey,value:jsonEncode(rows));
   }
 
   Future<DepartmentClassDetail> recordClassSkill({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
