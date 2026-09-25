@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
+import 'package:firepath/widgets/department_qr.dart';
 
 class DepartmentClassesPage extends StatefulWidget {
   const DepartmentClassesPage({super.key});
@@ -159,6 +160,67 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     finally{if(mounted)setState(()=>_busy=false);}
   }
 
+  Future<void> _scanMemberQr() async {
+    final raw = await scanDepartmentQr(context, title: 'Scan Member QR');
+    if (!mounted || raw == null) return;
+    final token = parseMemberQrToken(raw);
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('That is not a valid Responder Roadmap member QR code.')),
+      );
+      return;
+    }
+    try {
+      final resolved = await _api.resolveMemberQrForClass(
+        classId: widget.classId,
+        token: token,
+      );
+      if (!mounted) return;
+      final member = resolved.member;
+      final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text(resolved.alreadyOnRoster ? 'Already on roster' : 'Add member to roster?'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(member.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  if ((member.rank ?? '').isNotEmpty) Text(member.rank!),
+                  if ((member.position ?? '').isNotEmpty) Text(member.position!),
+                  if ((member.station ?? '').isNotEmpty || (member.shift ?? '').isNotEmpty)
+                    Text([member.station, member.shift].whereType<String>().where((v) => v.isNotEmpty).join(' · ')),
+                  if ((member.employeeNumber ?? '').isNotEmpty) Text('Member ID: ${member.employeeNumber}'),
+                  const SizedBox(height: 10),
+                  Text(resolved.alreadyOnRoster
+                      ? 'This member is already on this training roster.'
+                      : 'Confirm before adding this authenticated department member.'),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                if (!resolved.alreadyOnRoster)
+                  FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add Member')),
+              ],
+            ),
+          ) ??
+          false;
+      if (resolved.alreadyOnRoster || !confirmed) return;
+      setState(() => _busy = true);
+      final updated = await _api.addMemberQrToClass(classId: widget.classId, token: token);
+      _setDetail(updated);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${member.name} added to the roster.')),
+      );
+    } on ResponderRoadmapApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _showQr() async {
     final d=_detail; if(d==null)return;
     if(!d.registrationEnabled || d.registrationToken.isEmpty) await _registration('OPEN');
@@ -185,7 +247,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final detail = _detail; final student = _student;
     return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Class roster')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       Text(detail.checklistTitle, style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 10),
-      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.check_circle_outline_rounded), label: const Text('Close Training'))]),
+      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [
+        FilledButton.icon(onPressed: _busy ? null : _scanMemberQr, icon: const Icon(Icons.qr_code_scanner_rounded), label: const Text('Scan Member QR')),
+        FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.check_circle_outline_rounded), label: const Text('Close Training'))]),
       if (detail.status == 'COMPLETE') const Card(child: Padding(padding: EdgeInsets.all(14), child: Row(children:[Icon(Icons.verified_rounded),SizedBox(width:10),Expanded(child:Text('Training closed — official digital training sheet finalized.'))]))),
       const SizedBox(height: 12),
       DropdownButtonFormField<String>(value: _studentId, decoration: const InputDecoration(labelText: 'Student'), items: detail.roster.map((item) => DropdownMenuItem(value: item.id, child: Text('${item.name} · ${item.finalResult.replaceAll('_', ' ')}'))).toList(), onChanged: (value) => setState(() => _studentId = value)),

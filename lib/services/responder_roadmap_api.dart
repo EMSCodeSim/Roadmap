@@ -525,6 +525,104 @@ class DepartmentReviewItem {
   }
 }
 
+class DepartmentMemberQrProfile {
+  final String membershipId;
+  final String userId;
+  final String name;
+  final String? rank;
+  final String? position;
+  final String? station;
+  final String? shift;
+  final String? employeeNumber;
+
+  const DepartmentMemberQrProfile({
+    required this.membershipId,
+    required this.userId,
+    required this.name,
+    required this.rank,
+    required this.position,
+    required this.station,
+    required this.shift,
+    required this.employeeNumber,
+  });
+
+  factory DepartmentMemberQrProfile.fromJson(Map<String, dynamic> json) =>
+      DepartmentMemberQrProfile(
+        membershipId: (json['membershipId'] as String?) ?? '',
+        userId: (json['userId'] as String?) ?? '',
+        name: (json['name'] as String?) ?? 'Member',
+        rank: json['rank'] as String?,
+        position: json['position'] as String?,
+        station: json['station'] as String?,
+        shift: json['shift'] as String?,
+        employeeNumber: json['employeeNumber'] as String?,
+      );
+}
+
+class DepartmentMemberQr {
+  final String token;
+  final DateTime? expiresAt;
+  final String departmentName;
+  final DepartmentMemberQrProfile member;
+
+  const DepartmentMemberQr({
+    required this.token,
+    required this.expiresAt,
+    required this.departmentName,
+    required this.member,
+  });
+
+  factory DepartmentMemberQr.fromJson(Map<String, dynamic> json) =>
+      DepartmentMemberQr(
+        token: (json['token'] as String?) ?? '',
+        expiresAt: DateTime.tryParse((json['expiresAt'] as String?) ?? ''),
+        departmentName: (json['departmentName'] as String?) ?? 'Department',
+        member: DepartmentMemberQrProfile.fromJson(
+          Map<String, dynamic>.from((json['member'] as Map?) ?? const {}),
+        ),
+      );
+}
+
+class DepartmentResolvedMemberQr {
+  final DepartmentMemberQrProfile member;
+  final bool alreadyOnRoster;
+
+  const DepartmentResolvedMemberQr({
+    required this.member,
+    required this.alreadyOnRoster,
+  });
+
+  factory DepartmentResolvedMemberQr.fromJson(Map<String, dynamic> json) =>
+      DepartmentResolvedMemberQr(
+        member: DepartmentMemberQrProfile.fromJson(
+          Map<String, dynamic>.from((json['member'] as Map?) ?? const {}),
+        ),
+        alreadyOnRoster: json['alreadyOnRoster'] == true,
+      );
+}
+
+class DepartmentClassRegistrationPreview {
+  final String title;
+  final DateTime? startsAt;
+  final String location;
+  final bool open;
+
+  const DepartmentClassRegistrationPreview({
+    required this.title,
+    required this.startsAt,
+    required this.location,
+    required this.open,
+  });
+
+  factory DepartmentClassRegistrationPreview.fromJson(Map<String, dynamic> json) =>
+      DepartmentClassRegistrationPreview(
+        title: (json['title'] as String?) ?? 'Training',
+        startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        location: (json['location'] as String?) ?? '',
+        open: json['open'] == true,
+      );
+}
+
 class DepartmentClassSetup {
   final List<Map<String, dynamic>> checklists;
   final List<Map<String, dynamic>> members;
@@ -902,6 +1000,61 @@ class ResponderRoadmapApi {
               Map<String, dynamic>.from(item),
             ))
         .toList(growable: false);
+  }
+
+  Future<DepartmentMemberQr> createMemberQr() async {
+    final data = await _request('POST', 'app/member-qr', body: const {});
+    return DepartmentMemberQr.fromJson(_asMap(data));
+  }
+
+  Future<void> revokeMemberQr() async {
+    await _request('POST', 'app/member-qr/revoke', body: const {});
+  }
+
+  Future<DepartmentResolvedMemberQr> resolveMemberQrForClass({
+    required String classId,
+    required String token,
+  }) async {
+    final data = await _request(
+      'POST',
+      'classes/${Uri.encodeComponent(classId)}/roster/member-qr/resolve',
+      body: {'token': token},
+    );
+    return DepartmentResolvedMemberQr.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> addMemberQrToClass({
+    required String classId,
+    required String token,
+  }) async {
+    final data = await _request(
+      'POST',
+      'classes/${Uri.encodeComponent(classId)}/roster/member-qr/add',
+      body: {'token': token},
+    );
+    final map = _asMap(data);
+    return DepartmentClassDetail.fromJson(_asMap(map['class']));
+  }
+
+  Future<DepartmentClassRegistrationPreview> getClassRegistrationPreview(
+    String registrationToken,
+  ) async {
+    final data = await _request(
+      'GET',
+      'public/classes/${Uri.encodeComponent(registrationToken)}',
+      authenticated: false,
+    );
+    return DepartmentClassRegistrationPreview.fromJson(_asMap(data));
+  }
+
+  Future<bool> registerForClassQr(String registrationToken) async {
+    final data = await _request(
+      'POST',
+      'app/classes/register',
+      body: {'registrationToken': registrationToken},
+    );
+    final map = _asMap(data);
+    return map['registered'] == true;
   }
 
   Future<DepartmentClassSetup> getClassSetup() async {

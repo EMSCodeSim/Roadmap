@@ -8,6 +8,7 @@ import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/app_mode_switcher.dart';
+import 'package:firepath/widgets/department_qr.dart';
 
 /// Canonical department home for members. Official department records are read
 /// from responderroadmap.com; no local department database is used here.
@@ -106,6 +107,75 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     if (mounted) await _refresh(silent: true);
   }
 
+  Future<void> _showMemberQr() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => MemberQrDialog(api: _api),
+    );
+  }
+
+  Future<void> _scanTrainingQr() async {
+    final raw = await scanDepartmentQr(context, title: 'Scan Training QR');
+    if (!mounted || raw == null) return;
+    final token = parseClassRegistrationToken(raw);
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('That is not a valid Responder Roadmap training QR code.')),
+      );
+      return;
+    }
+    try {
+      final preview = await _api.getClassRegistrationPreview(token);
+      if (!mounted) return;
+      if (!preview.open) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Registration is closed for this training.')),
+        );
+        return;
+      }
+      final mode = context.read<AppModeController>();
+      final when = preview.startsAt == null
+          ? 'Date not provided'
+          : preview.startsAt!.toLocal().toString().split('.').first;
+      final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Join this training?'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(preview.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  Text(mode.departmentLink?.departmentName ?? 'Your department'),
+                  Text(when),
+                  if (preview.location.trim().isNotEmpty) Text(preview.location),
+                  const SizedBox(height: 10),
+                  const Text('Your authenticated department profile will be used. You are registering only yourself.'),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Register')),
+              ],
+            ),
+          ) ??
+          false;
+      if (!confirmed) return;
+      await _api.registerForClassQr(token);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Registered for ${preview.title}.')),
+      );
+      await _refresh(silent: true);
+    } on ResponderRoadmapApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final mode = context.watch<AppModeController>();
@@ -126,6 +196,16 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
             Text(mode.departmentLink!.departmentName, style: Theme.of(context).textTheme.bodySmall),
         ]),
         actions: [
+          IconButton(
+            tooltip: 'My department QR',
+            onPressed: _showMemberQr,
+            icon: const Icon(Icons.badge_outlined),
+          ),
+          IconButton(
+            tooltip: 'Scan training QR',
+            onPressed: _scanTrainingQr,
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+          ),
           IconButton(
             tooltip: 'Refresh',
             onPressed: _refreshing ? null : () => _refresh(),
