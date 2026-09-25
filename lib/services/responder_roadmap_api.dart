@@ -566,6 +566,22 @@ class DepartmentTrainingSheetTemplate {
       );
 }
 
+class DepartmentConfiguration {
+  final String agencyType;
+  final List<String> operationalCapabilities;
+  final List<String> customCapabilities;
+  const DepartmentConfiguration({required this.agencyType, required this.operationalCapabilities, required this.customCapabilities});
+  factory DepartmentConfiguration.fromJson(Map<String,dynamic> json)=>DepartmentConfiguration(
+    agencyType:(json['agencyType'] as String?)??'FIRE_EMS',
+    operationalCapabilities:_decodeStringArray(json['operationalCapabilitiesJson']),
+    customCapabilities:_decodeStringArray(json['customCapabilitiesJson']),
+  );
+  static List<String> _decodeStringArray(Object? raw){
+    if(raw is! String||raw.isEmpty)return const[];
+    try{final value=jsonDecode(raw);return value is List?value.map((e)=>e.toString()).toList(growable:false):const[];}catch(_){return const[];}
+  }
+}
+
 class DepartmentClassSetup {
   final List<Map<String, dynamic>> checklists;
   final List<Map<String, dynamic>> members;
@@ -1013,6 +1029,23 @@ class ResponderRoadmapApi {
   Future<DepartmentTrainingSheetTemplate> archiveTrainingSheetTemplate(String id) async {
     final data = await _request('POST', 'training-sheet-templates/${Uri.encodeComponent(id)}/archive', body: const {});
     return DepartmentTrainingSheetTemplate.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentConfiguration> getDepartmentConfiguration() async {
+    return DepartmentConfiguration.fromJson(_asMap(await _request('GET','department')));
+  }
+
+  Future<DepartmentConfiguration> updateDepartmentConfiguration({
+    required String agencyType,
+    required List<String> operationalCapabilities,
+    required List<String> customCapabilities,
+  }) async {
+    final data=await _request('PATCH','department',body:{
+      'agencyType':agencyType,
+      'operationalCapabilities':operationalCapabilities,
+      'customCapabilities':customCapabilities,
+    });
+    return DepartmentConfiguration.fromJson(_asMap(data));
   }
 
   Future<DepartmentClassSetup> getClassSetup() async {
