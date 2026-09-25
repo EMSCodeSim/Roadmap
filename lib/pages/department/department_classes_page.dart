@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:firepath/state/app_mode_controller.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
 
@@ -311,7 +312,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final student = _student; if (student == null || _detail == null) return;
     var notes = ''; if (result == 'FAIL' || result == 'NEEDS_REMEDIATION') { final entered = await _correctionNotes(result == 'FAIL' ? 'Record failed skill' : 'Remediation required'); if (entered == null) return; notes = entered; }
     setState(() => _busy = true);
-    try { _setDetail(await _api.recordClassSkill(classId: widget.classId, enrollmentId: student.id, requirementId: skill.id, result: result, notes: notes)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); }
+    try { final saved=await _api.recordClassSkillDurable(classId: widget.classId, enrollmentId: student.id, requirementId: skill.id, result: result, notes: notes); if(saved.detail!=null)_setDetail(saved.detail!); if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — skill result saved safely on this device.')));} } catch (e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); }
   }
 
   @override
@@ -319,13 +320,25 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final detail = _detail; final student = _student;
     return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Class roster')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       Text(detail.checklistTitle, style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 10),
+      Consumer<DepartmentInboxController>(builder:(context,sync,_) {
+        final waiting=sync.syncState==DepartmentSyncState.waitingToUpload;
+        final failed=sync.syncState==DepartmentSyncState.failed;
+        if(!waiting&&!failed)return const SizedBox.shrink();
+        return Card(child:Padding(padding:const EdgeInsets.all(12),child:Row(children:[
+          Icon(waiting?Icons.cloud_upload_outlined:Icons.cloud_off_outlined),
+          const SizedBox(width:10),
+          Expanded(child:Text(waiting?'Waiting to Sync — field changes are saved on this device and will retry automatically.':'Sync Failed — your saved field changes are still on this device.')),
+          TextButton(onPressed:()=>sync.refresh(),child:const Text('Retry')),
+        ])));
+      }),
+
       if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.check_circle_outline_rounded), label: const Text('Close Training'))]),
       if (detail.status == 'COMPLETE') ...[const Card(child: Padding(padding: EdgeInsets.all(14), child: Row(children:[Icon(Icons.verified_rounded),SizedBox(width:10),Expanded(child:Text('Training closed — official digital training sheet finalized.'))]))), const SizedBox(height:8), OutlinedButton.icon(onPressed:_busy?null:_repeatTraining,icon:const Icon(Icons.replay_rounded),label:const Text('Repeat Training'))],
       const SizedBox(height: 12),
       DropdownButtonFormField<String>(value: _studentId, decoration: const InputDecoration(labelText: 'Student'), items: detail.roster.map((item) => DropdownMenuItem(value: item.id, child: Text('${item.name} · ${item.finalResult.replaceAll('_', ' ')}'))).toList(), onChanged: (value) => setState(() => _studentId = value)),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
       if (student != null) ...[
-        const SizedBox(height: 12), DropdownButtonFormField<String>(value: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { _setDetail(await _api.updateClassStudent(classId: detail.id, enrollmentId: student.id, attendance: value)); } finally { if (mounted) setState(() => _busy = false); } }),
+        const SizedBox(height: 12), DropdownButtonFormField<String>(value: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null)_setDetail(saved.detail!); if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } finally { if (mounted) setState(() => _busy = false); } }),
         const SizedBox(height: 18),
         ...detail.sections.map((section) => Card(margin: const EdgeInsets.only(bottom: 14), clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(width: double.infinity, padding: const EdgeInsets.all(14), color: Theme.of(context).colorScheme.surfaceContainerHighest, child: Text(section.title, style: const TextStyle(fontWeight: FontWeight.w900))),
