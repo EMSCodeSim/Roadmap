@@ -157,7 +157,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     reviews: _reviews,
                     classes: openClasses,
                     onAssignment: _open,
-                    onReviews: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DepartmentReviewPage())),
+                    onReview: (item) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentReviewPage(initialReviewId: item.id))),
                     onClass: (item) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentClassDetailPage(classId: item.id))),
                   ),
                   const SizedBox(height: 12),
@@ -257,7 +257,7 @@ class _NeedsAttention extends StatelessWidget {
   final List<DepartmentReviewItem> reviews;
   final List<DepartmentClassSummary> classes;
   final Future<void> Function(DepartmentTaskBookAssignment) onAssignment;
-  final VoidCallback onReviews;
+  final void Function(DepartmentReviewItem) onReview;
   final void Function(DepartmentClassSummary) onClass;
 
   const _NeedsAttention({
@@ -266,7 +266,7 @@ class _NeedsAttention extends StatelessWidget {
     required this.reviews,
     required this.classes,
     required this.onAssignment,
-    required this.onReviews,
+    required this.onReview,
     required this.onClass,
   });
 
@@ -308,14 +308,14 @@ class _NeedsAttention extends StatelessWidget {
         onTap: () => onAssignment(item),
       ));
     }
-    if (reviews.isNotEmpty) {
+    for (final item in reviews.take(2)) {
       tiles.add(ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.fact_check_outlined),
-        title: Text('${reviews.length} evaluation${reviews.length == 1 ? '' : 's'} waiting'),
-        subtitle: const Text('Open your evaluator queue'),
+        title: Text(item.requirementTitle),
+        subtitle: Text('${item.memberName} · evaluation waiting'),
         trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onReviews,
+        onTap: () => onReview(item),
       ));
     }
     for (final item in classes.take(2)) {
