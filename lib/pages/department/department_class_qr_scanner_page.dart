@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
 
@@ -108,11 +109,11 @@ class _DepartmentClassQrScannerPageState extends State<DepartmentClassQrScannerP
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => context.pop(false),
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: preview.open ? () => Navigator.pop(context, true) : null,
+              onPressed: preview.open ? () => context.pop(true) : null,
               child: Text(preview.open ? 'Join roster' : 'Registration closed'),
             ),
           ],
@@ -200,7 +201,7 @@ class _DepartmentClassQrScannerPageState extends State<DepartmentClassQrScannerP
                     if (_registered) ...[
                       const SizedBox(height: 12),
                       FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
+                        onPressed: () => context.pop(true),
                         child: const Text('Done'),
                       ),
                     ],
