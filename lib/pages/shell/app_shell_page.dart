@@ -25,10 +25,10 @@ class AppShellPage extends StatelessWidget {
     return 2;
   }
 
-  void _select(AppModeController mode, int index) {
-    if (index == 0) return _go(navigationShell.context, 0);
-    if (index == 1) return _go(navigationShell.context, mode.isDepartment ? 3 : 1);
-    _go(navigationShell.context, mode.isDepartment ? 4 : 3);
+  void _select(BuildContext context, AppModeController mode, int index) {
+    if (index == 0) return _go(context, 0);
+    if (index == 1) return _go(context, mode.isDepartment ? 3 : 1);
+    _go(context, mode.isDepartment ? 4 : 3);
   }
 
   @override
@@ -59,7 +59,7 @@ class AppShellPage extends StatelessWidget {
           child: BottomNavigationBar(
             type: BottomNavigationBarType.fixed,
             currentIndex: selected,
-            onTap: (index) => _select(mode, index),
+            onTap: (index) => _select(context, mode, index),
             selectedItemColor: cs.primary,
             unselectedItemColor: cs.onSurfaceVariant,
             selectedFontSize: 12,
