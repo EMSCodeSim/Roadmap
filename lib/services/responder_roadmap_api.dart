@@ -804,6 +804,9 @@ class ResponderRoadmapApi {
     return ResponderRoadmapSession.fromJson(_asMap(data));
   }
 
+  Future<DepartmentClassRegistrationPreview> previewClassRegistration(String token) async {
+    final normalized = token.trim().toLowerCase();
+    if (!RegExp(r'^[a-f0-9]{64}
   Future<DepartmentCodeValidation> validateDepartmentCode(String joinCode) async {
     final data = await _request(
       'POST',
@@ -1320,4 +1323,1114 @@ class ResponderRoadmapApi {
     if (value is Map) return Map<String, dynamic>.from(value);
     return <String, dynamic>{};
   }
+}
+).hasMatch(normalized)) {
+      throw const ResponderRoadmapApiException('That is not a valid class QR code.');
+    }
+    final data = await _request(
+      'GET',
+      'public/classes/${Uri.encodeComponent(normalized)}',
+      authenticated: false,
+    );
+    return DepartmentClassRegistrationPreview.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassRegistrationResult> registerForClass(String token) async {
+    final normalized = token.trim().toLowerCase();
+    if (!RegExp(r'^[a-f0-9]{64}
+  Future<DepartmentCodeValidation> validateDepartmentCode(String joinCode) async {
+    final data = await _request(
+      'POST',
+      'auth/department-code',
+      body: <String, dynamic>{'joinCode': joinCode.trim().toUpperCase()},
+      authenticated: false,
+    );
+    return DepartmentCodeValidation.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentRegistrationResult> registerWithDepartmentCode({
+    required String joinCode,
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    final data = await _request(
+      'POST',
+      'auth/app-register',
+      body: <String, dynamic>{
+        'joinCode': joinCode.trim().toUpperCase(),
+        'name': name.trim(),
+        'email': email.trim(),
+        'password': password,
+      },
+      authenticated: false,
+    );
+    return DepartmentRegistrationResult.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentJoinResult> joinDepartment(String joinCode) async {
+    final data = await _request(
+      'POST',
+      'join',
+      body: <String, dynamic>{'joinCode': joinCode.trim().toUpperCase()},
+    );
+    return DepartmentJoinResult.fromJson(_asMap(data));
+  }
+
+  Future<List<DepartmentTaskBookAssignment>> listAssignments() async {
+    final data = await _request('GET', 'app/assignments');
+    final list = data is List ? data : const <dynamic>[];
+    return list
+        .whereType<Map>()
+        .map((item) => DepartmentTaskBookAssignment.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList(growable: false);
+  }
+
+  Future<DepartmentTaskBookAssignment> getAssignment(String assignmentId) async {
+    final data = await _request(
+      'GET',
+      'app/assignments/${Uri.encodeComponent(assignmentId)}',
+    );
+    return DepartmentTaskBookAssignment.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentSubmissionResult> submitRequirement({
+    required String assignmentId,
+    required String requirementId,
+    String memberNotes = '',
+    String evidenceDescription = '',
+    String? evidenceType,
+    String? clientRequestId,
+    String? evaluatorId,
+    List<String> checkedStepIds = const [],
+    bool memberAttested = false,
+  }) async {
+    final requestId = clientRequestId ?? 'submission-${DateTime.now().microsecondsSinceEpoch}';
+    final pending = <String, dynamic>{
+      'clientRequestId': requestId,
+      'assignmentId': assignmentId,
+      'requirementId': requirementId,
+      'memberNotes': memberNotes,
+      'evidenceDescription': evidenceDescription,
+      if (evidenceType != null) 'evidenceType': evidenceType,
+      if (evaluatorId != null) 'evaluatorId': evaluatorId,
+      'checkedStepIds': checkedStepIds,
+      'memberAttested': memberAttested,
+    };
+    await _savePendingSubmission(pending);
+    dynamic data;
+    try {
+      data = await _request(
+        'POST',
+        'app/assignments/${Uri.encodeComponent(assignmentId)}/requirements/${Uri.encodeComponent(requirementId)}/submit',
+        body: <String, dynamic>{
+          'memberNotes': memberNotes.trim(),
+          'evidenceDescription': evidenceDescription.trim(),
+          if (evidenceType != null) 'evidenceType': evidenceType,
+          'clientRequestId': requestId,
+          if (evaluatorId != null) 'evaluatorId': evaluatorId,
+          'checkedStepIds': checkedStepIds,
+          'memberAttested': memberAttested,
+        },
+      );
+    } on ResponderRoadmapApiException catch (error) {
+      if (error.statusCode != null && error.statusCode! >= 400 && error.statusCode! < 500 && error.statusCode != 408) {
+        await _removePendingSubmission(requestId);
+      }
+      rethrow;
+    }
+    await _removePendingSubmission(requestId);
+    final map = _asMap(data);
+    return DepartmentSubmissionResult(
+      assignment: DepartmentTaskBookAssignment.fromJson(_asMap(map['assignment'])),
+      receipt: DepartmentSubmissionReceipt.fromJson(_asMap(map['receipt'])),
+    );
+  }
+
+  Future<List<DepartmentSubmissionResult>> retryPendingSubmissions() async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    dynamic decoded;
+    try {
+      decoded = raw == null ? const <dynamic>[] : jsonDecode(raw);
+    } catch (_) {
+      decoded = const <dynamic>[];
+    }
+    final rows = decoded is List ? decoded.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList() : <Map<String, dynamic>>[];
+    final completed = <DepartmentSubmissionResult>[];
+    for (final row in rows) {
+      try {
+        completed.add(await submitRequirement(
+          assignmentId: (row['assignmentId'] as String?) ?? '',
+          requirementId: (row['requirementId'] as String?) ?? '',
+          memberNotes: (row['memberNotes'] as String?) ?? '',
+          evidenceDescription: (row['evidenceDescription'] as String?) ?? '',
+          evidenceType: row['evidenceType'] as String?,
+          clientRequestId: row['clientRequestId'] as String?,
+          evaluatorId: row['evaluatorId'] as String?,
+          checkedStepIds: (row['checkedStepIds'] as List? ?? const []).whereType<String>().toList(growable: false),
+          memberAttested: row['memberAttested'] == true,
+        ));
+      } on ResponderRoadmapApiException {
+        // Leave the durable queue intact for the next automatic retry.
+      }
+    }
+    return completed;
+  }
+
+  Future<int> pendingSubmissionCount() async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    if (raw == null) return 0;
+    try { final value = jsonDecode(raw); return value is List ? value.length : 0; } catch (_) { return 0; }
+  }
+
+  Future<void> _savePendingSubmission(Map<String, dynamic> submission) async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    List<dynamic> rows;
+    try { final value = raw == null ? null : jsonDecode(raw); rows = value is List ? value : <dynamic>[]; } catch (_) { rows = <dynamic>[]; }
+    rows.removeWhere((item) => item is Map && item['clientRequestId'] == submission['clientRequestId']);
+    rows.add(submission);
+    await _secureStorage.write(key: _pendingSubmissionsKey, value: jsonEncode(rows));
+  }
+
+  Future<void> _removePendingSubmission(String requestId) async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    if (raw == null) return;
+    try {
+      final value = jsonDecode(raw);
+      if (value is! List) return;
+      value.removeWhere((item) => item is Map && item['clientRequestId'] == requestId);
+      await _secureStorage.write(key: _pendingSubmissionsKey, value: jsonEncode(value));
+    } catch (_) {}
+  }
+
+  Future<DepartmentInbox> getInbox() async => DepartmentInbox.fromJson(_asMap(await _request('GET', 'app/inbox')));
+
+  Future<List<DepartmentEvaluator>> listEvaluators() async {
+    final data = await _request('GET', 'app/evaluators');
+    return (data is List ? data : const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => DepartmentEvaluator.fromJson(Map<String, dynamic>.from(item)))
+        .where((item) => item.id.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  Future<DepartmentCertificationSharing> getCertificationSharing() async {
+    final data = await _request('GET', 'app/certifications/sharing');
+    return DepartmentCertificationSharing.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentCertificationSharing> syncCertificationSharing(
+    List<Map<String, dynamic>> certifications,
+  ) async {
+    final data = await _request(
+      'POST',
+      'app/certifications/sharing',
+      body: <String, dynamic>{'certifications': certifications},
+    );
+    return DepartmentCertificationSharing.fromJson(_asMap(data));
+  }
+
+  Future<void> markInboxRead(String id) async {
+    await _request('POST', 'app/inbox/${Uri.encodeComponent(id)}/read');
+  }
+
+  Future<void> markAllInboxRead() async {
+    await _request('POST', 'app/inbox/read-all');
+  }
+
+  Future<void> registerPushDevice({required String token, required String platform}) async {
+    await _request('POST', 'app/push-devices', body: {'token': token, 'platform': platform});
+  }
+
+  Future<void> unregisterPushDevice(String token) async {
+    await _request('POST', 'app/push-devices/unregister', body: {'token': token});
+  }
+
+  Future<List<DepartmentReviewItem>> listReviewQueue() async {
+    final data = await _request('GET', 'sign-offs?view=mine');
+    final list = data is List ? data : const <dynamic>[];
+    return list
+        .whereType<Map>()
+        .map((item) => DepartmentReviewItem.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList(growable: false);
+  }
+
+  Future<List<DepartmentTrainingSheetTemplate>> listTrainingSheetTemplates({bool includeArchived = false}) async {
+    final data = await _request('GET', 'training-sheet-templates${includeArchived ? '?archived=all' : ''}');
+    return (data is List ? data : const <dynamic>[]).whereType<Map>().map((item) => DepartmentTrainingSheetTemplate.fromJson(Map<String, dynamic>.from(item))).toList(growable: false);
+  }
+
+  Future<DepartmentTrainingSheetTemplate> createTrainingSheetTemplate({
+    required String name, String defaultTitle = '', String classType = 'GENERAL',
+    String trainingCategory = 'COMPANY', double creditHours = 0,
+    String checklistVersionId = '', String location = '', String notes = '',
+    List<String> requiredFields = const [], bool selfRegistration = true,
+    List<String> proctorUserIds = const [],
+  }) async {
+    final data = await _request('POST', 'training-sheet-templates', body: {
+      'name': name.trim(), 'defaultTitle': defaultTitle.trim(), 'classType': classType,
+      'trainingCategory': trainingCategory, 'creditHours': creditHours,
+      'checklistVersionId': checklistVersionId, 'location': location.trim(),
+      'notes': notes.trim(), 'requiredFields': requiredFields,
+      'selfRegistration': selfRegistration, 'proctorUserIds': proctorUserIds,
+    });
+    return DepartmentTrainingSheetTemplate.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentTrainingSheetTemplate> archiveTrainingSheetTemplate(String id) async {
+    final data = await _request('POST', 'training-sheet-templates/${Uri.encodeComponent(id)}/archive', body: const {});
+    return DepartmentTrainingSheetTemplate.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentConfiguration> getDepartmentConfiguration() async {
+    return DepartmentConfiguration.fromJson(_asMap(await _request('GET','department')));
+  }
+
+  Future<DepartmentConfiguration> updateDepartmentConfiguration({
+    required String agencyType,
+    required List<String> operationalCapabilities,
+    required List<String> customCapabilities,
+  }) async {
+    final data=await _request('PATCH','department',body:{
+      'agencyType':agencyType,
+      'operationalCapabilities':operationalCapabilities,
+      'customCapabilities':customCapabilities,
+    });
+    return DepartmentConfiguration.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassSetup> getClassSetup() async {
+    final data = await _request('GET', 'classes/setup');
+    return DepartmentClassSetup.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassSummary> createTrainingSheet({
+    required String title,
+    required String startsAt,
+    String classType = 'GENERAL',
+    String trainingCategory = 'COMPANY',
+    String checklistVersionId = '',
+    double creditHours = 0,
+    String? endsAt,
+    String location = '',
+    String notes = '',
+    List<String> membershipIds = const [],
+    List<String> proctorUserIds = const [],
+    bool selfRegistration = true,
+  }) async {
+    final data = await _request('POST', 'classes', body: {
+      'title': title.trim(),
+      'classType': classType,
+      'trainingCategory': trainingCategory,
+      'checklistVersionId': checklistVersionId,
+      'creditHours': creditHours,
+      'startsAt': startsAt,
+      'endsAt': endsAt,
+      'location': location.trim(),
+      'notes': notes.trim(),
+      'membershipIds': membershipIds,
+      'proctorUserIds': proctorUserIds,
+      'selfRegistration': selfRegistration,
+    });
+    final map = _asMap(data);
+    // Creation returns the canonical class id; fetch the scoped server summary
+    // through the normal list endpoint so mobile never invents a local record.
+    final rows = await listClasses();
+    return rows.firstWhere((row) => row.id == (map['id'] as String? ?? ''));
+  }
+
+  Future<List<DepartmentClassSummary>> listClasses() async {
+    final data = await _request('GET', 'classes?view=mine');
+    return (data is List ? data : const <dynamic>[]).whereType<Map>().map((item) => DepartmentClassSummary.fromJson(Map<String, dynamic>.from(item))).toList(growable: false);
+  }
+
+  Future<DepartmentClassDetail> getClass(String classId) async {
+    final data = await _request('GET', 'classes/${Uri.encodeComponent(classId)}');
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassMutationResult> recordClassSkillDurable({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
+    final key='skill:$classId:$enrollmentId:$requirementId';
+    final row={'key':key,'kind':'skill','classId':classId,'enrollmentId':enrollmentId,'requirementId':requirementId,'result':result,'notes':notes.trim(),'queuedAt':DateTime.now().toUtc().toIso8601String()};
+    try {
+      final detail=await recordClassSkill(classId:classId,enrollmentId:enrollmentId,requirementId:requirementId,result:result,notes:notes);
+      await _removePendingClassMutation(key);
+      return DepartmentClassMutationResult(detail:detail,queued:false);
+    } on ResponderRoadmapApiException {
+      await _savePendingClassMutation(row);
+      return const DepartmentClassMutationResult(detail:null,queued:true);
+    }
+  }
+
+  Future<DepartmentClassMutationResult> updateClassStudentDurable({required String classId, required String enrollmentId, required String attendance}) async {
+    final key='attendance:$classId:$enrollmentId';
+    final row={'key':key,'kind':'attendance','classId':classId,'enrollmentId':enrollmentId,'attendance':attendance,'queuedAt':DateTime.now().toUtc().toIso8601String()};
+    try {
+      final detail=await updateClassStudent(classId:classId,enrollmentId:enrollmentId,attendance:attendance);
+      await _removePendingClassMutation(key);
+      return DepartmentClassMutationResult(detail:detail,queued:false);
+    } on ResponderRoadmapApiException {
+      await _savePendingClassMutation(row);
+      return const DepartmentClassMutationResult(detail:null,queued:true);
+    }
+  }
+
+  Future<int> pendingClassMutationCount() async {
+    final rows=await _pendingClassMutations();
+    return rows.length;
+  }
+
+  Future<int> retryPendingClassMutations() async {
+    final rows=await _pendingClassMutations();
+    var completed=0;
+    for(final row in rows){
+      final key=(row['key'] as String?)??'';
+      try{
+        if(row['kind']=='attendance'){
+          await updateClassStudent(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',attendance:(row['attendance'] as String?)??'REGISTERED');
+        }else if(row['kind']=='skill'){
+          await recordClassSkill(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',requirementId:(row['requirementId'] as String?)??'',result:(row['result'] as String?)??'NOT_EVALUATED',notes:(row['notes'] as String?)??'');
+        }else{continue;}
+        await _removePendingClassMutation(key); completed++;
+      }on ResponderRoadmapApiException{/* keep durable mutation for Retry */}
+    }
+    return completed;
+  }
+
+  Future<List<Map<String,dynamic>>> _pendingClassMutations() async {
+    final raw=await _secureStorage.read(key:_pendingClassMutationsKey);
+    try{final value=raw==null?null:jsonDecode(raw);return value is List?value.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():<Map<String,dynamic>>[];}catch(_){return <Map<String,dynamic>>[];}
+  }
+  Future<void> _savePendingClassMutation(Map<String,dynamic> row) async {
+    final rows=await _pendingClassMutations();
+    rows.removeWhere((item)=>item['key']==row['key']);
+    rows.add(row);
+    await _secureStorage.write(key:_pendingClassMutationsKey,value:jsonEncode(rows));
+  }
+  Future<void> _removePendingClassMutation(String key) async {
+    final rows=await _pendingClassMutations();
+    rows.removeWhere((item)=>item['key']==key);
+    await _secureStorage.write(key:_pendingClassMutationsKey,value:jsonEncode(rows));
+  }
+
+  Future<DepartmentClassDetail> recordClassSkill({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}/skills/${Uri.encodeComponent(requirementId)}', body: {'result': result, 'notes': notes.trim()});
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> updateClassStudent({required String classId, required String enrollmentId, required String attendance}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}', body: {'attendance': attendance});
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> manageClassRegistration({required String classId, required String action}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/registration', body: {'action': action});
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentCloseValidation> validateClassClosure(String classId) async {
+    final data=await _request('GET','classes/${Uri.encodeComponent(classId)}/close-validation');
+    return DepartmentCloseValidation.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> updateClassStatus({required String classId, required String status}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/status', body: {'status': status});
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<void> reviewSignOff({
+    required String completionId,
+    required String result,
+    required String notes,
+    required bool attested,
+    List<Map<String, String>> stepResults = const [],
+    List<String> criticalFailuresTriggered = const [],
+  }) async {
+    await _request(
+      'POST',
+      'sign-offs/${Uri.encodeComponent(completionId)}',
+      body: <String, dynamic>{
+        'result': result,
+        'notes': notes.trim(),
+        'attested': attested,
+        'stepResults': stepResults,
+        'criticalFailuresTriggered': criticalFailuresTriggered,
+      },
+    );
+  }
+
+  Future<List<int>> downloadClosedTrainingCsv(String classId) async {
+    final token=(await _secureStorage.read(key:_tokenKey))?.trim()??'';
+    if(token.isEmpty)throw const ResponderRoadmapApiException('Connect your ResponderRoadmap account first.',statusCode:401);
+    final response=await _client.get(Uri.parse('$baseUrl/classes/${Uri.encodeComponent(classId)}/export.csv'),headers:{'Accept':'text/csv','Authorization':'Bearer $token'});
+    if(response.statusCode<200||response.statusCode>=300)throw ResponderRoadmapApiException('Could not export this training record (${response.statusCode}).',statusCode:response.statusCode);
+    return response.bodyBytes;
+  }
+
+  Future<Map<String,dynamic>> getClosedTrainingExportRecord(String classId) async =>
+      _asMap(await _request('GET','classes/${Uri.encodeComponent(classId)}/export'));
+
+  Future<void> disconnect() async {
+    await _secureStorage.delete(key: _tokenKey);
+  }
+
+  Future<dynamic> _request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+  }) async {
+    final uri = Uri.parse('$baseUrl/$path');
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+    if (authenticated) {
+      final token = (await _secureStorage.read(key: _tokenKey))?.trim() ?? '';
+      if (token.isEmpty) {
+        throw const ResponderRoadmapApiException(
+          'Connect your ResponderRoadmap account first.',
+          statusCode: 401,
+        );
+      }
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    late http.Response response;
+    try {
+      switch (method) {
+        case 'GET':
+          response = await _client.get(uri, headers: headers);
+          break;
+        case 'POST':
+          response = await _client.post(
+            uri,
+            headers: headers,
+            body: jsonEncode(body ?? const <String, dynamic>{}),
+          );
+          break;
+        default:
+          throw ResponderRoadmapApiException('Unsupported request method: $method');
+      }
+    } catch (error) {
+      if (error is ResponderRoadmapApiException) rethrow;
+      throw const ResponderRoadmapApiException(
+        'Could not reach ResponderRoadmap. Check your connection and try again.',
+      );
+    }
+
+    dynamic decoded;
+    try {
+      decoded = response.body.isEmpty ? null : jsonDecode(response.body);
+    } catch (_) {
+      decoded = null;
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final errorMessage = decoded is Map ? (decoded['error'] as String?) : null;
+      if (response.statusCode == 401) {
+        await _secureStorage.delete(key: _tokenKey);
+      }
+      throw ResponderRoadmapApiException(
+        errorMessage?.trim().isNotEmpty == true
+            ? errorMessage!
+            : 'ResponderRoadmap request failed (${response.statusCode}).',
+        statusCode: response.statusCode,
+      );
+    }
+
+    if (decoded is Map && decoded.containsKey('data')) {
+      return decoded['data'];
+    }
+    return decoded;
+  }
+
+  Map<String, dynamic> _asMap(Object? value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return <String, dynamic>{};
+  }
+}
+).hasMatch(normalized)) {
+      throw const ResponderRoadmapApiException('That is not a valid class QR code.');
+    }
+    final data = await _request(
+      'POST',
+      'app/classes/register/${Uri.encodeComponent(normalized)}',
+      body: const <String, dynamic>{},
+    );
+    return DepartmentClassRegistrationResult.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentCodeValidation> validateDepartmentCode(String joinCode) async {
+    final data = await _request(
+      'POST',
+      'auth/department-code',
+      body: <String, dynamic>{'joinCode': joinCode.trim().toUpperCase()},
+      authenticated: false,
+    );
+    return DepartmentCodeValidation.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentRegistrationResult> registerWithDepartmentCode({
+    required String joinCode,
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    final data = await _request(
+      'POST',
+      'auth/app-register',
+      body: <String, dynamic>{
+        'joinCode': joinCode.trim().toUpperCase(),
+        'name': name.trim(),
+        'email': email.trim(),
+        'password': password,
+      },
+      authenticated: false,
+    );
+    return DepartmentRegistrationResult.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentJoinResult> joinDepartment(String joinCode) async {
+    final data = await _request(
+      'POST',
+      'join',
+      body: <String, dynamic>{'joinCode': joinCode.trim().toUpperCase()},
+    );
+    return DepartmentJoinResult.fromJson(_asMap(data));
+  }
+
+  Future<List<DepartmentTaskBookAssignment>> listAssignments() async {
+    final data = await _request('GET', 'app/assignments');
+    final list = data is List ? data : const <dynamic>[];
+    return list
+        .whereType<Map>()
+        .map((item) => DepartmentTaskBookAssignment.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList(growable: false);
+  }
+
+  Future<DepartmentTaskBookAssignment> getAssignment(String assignmentId) async {
+    final data = await _request(
+      'GET',
+      'app/assignments/${Uri.encodeComponent(assignmentId)}',
+    );
+    return DepartmentTaskBookAssignment.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentSubmissionResult> submitRequirement({
+    required String assignmentId,
+    required String requirementId,
+    String memberNotes = '',
+    String evidenceDescription = '',
+    String? evidenceType,
+    String? clientRequestId,
+    String? evaluatorId,
+    List<String> checkedStepIds = const [],
+    bool memberAttested = false,
+  }) async {
+    final requestId = clientRequestId ?? 'submission-${DateTime.now().microsecondsSinceEpoch}';
+    final pending = <String, dynamic>{
+      'clientRequestId': requestId,
+      'assignmentId': assignmentId,
+      'requirementId': requirementId,
+      'memberNotes': memberNotes,
+      'evidenceDescription': evidenceDescription,
+      if (evidenceType != null) 'evidenceType': evidenceType,
+      if (evaluatorId != null) 'evaluatorId': evaluatorId,
+      'checkedStepIds': checkedStepIds,
+      'memberAttested': memberAttested,
+    };
+    await _savePendingSubmission(pending);
+    dynamic data;
+    try {
+      data = await _request(
+        'POST',
+        'app/assignments/${Uri.encodeComponent(assignmentId)}/requirements/${Uri.encodeComponent(requirementId)}/submit',
+        body: <String, dynamic>{
+          'memberNotes': memberNotes.trim(),
+          'evidenceDescription': evidenceDescription.trim(),
+          if (evidenceType != null) 'evidenceType': evidenceType,
+          'clientRequestId': requestId,
+          if (evaluatorId != null) 'evaluatorId': evaluatorId,
+          'checkedStepIds': checkedStepIds,
+          'memberAttested': memberAttested,
+        },
+      );
+    } on ResponderRoadmapApiException catch (error) {
+      if (error.statusCode != null && error.statusCode! >= 400 && error.statusCode! < 500 && error.statusCode != 408) {
+        await _removePendingSubmission(requestId);
+      }
+      rethrow;
+    }
+    await _removePendingSubmission(requestId);
+    final map = _asMap(data);
+    return DepartmentSubmissionResult(
+      assignment: DepartmentTaskBookAssignment.fromJson(_asMap(map['assignment'])),
+      receipt: DepartmentSubmissionReceipt.fromJson(_asMap(map['receipt'])),
+    );
+  }
+
+  Future<List<DepartmentSubmissionResult>> retryPendingSubmissions() async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    dynamic decoded;
+    try {
+      decoded = raw == null ? const <dynamic>[] : jsonDecode(raw);
+    } catch (_) {
+      decoded = const <dynamic>[];
+    }
+    final rows = decoded is List ? decoded.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList() : <Map<String, dynamic>>[];
+    final completed = <DepartmentSubmissionResult>[];
+    for (final row in rows) {
+      try {
+        completed.add(await submitRequirement(
+          assignmentId: (row['assignmentId'] as String?) ?? '',
+          requirementId: (row['requirementId'] as String?) ?? '',
+          memberNotes: (row['memberNotes'] as String?) ?? '',
+          evidenceDescription: (row['evidenceDescription'] as String?) ?? '',
+          evidenceType: row['evidenceType'] as String?,
+          clientRequestId: row['clientRequestId'] as String?,
+          evaluatorId: row['evaluatorId'] as String?,
+          checkedStepIds: (row['checkedStepIds'] as List? ?? const []).whereType<String>().toList(growable: false),
+          memberAttested: row['memberAttested'] == true,
+        ));
+      } on ResponderRoadmapApiException {
+        // Leave the durable queue intact for the next automatic retry.
+      }
+    }
+    return completed;
+  }
+
+  Future<int> pendingSubmissionCount() async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    if (raw == null) return 0;
+    try { final value = jsonDecode(raw); return value is List ? value.length : 0; } catch (_) { return 0; }
+  }
+
+  Future<void> _savePendingSubmission(Map<String, dynamic> submission) async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    List<dynamic> rows;
+    try { final value = raw == null ? null : jsonDecode(raw); rows = value is List ? value : <dynamic>[]; } catch (_) { rows = <dynamic>[]; }
+    rows.removeWhere((item) => item is Map && item['clientRequestId'] == submission['clientRequestId']);
+    rows.add(submission);
+    await _secureStorage.write(key: _pendingSubmissionsKey, value: jsonEncode(rows));
+  }
+
+  Future<void> _removePendingSubmission(String requestId) async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    if (raw == null) return;
+    try {
+      final value = jsonDecode(raw);
+      if (value is! List) return;
+      value.removeWhere((item) => item is Map && item['clientRequestId'] == requestId);
+      await _secureStorage.write(key: _pendingSubmissionsKey, value: jsonEncode(value));
+    } catch (_) {}
+  }
+
+  Future<DepartmentInbox> getInbox() async => DepartmentInbox.fromJson(_asMap(await _request('GET', 'app/inbox')));
+
+  Future<List<DepartmentEvaluator>> listEvaluators() async {
+    final data = await _request('GET', 'app/evaluators');
+    return (data is List ? data : const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => DepartmentEvaluator.fromJson(Map<String, dynamic>.from(item)))
+        .where((item) => item.id.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  Future<DepartmentCertificationSharing> getCertificationSharing() async {
+    final data = await _request('GET', 'app/certifications/sharing');
+    return DepartmentCertificationSharing.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentCertificationSharing> syncCertificationSharing(
+    List<Map<String, dynamic>> certifications,
+  ) async {
+    final data = await _request(
+      'POST',
+      'app/certifications/sharing',
+      body: <String, dynamic>{'certifications': certifications},
+    );
+    return DepartmentCertificationSharing.fromJson(_asMap(data));
+  }
+
+  Future<void> markInboxRead(String id) async {
+    await _request('POST', 'app/inbox/${Uri.encodeComponent(id)}/read');
+  }
+
+  Future<void> markAllInboxRead() async {
+    await _request('POST', 'app/inbox/read-all');
+  }
+
+  Future<void> registerPushDevice({required String token, required String platform}) async {
+    await _request('POST', 'app/push-devices', body: {'token': token, 'platform': platform});
+  }
+
+  Future<void> unregisterPushDevice(String token) async {
+    await _request('POST', 'app/push-devices/unregister', body: {'token': token});
+  }
+
+  Future<List<DepartmentReviewItem>> listReviewQueue() async {
+    final data = await _request('GET', 'sign-offs?view=mine');
+    final list = data is List ? data : const <dynamic>[];
+    return list
+        .whereType<Map>()
+        .map((item) => DepartmentReviewItem.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList(growable: false);
+  }
+
+  Future<List<DepartmentTrainingSheetTemplate>> listTrainingSheetTemplates({bool includeArchived = false}) async {
+    final data = await _request('GET', 'training-sheet-templates${includeArchived ? '?archived=all' : ''}');
+    return (data is List ? data : const <dynamic>[]).whereType<Map>().map((item) => DepartmentTrainingSheetTemplate.fromJson(Map<String, dynamic>.from(item))).toList(growable: false);
+  }
+
+  Future<DepartmentTrainingSheetTemplate> createTrainingSheetTemplate({
+    required String name, String defaultTitle = '', String classType = 'GENERAL',
+    String trainingCategory = 'COMPANY', double creditHours = 0,
+    String checklistVersionId = '', String location = '', String notes = '',
+    List<String> requiredFields = const [], bool selfRegistration = true,
+    List<String> proctorUserIds = const [],
+  }) async {
+    final data = await _request('POST', 'training-sheet-templates', body: {
+      'name': name.trim(), 'defaultTitle': defaultTitle.trim(), 'classType': classType,
+      'trainingCategory': trainingCategory, 'creditHours': creditHours,
+      'checklistVersionId': checklistVersionId, 'location': location.trim(),
+      'notes': notes.trim(), 'requiredFields': requiredFields,
+      'selfRegistration': selfRegistration, 'proctorUserIds': proctorUserIds,
+    });
+    return DepartmentTrainingSheetTemplate.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentTrainingSheetTemplate> archiveTrainingSheetTemplate(String id) async {
+    final data = await _request('POST', 'training-sheet-templates/${Uri.encodeComponent(id)}/archive', body: const {});
+    return DepartmentTrainingSheetTemplate.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentConfiguration> getDepartmentConfiguration() async {
+    return DepartmentConfiguration.fromJson(_asMap(await _request('GET','department')));
+  }
+
+  Future<DepartmentConfiguration> updateDepartmentConfiguration({
+    required String agencyType,
+    required List<String> operationalCapabilities,
+    required List<String> customCapabilities,
+  }) async {
+    final data=await _request('PATCH','department',body:{
+      'agencyType':agencyType,
+      'operationalCapabilities':operationalCapabilities,
+      'customCapabilities':customCapabilities,
+    });
+    return DepartmentConfiguration.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassSetup> getClassSetup() async {
+    final data = await _request('GET', 'classes/setup');
+    return DepartmentClassSetup.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassSummary> createTrainingSheet({
+    required String title,
+    required String startsAt,
+    String classType = 'GENERAL',
+    String trainingCategory = 'COMPANY',
+    String checklistVersionId = '',
+    double creditHours = 0,
+    String? endsAt,
+    String location = '',
+    String notes = '',
+    List<String> membershipIds = const [],
+    List<String> proctorUserIds = const [],
+    bool selfRegistration = true,
+  }) async {
+    final data = await _request('POST', 'classes', body: {
+      'title': title.trim(),
+      'classType': classType,
+      'trainingCategory': trainingCategory,
+      'checklistVersionId': checklistVersionId,
+      'creditHours': creditHours,
+      'startsAt': startsAt,
+      'endsAt': endsAt,
+      'location': location.trim(),
+      'notes': notes.trim(),
+      'membershipIds': membershipIds,
+      'proctorUserIds': proctorUserIds,
+      'selfRegistration': selfRegistration,
+    });
+    final map = _asMap(data);
+    // Creation returns the canonical class id; fetch the scoped server summary
+    // through the normal list endpoint so mobile never invents a local record.
+    final rows = await listClasses();
+    return rows.firstWhere((row) => row.id == (map['id'] as String? ?? ''));
+  }
+
+  Future<List<DepartmentClassSummary>> listClasses() async {
+    final data = await _request('GET', 'classes?view=mine');
+    return (data is List ? data : const <dynamic>[]).whereType<Map>().map((item) => DepartmentClassSummary.fromJson(Map<String, dynamic>.from(item))).toList(growable: false);
+  }
+
+  Future<DepartmentClassDetail> getClass(String classId) async {
+    final data = await _request('GET', 'classes/${Uri.encodeComponent(classId)}');
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassMutationResult> recordClassSkillDurable({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
+    final key='skill:$classId:$enrollmentId:$requirementId';
+    final row={'key':key,'kind':'skill','classId':classId,'enrollmentId':enrollmentId,'requirementId':requirementId,'result':result,'notes':notes.trim(),'queuedAt':DateTime.now().toUtc().toIso8601String()};
+    try {
+      final detail=await recordClassSkill(classId:classId,enrollmentId:enrollmentId,requirementId:requirementId,result:result,notes:notes);
+      await _removePendingClassMutation(key);
+      return DepartmentClassMutationResult(detail:detail,queued:false);
+    } on ResponderRoadmapApiException {
+      await _savePendingClassMutation(row);
+      return const DepartmentClassMutationResult(detail:null,queued:true);
+    }
+  }
+
+  Future<DepartmentClassMutationResult> updateClassStudentDurable({required String classId, required String enrollmentId, required String attendance}) async {
+    final key='attendance:$classId:$enrollmentId';
+    final row={'key':key,'kind':'attendance','classId':classId,'enrollmentId':enrollmentId,'attendance':attendance,'queuedAt':DateTime.now().toUtc().toIso8601String()};
+    try {
+      final detail=await updateClassStudent(classId:classId,enrollmentId:enrollmentId,attendance:attendance);
+      await _removePendingClassMutation(key);
+      return DepartmentClassMutationResult(detail:detail,queued:false);
+    } on ResponderRoadmapApiException {
+      await _savePendingClassMutation(row);
+      return const DepartmentClassMutationResult(detail:null,queued:true);
+    }
+  }
+
+  Future<int> pendingClassMutationCount() async {
+    final rows=await _pendingClassMutations();
+    return rows.length;
+  }
+
+  Future<int> retryPendingClassMutations() async {
+    final rows=await _pendingClassMutations();
+    var completed=0;
+    for(final row in rows){
+      final key=(row['key'] as String?)??'';
+      try{
+        if(row['kind']=='attendance'){
+          await updateClassStudent(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',attendance:(row['attendance'] as String?)??'REGISTERED');
+        }else if(row['kind']=='skill'){
+          await recordClassSkill(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',requirementId:(row['requirementId'] as String?)??'',result:(row['result'] as String?)??'NOT_EVALUATED',notes:(row['notes'] as String?)??'');
+        }else{continue;}
+        await _removePendingClassMutation(key); completed++;
+      }on ResponderRoadmapApiException{/* keep durable mutation for Retry */}
+    }
+    return completed;
+  }
+
+  Future<List<Map<String,dynamic>>> _pendingClassMutations() async {
+    final raw=await _secureStorage.read(key:_pendingClassMutationsKey);
+    try{final value=raw==null?null:jsonDecode(raw);return value is List?value.whereType<Map>().map((e)=>Map<String,dynamic>.from(e)).toList():<Map<String,dynamic>>[];}catch(_){return <Map<String,dynamic>>[];}
+  }
+  Future<void> _savePendingClassMutation(Map<String,dynamic> row) async {
+    final rows=await _pendingClassMutations();
+    rows.removeWhere((item)=>item['key']==row['key']);
+    rows.add(row);
+    await _secureStorage.write(key:_pendingClassMutationsKey,value:jsonEncode(rows));
+  }
+  Future<void> _removePendingClassMutation(String key) async {
+    final rows=await _pendingClassMutations();
+    rows.removeWhere((item)=>item['key']==key);
+    await _secureStorage.write(key:_pendingClassMutationsKey,value:jsonEncode(rows));
+  }
+
+  Future<DepartmentClassDetail> recordClassSkill({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}/skills/${Uri.encodeComponent(requirementId)}', body: {'result': result, 'notes': notes.trim()});
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> updateClassStudent({required String classId, required String enrollmentId, required String attendance}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}', body: {'attendance': attendance});
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> manageClassRegistration({required String classId, required String action}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/registration', body: {'action': action});
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentCloseValidation> validateClassClosure(String classId) async {
+    final data=await _request('GET','classes/${Uri.encodeComponent(classId)}/close-validation');
+    return DepartmentCloseValidation.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> updateClassStatus({required String classId, required String status}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/status', body: {'status': status});
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<void> reviewSignOff({
+    required String completionId,
+    required String result,
+    required String notes,
+    required bool attested,
+    List<Map<String, String>> stepResults = const [],
+    List<String> criticalFailuresTriggered = const [],
+  }) async {
+    await _request(
+      'POST',
+      'sign-offs/${Uri.encodeComponent(completionId)}',
+      body: <String, dynamic>{
+        'result': result,
+        'notes': notes.trim(),
+        'attested': attested,
+        'stepResults': stepResults,
+        'criticalFailuresTriggered': criticalFailuresTriggered,
+      },
+    );
+  }
+
+  Future<List<int>> downloadClosedTrainingCsv(String classId) async {
+    final token=(await _secureStorage.read(key:_tokenKey))?.trim()??'';
+    if(token.isEmpty)throw const ResponderRoadmapApiException('Connect your ResponderRoadmap account first.',statusCode:401);
+    final response=await _client.get(Uri.parse('$baseUrl/classes/${Uri.encodeComponent(classId)}/export.csv'),headers:{'Accept':'text/csv','Authorization':'Bearer $token'});
+    if(response.statusCode<200||response.statusCode>=300)throw ResponderRoadmapApiException('Could not export this training record (${response.statusCode}).',statusCode:response.statusCode);
+    return response.bodyBytes;
+  }
+
+  Future<Map<String,dynamic>> getClosedTrainingExportRecord(String classId) async =>
+      _asMap(await _request('GET','classes/${Uri.encodeComponent(classId)}/export'));
+
+  Future<void> disconnect() async {
+    await _secureStorage.delete(key: _tokenKey);
+  }
+
+  Future<dynamic> _request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+  }) async {
+    final uri = Uri.parse('$baseUrl/$path');
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+    if (authenticated) {
+      final token = (await _secureStorage.read(key: _tokenKey))?.trim() ?? '';
+      if (token.isEmpty) {
+        throw const ResponderRoadmapApiException(
+          'Connect your ResponderRoadmap account first.',
+          statusCode: 401,
+        );
+      }
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    late http.Response response;
+    try {
+      switch (method) {
+        case 'GET':
+          response = await _client.get(uri, headers: headers);
+          break;
+        case 'POST':
+          response = await _client.post(
+            uri,
+            headers: headers,
+            body: jsonEncode(body ?? const <String, dynamic>{}),
+          );
+          break;
+        default:
+          throw ResponderRoadmapApiException('Unsupported request method: $method');
+      }
+    } catch (error) {
+      if (error is ResponderRoadmapApiException) rethrow;
+      throw const ResponderRoadmapApiException(
+        'Could not reach ResponderRoadmap. Check your connection and try again.',
+      );
+    }
+
+    dynamic decoded;
+    try {
+      decoded = response.body.isEmpty ? null : jsonDecode(response.body);
+    } catch (_) {
+      decoded = null;
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final errorMessage = decoded is Map ? (decoded['error'] as String?) : null;
+      if (response.statusCode == 401) {
+        await _secureStorage.delete(key: _tokenKey);
+      }
+      throw ResponderRoadmapApiException(
+        errorMessage?.trim().isNotEmpty == true
+            ? errorMessage!
+            : 'ResponderRoadmap request failed (${response.statusCode}).',
+        statusCode: response.statusCode,
+      );
+    }
+
+    if (decoded is Map && decoded.containsKey('data')) {
+      return decoded['data'];
+    }
+    return decoded;
+  }
+
+  Map<String, dynamic> _asMap(Object? value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return <String, dynamic>{};
+  }
+}
+
+
+class DepartmentClassRegistrationPreview {
+  final String title;
+  final DateTime? startsAt;
+  final String location;
+  final bool open;
+
+  const DepartmentClassRegistrationPreview({
+    required this.title,
+    required this.startsAt,
+    required this.location,
+    required this.open,
+  });
+
+  factory DepartmentClassRegistrationPreview.fromJson(Map<String, dynamic> json) =>
+      DepartmentClassRegistrationPreview(
+        title: (json['title'] as String?) ?? 'Department class',
+        startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        location: (json['location'] as String?) ?? '',
+        open: json['open'] == true,
+      );
+}
+
+class DepartmentClassRegistrationResult {
+  final bool registered;
+  final bool alreadyRegistered;
+  final String classId;
+  final String title;
+  final DateTime? startsAt;
+  final String location;
+
+  const DepartmentClassRegistrationResult({
+    required this.registered,
+    required this.alreadyRegistered,
+    required this.classId,
+    required this.title,
+    required this.startsAt,
+    required this.location,
+  });
+
+  factory DepartmentClassRegistrationResult.fromJson(Map<String, dynamic> json) =>
+      DepartmentClassRegistrationResult(
+        registered: json['registered'] == true,
+        alreadyRegistered: json['alreadyRegistered'] == true,
+        classId: (json['classId'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Department class',
+        startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        location: (json['location'] as String?) ?? '',
+      );
 }
