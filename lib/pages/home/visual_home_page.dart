@@ -53,7 +53,10 @@ class VisualHomePage extends StatelessWidget {
               onSettings: () => context.push(AppRoutes.settings),
             ),
             const SizedBox(height: 10),
-            const AppModeSwitcher(),
+            const _AnimatedAppear(
+              delay: Duration(milliseconds: 40),
+              child: AppModeSwitcher(),
+            ),
             const SizedBox(height: 14),
             _TodayRail(
               hasRoadmap: hasRoadmap,
@@ -65,28 +68,77 @@ class VisualHomePage extends StatelessWidget {
               onMyPath: () => context.go(AppRoutes.myPath),
             ),
             const SizedBox(height: 14),
-            const _GettingStartedCard(),
+            const _AnimatedAppear(delay: Duration(milliseconds: 80), child: _GettingStartedCard()),
             const SizedBox(height: 14),
             if (!hasRoadmap)
               _ChooseGoalCard(
                 onChooseGoal: () => context.go(AppRoutes.myPath),
               )
             else ...[
-              CareerReadinessPanel(
-                snapshot: CareerReadinessSnapshot.fromRoadmap(roadmap),
-                actionPlan: CareerReadinessActionPlan.fromState(app),
-                goalTitle: goal?.title ?? 'Career Road',
-                onViewPath: () => context.go(AppRoutes.myPath),
-                onActionTap: (item) {
-                  AppRouter.openRequirement(context, item.requirement);
-                },
+              _AnimatedAppear(
+                delay: const Duration(milliseconds: 110),
+                child: CareerReadinessPanel(
+                  snapshot: CareerReadinessSnapshot.fromRoadmap(roadmap),
+                  actionPlan: CareerReadinessActionPlan.fromState(app),
+                  goalTitle: goal?.title ?? 'Career Road',
+                  onViewPath: () => context.go(AppRoutes.myPath),
+                  onActionTap: (item) {
+                    AppRouter.openRequirement(context, item.requirement);
+                  },
+                ),
               ),
             ],
             const SizedBox(height: 14),
-            const _HomeUpdatesSection(),
+            const _AnimatedAppear(delay: Duration(milliseconds: 140), child: _HomeUpdatesSection()),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AnimatedAppear extends StatefulWidget {
+  final Widget child;
+  final Duration delay;
+
+  const _AnimatedAppear({required this.child, this.delay = Duration.zero});
+
+  @override
+  State<_AnimatedAppear> createState() => _AnimatedAppearState();
+}
+
+class _AnimatedAppearState extends State<_AnimatedAppear> {
+  bool _show = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.delay == Duration.zero) {
+      _show = true;
+    } else {
+      Future<void>.delayed(widget.delay, () {
+        if (!mounted) return;
+        setState(() => _show = true);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 260),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, anim) {
+        return FadeTransition(
+          opacity: anim,
+          child: SlideTransition(
+            position: anim.drive(Tween(begin: const Offset(0, 0.06), end: Offset.zero)),
+            child: child,
+          ),
+        );
+      },
+      child: _show ? widget.child : const SizedBox.shrink(),
     );
   }
 }
@@ -648,15 +700,37 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Expanded(
-          child: FirefighterRoadmapWordmark(),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const FirefighterRoadmapWordmark(),
+              const SizedBox(height: 4),
+              Text(
+                'One clear focus. Faster progress.',
+                style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.25, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
         ),
-        IconButton(
-          tooltip: 'Settings',
-          onPressed: onSettings,
-          icon: const Icon(Icons.settings_outlined),
+        const SizedBox(width: 10),
+        Material(
+          color: cs.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: cs.outline.withValues(alpha: 0.12)),
+          ),
+          child: IconButton(
+            tooltip: 'Settings',
+            onPressed: onSettings,
+            icon: Icon(Icons.settings_outlined, color: cs.onSurface),
+          ),
         ),
       ],
     );

@@ -173,6 +173,13 @@ class AppCardTokens {
   static const double radius = AppRadius.lg;
 }
 
+/// App-wide motion constants.
+class AppMotion {
+  static const Duration fast = Duration(milliseconds: 160);
+  static const Duration medium = Duration(milliseconds: 240);
+  static const Curve standard = Curves.easeOutCubic;
+}
+
 /// Font size constants
 class FontSizes {
   static const double displayLarge = 57.0;
@@ -222,7 +229,14 @@ ThemeData get lightTheme => ThemeData(
   ),
   brightness: Brightness.light,
   scaffoldBackgroundColor: LightModeColors.lightBackground,
-  appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, foregroundColor: LightModeColors.lightOnSurface, elevation: 0, scrolledUnderElevation: 0),
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Colors.transparent,
+    foregroundColor: LightModeColors.lightOnSurface,
+    elevation: 0,
+    scrolledUnderElevation: 0,
+    centerTitle: false,
+    titleSpacing: 16,
+  ),
   cardTheme: CardThemeData(
     elevation: 0,
     shape: RoundedRectangleBorder(
@@ -233,7 +247,48 @@ ThemeData get lightTheme => ThemeData(
       ),
     ),
   ),
-  bottomNavigationBarTheme: const BottomNavigationBarThemeData(type: BottomNavigationBarType.fixed, showSelectedLabels: true, showUnselectedLabels: true),
+  dividerTheme: DividerThemeData(
+    color: LightModeColors.lightOutline.withValues(alpha: 0.14),
+    space: 1,
+    thickness: 1,
+  ),
+  snackBarTheme: SnackBarThemeData(
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+    elevation: 0,
+  ),
+  floatingActionButtonTheme: FloatingActionButtonThemeData(
+    elevation: 0,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+  ),
+  filledButtonTheme: FilledButtonThemeData(
+    style: FilledButton.styleFrom(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+    ),
+  ),
+  outlinedButtonTheme: OutlinedButtonThemeData(
+    style: OutlinedButton.styleFrom(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+    ),
+  ),
+  navigationBarTheme: NavigationBarThemeData(
+    height: 74,
+    elevation: 0,
+    indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    labelTextStyle: WidgetStateProperty.resolveWith(
+      (states) {
+        final selected = states.contains(WidgetState.selected);
+        return GoogleFonts.inter(fontSize: 12, fontWeight: selected ? FontWeight.w700 : FontWeight.w600);
+      },
+    ),
+  ),
+  pageTransitionsTheme: const PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+    },
+  ),
   textTheme: _buildTextTheme(Brightness.light),
 );
 
@@ -263,7 +318,14 @@ ThemeData get darkTheme => ThemeData(
   ),
   brightness: Brightness.dark,
   scaffoldBackgroundColor: DarkModeColors.darkSurface,
-  appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, foregroundColor: DarkModeColors.darkOnSurface, elevation: 0, scrolledUnderElevation: 0),
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Colors.transparent,
+    foregroundColor: DarkModeColors.darkOnSurface,
+    elevation: 0,
+    scrolledUnderElevation: 0,
+    centerTitle: false,
+    titleSpacing: 16,
+  ),
   cardTheme: CardThemeData(
     elevation: 0,
     shape: RoundedRectangleBorder(
@@ -274,7 +336,48 @@ ThemeData get darkTheme => ThemeData(
       ),
     ),
   ),
-  bottomNavigationBarTheme: const BottomNavigationBarThemeData(type: BottomNavigationBarType.fixed, showSelectedLabels: true, showUnselectedLabels: true),
+  dividerTheme: DividerThemeData(
+    color: DarkModeColors.darkOutline.withValues(alpha: 0.14),
+    space: 1,
+    thickness: 1,
+  ),
+  snackBarTheme: SnackBarThemeData(
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+    elevation: 0,
+  ),
+  floatingActionButtonTheme: FloatingActionButtonThemeData(
+    elevation: 0,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+  ),
+  filledButtonTheme: FilledButtonThemeData(
+    style: FilledButton.styleFrom(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+    ),
+  ),
+  outlinedButtonTheme: OutlinedButtonThemeData(
+    style: OutlinedButton.styleFrom(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+    ),
+  ),
+  navigationBarTheme: NavigationBarThemeData(
+    height: 74,
+    elevation: 0,
+    indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    labelTextStyle: WidgetStateProperty.resolveWith(
+      (states) {
+        final selected = states.contains(WidgetState.selected);
+        return GoogleFonts.inter(fontSize: 12, fontWeight: selected ? FontWeight.w700 : FontWeight.w600);
+      },
+    ),
+  ),
+  pageTransitionsTheme: const PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+    },
+  ),
   textTheme: _buildTextTheme(Brightness.dark),
 );
 

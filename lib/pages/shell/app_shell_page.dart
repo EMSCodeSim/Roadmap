@@ -37,6 +37,7 @@ class AppShellPage extends StatelessWidget {
     final mode = context.watch<AppModeController>();
     final inbox = context.watch<DepartmentInboxController>();
     final selected = _selectedIndex(mode);
+    final bottomPad = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
       body: navigationShell,
@@ -51,41 +52,42 @@ class AppShellPage extends StatelessWidget {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: SafeArea(
         top: false,
-        child: DecoratedBox(
+        child: Container(
           decoration: BoxDecoration(
             color: cs.surface,
-            border: Border(top: BorderSide(color: cs.outline.withValues(alpha: 0.14))),
+            border: Border(top: BorderSide(color: cs.outline.withValues(alpha: 0.12))),
           ),
-          child: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            currentIndex: selected,
-            onTap: (index) => _select(context, mode, index),
-            selectedItemColor: cs.primary,
-            unselectedItemColor: cs.onSurfaceVariant,
-            selectedFontSize: 12,
-            unselectedFontSize: 12,
-            iconSize: 26,
-            items: [
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Badge(
-                  isLabelVisible: mode.isDepartment && inbox.unreadCount > 0,
-                  label: Text('${inbox.unreadCount}'),
-                  child: const Icon(Icons.assignment_outlined),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: bottomPad == 0 ? 10 : 6),
+            child: NavigationBar(
+              selectedIndex: selected,
+              onDestinationSelected: (index) => _select(context, mode, index),
+              destinations: [
+                const NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
+                  label: 'Home',
                 ),
-                activeIcon: const Icon(Icons.assignment),
-                label: 'Training',
-              ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline_rounded),
-                activeIcon: Icon(Icons.person_rounded),
-                label: 'Profile',
-              ),
-            ],
+                NavigationDestination(
+                  icon: Badge(
+                    isLabelVisible: mode.isDepartment && inbox.unreadCount > 0,
+                    label: Text('${inbox.unreadCount}'),
+                    child: const Icon(Icons.assignment_outlined),
+                  ),
+                  selectedIcon: Badge(
+                    isLabelVisible: mode.isDepartment && inbox.unreadCount > 0,
+                    label: Text('${inbox.unreadCount}'),
+                    child: const Icon(Icons.assignment_rounded),
+                  ),
+                  label: 'Training',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.person_outline_rounded),
+                  selectedIcon: Icon(Icons.person_rounded),
+                  label: 'Profile',
+                ),
+              ],
+            ),
           ),
         ),
       ),
