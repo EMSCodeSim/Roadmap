@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
+import 'package:firepath/pages/department/department_class_qr_scanner_page.dart';
 import 'package:firepath/pages/department/department_review_page.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_mode_controller.dart';
@@ -150,6 +151,22 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   )),
                   _SyncLine(inbox: inbox),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final joined = await Navigator.of(context).push<bool>(
+                          MaterialPageRoute(
+                            builder: (_) => const DepartmentClassQrScannerPage(),
+                          ),
+                        );
+                        if (joined == true && mounted) await _refresh(silent: true);
+                      },
+                      icon: const Icon(Icons.qr_code_scanner_rounded),
+                      label: const Text('Scan Class QR'),
+                    ),
+                  ),
                   if (mode.isAdmin) ...[
                     const SizedBox(height: 12),
                     SizedBox(

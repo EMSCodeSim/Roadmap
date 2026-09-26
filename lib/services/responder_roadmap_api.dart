@@ -804,6 +804,32 @@ class ResponderRoadmapApi {
     return ResponderRoadmapSession.fromJson(_asMap(data));
   }
 
+  Future<DepartmentClassRegistrationPreview> previewClassRegistration(String token) async {
+    final normalized = token.trim().toLowerCase();
+    if (!RegExp(r'^[a-f0-9]{64}$').hasMatch(normalized)) {
+      throw const ResponderRoadmapApiException('That is not a valid class QR code.');
+    }
+    final data = await _request(
+      'GET',
+      'public/classes/${Uri.encodeComponent(normalized)}',
+      authenticated: false,
+    );
+    return DepartmentClassRegistrationPreview.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassRegistrationResult> registerForClass(String token) async {
+    final normalized = token.trim().toLowerCase();
+    if (!RegExp(r'^[a-f0-9]{64}$').hasMatch(normalized)) {
+      throw const ResponderRoadmapApiException('That is not a valid class QR code.');
+    }
+    final data = await _request(
+      'POST',
+      'app/classes/register/${Uri.encodeComponent(normalized)}',
+      body: const <String, dynamic>{},
+    );
+    return DepartmentClassRegistrationResult.fromJson(_asMap(data));
+  }
+
   Future<DepartmentCodeValidation> validateDepartmentCode(String joinCode) async {
     final data = await _request(
       'POST',
@@ -1320,4 +1346,55 @@ class ResponderRoadmapApi {
     if (value is Map) return Map<String, dynamic>.from(value);
     return <String, dynamic>{};
   }
+}
+
+
+class DepartmentClassRegistrationPreview {
+  final String title;
+  final DateTime? startsAt;
+  final String location;
+  final bool open;
+
+  const DepartmentClassRegistrationPreview({
+    required this.title,
+    required this.startsAt,
+    required this.location,
+    required this.open,
+  });
+
+  factory DepartmentClassRegistrationPreview.fromJson(Map<String, dynamic> json) =>
+      DepartmentClassRegistrationPreview(
+        title: (json['title'] as String?) ?? 'Department class',
+        startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        location: (json['location'] as String?) ?? '',
+        open: json['open'] == true,
+      );
+}
+
+class DepartmentClassRegistrationResult {
+  final bool registered;
+  final bool alreadyRegistered;
+  final String classId;
+  final String title;
+  final DateTime? startsAt;
+  final String location;
+
+  const DepartmentClassRegistrationResult({
+    required this.registered,
+    required this.alreadyRegistered,
+    required this.classId,
+    required this.title,
+    required this.startsAt,
+    required this.location,
+  });
+
+  factory DepartmentClassRegistrationResult.fromJson(Map<String, dynamic> json) =>
+      DepartmentClassRegistrationResult(
+        registered: json['registered'] == true,
+        alreadyRegistered: json['alreadyRegistered'] == true,
+        classId: (json['classId'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Department class',
+        startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        location: (json['location'] as String?) ?? '',
+      );
 }

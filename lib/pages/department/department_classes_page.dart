@@ -274,7 +274,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
   void _setDetail(DepartmentClassDetail detail) { if (!mounted) return; setState(() { _detail = detail; _studentId = detail.roster.any((item) => item.id == _studentId) ? _studentId : (detail.roster.isEmpty ? null : detail.roster.first.id); _error = null; }); }
   DepartmentClassStudent? get _student { for (final item in _detail?.roster ?? const <DepartmentClassStudent>[]) { if (item.id == _studentId) return item; } return null; }
-  String get _registrationUrl => _detail?.registrationToken.isNotEmpty == true ? 'https://responderroadmap.com/class-register/${_detail!.registrationToken}' : '';
+  String get _registrationUrl => _detail?.registrationToken.isNotEmpty == true ? 'https://responderroadmap.com/class-join/${_detail!.registrationToken}' : '';
 
   Future<void> _registration(String action) async {
     if (_detail == null || _busy) return; setState(()=>_busy=true);
