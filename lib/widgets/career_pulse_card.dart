@@ -103,6 +103,56 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
     });
   }
 
+  Future<void> _dismissCoach(CareerCoachPrompt prompt) async {
+    await _coachPreferences.dismiss(prompt.id);
+    if (!mounted) return;
+    setState(() {
+      _coachPrompts =
+          _coachPrompts.where((item) => item.id != prompt.id).toList();
+    });
+  }
+
+  Future<void> _actOnCoach(CareerCoachPrompt prompt) async {
+    if (prompt.kind == CareerCoachKind.skillReassessment ||
+        prompt.kind == CareerCoachKind.skillImprovement) {
+      widget.onOpenDepartment();
+      return;
+    }
+    if (prompt.kind == CareerCoachKind.evidenceSuggestion &&
+        prompt.recordId != null &&
+        prompt.requirement != null) {
+      final matches = _records.where((record) => record.id == prompt.recordId);
+      if (matches.isEmpty) return;
+      final record = matches.first;
+      final goalId = widget.app.roadmap?.goal.id;
+      if (goalId == null) return;
+      final updated = record.copyWith(
+        relatedGoalId: goalId,
+        relatedRequirementId: prompt.requirement!.requirement.id,
+        details: {
+          ...record.details,
+          'linkedByCareerCoach': true,
+          'linkedAt': DateTime.now().toIso8601String(),
+        },
+        updatedAt: DateTime.now(),
+      );
+      final saved = await _recordsStore.upsert(updated);
+      if (!saved || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${record.title} now supports ${prompt.requirement!.requirement.name}.',
+          ),
+        ),
+      );
+      await _load();
+      return;
+    }
+    if (prompt.requirement != null) {
+      widget.onOpenRequirement(prompt.requirement!);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final goal = widget.app.selectedGoal;
