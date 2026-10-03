@@ -345,7 +345,7 @@ class _CategoryStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Quick Log',
+          'Quick Add',
           style: Theme.of(context)
               .textTheme
               .titleLarge
