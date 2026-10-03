@@ -4,8 +4,9 @@ import 'package:firepath/models/prefill.dart';
 import 'package:firepath/pages/career/production_quick_log_sheet.dart';
 import 'package:firepath/pages/career/quick_log_sheet.dart';
 import 'package:firepath/pages/career/simple_quick_log_sheet.dart';
+import 'package:firepath/pages/department/department_class_qr_scanner_page.dart';
 
-/// Unified entry point for Quick Log.
+/// Unified entry point for Quick Add.
 ///
 /// Common entries now start with six fixed choices: Training, Call, Skill,
 /// Driving, Career, and Task Book. The full logger is still available for
@@ -30,7 +31,16 @@ class QuickLogLauncher {
         builder: (sheetContext) => ProductionQuickLogSheet(prefill: prefill),
       );
 
-      if (result != SimpleQuickLogResult.moreDetails || !context.mounted) return;
+      if (!context.mounted) return;
+      if (result == SimpleQuickLogResult.scanDepartmentQr) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const DepartmentClassQrScannerPage(),
+          ),
+        );
+        return;
+      }
+      if (result != SimpleQuickLogResult.moreDetails) return;
 
       await showModalBottomSheet<void>(
         context: context,

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/department_activity_sharing.dart';
+import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/keyboard_aware_form.dart';
 
-enum SimpleQuickLogResult { moreDetails }
+enum SimpleQuickLogResult { moreDetails, scanDepartmentQr }
 
-enum _SimpleMode { training, call, skill, drive, career, taskBook }
+enum _SimpleMode { training, call, skill, exposure, drive, career, taskBook }
 
 enum _DriveActivity { response, training, other }
 
@@ -17,6 +20,7 @@ extension _SimpleModeX on _SimpleMode {
         _SimpleMode.training => 'TRAINING',
         _SimpleMode.call => 'CALL',
         _SimpleMode.skill => 'SKILL',
+        _SimpleMode.exposure => 'EXPOSURE',
         _SimpleMode.drive => 'DRIVING',
         _SimpleMode.career => 'CAREER',
         _SimpleMode.taskBook => 'TASK BOOK',
@@ -26,6 +30,7 @@ extension _SimpleModeX on _SimpleMode {
         _SimpleMode.training => Icons.school_outlined,
         _SimpleMode.call => Icons.local_fire_department_outlined,
         _SimpleMode.skill => Icons.handyman_outlined,
+        _SimpleMode.exposure => Icons.health_and_safety_outlined,
         _SimpleMode.drive => Icons.local_shipping_outlined,
         _SimpleMode.career => Icons.military_tech_outlined,
         _SimpleMode.taskBook => Icons.fact_check_outlined,
@@ -43,6 +48,7 @@ class SimpleQuickLogSheet extends StatefulWidget {
 
 class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
   final CareerRecordStore _store = CareerRecordStore();
+  final DepartmentActivitySharingService _sharing = DepartmentActivitySharingService();
   final TextEditingController _notes = TextEditingController();
   final TextEditingController _miles = TextEditingController();
   final TextEditingController _durationMinutes = TextEditingController();
@@ -56,6 +62,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
   bool _transport = false;
   _DriveActivity _driveActivity = _DriveActivity.response;
   CareerRecordOutcome? _skillOutcome;
+  bool _shareWithDepartment = false;
 
   @override
   void initState() {
@@ -100,6 +107,8 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                   transport: _transport,
                   driveActivity: _driveActivity,
                   skillOutcome: _skillOutcome,
+                  shareWithDepartment: _shareWithDepartment,
+                  departmentConnected: context.watch<AppModeController>().departmentLink != null,
                   onEmergentChanged: (value) =>
                       setState(() => _emergent = value),
                   onTransportChanged: (value) =>
@@ -108,6 +117,8 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                       setState(() => _driveActivity = value),
                   onSkillOutcomeChanged: (value) =>
                       setState(() => _skillOutcome = value),
+                  onShareChanged: (value) =>
+                      setState(() => _shareWithDepartment = value),
                   onBack: () => setState(() => _choice = null),
                   onSave: _save,
                   onMoreDetails: () => Navigator.of(context)
@@ -125,6 +136,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                   : _CategoryStep(
                       key: const ValueKey('category'),
                       onPick: (mode) => setState(() => _mode = mode),
+                      onScanQr: () => Navigator.of(context).pop(SimpleQuickLogResult.scanDepartmentQr),
                       onMoreDetails: () => Navigator.of(context)
                           .pop(SimpleQuickLogResult.moreDetails),
                     ),
@@ -170,7 +182,11 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
           : mode == _SimpleMode.taskBook
               ? CareerRecordOutcome.completed
               : null,
-      details: _detailsFor(mode, title),
+      details: {
+        ..._detailsFor(mode, title),
+        'visibility': _shareWithDepartment ? 'department_shared' : 'personal',
+        'shareWithDepartment': _shareWithDepartment,
+      },
       createdAt: now,
       updatedAt: now,
     );
@@ -178,8 +194,27 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
     final ok = await _store.upsert(record);
     if (!mounted) return;
     if (ok) {
+      var shared = false;
+      if (_shareWithDepartment) {
+        try {
+          await _sharing.sync();
+          shared = true;
+        } catch (_) {
+          // Keep the local record and sharing intent. A later shared save can
+          // retry the full set without losing the responder's entry.
+        }
+      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$title logged')),
+        SnackBar(
+          content: Text(
+            _shareWithDepartment
+                ? (shared
+                    ? '$title logged and shared with your department'
+                    : '$title logged. Department sharing will retry later.')
+                : '$title logged privately',
+          ),
+        ),
       );
       Navigator.of(context).pop();
     } else {
@@ -211,6 +246,13 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
       case _SimpleMode.skill:
         return <String, dynamic>{
           if (_skillOutcome != null) 'outcome': _skillOutcome!.name,
+          'quickCapture': true,
+        };
+      case _SimpleMode.exposure:
+        return <String, dynamic>{
+          'possibleHealthExposure': true,
+          'officialExposureReport': false,
+          'officerFollowUpRequired': true,
           'quickCapture': true,
         };
       case _SimpleMode.training:
@@ -247,6 +289,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
         _SimpleMode.training => CareerRecordType.training,
         _SimpleMode.call => CareerRecordType.operationalExperience,
         _SimpleMode.skill => CareerRecordType.skill,
+        _SimpleMode.exposure => CareerRecordType.operationalExperience,
         _SimpleMode.drive => CareerRecordType.skill,
         _SimpleMode.taskBook => CareerRecordType.taskBookEvidence,
         _SimpleMode.career => _careerType(title),
@@ -267,6 +310,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
         _SimpleMode.training => 'Training',
         _SimpleMode.call => 'Call / Incident',
         _SimpleMode.skill => 'Skill',
+        _SimpleMode.exposure => 'Exposure',
         _SimpleMode.drive => 'Driving',
         _SimpleMode.career => 'Career',
         _SimpleMode.taskBook => 'Task Book Progress',
@@ -275,11 +319,13 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
 
 class _CategoryStep extends StatelessWidget {
   final ValueChanged<_SimpleMode> onPick;
+  final VoidCallback onScanQr;
   final VoidCallback onMoreDetails;
 
   const _CategoryStep({
     super.key,
     required this.onPick,
+    required this.onScanQr,
     required this.onMoreDetails,
   });
 
@@ -287,6 +333,7 @@ class _CategoryStep extends StatelessWidget {
     _SimpleMode.training,
     _SimpleMode.call,
     _SimpleMode.skill,
+    _SimpleMode.exposure,
     _SimpleMode.drive,
     _SimpleMode.career,
     _SimpleMode.taskBook,
@@ -300,7 +347,7 @@ class _CategoryStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Quick Log',
+          'Quick Add',
           style: Theme.of(context)
               .textTheme
               .titleLarge
@@ -352,6 +399,12 @@ class _CategoryStep extends StatelessWidget {
           },
         ),
         const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: onScanQr,
+          icon: const Icon(Icons.qr_code_scanner_rounded),
+          label: const Text('Scan department class QR'),
+        ),
+        const SizedBox(height: 4),
         TextButton.icon(
           onPressed: onMoreDetails,
           icon: const Icon(Icons.tune_outlined),
@@ -439,6 +492,7 @@ class _ChoiceStep extends StatelessWidget {
         _SimpleMode.training => 'What kind of training?',
         _SimpleMode.call => 'What kind of call?',
         _SimpleMode.skill => 'What skill did you perform or practice?',
+        _SimpleMode.exposure => 'What possible health or hazard exposure occurred?',
         _SimpleMode.drive => 'Which apparatus?',
         _SimpleMode.career => 'What career activity?',
         _SimpleMode.taskBook => 'What did you do in your Task Book?',
@@ -458,10 +512,13 @@ class _ConfirmStep extends StatelessWidget {
   final bool transport;
   final _DriveActivity driveActivity;
   final CareerRecordOutcome? skillOutcome;
+  final bool shareWithDepartment;
+  final bool departmentConnected;
   final ValueChanged<bool> onEmergentChanged;
   final ValueChanged<bool> onTransportChanged;
   final ValueChanged<_DriveActivity> onDriveActivityChanged;
   final ValueChanged<CareerRecordOutcome?> onSkillOutcomeChanged;
+  final ValueChanged<bool> onShareChanged;
   final VoidCallback onBack;
   final VoidCallback onSave;
   final VoidCallback onMoreDetails;
@@ -480,10 +537,13 @@ class _ConfirmStep extends StatelessWidget {
     required this.transport,
     required this.driveActivity,
     required this.skillOutcome,
+    required this.shareWithDepartment,
+    required this.departmentConnected,
     required this.onEmergentChanged,
     required this.onTransportChanged,
     required this.onDriveActivityChanged,
     required this.onSkillOutcomeChanged,
+    required this.onShareChanged,
     required this.onBack,
     required this.onSave,
     required this.onMoreDetails,
@@ -523,11 +583,51 @@ class _ConfirmStep extends StatelessWidget {
           textCapitalization: TextCapitalization.sentences,
           textInputAction: TextInputAction.done,
           onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Notes',
-            hintText: 'Anything worth remembering later…',
+            hintText: mode == _SimpleMode.exposure
+                ? 'What happened, PPE used, route of exposure, symptoms, decon, officer notified…'
+                : 'Anything worth remembering later…',
             border: OutlineInputBorder(),
           ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'Who can see this?',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ChoiceChip(
+              label: const Text('Personal only'),
+              selected: !shareWithDepartment,
+              onSelected: (_) => onShareChanged(false),
+            ),
+            ChoiceChip(
+              label: const Text('Share with department'),
+              selected: shareWithDepartment,
+              onSelected: departmentConnected ? (_) => onShareChanged(true) : null,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          mode == _SimpleMode.exposure
+              ? (shareWithDepartment
+                  ? 'Your department can see this personal exposure log as context. It is still not an official exposure report; complete the department’s official documentation with an officer.'
+                  : 'This stays in your personal Career Road. It does not replace reporting the exposure to an officer or completing your department’s official exposure documentation.')
+              : shareWithDepartment
+                  ? 'Your department can see this as member-shared development context. It does not become official training credit or a department evaluation.'
+                  : departmentConnected
+                      ? 'This stays in your personal Career Road unless you choose to share it.'
+                      : 'Personal only. Connect a department from the Department tab to enable sharing.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.35,
+              ),
         ),
         const SizedBox(height: 14),
         SizedBox(
@@ -570,6 +670,21 @@ class _ConfirmStep extends StatelessWidget {
                       FocusManager.instance.primaryFocus?.unfocus(),
                   decoration: const InputDecoration(
                     labelText: 'Miles driven',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: durationMinutes,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
+                  decoration: const InputDecoration(
+                    labelText: 'Drive time (minutes)',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -687,6 +802,50 @@ class _ConfirmStep extends StatelessWidget {
             ],
           ),
         ];
+      case _SimpleMode.exposure:
+        return [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Personal tracking only — this is not an official exposure report. Report and document the incident with an officer using your department’s official exposure/incident process.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w700,
+                    height: 1.4,
+                  ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: role,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
+            onTapOutside: (_) =>
+                FocusManager.instance.primaryFocus?.unfocus(),
+            decoration: const InputDecoration(
+              labelText: 'Incident / assignment',
+              hintText: 'Structure fire, overhaul, EMS call, HazMat scene…',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: durationMinutes,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.next,
+            onTapOutside: (_) =>
+                FocusManager.instance.primaryFocus?.unfocus(),
+            decoration: const InputDecoration(
+              labelText: 'Approx. exposure time (minutes)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ];
       case _SimpleMode.training:
         return [
           TextField(
@@ -784,6 +943,7 @@ List<String> _choices(_SimpleMode mode) => switch (mode) {
           'Department training',
           'Live fire',
           'Outside class',
+          'College / Fire Science class',
           'Online CE',
           'Physical training',
         ],
@@ -804,6 +964,16 @@ List<String> _choices(_SimpleMode mode) => switch (mode) {
           'Hose advancement',
           'Search and rescue',
           'Other skill',
+        ],
+      _SimpleMode.exposure => const [
+          'Smoke / combustion products',
+          'HazMat / chemical',
+          'Blood / body fluids',
+          'Infectious disease',
+          'Diesel exhaust',
+          'Carcinogen / soot',
+          'Needlestick / sharps',
+          'Unknown substance',
         ],
       _SimpleMode.drive => const [
           'Engine',
