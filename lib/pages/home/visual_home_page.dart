@@ -5,16 +5,15 @@ import 'package:provider/provider.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_inbox.dart';
+import 'package:firepath/services/advancement_analyzer.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/needs_attention_engine.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
-import 'package:firepath/services/readiness_action_plan.dart';
-import 'package:firepath/services/readiness_snapshot.dart';
 import 'package:firepath/services/smart_next_step.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/career_inbox_preview.dart';
-import 'package:firepath/widgets/career_readiness_panel.dart';
+import 'package:firepath/widgets/career_pulse_card.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 import 'package:firepath/widgets/needs_attention_preview.dart';
 import 'package:firepath/widgets/status_pill.dart';
@@ -59,13 +58,36 @@ class VisualHomePage extends StatelessWidget {
             else ...[
               _AnimatedAppear(
                 delay: const Duration(milliseconds: 110),
-                child: CareerReadinessPanel(
-                  snapshot: CareerReadinessSnapshot.fromRoadmap(roadmap),
-                  actionPlan: CareerReadinessActionPlan.fromState(app),
-                  goalTitle: goal?.title ?? 'Career Road',
-                  onViewPath: () => context.go(AppRoutes.myPath),
-                  onActionTap: (item) {
-                    AppRouter.openRequirement(context, item.requirement);
+                child: CareerPulseCard(
+                  app: app,
+                  onOpenAdvance: () => context.go(AppRoutes.growth),
+                  onPrimaryAction: (analysis) {
+                    final recommendation = analysis.recommendation;
+                    switch (recommendation.kind) {
+                      case AdvancementActionKind.chooseGoal:
+                        context.push(AppRoutes.goalSetup);
+                      case AdvancementActionKind.workRoadmap:
+                        final requirementId = recommendation.requirementId;
+                        if (requirementId != null) {
+                          final matches = roadmap.included.where(
+                            (item) => item.requirement.id == requirementId,
+                          );
+                          if (matches.isNotEmpty) {
+                            AppRouter.openRequirement(
+                              context,
+                              matches.first.requirement,
+                            );
+                            return;
+                          }
+                        }
+                        context.go(AppRoutes.myPath);
+                      case AdvancementActionKind.documentRequirement:
+                        context.push(AppRoutes.growthDetails);
+                      case AdvancementActionKind.buildCompetency:
+                        context.go(AppRoutes.personalLog);
+                      case AdvancementActionKind.maintainMomentum:
+                        context.go(AppRoutes.personalLog);
+                    }
                   },
                 ),
               ),
