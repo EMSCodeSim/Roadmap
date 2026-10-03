@@ -115,6 +115,10 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
   }
 
   Future<void> _actOnCoach(CareerCoachPrompt prompt) async {
+    if (prompt.kind == CareerCoachKind.competencyGap) {
+      widget.onOpenCompetencyMap();
+      return;
+    }
     if (prompt.kind == CareerCoachKind.skillReassessment ||
         prompt.kind == CareerCoachKind.skillImprovement) {
       widget.onOpenDepartment();
