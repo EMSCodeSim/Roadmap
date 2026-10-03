@@ -666,6 +666,21 @@ class _ConfirmStep extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: durationMinutes,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
+                  decoration: const InputDecoration(
+                    labelText: 'Drive time (minutes)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
