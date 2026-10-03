@@ -14,6 +14,7 @@ class CareerPulseCard extends StatefulWidget {
   final AppState app;
   final ValueChanged<AdvancementAnalysis> onPrimaryAction;
   final VoidCallback onOpenAdvance;
+  final VoidCallback onOpenCompetencyMap;
   final ValueChanged<GapExplanation> onGapAction;
   final VoidCallback onOpenDepartment;
   final ValueChanged<RoadmapRequirement> onOpenRequirement;
@@ -23,6 +24,7 @@ class CareerPulseCard extends StatefulWidget {
     required this.app,
     required this.onPrimaryAction,
     required this.onOpenAdvance,
+    required this.onOpenCompetencyMap,
     required this.onGapAction,
     required this.onOpenDepartment,
     required this.onOpenRequirement,
@@ -559,13 +561,21 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
                         ),
                   ),
                 ],
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: widget.onOpenAdvance,
-                    icon: const Icon(Icons.insights_outlined, size: 18),
-                    label: const Text('See full growth analysis'),
-                  ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    TextButton.icon(
+                      onPressed: widget.onOpenCompetencyMap,
+                      icon: const Icon(Icons.hub_outlined, size: 18),
+                      label: const Text('Competency Map'),
+                    ),
+                    TextButton.icon(
+                      onPressed: widget.onOpenAdvance,
+                      icon: const Icon(Icons.insights_outlined, size: 18),
+                      label: const Text('Full growth analysis'),
+                    ),
+                  ],
                 ),
               ],
             ),
