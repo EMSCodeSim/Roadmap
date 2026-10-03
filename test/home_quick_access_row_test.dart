@@ -5,46 +5,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firepath/pages/home/visual_home_page.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/state/app_mode_controller.dart';
 
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('home quick-access row shows Department and not Task Book', (tester) async {
+  testWidgets('home stays focused on personal career growth', (tester) async {
     final app = AppState();
     await app.bootstrap();
 
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: app),
-          ChangeNotifierProvider(create: (_) => AppModeController()),
-        ],
+      ChangeNotifierProvider.value(
+        value: app,
         child: const MaterialApp(home: VisualHomePage()),
       ),
     );
     await tester.pumpAndSettle();
 
-    final row = find.byKey(const Key('home_quick_access_row'));
-    expect(row, findsOneWidget);
-
-    expect(
-      find.descendant(of: row, matching: find.text('Department')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: row, matching: find.text('Personal')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: row, matching: find.text('Task Book')),
-      findsNothing,
-    );
-    expect(
-      find.descendant(of: row, matching: find.text('Build Task Book')),
-      findsNothing,
-    );
+    expect(find.text('Department'), findsNothing);
+    expect(find.text('Personal'), findsNothing);
+    expect(find.text('Daily Focus'), findsOneWidget);
+    expect(find.text('My Path'), findsOneWidget);
   });
 }
