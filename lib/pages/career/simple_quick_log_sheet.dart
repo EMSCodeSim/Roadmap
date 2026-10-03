@@ -583,7 +583,7 @@ class _ConfirmStep extends StatelessWidget {
           textCapitalization: TextCapitalization.sentences,
           textInputAction: TextInputAction.done,
           onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Notes',
             hintText: mode == _SimpleMode.exposure
                 ? 'What happened, PPE used, route of exposure, symptoms, decon, officer notified…'
