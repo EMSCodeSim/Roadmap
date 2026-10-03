@@ -41,7 +41,7 @@ Requirement _req({
     estimatedDurationDays: null,
     recommendedLeadTimeDays: null,
     canRunConcurrent: true,
-    timelineCategory: TimelineCategory.practical,
+    timelineCategory: TimelineCategory.taskBook,
     suggestedStartDate: null,
     suggestedCompletionDate: null,
     createdAt: now,
