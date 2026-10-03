@@ -25,7 +25,8 @@ import 'package:firepath/pages/career/career_inbox_page.dart';
 import 'package:firepath/pages/career/promotion_portfolio_review_page.dart';
 import 'package:firepath/pages/career/department_transfer_page.dart';
 import 'package:firepath/pages/department/my_department_page.dart';
-import 'package:firepath/pages/department/mode_aware_advance_page.dart';
+import 'package:firepath/pages/department/department_tab_page.dart';
+import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_v2_page.dart';
 import 'package:firepath/pages/career/quick_log_setup_page.dart';
@@ -267,20 +268,20 @@ class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.growth,
-                name: 'growth',
+                path: AppRoutes.certifications,
+                name: 'certifications',
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: ModeAwareAdvancePage()),
+                    const NoTransitionPage(child: CertificationsPage()),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.certifications,
-                name: 'certifications',
+                path: AppRoutes.department,
+                name: 'department',
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: CertificationsPage()),
+                    const NoTransitionPage(child: DepartmentTabPage()),
               ),
             ],
           ),
@@ -295,10 +296,10 @@ class AppRouter {
       ),
 
       GoRoute(
-        path: AppRoutes.department,
-        name: 'department',
+        path: AppRoutes.growth,
+        name: 'growth',
         pageBuilder: (context, state) =>
-            const MaterialPage(child: MyDepartmentPage()),
+            const MaterialPage(child: GrowthOverviewPage()),
       ),
 
       GoRoute(path: '/career', redirect: (context, state) => AppRoutes.growth),
