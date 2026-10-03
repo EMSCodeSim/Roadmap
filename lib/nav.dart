@@ -26,6 +26,7 @@ import 'package:firepath/pages/career/promotion_portfolio_review_page.dart';
 import 'package:firepath/pages/career/department_transfer_page.dart';
 import 'package:firepath/pages/department/department_tab_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
+import 'package:firepath/pages/career/competency_map_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_v2_page.dart';
 import 'package:firepath/pages/career/quick_log_setup_page.dart';
@@ -367,6 +368,12 @@ class AppRouter {
             const MaterialPage(child: CareerIntelligencePage()),
       ),
       GoRoute(
+        path: AppRoutes.competencyMap,
+        name: 'competency_map',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: CompetencyMapPage()),
+      ),
+      GoRoute(
         path: AppRoutes.careerLongevity,
         name: 'career_longevity',
         pageBuilder: (context, state) =>
@@ -564,6 +571,7 @@ class AppRoutes {
   static const String goalSetup = '/goal-setup';
   static const String growthDetails = '/growth-tools';
   static const String careerIntelligence = '/career-intelligence';
+  static const String competencyMap = '/competency-map';
   static const String careerLongevity = '/career-intelligence/long-term';
   static const String dailyFocus = '/daily-focus';
   static const String needsAttention = '/needs-attention';
