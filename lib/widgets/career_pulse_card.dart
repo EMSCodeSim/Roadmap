@@ -4,6 +4,8 @@ import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/advancement_analyzer.dart';
 import 'package:firepath/services/career_progress_history.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/gap_explanation.dart';
+import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_state.dart';
 
 class CareerPulseCard extends StatefulWidget {
@@ -25,8 +27,10 @@ class CareerPulseCard extends StatefulWidget {
 class _CareerPulseCardState extends State<CareerPulseCard> {
   final CareerRecordStore _recordsStore = CareerRecordStore();
   final CareerProgressHistoryStore _historyStore = CareerProgressHistoryStore();
+  final ResponderRoadmapApi _api = ResponderRoadmapApi();
   List<CareerRecord> _records = const [];
   CareerProgressTrend? _trend;
+  DepartmentSkillMastery? _skillMastery;
   bool _loading = true;
   String? _goalId;
 
@@ -49,6 +53,12 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
 
   Future<void> _load() async {
     final records = await _recordsStore.load();
+    DepartmentSkillMastery? skillMastery;
+    try {
+      if (await _api.hasStoredToken) skillMastery = await _api.getMySkillMastery();
+    } catch (_) {
+      // Department mastery is supplemental; Home remains useful offline.
+    }
     final analysis =
         AdvancementAnalyzer.analyze(app: widget.app, records: records);
     final goalId = widget.app.selectedGoal?.id;
@@ -70,6 +80,7 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
     setState(() {
       _records = records;
       _trend = trend;
+      _skillMastery = skillMastery;
       _goalId = goalId;
       _loading = false;
     });
@@ -93,6 +104,23 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
       return record.details['verification'] == 'department_verified' ||
           record.tags.contains('department-verified');
     }).length;
+    GapExplanation? gap;
+    final recommendationId = analysis.recommendation.requirementId;
+    final roadmap = widget.app.roadmap;
+    if (recommendationId != null && roadmap != null) {
+      final matches = roadmap.included.where(
+        (item) => item.requirement.id == recommendationId,
+      );
+      if (matches.isNotEmpty) {
+        gap = GapExplanationEngine.explain(
+          app: widget.app,
+          item: matches.first,
+          records: _records,
+          skillMastery: _skillMastery,
+        );
+      }
+    }
+
     final delta = _trend?.readinessDelta30Days;
     final trendText = delta == null
         ? 'Progress trend starts today'
@@ -230,6 +258,104 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
                     ],
                   ),
                 ),
+                if (gap != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'WHY THIS GAP',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.4,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          gap.whyItMatters,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                        ),
+                        if (gap.evidence.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            'Evidence already counted',
+                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          ...gap.evidence.take(3).map(
+                                (item) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        item.verified
+                                            ? Icons.verified_outlined
+                                            : Icons.check_circle_outline,
+                                        size: 17,
+                                        color: item.verified ? cs.primary : cs.onSurfaceVariant,
+                                      ),
+                                      const SizedBox(width: 7),
+                                      Expanded(
+                                        child: Text(
+                                          item.title + ' · ' + item.detail,
+                                          style: Theme.of(context).textTheme.bodySmall,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                        ],
+                        const SizedBox(height: 8),
+                        Text(
+                          'Still missing',
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        ...gap.stillMissing.take(3).map(
+                              (item) => Padding(
+                                padding: const EdgeInsets.only(bottom: 3),
+                                child: Text(
+                                  '• ' + item,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                ),
+                              ),
+                            ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Fastest way to close it',
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          gap.bestAction,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Text(
                   recent.length.toString() +
@@ -244,6 +370,22 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
                         fontWeight: FontWeight.w700,
                       ),
                 ),
+                if (_skillMastery != null && _skillMastery!.skills.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Department Skill Mastery: ' +
+                        _skillMastery!.skills.where((s) => s.status == 'PROFICIENT').length.toString() +
+                        ' proficient · ' +
+                        _skillMastery!.skills.where((s) => s.status == 'REASSESS').length.toString() +
+                        ' reassess · ' +
+                        _skillMastery!.skills.where((s) => s.status == 'NEEDS_IMPROVEMENT').length.toString() +
+                        ' needs improvement',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ],
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
