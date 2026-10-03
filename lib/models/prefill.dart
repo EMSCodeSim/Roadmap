@@ -1,4 +1,5 @@
 /// Cross-feature prefill payloads used for deep links and flow integration.
+library;
 
 import 'package:firepath/models/career_record.dart';
 

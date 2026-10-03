@@ -1033,7 +1033,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
         ],
         if (_tracksOutcome) ...[
           DropdownButtonFormField<CareerRecordOutcome?>(
-            value: _outcome,
+            initialValue: _outcome,
             decoration: const InputDecoration(labelText: 'Outcome (optional)'),
             items: [
               const DropdownMenuItem(value: null, child: Text('No outcome')),
@@ -1179,7 +1179,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
               decoration: const InputDecoration(labelText: 'Unit name', hintText: 'Medic 184')),
             const SizedBox(height: 12),
             DropdownButtonFormField<ApparatusKind>(
-              value: kind,
+              initialValue: kind,
               decoration: const InputDecoration(labelText: 'Apparatus type'),
               items: ApparatusKind.values.map((item) =>
                 DropdownMenuItem(value: item, child: Text(item.label))).toList(),

@@ -119,8 +119,9 @@ class AppState extends ChangeNotifier {
         if (defId == null || defId.isEmpty) return false;
         final status = certStatusByDefId[defId];
         if (status == null) return false;
-        if (status == CertificationStatus.expired)
+        if (status == CertificationStatus.expired) {
           return r.allowExpiredCertification;
+        }
         return true;
       }
       if (r.type == RequirementType.experience) {
@@ -131,8 +132,9 @@ class AppState extends ChangeNotifier {
         return years.toDouble() >= required;
       }
       if (r.type == RequirementType.numericProgress) {
-        if (r.progressCurrent == null || r.progressRequired == null)
+        if (r.progressCurrent == null || r.progressRequired == null) {
           return false;
+        }
         return r.progressCurrent! >= r.progressRequired!;
       }
       return r.completed;
@@ -339,9 +341,7 @@ class AppState extends ChangeNotifier {
       certifications
           .where((c) => c.name.trim().isNotEmpty)
           .map((c) {
-            final mapped = c.certificationDefinitionId == null
-                ? FireOpsCatalog.matchCertificationDefinitionId(c.name)
-                : c.certificationDefinitionId;
+            final mapped = c.certificationDefinitionId ?? FireOpsCatalog.matchCertificationDefinitionId(c.name);
             return c.copyWith(
                 certificationDefinitionId: mapped, updatedAt: DateTime.now());
           })

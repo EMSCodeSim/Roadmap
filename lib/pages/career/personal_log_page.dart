@@ -337,7 +337,7 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     ),
                     const SizedBox(height: 14),
                     DropdownButtonFormField<CareerRecordType>(
-                      value: type,
+                      initialValue: type,
                       decoration: const InputDecoration(labelText: 'Type'),
                       items: CareerRecordType.values
                           .map(
@@ -383,8 +383,9 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                                 firstDate: DateTime(1970),
                                 lastDate: DateTime.now(),
                               );
-                              if (picked != null)
+                              if (picked != null) {
                                 setDialogState(() => selectedDate = picked);
+                              }
                             },
                             icon: const Icon(
                               Icons.calendar_today_outlined,
@@ -407,7 +408,7 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<CareerRecordOutcome?>(
-                      value: outcome,
+                      initialValue: outcome,
                       decoration: const InputDecoration(
                         labelText: 'Outcome (optional)',
                       ),
@@ -615,10 +616,12 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                                   if (tracker.custom &&
                                       !custom.any(
                                         (e) => e.keyName == tracker.keyName,
-                                      ))
+                                      )) {
                                     custom.add(tracker);
-                                  if (!pinned.contains(tracker.keyName))
+                                  }
+                                  if (!pinned.contains(tracker.keyName)) {
                                     pinned.add(tracker.keyName);
+                                  }
                                 });
                               },
                               icon: const Icon(Icons.add),
@@ -727,8 +730,9 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                     final customTracker = await _createCustomTracker(
                       dialogContext,
                     );
-                    if (customTracker != null && dialogContext.mounted)
+                    if (customTracker != null && dialogContext.mounted) {
                       Navigator.pop(dialogContext, customTracker);
+                    }
                   },
                   icon: const Icon(Icons.add_circle_outline),
                   label: const Text('Create custom tracker'),
@@ -801,7 +805,7 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<CareerRecordType>(
-                  value: type,
+                  initialValue: type,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: CareerRecordType.values
                       .map(
@@ -912,12 +916,15 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
         ),
       );
       item.total += record.repetitions;
-      if (record.outcome == CareerRecordOutcome.successful)
+      if (record.outcome == CareerRecordOutcome.successful) {
         item.successful += record.repetitions;
-      if (record.outcome == CareerRecordOutcome.unsuccessful)
+      }
+      if (record.outcome == CareerRecordOutcome.unsuccessful) {
         item.unsuccessful += record.repetitions;
-      if (item.lastDate == null || record.date.isAfter(item.lastDate!))
+      }
+      if (item.lastDate == null || record.date.isAfter(item.lastDate!)) {
         item.lastDate = record.date;
+      }
     }
     final values = map.values.where((item) {
       if (q.isEmpty) return true;
@@ -947,10 +954,12 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
       (record) =>
           record.date.year == year && record.trackingKey == tracker.keyName,
     )) {
-      if (record.outcome == CareerRecordOutcome.successful)
+      if (record.outcome == CareerRecordOutcome.successful) {
         success += record.repetitions;
-      if (record.outcome == CareerRecordOutcome.unsuccessful)
+      }
+      if (record.outcome == CareerRecordOutcome.unsuccessful) {
         unsuccessful += record.repetitions;
+      }
     }
     final measured = success + unsuccessful;
     if (measured == 0) return null;
@@ -972,10 +981,12 @@ class _PersonalLogPageState extends State<PersonalLogPage> {
         ),
       );
       aggregate.total += record.repetitions;
-      if (record.outcome == CareerRecordOutcome.successful)
+      if (record.outcome == CareerRecordOutcome.successful) {
         aggregate.successful += record.repetitions;
-      if (record.outcome == CareerRecordOutcome.unsuccessful)
+      }
+      if (record.outcome == CareerRecordOutcome.unsuccessful) {
         aggregate.unsuccessful += record.repetitions;
+      }
     }
     final years = totals.keys.toList()..sort((a, b) => b.compareTo(a));
     if (!mounted) return;

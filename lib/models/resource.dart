@@ -63,13 +63,13 @@ class Resource {
   };
 
   factory Resource.fromJson(Map<String, dynamic> json) {
-    DateTime? _dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
+    DateTime? dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
     final now = DateTime.now();
-    final created = _dt(json['createdAt']) ?? now;
-    final updated = _dt(json['updatedAt']) ?? created;
+    final created = dt(json['createdAt']) ?? now;
+    final updated = dt(json['updatedAt']) ?? created;
     final relatedCertsRaw = json['relatedCertificationDefinitionIds'] ?? json['relatedCertificationIds'];
     final relatedGoalsRaw = json['relatedCareerGoalIds'];
-    ResourceType _type(dynamic v) {
+    ResourceType type(dynamic v) {
       if (v is! String) return ResourceType.studyResource;
       try {
         return ResourceType.values.byName(v);
@@ -88,7 +88,7 @@ class Resource {
       }
     }
 
-    ResourceSourceType _source(dynamic v) {
+    ResourceSourceType source(dynamic v) {
       if (v is! String) return ResourceSourceType.unknown;
       try {
         return ResourceSourceType.values.byName(v);
@@ -101,14 +101,14 @@ class Resource {
       id: json['id'] as String,
       title: (json['title'] as String?) ?? '',
       description: (json['description'] as String?) ?? '',
-      type: _type(json['type']),
+      type: type(json['type']),
       url: json['url'] as String?,
       state: json['state'] as String?,
       relatedCertificationDefinitionIds: relatedCertsRaw is List ? relatedCertsRaw.whereType<String>().toList() : <String>[],
       relatedCareerGoalIds: relatedGoalsRaw is List ? relatedGoalsRaw.whereType<String>().toList() : <String>[],
       verified: (json['verified'] as bool?) ?? false,
-      lastVerifiedDate: _dt(json['lastVerifiedDate']),
-      sourceType: _source(json['sourceType']),
+      lastVerifiedDate: dt(json['lastVerifiedDate']),
+      sourceType: source(json['sourceType']),
       createdAt: created,
       updatedAt: updated,
     );

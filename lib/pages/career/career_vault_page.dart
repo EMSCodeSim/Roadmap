@@ -200,7 +200,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<CareerRecordType>(
-                        value: type,
+                        initialValue: type,
                         decoration: const InputDecoration(
                           labelText: 'Record type',
                         ),
@@ -252,8 +252,9 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                                   firstDate: DateTime(1970),
                                   lastDate: DateTime(now.year + 10),
                                 );
-                                if (picked != null)
+                                if (picked != null) {
                                   setDialogState(() => selectedDate = picked);
+                                }
                               },
                               icon: const Icon(
                                 Icons.calendar_today_outlined,
@@ -325,7 +326,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                       const SizedBox(height: 12),
                       if (requirementNames.isNotEmpty)
                         DropdownButtonFormField<String>(
-                          value:
+                          initialValue:
                               requirementNames.containsKey(
                                 selectedRequirementId,
                               )
@@ -564,10 +565,11 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     buffer.writeln('PROFESSIONAL GROWTH & ADVANCEMENT BRIEF');
     buffer.writeln('Generated ${_formatDate(DateTime.now())}');
     if (goal != null) buffer.writeln('Target role: ${goal.title}');
-    if (roadmap != null)
+    if (roadmap != null) {
       buffer.writeln(
         'Task Book progress: ${roadmap.completedCount}/${roadmap.totalCount} requirements complete',
       );
+    }
     buffer.writeln('Career evidence records: ${_records.length}');
     buffer.writeln(
       'Documented training/education hours: ${_trimNumber(trainingHours)}',
@@ -652,12 +654,15 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
 
   String _briefDetail(CareerRecord record) {
     final parts = <String>[];
-    if ((record.roleOrAssignment ?? '').trim().isNotEmpty)
+    if ((record.roleOrAssignment ?? '').trim().isNotEmpty) {
       parts.add(record.roleOrAssignment!.trim());
-    if ((record.impact ?? '').trim().isNotEmpty)
+    }
+    if ((record.impact ?? '').trim().isNotEmpty) {
       parts.add(record.impact!.trim());
-    if ((record.evidenceReference ?? '').trim().isNotEmpty)
+    }
+    if ((record.evidenceReference ?? '').trim().isNotEmpty) {
       parts.add('Evidence: ${record.evidenceReference!.trim()}');
+    }
     return parts.isEmpty ? '' : ' — ${parts.join(' | ')}';
   }
 

@@ -150,12 +150,12 @@ class TrainingSchedule {
       };
 
   factory TrainingSchedule.fromJson(Map<String, dynamic> json) {
-    DateTime? _dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
+    DateTime? dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
     return TrainingSchedule(
       courseName: json['courseName'] as String?,
       provider: json['provider'] as String?,
-      startDate: _dt(json['startDate']),
-      endDate: _dt(json['endDate']),
+      startDate: dt(json['startDate']),
+      endDate: dt(json['endDate']),
       location: json['location'] as String?,
       notes: json['notes'] as String?,
     );
@@ -275,7 +275,7 @@ class PathRequirementOverride {
       };
 
   factory PathRequirementOverride.fromJson(Map<String, dynamic> json) {
-    RequirementActivityStatus? _status(dynamic v) {
+    RequirementActivityStatus? status(dynamic v) {
       if (v is! String) return null;
       try {
         return RequirementActivityStatus.values.byName(v);
@@ -284,14 +284,14 @@ class PathRequirementOverride {
       }
     }
 
-    TrainingSchedule? _schedule(dynamic v) {
+    TrainingSchedule? schedule(dynamic v) {
       if (v is! Map) return null;
       return TrainingSchedule.fromJson(Map<String, dynamic>.from(v));
     }
 
-    DateTime? _dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
+    DateTime? dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
 
-    List<ResourceLink> _links(dynamic v) {
+    List<ResourceLink> links(dynamic v) {
       if (v is! List) return const <ResourceLink>[];
       return v
           .whereType<Map>()
@@ -306,7 +306,7 @@ class PathRequirementOverride {
           .toList();
     }
 
-    List<RequirementPlanStep> _planSteps(dynamic v) {
+    List<RequirementPlanStep> planSteps(dynamic v) {
       if (v is! List) return const <RequirementPlanStep>[];
       return v
           .whereType<Map>()
@@ -324,7 +324,7 @@ class PathRequirementOverride {
           .toList();
     }
 
-    List<RequirementSubTask> _subTasks(dynamic v) {
+    List<RequirementSubTask> subTasks(dynamic v) {
       if (v is! List) return const <RequirementSubTask>[];
       return v
           .whereType<Map>()
@@ -352,16 +352,16 @@ class PathRequirementOverride {
       overrideProgressRequired:
           (json['overrideProgressRequired'] as num?)?.toDouble(),
       overrideProgressUnit: json['overrideProgressUnit'] as String?,
-      activityStatus: _status(json['activityStatus']),
-      schedule: _schedule(json['schedule']),
+      activityStatus: status(json['activityStatus']),
+      schedule: schedule(json['schedule']),
       taskBookCompletedItems: (json['taskBookCompletedItems'] as num?)?.toInt(),
       taskBookTotalItems: (json['taskBookTotalItems'] as num?)?.toInt(),
-      suggestedStartDate: _dt(json['suggestedStartDate']),
-      suggestedCompletionDate: _dt(json['suggestedCompletionDate']),
+      suggestedStartDate: dt(json['suggestedStartDate']),
+      suggestedCompletionDate: dt(json['suggestedCompletionDate']),
       removedFromTimeline: (json['removedFromTimeline'] as bool?) ?? false,
-      userResourceLinks: _links(json['userResourceLinks']),
-      planSteps: _planSteps(json['planSteps']),
-      subTasks: _subTasks(json['subTasks']),
+      userResourceLinks: links(json['userResourceLinks']),
+      planSteps: planSteps(json['planSteps']),
+      subTasks: subTasks(json['subTasks']),
     );
   }
 }
@@ -459,12 +459,16 @@ class Roadmap {
     if (isCoreLike) return 1;
     if (isDept) {
       if (r.type == RequirementType.experience ||
-          r.type == RequirementType.numericProgress) return 3;
+          r.type == RequirementType.numericProgress) {
+        return 3;
+      }
       if (r.type == RequirementType.taskBook) return 4;
       return 2;
     }
     if (r.type == RequirementType.experience ||
-        r.type == RequirementType.numericProgress) return 3;
+        r.type == RequirementType.numericProgress) {
+      return 3;
+    }
     if (r.type == RequirementType.taskBook) return 4;
     if (r.priority == RequirementPriority.recommended) return 5;
     return 6;

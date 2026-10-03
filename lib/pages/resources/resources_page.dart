@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -26,7 +25,7 @@ class _ResourcesPageState extends State<ResourcesPage> {
   _ResourcesMode _mode = _ResourcesMode.personalized;
   String? _requirementKey;
   Set<ResourceType> _typeFilter = {};
-  Set<String> _chipFilter = {'Task Book'};
+  final Set<String> _chipFilter = {'Task Book'};
 
   @override
   void initState() {

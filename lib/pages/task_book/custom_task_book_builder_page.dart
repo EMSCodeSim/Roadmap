@@ -759,7 +759,7 @@ class _RequirementEditorSheetState extends State<_RequirementEditorSheet> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<RequirementType>(
-                      value: _type,
+                      initialValue: _type,
                       items: RequirementType.values
                           .map((t) => DropdownMenuItem(value: t, child: Text(describeEnum(t).toUpperCase())))
                           .toList(),

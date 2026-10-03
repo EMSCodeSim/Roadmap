@@ -333,7 +333,7 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<CareerRecordType>(
-                    value: type,
+                    initialValue: type,
                     decoration: const InputDecoration(labelText: 'Log type'),
                     items: CareerRecordType.values
                         .map(

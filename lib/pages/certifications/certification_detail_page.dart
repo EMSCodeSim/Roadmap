@@ -84,10 +84,12 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
       final extra = widget.extra;
       String? prefill;
       String? prefillDefId;
-      if (extra is Map && extra['name'] is String)
+      if (extra is Map && extra['name'] is String) {
         prefill = extra['name'] as String;
-      if (extra is Map && extra['definitionId'] is String)
+      }
+      if (extra is Map && extra['definitionId'] is String) {
         prefillDefId = extra['definitionId'] as String;
+      }
       if (prefill != null && _name.text.trim().isEmpty) {
         _name.text = prefill;
       }

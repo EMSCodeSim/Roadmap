@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -855,7 +854,7 @@ class _RequirementGroup {
   final String title;
   final String? subtitle;
   final List<Requirement> items;
-  const _RequirementGroup({required this.title, required this.items, this.subtitle});
+  const _RequirementGroup({required this.title, required this.items}) : subtitle = null;
 }
 
 class _WorkEstimate {

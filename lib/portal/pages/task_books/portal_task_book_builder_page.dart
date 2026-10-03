@@ -110,7 +110,7 @@ class _VersionPicker extends StatelessWidget {
     return SizedBox(
       width: 220,
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: value,
         decoration: const InputDecoration(labelText: 'Version'),
         items: versions
             .map(

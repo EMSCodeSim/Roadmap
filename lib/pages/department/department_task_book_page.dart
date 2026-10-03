@@ -561,7 +561,7 @@ class _RequirementSheetState extends State<_RequirementSheet> {
               if (requirement.evaluatorSignOffRequired) ...[
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  value: _evaluatorId,
+                  initialValue: _evaluatorId,
                   decoration: InputDecoration(
                     labelText: 'Choose approved evaluator',
                     helperText: 'This person will receive your evaluation request.',

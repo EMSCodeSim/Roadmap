@@ -11,13 +11,13 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  Future<AppState> _bootedState() async {
+  Future<AppState> bootedState() async {
     final s = AppState();
     await s.bootstrap();
     return s;
   }
 
-  Certification _cert(String name, {DateTime? exp, bool doesNotExpire = false}) {
+  Certification cert0(String name, {DateTime? exp, bool doesNotExpire = false}) {
     final now = DateTime(2026, 1, 1);
     return Certification(
       id: 'c_${name}_${now.microsecondsSinceEpoch}',
@@ -35,7 +35,7 @@ void main() {
     );
   }
 
-  UserProfile _volunteerCO({int years = 5}) {
+  UserProfile volunteerCO({int years = 5}) {
     final now = DateTime(2026, 1, 1);
     return UserProfile(
       currentRoles: const ['Volunteer Firefighter'],
@@ -52,14 +52,14 @@ void main() {
   }
 
   test('TEST 1: Volunteer + base fire certs recognized; next step is selected', () async {
-    final s = await _bootedState();
+    final s = await bootedState();
     await s.completeOnboarding(
-      profile: _volunteerCO(years: 5),
+      profile: volunteerCO(years: 5),
       certifications: [
-        _cert('FF I'),
-        _cert('FF II'),
-        _cert('HazMat Ops'),
-        _cert('EMT'),
+        cert0('FF I'),
+        cert0('FF II'),
+        cert0('HazMat Ops'),
+        cert0('EMT'),
       ],
     );
     await s.setPrimaryGoal('ops_engineer');
@@ -78,8 +78,8 @@ void main() {
   });
 
   test('TEST 2/10: Excluded requirement does not count in totals', () async {
-    final s = await _bootedState();
-    await s.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('FF I')]);
+    final s = await bootedState();
+    await s.completeOnboarding(profile: volunteerCO(), certifications: [cert0('FF I')]);
     await s.setPrimaryGoal('ops_firefighter');
     final road1 = s.roadmap!;
     final target = road1.included.first.requirement;
@@ -89,8 +89,8 @@ void main() {
   });
 
   test('TEST 3: Alias "FF I" satisfies Firefighter I requirement', () async {
-    final s = await _bootedState();
-    await s.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('FF I')]);
+    final s = await bootedState();
+    await s.completeOnboarding(profile: volunteerCO(), certifications: [cert0('FF I')]);
     await s.setPrimaryGoal('ops_firefighter');
     final road = s.roadmap!;
     final ff1 = road.all.where((e) => e.requirement.certificationDefinitionId == 'firefighter_1').firstOrNull;
@@ -99,8 +99,8 @@ void main() {
   });
 
   test('TEST 4: Firefighter II does NOT satisfy Firefighter I', () async {
-    final s = await _bootedState();
-    await s.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('Firefighter II')]);
+    final s = await bootedState();
+    await s.completeOnboarding(profile: volunteerCO(), certifications: [cert0('Firefighter II')]);
     await s.setPrimaryGoal('ops_firefighter');
     final road = s.roadmap!;
     final ff1 = road.all.where((e) => e.requirement.certificationDefinitionId == 'firefighter_1').firstOrNull;
@@ -109,11 +109,11 @@ void main() {
   });
 
   test('TEST 5: Expired Firefighter I does not satisfy active Firefighter I requirement', () async {
-    final s = await _bootedState();
+    final s = await bootedState();
     // Attach an expired Firefighter I credential; ops_firefighter FF I does not allow expired.
     await s.completeOnboarding(
-      profile: _volunteerCO(),
-      certifications: [_cert('Firefighter I', exp: DateTime(2024, 1, 1))],
+      profile: volunteerCO(),
+      certifications: [cert0('Firefighter I', exp: DateTime(2024, 1, 1))],
     );
     await s.setPrimaryGoal('ops_firefighter');
     final road = s.roadmap!;
@@ -123,16 +123,16 @@ void main() {
   });
 
   test('TEST 6: Does Not Expire is always current', () {
-    final cert = _cert('ICS-100', doesNotExpire: true);
+    final cert = cert0('ICS-100', doesNotExpire: true);
     expect(cert.status, CertificationStatus.current);
     expect(cert.daysRemaining, isNull);
   });
 
   test('TEST 7: Completing one senior-path prerequisite advances to another', () async {
-    final s = await _bootedState();
+    final s = await bootedState();
     await s.completeOnboarding(
-      profile: _volunteerCO(),
-      certifications: [_cert('FF I'), _cert('FF II')],
+      profile: volunteerCO(),
+      certifications: [cert0('FF I'), cert0('FF II')],
     );
     await s.setPrimaryGoal('ops_battalion_chief');
 
@@ -155,7 +155,7 @@ void main() {
     expect(id, isNotNull);
 
     await s.upsertCertification(
-      _cert(before.name).copyWith(certificationDefinitionId: id),
+      cert0(before.name).copyWith(certificationDefinitionId: id),
     );
 
     final after = s.roadmap!.nextStep;
@@ -169,14 +169,14 @@ void main() {
   });
 
   test('TEST 8: Cert expiring before target date generates renewal timeline item', () async {
-    final s = await _bootedState();
-    final profile = _volunteerCO();
+    final s = await bootedState();
+    final profile = volunteerCO();
     final today = DateTime.now();
     final expiration = DateTime(today.year, today.month, today.day).add(const Duration(days: 180));
     final target = expiration.add(const Duration(days: 180));
     await s.completeOnboarding(
       profile: profile,
-      certifications: [_cert('Firefighter II', exp: expiration)],
+      certifications: [cert0('Firefighter II', exp: expiration)],
     );
     await s.setPrimaryGoal('ops_engineer');
     await s.setTargetReadyDate(target);
@@ -187,8 +187,8 @@ void main() {
   });
 
   test('TEST 9: Volunteer years of service satisfies experience requirements', () async {
-    final s = await _bootedState();
-    await s.completeOnboarding(profile: _volunteerCO(years: 5), certifications: [_cert('FF I')]);
+    final s = await bootedState();
+    await s.completeOnboarding(profile: volunteerCO(years: 5), certifications: [cert0('FF I')]);
     await s.setPrimaryGoal('ops_engineer');
     final road = s.roadmap!;
     final expReq = road.all.where((e) => e.requirement.type.name == 'experience').firstOrNull;
@@ -198,8 +198,8 @@ void main() {
   });
 
   test('TEST 11: Restart after onboarding keeps onboarding complete', () async {
-    final s1 = await _bootedState();
-    await s1.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('FF I')]);
+    final s1 = await bootedState();
+    await s1.completeOnboarding(profile: volunteerCO(), certifications: [cert0('FF I')]);
     expect(s1.onboardingComplete, isTrue);
 
     final s2 = AppState();
@@ -209,8 +209,8 @@ void main() {
   });
 
   test('TEST 12: Alias "DO Pumper" matches Driver Operator – Pumper', () async {
-    final s = await _bootedState();
-    await s.completeOnboarding(profile: _volunteerCO(), certifications: [_cert('DO Pumper')]);
+    final s = await bootedState();
+    await s.completeOnboarding(profile: volunteerCO(), certifications: [cert0('DO Pumper')]);
     await s.setPrimaryGoal('ops_engineer');
     final road = s.roadmap!;
     final doReq = road.all.where((e) => e.requirement.certificationDefinitionId == 'driver_operator_pumper').firstOrNull;

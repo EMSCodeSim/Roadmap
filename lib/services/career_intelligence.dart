@@ -73,8 +73,9 @@ class CareerIntelligence {
     final highlights = records.where((record) {
       if (record.highlight) return true;
       if (record.type == CareerRecordType.achievement ||
-          record.type == CareerRecordType.project)
+          record.type == CareerRecordType.project) {
         return true;
+      }
       return (record.impact ?? '').trim().isNotEmpty &&
           (record.type == CareerRecordType.leadership ||
               record.type == CareerRecordType.teaching);

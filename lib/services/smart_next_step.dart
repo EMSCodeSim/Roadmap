@@ -1,5 +1,4 @@
 import 'package:firepath/models/requirement.dart';
-import 'package:firepath/models/roadmap_models.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/services/task_book_checklist_hierarchy.dart';
 import 'package:firepath/services/task_book_library.dart';

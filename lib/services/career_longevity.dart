@@ -95,8 +95,9 @@ class CareerLongevity {
         .toSet();
 
     bool requirementSatisfied(Requirement r) {
-      if (r.certificationDefinitionId != null)
+      if (r.certificationDefinitionId != null) {
         return currentCertIds.contains(r.certificationDefinitionId);
+      }
       if (r.type == RequirementType.experience ||
           r.type == RequirementType.numericProgress ||
           r.type == RequirementType.taskBook) {
@@ -301,13 +302,15 @@ class CareerLongevity {
     buffer.writeln(
       '- Career goal: ${app.selectedGoal?.title ?? 'Not selected'}',
     );
-    if (app.profile.yearsOfService != null)
+    if (app.profile.yearsOfService != null) {
       buffer.writeln('- Years of service: ${app.profile.yearsOfService}');
+    }
     buffer.writeln('- Documented career activities: ${records.length}');
-    if (trainingHours > 0)
+    if (trainingHours > 0) {
       buffer.writeln(
         '- Documented training hours: ${trainingHours.toStringAsFixed(1)}',
       );
+    }
     buffer.writeln();
 
     buffer.writeln('CURRENT CREDENTIALS');
@@ -325,10 +328,11 @@ class CareerLongevity {
       final impact = (item.impact ?? '').trim();
       buffer.writeln('- ${item.title}${impact.isEmpty ? '' : ' — $impact'}');
     }
-    if (highlights.isEmpty)
+    if (highlights.isEmpty) {
       buffer.writeln(
         '- Mark achievements, leadership examples, and projects as highlights to populate this section.',
       );
+    }
     buffer.writeln();
 
     buffer.writeln('LEADERSHIP / TEACHING EVIDENCE');
@@ -337,8 +341,9 @@ class CareerLongevity {
         '- ${item.title}${(item.impact ?? '').trim().isEmpty ? '' : ' — ${item.impact!.trim()}'}',
       );
     }
-    if (leadership.isEmpty)
+    if (leadership.isEmpty) {
       buffer.writeln('- No leadership or teaching examples recorded yet.');
+    }
     buffer.writeln();
 
     buffer.writeln(

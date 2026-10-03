@@ -32,7 +32,7 @@ class QuickLogPathSuggester {
       next = roadmap.nextStep?.requirement;
     }
 
-    if (next == null || goalId == null || goalId.trim().isEmpty) return const [];
+    if (next == null || goalId.trim().isEmpty) return const [];
     final suggestions = <QuickLogPathSuggestion>[];
 
     final nextTask = _nextIncompleteTask(

@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/requirement.dart';
-import 'package:firepath/models/roadmap_models.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/national_task_book_baseline.dart';

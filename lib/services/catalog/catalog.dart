@@ -547,8 +547,12 @@ final Map<String, String> _certMatchIndex = () {
   for (final d in _certifications) {
     add(d.displayName, d.id);
     if (d.shortName != null) add(d.shortName!, d.id);
-    for (final a in d.aliases) add(a, d.id);
-    for (final kw in d.searchKeywords) add(kw, d.id);
+    for (final a in d.aliases) {
+      add(a, d.id);
+    }
+    for (final kw in d.searchKeywords) {
+      add(kw, d.id);
+    }
   }
 
   add('ff i', 'firefighter_1');

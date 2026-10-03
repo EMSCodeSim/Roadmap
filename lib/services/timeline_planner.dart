@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/requirement.dart';
@@ -161,7 +160,7 @@ class CareerTimelinePlanner {
       }
 
       // Spread remaining requirements into simple buckets (no fake precision).
-      if (nextUp.length < 1) {
+      if (nextUp.isEmpty) {
         nextUp.add(ti);
       } else if (then.length < 2) {
         then.add(ti);

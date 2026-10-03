@@ -51,8 +51,8 @@ class CareerPlan {
   };
 
   factory CareerPlan.fromJson(Map<String, dynamic> json) {
-    DateTime? _dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
-    TimelineStatus _status(dynamic v) {
+    DateTime? dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
+    TimelineStatus parseStatus(dynamic v) {
       if (v is! String) return TimelineStatus.noTargetDate;
       try {
         return TimelineStatus.values.byName(v);
@@ -61,16 +61,16 @@ class CareerPlan {
       }
     }
 
-    final start = _dt(json['startDate']) ?? DateTime.now();
-    final target = _dt(json['targetDate']);
+    final start = dt(json['startDate']) ?? DateTime.now();
+    final target = dt(json['targetDate']);
     final enabled = (json['timelineEnabled'] as bool?) ?? (target != null);
-    final status = _status(json['timelineStatus']);
+    final parsedStatus = parseStatus(json['timelineStatus']);
     return CareerPlan(
       goalId: json['goalId'] is String ? json['goalId'] as String : null,
       startDate: start,
       targetDate: target,
       timelineEnabled: enabled,
-      timelineStatus: target == null ? TimelineStatus.noTargetDate : status,
+      timelineStatus: target == null ? TimelineStatus.noTargetDate : parsedStatus,
     );
   }
 }
@@ -200,15 +200,15 @@ class UserProfile {
   };
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
-    DateTime? _dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
+    DateTime? dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
 
     final currentRolesRaw = json['currentRoles'];
     final roles = currentRolesRaw is List ? currentRolesRaw.whereType<String>().toList() : <String>[];
 
-    final created = _dt(json['createdAt']) ?? DateTime.now();
-    final updated = _dt(json['updatedAt']) ?? created;
+    final created = dt(json['createdAt']) ?? DateTime.now();
+    final updated = dt(json['updatedAt']) ?? created;
 
-    final legacyTarget = _dt(json['targetDate']);
+    final legacyTarget = dt(json['targetDate']);
     final planRaw = json['careerPlan'];
     CareerPlan plan;
     if (planRaw is Map) {

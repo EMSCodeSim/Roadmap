@@ -2,6 +2,7 @@
 ///
 /// These are designed to be stored locally today, but structured so they can
 /// later be synced/managed by a department (Department Pro).
+library;
 
 enum TaskBookTaskStatus { notStarted, practicing, readyForEvaluation, complete }
 
@@ -285,5 +286,5 @@ class TaskBookKey {
 
   const TaskBookKey({required this.goalId, required this.requirementId});
 
-  String toStorageKey() => '${goalId}::${requirementId}'.toLowerCase();
+  String toStorageKey() => '$goalId::$requirementId'.toLowerCase();
 }

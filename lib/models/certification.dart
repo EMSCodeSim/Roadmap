@@ -112,10 +112,10 @@ class Certification {
   };
 
   factory Certification.fromJson(Map<String, dynamic> json) {
-    DateTime? _dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
+    DateTime? dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
     final now = DateTime.now();
-    final created = _dt(json['createdAt']) ?? now;
-    final updated = _dt(json['updatedAt']) ?? created;
+    final created = dt(json['createdAt']) ?? now;
+    final updated = dt(json['updatedAt']) ?? created;
     final historyRaw = json['renewalHistory'];
     final history = historyRaw is List
         ? historyRaw.whereType<Map>().map((e) {
@@ -132,8 +132,8 @@ class Certification {
       certificationDefinitionId: json['certificationDefinitionId'] as String?,
       issuingOrganization: json['issuingOrganization'] as String?,
       certificationNumber: json['certificationNumber'] as String?,
-      issueDate: _dt(json['issueDate']),
-      expirationDate: _dt(json['expirationDate']),
+      issueDate: dt(json['issueDate']),
+      expirationDate: dt(json['expirationDate']),
       doesNotExpire: (json['doesNotExpire'] as bool?) ?? false,
       notes: json['notes'] as String?,
       renewalHistory: history,
@@ -173,16 +173,16 @@ class CertificationRenewal {
   };
 
   factory CertificationRenewal.fromJson(Map<String, dynamic> json) {
-    DateTime? _dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
+    DateTime? dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
     final now = DateTime.now();
     return CertificationRenewal(
-      issueDate: _dt(json['issueDate']),
-      expirationDate: _dt(json['expirationDate']),
+      issueDate: dt(json['issueDate']),
+      expirationDate: dt(json['expirationDate']),
       doesNotExpire: (json['doesNotExpire'] as bool?) ?? false,
       issuingOrganization: json['issuingOrganization'] as String?,
       certificationNumber: json['certificationNumber'] as String?,
       notes: json['notes'] as String?,
-      createdAt: _dt(json['createdAt']) ?? now,
+      createdAt: dt(json['createdAt']) ?? now,
     );
   }
 }

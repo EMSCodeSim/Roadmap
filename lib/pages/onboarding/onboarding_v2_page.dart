@@ -797,7 +797,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String?>(
-                  value: _serviceType,
+                  initialValue: _serviceType,
                   decoration: const InputDecoration(
                     labelText: 'Service type (optional)',
                     hintText: 'Volunteer, Career, Combination…',

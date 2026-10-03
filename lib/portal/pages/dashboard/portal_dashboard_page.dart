@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
 import 'package:firepath/portal/models/assignment_models.dart';
-import 'package:firepath/portal/models/credential.dart';
 import 'package:firepath/portal/models/task_book_template.dart';
 import 'package:firepath/portal/state/portal_controller.dart';
 import 'package:firepath/portal/widgets/portal_page_scaffold.dart';
@@ -36,8 +35,9 @@ class PortalDashboardPage extends StatelessWidget {
       final exp = c.expirationDate;
       if (exp == null) continue;
       final days = exp.difference(now).inDays;
-      if (days < 0) expired++;
-      else if (days <= 60) expiringSoon++;
+      if (days < 0) {
+        expired++;
+      } else if (days <= 60) expiringSoon++;
     }
 
     int overdueReqs = 0;

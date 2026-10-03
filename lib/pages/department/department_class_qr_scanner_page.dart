@@ -130,8 +130,8 @@ class _DepartmentClassQrScannerPageState extends State<DepartmentClassQrScannerP
       setState(() {
         _registered = true;
         _message = result.alreadyRegistered
-            ? 'You are already on the ' + result.title + ' roster.'
-            : 'You are registered for ' + result.title + '.';
+            ? 'You are already on the ${result.title} roster.'
+            : 'You are registered for ${result.title}.';
       });
     } on ResponderRoadmapApiException catch (error) {
       if (mounted) setState(() => _message = error.message);

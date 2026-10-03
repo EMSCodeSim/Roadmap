@@ -52,7 +52,7 @@ class PortalAssignmentsPage extends StatelessWidget {
               final progress = portal.progressForAssignment(a);
               final pending = portal.db.completions.where((c) => c.assignmentId == a.id && c.status == CompletionStatus.submitted).length;
               final due = a.dueDate;
-              final days = due == null ? null : due.difference(DateTime.now()).inDays;
+              final days = due?.difference(DateTime.now()).inDays;
               final status = _statusFor(a, progress, pending);
               final tone = _toneFor(status);
               return DataRow(

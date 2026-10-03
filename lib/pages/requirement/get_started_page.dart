@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -21,10 +20,11 @@ class GetStartedPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final req = requirement is Requirement ? requirement as Requirement : null;
-    if (req == null)
+    if (req == null) {
       return const Scaffold(
         body: Center(child: Text('Requirement not found.')),
       );
+    }
 
     final state = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;

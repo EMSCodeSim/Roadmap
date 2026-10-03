@@ -77,7 +77,7 @@ class PortalMemberProfilePage extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: selectedTemplateId,
+                  initialValue: selectedTemplateId,
                   items: templates
                       .map((t) => DropdownMenuItem(value: t.id, child: Text(t.title)))
                       .toList(),

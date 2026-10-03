@@ -132,7 +132,7 @@ class MyPathPage extends StatelessWidget {
                 valueListenable: type,
                 builder: (context, value, _) {
                   return DropdownButtonFormField<RequirementType>(
-                    value: value,
+                    initialValue: value,
                     decoration: const InputDecoration(labelText: 'Requirement type'),
                     items: const [
                       DropdownMenuItem(value: RequirementType.certification, child: Text('Certification')),
@@ -358,7 +358,7 @@ class _PathTab extends StatelessWidget {
                     )),
                 const SizedBox(height: AppSpacing.md),
               ];
-            }).toList(),
+            }),
           const SizedBox(height: AppSpacing.xl),
           ExpansionTile(
             initiallyExpanded: false,
@@ -754,7 +754,7 @@ class _PathHeader extends StatelessWidget {
         children: [
           Text('${roadmap.goal.category.toUpperCase()} GOAL', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w900)),
           const SizedBox(height: AppSpacing.xs),
-          Text('${roadmap.goal.title}', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+          Text(roadmap.goal.title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
           const SizedBox(height: AppSpacing.xs),
           Text('$from → ${roadmap.goal.title}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
           const SizedBox(height: AppSpacing.md),

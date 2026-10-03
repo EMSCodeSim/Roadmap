@@ -127,7 +127,7 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String?>(
-                  value: _plan.targetGoalId,
+                  initialValue: _plan.targetGoalId,
                   decoration: const InputDecoration(
                     labelText: 'Target role / path',
                   ),
@@ -304,7 +304,7 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<TransferRequirementKind>(
-                  value: kind,
+                  initialValue: kind,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: TransferRequirementKind.values
                       .map(

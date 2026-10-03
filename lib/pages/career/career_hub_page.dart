@@ -189,7 +189,7 @@ class _CareerHubPageState extends State<CareerHubPage> {
                     ),
                     const SizedBox(height: 14),
                     DropdownButtonFormField<CareerRecordType>(
-                      value: type,
+                      initialValue: type,
                       decoration: const InputDecoration(
                         labelText: 'Evidence type',
                       ),

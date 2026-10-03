@@ -303,17 +303,17 @@ class Requirement {
   };
 
   factory Requirement.fromJson(Map<String, dynamic> json) {
-    DateTime? _dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
+    DateTime? dt(dynamic v) => v is String ? DateTime.tryParse(v) : null;
     final now = DateTime.now();
-    final created = _dt(json['createdAt']) ?? now;
-    final updated = _dt(json['updatedAt']) ?? created;
+    final created = dt(json['createdAt']) ?? now;
+    final updated = dt(json['updatedAt']) ?? created;
     final linksRaw = json['resourceLinks'];
     final links = linksRaw is List ? linksRaw.whereType<Map>().map((e) => ResourceLink.fromJson(Map<String, dynamic>.from(e))).toList() : <ResourceLink>[];
 
     // Back-compat:
     // - old dataset didn't have category/priority/dependency flags.
     // - old dataset used certificationReference and resourceLinks only.
-    RequirementPriority _priorityFallback(RequirementSource src) {
+    RequirementPriority priorityFallback(RequirementSource src) {
       switch (src) {
         case RequirementSource.commonlyRequired:
           return RequirementPriority.core;
@@ -334,9 +334,9 @@ class Requirement {
     final resIdsRaw = json['resourceIds'];
     final resIds = resIdsRaw is List ? resIdsRaw.whereType<String>().toList() : <String>[];
 
-    bool _bool(dynamic v, bool fallback) => v is bool ? v : fallback;
+    bool asBool(dynamic v, bool fallback) => v is bool ? v : fallback;
 
-    RequirementType _parseType(dynamic v) {
+    RequirementType parseType(dynamic v) {
       if (v is! String) return RequirementType.custom;
       try {
         return RequirementType.values.byName(v);
@@ -347,7 +347,7 @@ class Requirement {
       }
     }
 
-    TimelineCategory? _parseTimelineCategory(dynamic v) {
+    TimelineCategory? parseTimelineCategory(dynamic v) {
       if (v is! String) return null;
       try {
         return TimelineCategory.values.byName(v);
@@ -356,12 +356,12 @@ class Requirement {
       }
     }
 
-    RequirementPriority _parsePriority(dynamic v) {
-      if (v is! String) return _priorityFallback(src);
+    RequirementPriority parsePriority(dynamic v) {
+      if (v is! String) return priorityFallback(src);
       try {
         return RequirementPriority.values.byName(v);
       } catch (_) {
-        return _priorityFallback(src);
+        return priorityFallback(src);
       }
     }
 
@@ -369,9 +369,9 @@ class Requirement {
       id: json['id'] as String,
       name: (json['name'] as String?) ?? '',
       category: (json['category'] as String?) ?? 'General',
-      priority: _parsePriority(json['priority']),
+      priority: parsePriority(json['priority']),
       description: (json['description'] as String?) ?? '',
-      type: _parseType(json['type']),
+      type: parseType(json['type']),
       requirementSource: src,
       defaultRequired: (json['defaultRequired'] as bool?) ?? true,
       stateDependent: (json['stateDependent'] as bool?) ?? (src == RequirementSource.stateRequirement),
@@ -384,7 +384,7 @@ class Requirement {
       experienceUnit: json['experienceUnit'] as String?,
       certificationReference: json['certificationReference'] as String?,
       certificationDefinitionId: json['certificationDefinitionId'] as String?,
-      allowExpiredCertification: _bool(json['allowExpiredCertification'], false),
+      allowExpiredCertification: asBool(json['allowExpiredCertification'], false),
       prerequisiteRequirementIds: prereq,
       resourceIds: resIds,
       resourceLinks: links,
@@ -393,15 +393,15 @@ class Requirement {
       sourceStateCode: json['sourceStateCode'] as String?,
       sourceTitle: json['sourceTitle'] as String?,
       sourceUrl: json['sourceUrl'] as String?,
-      sourceVerifiedDate: _dt(json['sourceVerifiedDate']),
+      sourceVerifiedDate: dt(json['sourceVerifiedDate']),
       sourceNotes: json['sourceNotes'] as String?,
 
       estimatedDurationDays: (json['estimatedDurationDays'] as num?)?.toInt(),
       recommendedLeadTimeDays: (json['recommendedLeadTimeDays'] as num?)?.toInt(),
       canRunConcurrent: (json['canRunConcurrent'] as bool?) ?? true,
-      timelineCategory: _parseTimelineCategory(json['timelineCategory']),
-      suggestedStartDate: _dt(json['suggestedStartDate']),
-      suggestedCompletionDate: _dt(json['suggestedCompletionDate']),
+      timelineCategory: parseTimelineCategory(json['timelineCategory']),
+      suggestedStartDate: dt(json['suggestedStartDate']),
+      suggestedCompletionDate: dt(json['suggestedCompletionDate']),
       createdAt: created,
       updatedAt: updated,
     );

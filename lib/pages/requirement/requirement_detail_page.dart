@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -77,7 +76,7 @@ class RequirementDetailPage extends StatelessWidget {
               onChanged: (next) async {
                 if (!canMutate) return;
                 await context.read<AppState>().setRequirementCompleted(
-                  goalId: goalId!,
+                  goalId: goalId,
                   requirementId: req.id,
                   completed: next,
                 );

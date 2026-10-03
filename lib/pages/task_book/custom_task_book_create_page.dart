@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -438,7 +437,7 @@ class _GoalTemplatePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       items: goals.map((g) => DropdownMenuItem(value: g.id, child: Text(g.title))).toList(),
       onChanged: onChanged,
       decoration: const InputDecoration(labelText: 'Choose a goal template'),

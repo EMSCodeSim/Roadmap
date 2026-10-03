@@ -90,7 +90,7 @@ class QualificationTaskBookPage extends StatelessWidget {
     final total = tasks.length;
     final pct = total <= 0
         ? 0.0
-        : ((completed / total).clamp(0, 1) as num).toDouble();
+        : ((completed / total).clamp(0, 1)).toDouble();
 
     final stateCode = state.profile.state?.trim().toUpperCase();
     final authority = StateFireAuthorityCatalog.forState(stateCode);
@@ -229,7 +229,7 @@ class QualificationTaskBookPage extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.lg),
               ];
-            }).toList(),
+            }),
             if (guide != null) ...[
               Container(
                 padding: AppSpacing.paddingMd,

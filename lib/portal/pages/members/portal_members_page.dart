@@ -196,7 +196,7 @@ class _FilterDropdown<T> extends StatelessWidget {
     return SizedBox(
       width: 220,
       child: DropdownButtonFormField<T>(
-        value: value,
+        initialValue: value,
         decoration: InputDecoration(
           labelText: label,
           suffixIcon: value == null

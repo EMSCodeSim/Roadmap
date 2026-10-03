@@ -91,7 +91,7 @@ class _PortalLoginPageState extends State<PortalLoginPage> {
                             Text('Demo sign-in', style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900)),
                             const SizedBox(height: 10),
                             DropdownButtonFormField<String>(
-                              value: (_selectedUserId?.isEmpty ?? true) ? null : _selectedUserId,
+                              initialValue: (_selectedUserId?.isEmpty ?? true) ? null : _selectedUserId,
                               items: users
                                   .map((u) => DropdownMenuItem(
                                         value: u.id,
@@ -103,7 +103,7 @@ class _PortalLoginPageState extends State<PortalLoginPage> {
                             ),
                             const SizedBox(height: AppSpacing.md),
                             DropdownButtonFormField<PortalRole>(
-                              value: _role,
+                              initialValue: _role,
                               items: PortalRole.values
                                   .map((r) => DropdownMenuItem(value: r, child: Text(r.label)))
                                   .toList(),

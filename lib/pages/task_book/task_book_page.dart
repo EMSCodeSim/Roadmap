@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +17,6 @@ import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/services/quick_log_path_suggester.dart';
 import 'package:firepath/services/task_book_stage_planner.dart';
-import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 
 /// Career Task Book (goal-level) view.
