@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_inbox.dart';
 import 'package:firepath/services/advancement_analyzer.dart';
@@ -61,6 +62,28 @@ class VisualHomePage extends StatelessWidget {
                 child: CareerPulseCard(
                   app: app,
                   onOpenAdvance: () => context.go(AppRoutes.growth),
+                  onGapAction: (gap) {
+                    final requirement = gap.item.requirement;
+                    if (gap.mastery?.status == 'NEEDS_IMPROVEMENT' ||
+                        gap.mastery?.status == 'REASSESS') {
+                      context.go(AppRoutes.department);
+                      return;
+                    }
+                    if (requirement.type == RequirementType.experience ||
+                        requirement.type == RequirementType.numericProgress) {
+                      context.go(AppRoutes.personalLog);
+                      return;
+                    }
+                    if (requirement.type == RequirementType.certification) {
+                      context.go(AppRoutes.certifications);
+                      return;
+                    }
+                    AppRouter.openRequirement(
+                      context,
+                      requirement,
+                      goalId: roadmap.goal.id,
+                    );
+                  },
                   onPrimaryAction: (analysis) {
                     final recommendation = analysis.recommendation;
                     if (recommendation.kind ==

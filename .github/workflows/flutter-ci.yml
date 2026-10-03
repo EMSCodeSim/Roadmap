@@ -33,6 +33,9 @@ jobs:
       - name: Shared competency and evidence tests
         run: flutter test test/competency_evidence_bridge_test.dart
 
+      - name: Department Skill Mastery parsing tests
+        run: flutter test test/department_skill_mastery_test.dart
+
       - name: Task Book focus preference tests
         run: flutter test test/task_book_focus_store_test.dart
 

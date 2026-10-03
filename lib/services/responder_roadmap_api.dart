@@ -753,6 +753,86 @@ class DepartmentClassDetail {
       );
 }
 
+
+class DepartmentSkillMasteryItem {
+  final String skillId;
+  final String skillName;
+  final String status;
+  final bool stale;
+  final String trend;
+  final double? latestScore;
+  final double? previousScore;
+  final String latestResult;
+  final DateTime? lastEvaluatedAt;
+  final int observations;
+  final String evaluatorName;
+  final String source;
+  final String referenceTitle;
+
+  const DepartmentSkillMasteryItem({
+    required this.skillId,
+    required this.skillName,
+    required this.status,
+    required this.stale,
+    required this.trend,
+    required this.latestScore,
+    required this.previousScore,
+    required this.latestResult,
+    required this.lastEvaluatedAt,
+    required this.observations,
+    required this.evaluatorName,
+    required this.source,
+    required this.referenceTitle,
+  });
+
+  factory DepartmentSkillMasteryItem.fromJson(Map<String, dynamic> json) =>
+      DepartmentSkillMasteryItem(
+        skillId: (json['skillId'] as String?) ?? '',
+        skillName: (json['skillName'] as String?) ?? 'Skill',
+        status: (json['status'] as String?) ?? 'OBSERVED',
+        stale: json['stale'] == true,
+        trend: (json['trend'] as String?) ?? 'FIRST_OBSERVATION',
+        latestScore: (json['latestScore'] as num?)?.toDouble(),
+        previousScore: (json['previousScore'] as num?)?.toDouble(),
+        latestResult: (json['latestResult'] as String?) ?? '',
+        lastEvaluatedAt:
+            DateTime.tryParse((json['lastEvaluatedAt'] as String?) ?? ''),
+        observations: _asInt(json['observations']),
+        evaluatorName: (json['evaluatorName'] as String?) ?? '',
+        source: (json['source'] as String?) ?? '',
+        referenceTitle: (json['referenceTitle'] as String?) ?? '',
+      );
+}
+
+class DepartmentSkillMastery {
+  final int proficiencyThreshold;
+  final int reassessmentDays;
+  final List<DepartmentSkillMasteryItem> skills;
+
+  const DepartmentSkillMastery({
+    required this.proficiencyThreshold,
+    required this.reassessmentDays,
+    required this.skills,
+  });
+
+  factory DepartmentSkillMastery.fromJson(Map<String, dynamic> json) {
+    final settings = json['settings'] is Map
+        ? Map<String, dynamic>.from(json['settings'] as Map)
+        : const <String, dynamic>{};
+    return DepartmentSkillMastery(
+      proficiencyThreshold:
+          _asInt(settings['proficiencyThreshold'], fallback: 80),
+      reassessmentDays: _asInt(settings['reassessmentDays'], fallback: 180),
+      skills: (json['skills'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => DepartmentSkillMasteryItem.fromJson(
+                Map<String, dynamic>.from(item),
+              ))
+          .toList(growable: false),
+    );
+  }
+}
+
 int _asInt(Object? value, {int fallback = 0}) {
   if (value is int) return value;
   if (value is num) return value.round();
@@ -878,6 +958,11 @@ class ResponderRoadmapApi {
               Map<String, dynamic>.from(item),
             ))
         .toList(growable: false);
+  }
+
+  Future<DepartmentSkillMastery> getMySkillMastery() async {
+    final data = await _request('GET', 'app/skill-mastery');
+    return DepartmentSkillMastery.fromJson(_asMap(data));
   }
 
   Future<DepartmentTaskBookAssignment> getAssignment(String assignmentId) async {

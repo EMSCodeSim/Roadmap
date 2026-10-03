@@ -44,6 +44,17 @@ class CompetencyEvidenceBridge {
     return keys;
   }
 
+  static Set<String> keysForSkillName(String value) => _keysForText(value);
+
+  static bool skillSupportsRequirement(
+    String skillName,
+    RoadmapRequirement item,
+  ) {
+    final skillKeys = keysForSkillName(skillName);
+    final requirementKeys = keysForRequirement(item);
+    return skillKeys.intersection(requirementKeys).isNotEmpty;
+  }
+
   static Set<String> keysForRequirement(RoadmapRequirement item) {
     final r = item.requirement;
     return <String>{
