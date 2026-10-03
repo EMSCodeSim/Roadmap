@@ -1024,6 +1024,17 @@ class ResponderRoadmapApi {
     return DepartmentCertificationSharing.fromJson(_asMap(data));
   }
 
+  Future<Map<String, dynamic>> syncSharedActivities(
+    List<Map<String, dynamic>> activities,
+  ) async {
+    final data = await _request(
+      'POST',
+      'app/activities/sharing',
+      body: <String, dynamic>{'activities': activities},
+    );
+    return _asMap(data);
+  }
+
   Future<void> markInboxRead(String id) async {
     await _request('POST', 'app/inbox/${Uri.encodeComponent(id)}/read');
   }
