@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/advancement_analyzer.dart';
 import 'package:firepath/services/career_progress_history.dart';
+import 'package:firepath/services/career_coach.dart';
+import 'package:firepath/services/career_coach_preferences.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/gap_explanation.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
@@ -13,6 +15,8 @@ class CareerPulseCard extends StatefulWidget {
   final ValueChanged<AdvancementAnalysis> onPrimaryAction;
   final VoidCallback onOpenAdvance;
   final ValueChanged<GapExplanation> onGapAction;
+  final VoidCallback onOpenDepartment;
+  final ValueChanged<RoadmapRequirement> onOpenRequirement;
 
   const CareerPulseCard({
     super.key,
@@ -20,6 +24,8 @@ class CareerPulseCard extends StatefulWidget {
     required this.onPrimaryAction,
     required this.onOpenAdvance,
     required this.onGapAction,
+    required this.onOpenDepartment,
+    required this.onOpenRequirement,
   });
 
   @override
@@ -30,9 +36,11 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
   final CareerRecordStore _recordsStore = CareerRecordStore();
   final CareerProgressHistoryStore _historyStore = CareerProgressHistoryStore();
   final ResponderRoadmapApi _api = ResponderRoadmapApi();
+  final CareerCoachPreferences _coachPreferences = CareerCoachPreferences();
   List<CareerRecord> _records = const [];
   CareerProgressTrend? _trend;
   DepartmentSkillMastery? _skillMastery;
+  List<CareerCoachPrompt> _coachPrompts = const [];
   bool _loading = true;
   String? _goalId;
 
@@ -63,6 +71,12 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
     }
     final analysis =
         AdvancementAnalyzer.analyze(app: widget.app, records: records);
+    final dismissed = await _coachPreferences.loadDismissed();
+    final coachPrompts = CareerCoachEngine.build(
+      app: widget.app,
+      records: records,
+      skillMastery: skillMastery,
+    ).where((prompt) => !dismissed.containsKey(prompt.id)).toList();
     final goalId = widget.app.selectedGoal?.id;
     CareerProgressTrend? trend;
     if (goalId != null) {
@@ -83,6 +97,7 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
       _records = records;
       _trend = trend;
       _skillMastery = skillMastery;
+      _coachPrompts = coachPrompts;
       _goalId = goalId;
       _loading = false;
     });
