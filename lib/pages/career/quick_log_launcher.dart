@@ -6,7 +6,7 @@ import 'package:firepath/pages/career/quick_log_sheet.dart';
 import 'package:firepath/pages/career/simple_quick_log_sheet.dart';
 import 'package:firepath/pages/department/department_class_qr_scanner_page.dart';
 
-/// Unified entry point for Quick Log.
+/// Unified entry point for Quick Add.
 ///
 /// Common entries now start with six fixed choices: Training, Call, Skill,
 /// Driving, Career, and Task Book. The full logger is still available for
