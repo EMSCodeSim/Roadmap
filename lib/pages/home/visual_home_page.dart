@@ -4,10 +4,6 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/nav.dart';
-import 'package:firepath/pages/department/department_classes_page.dart';
-import 'package:firepath/pages/department/department_training_home_page.dart';
-import 'package:firepath/pages/department/department_review_page.dart';
-import 'package:firepath/pages/department/my_department_page.dart';
 import 'package:firepath/services/career_inbox.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/needs_attention_engine.dart';
@@ -16,13 +12,11 @@ import 'package:firepath/services/readiness_action_plan.dart';
 import 'package:firepath/services/readiness_snapshot.dart';
 import 'package:firepath/services/smart_next_step.dart';
 import 'package:firepath/state/app_state.dart';
-import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/career_inbox_preview.dart';
 import 'package:firepath/widgets/career_readiness_panel.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 import 'package:firepath/widgets/needs_attention_preview.dart';
-import 'package:firepath/widgets/app_mode_switcher.dart';
 import 'package:firepath/widgets/status_pill.dart';
 
 class VisualHomePage extends StatelessWidget {
@@ -30,13 +24,6 @@ class VisualHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mode = context.watch<AppModeController>();
-    if (mode.isDepartment) {
-      if (mode.isInstructor) return const DepartmentClassesPage();
-      if (mode.isEvaluator) return const DepartmentReviewPage();
-      return const DepartmentTrainingHomePage();
-    }
-
     final app = context.watch<AppState>();
     final roadmap = app.roadmap;
     final goal = roadmap?.goal;
@@ -51,11 +38,6 @@ class VisualHomePage extends StatelessWidget {
           children: [
             _Header(
               onSettings: () => context.push(AppRoutes.settings),
-            ),
-            const SizedBox(height: 10),
-            const _AnimatedAppear(
-              delay: Duration(milliseconds: 40),
-              child: AppModeSwitcher(),
             ),
             const SizedBox(height: 14),
             _TodayRail(
