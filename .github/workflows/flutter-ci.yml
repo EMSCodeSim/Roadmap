@@ -39,6 +39,9 @@ jobs:
       - name: Career Coach evidence suggestion tests
         run: flutter test test/career_coach_test.dart
 
+      - name: Competency Map freshness tests
+        run: flutter test test/competency_map_test.dart
+
       - name: Task Book focus preference tests
         run: flutter test test/task_book_focus_store_test.dart
 
