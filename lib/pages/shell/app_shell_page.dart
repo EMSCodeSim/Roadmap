@@ -31,7 +31,7 @@ class AppShellPage extends StatelessWidget {
       floatingActionButton: navigationShell.currentIndex == 0
           ? FloatingActionButton(
               key: const Key('quick_log_fab'),
-              tooltip: 'Quick Log',
+              tooltip: 'Quick Add',
               onPressed: () => QuickLogLauncher.open(context),
               child: const Icon(Icons.add_task_rounded),
             )
