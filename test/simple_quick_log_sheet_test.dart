@@ -76,6 +76,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Miles driven'), findsOneWidget);
+    expect(find.text('Drive time (minutes)'), findsOneWidget);
     expect(find.text('Response'), findsOneWidget);
     expect(find.text('Training'), findsOneWidget);
     expect(find.text('Emergent / lights & siren'), findsOneWidget);
