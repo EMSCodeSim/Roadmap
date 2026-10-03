@@ -112,7 +112,7 @@ class GapExplanationEngine {
     if ((r.type == RequirementType.numericProgress || r.type == RequirementType.experience) &&
         r.progressRequired != null && r.progressRequired! > 0) {
       final current = r.progressCurrent ?? 0;
-      final remaining = (r.progressRequired! - current).clamp(0, r.progressRequired!);
+      final remaining = (r.progressRequired! - current).clamp(0, r.progressRequired!).toDouble();
       if (remaining > 0) missing.add(_fmt(remaining) + ' ' + (r.progressUnit ?? 'units') + ' still needed');
     }
 
