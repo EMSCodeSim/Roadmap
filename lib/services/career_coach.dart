@@ -1,6 +1,7 @@
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/roadmap_models.dart';
 import 'package:firepath/services/competency_evidence_bridge.dart';
+import 'package:firepath/services/competency_map.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_state.dart';
 
@@ -8,6 +9,7 @@ enum CareerCoachKind {
   skillReassessment,
   skillImprovement,
   evidenceSuggestion,
+  competencyGap,
   momentum,
 }
 
@@ -93,6 +95,46 @@ class CareerCoachEngine {
             actionLabel: 'Open Department',
             requirement: requirement,
             mastery: mastery,
+          ),
+        );
+      }
+    }
+
+    final competencyMap = CompetencyMapEngine.build(
+      roadmap: roadmap,
+      records: records,
+      skillMastery: skillMastery,
+      now: clock,
+    );
+    final priorityCompetency = competencyMap.items.where(
+      (item) =>
+          item.status == CompetencyFreshness.missing ||
+          item.status == CompetencyFreshness.stale,
+    );
+    if (priorityCompetency.isNotEmpty) {
+      final competency = priorityCompetency.first;
+      final unfinished =
+          competency.requirements.where((item) => !item.isComplete);
+      final requirement = unfinished.isEmpty ? null : unfinished.first;
+      final alreadyCovered = prompts.any((prompt) =>
+          prompt.requirement != null &&
+          competency.requirements.any((item) =>
+              item.requirement.id == prompt.requirement!.requirement.id));
+      if (!alreadyCovered) {
+        prompts.add(
+          CareerCoachPrompt(
+            id: 'competency-gap:${competency.id}',
+            kind: CareerCoachKind.competencyGap,
+            priority: competency.status == CompetencyFreshness.missing ? 1 : 2,
+            title: competency.status == CompetencyFreshness.missing
+                ? 'Build ${competency.name}'
+                : 'Refresh ${competency.name}',
+            detail: competency.status == CompetencyFreshness.missing
+                ? 'Your ${roadmap.goal.title} roadmap has no current evidence in this competency area.'
+                : 'The evidence supporting this competency is no longer current.',
+            why: 'Your recent evidence is stronger in other competency areas. Career Coach is surfacing this imbalance so you can develop a more complete ${roadmap.goal.title} portfolio.',
+            actionLabel: 'Open Competency Map',
+            requirement: requirement,
           ),
         );
       }

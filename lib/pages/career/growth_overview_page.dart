@@ -115,6 +115,8 @@ class _GrowthOverviewPageState extends State<GrowthOverviewPage> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   _GrowthToolsCard(
+                    onCompetencyMap: () =>
+                        context.push(AppRoutes.competencyMap),
                     onIntelligence: () =>
                         context.push(AppRoutes.careerIntelligence),
                     onDetailedGrowth: () =>
@@ -381,11 +383,13 @@ class _ReadinessRow extends StatelessWidget {
 }
 
 class _GrowthToolsCard extends StatelessWidget {
+  final VoidCallback onCompetencyMap;
   final VoidCallback onIntelligence;
   final VoidCallback onDetailedGrowth;
   final VoidCallback onEvidence;
 
   const _GrowthToolsCard({
+    required this.onCompetencyMap,
     required this.onIntelligence,
     required this.onDetailedGrowth,
     required this.onEvidence,
@@ -416,6 +420,17 @@ class _GrowthToolsCard extends StatelessWidget {
                 ?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: AppSpacing.sm),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.hub_outlined),
+            title: const Text('Competency Map'),
+            subtitle: const Text(
+              'Strong, current, developing, stale, and missing competency areas',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: onCompetencyMap,
+          ),
+          const Divider(height: 1),
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.auto_graph_outlined),
