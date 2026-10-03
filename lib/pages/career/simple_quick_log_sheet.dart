@@ -30,7 +30,7 @@ extension _SimpleModeX on _SimpleMode {
         _SimpleMode.training => Icons.school_outlined,
         _SimpleMode.call => Icons.local_fire_department_outlined,
         _SimpleMode.skill => Icons.handyman_outlined,
-        _SimpleMode.exposure => Icons.visibility_outlined,
+        _SimpleMode.exposure => Icons.health_and_safety_outlined,
         _SimpleMode.drive => Icons.local_shipping_outlined,
         _SimpleMode.career => Icons.military_tech_outlined,
         _SimpleMode.taskBook => Icons.fact_check_outlined,
@@ -250,7 +250,9 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
         };
       case _SimpleMode.exposure:
         return <String, dynamic>{
-          'exposure': true,
+          'possibleHealthExposure': true,
+          'officialExposureReport': false,
+          'officerFollowUpRequired': true,
           'quickCapture': true,
         };
       case _SimpleMode.training:
@@ -287,7 +289,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
         _SimpleMode.training => CareerRecordType.training,
         _SimpleMode.call => CareerRecordType.operationalExperience,
         _SimpleMode.skill => CareerRecordType.skill,
-        _SimpleMode.exposure => CareerRecordType.skill,
+        _SimpleMode.exposure => CareerRecordType.operationalExperience,
         _SimpleMode.drive => CareerRecordType.skill,
         _SimpleMode.taskBook => CareerRecordType.taskBookEvidence,
         _SimpleMode.career => _careerType(title),
@@ -490,7 +492,7 @@ class _ChoiceStep extends StatelessWidget {
         _SimpleMode.training => 'What kind of training?',
         _SimpleMode.call => 'What kind of call?',
         _SimpleMode.skill => 'What skill did you perform or practice?',
-        _SimpleMode.exposure => 'What did you get meaningful exposure to?',
+        _SimpleMode.exposure => 'What possible health or hazard exposure occurred?',
         _SimpleMode.drive => 'Which apparatus?',
         _SimpleMode.career => 'What career activity?',
         _SimpleMode.taskBook => 'What did you do in your Task Book?',
@@ -583,7 +585,9 @@ class _ConfirmStep extends StatelessWidget {
           onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
           decoration: const InputDecoration(
             labelText: 'Notes',
-            hintText: 'Anything worth remembering later…',
+            hintText: mode == _SimpleMode.exposure
+                ? 'What happened, PPE used, route of exposure, symptoms, decon, officer notified…'
+                : 'Anything worth remembering later…',
             border: OutlineInputBorder(),
           ),
         ),
@@ -611,11 +615,15 @@ class _ConfirmStep extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          shareWithDepartment
-              ? 'Your department can see this as member-shared development context. It does not become official training credit or a department evaluation.'
-              : departmentConnected
-                  ? 'This stays in your personal Career Road unless you choose to share it.'
-                  : 'Personal only. Connect a department from the Department tab to enable sharing.',
+          mode == _SimpleMode.exposure
+              ? (shareWithDepartment
+                  ? 'Your department can see this personal exposure log as context. It is still not an official exposure report; complete the department’s official documentation with an officer.'
+                  : 'This stays in your personal Career Road. It does not replace reporting the exposure to an officer or completing your department’s official exposure documentation.')
+              : shareWithDepartment
+                  ? 'Your department can see this as member-shared development context. It does not become official training credit or a department evaluation.'
+                  : departmentConnected
+                      ? 'This stays in your personal Career Road unless you choose to share it.'
+                      : 'Personal only. Connect a department from the Department tab to enable sharing.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 height: 1.35,
@@ -796,14 +804,44 @@ class _ConfirmStep extends StatelessWidget {
         ];
       case _SimpleMode.exposure:
         return [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Personal tracking only — this is not an official exposure report. Report and document the incident with an officer using your department’s official exposure/incident process.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w700,
+                    height: 1.4,
+                  ),
+            ),
+          ),
+          const SizedBox(height: 10),
           TextField(
-            controller: repetitions,
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.done,
+            controller: role,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
             onTapOutside: (_) =>
                 FocusManager.instance.primaryFocus?.unfocus(),
             decoration: const InputDecoration(
-              labelText: 'Exposures / reps',
+              labelText: 'Incident / assignment',
+              hintText: 'Structure fire, overhaul, EMS call, HazMat scene…',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: durationMinutes,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.next,
+            onTapOutside: (_) =>
+                FocusManager.instance.primaryFocus?.unfocus(),
+            decoration: const InputDecoration(
+              labelText: 'Approx. exposure time (minutes)',
               border: OutlineInputBorder(),
             ),
           ),
@@ -928,14 +966,14 @@ List<String> _choices(_SimpleMode mode) => switch (mode) {
           'Other skill',
         ],
       _SimpleMode.exposure => const [
-          'Pump operations',
-          'Driver / apparatus',
-          'Fireground command',
-          'Search operations',
-          'Technical rescue',
-          'HazMat',
-          'EMS / patient care',
-          'Leadership',
+          'Smoke / combustion products',
+          'HazMat / chemical',
+          'Blood / body fluids',
+          'Infectious disease',
+          'Diesel exhaust',
+          'Carcinogen / soot',
+          'Needlestick / sharps',
+          'Unknown substance',
         ],
       _SimpleMode.drive => const [
           'Engine',
