@@ -12,12 +12,14 @@ class CareerPulseCard extends StatefulWidget {
   final AppState app;
   final ValueChanged<AdvancementAnalysis> onPrimaryAction;
   final VoidCallback onOpenAdvance;
+  final ValueChanged<GapExplanation> onGapAction;
 
   const CareerPulseCard({
     super.key,
     required this.app,
     required this.onPrimaryAction,
     required this.onOpenAdvance,
+    required this.onGapAction,
   });
 
   @override
@@ -351,6 +353,15 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
                                 color: cs.onSurfaceVariant,
                                 height: 1.4,
                               ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => widget.onGapAction(gap!),
+                            icon: const Icon(Icons.task_alt_outlined),
+                            label: Text(gap.actionLabel),
+                          ),
                         ),
                       ],
                     ),
