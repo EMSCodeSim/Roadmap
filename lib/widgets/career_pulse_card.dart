@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/advancement_analyzer.dart';
 import 'package:firepath/services/career_progress_history.dart';
+import 'package:firepath/services/career_coach.dart';
+import 'package:firepath/services/career_coach_preferences.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/gap_explanation.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
@@ -13,6 +15,8 @@ class CareerPulseCard extends StatefulWidget {
   final ValueChanged<AdvancementAnalysis> onPrimaryAction;
   final VoidCallback onOpenAdvance;
   final ValueChanged<GapExplanation> onGapAction;
+  final VoidCallback onOpenDepartment;
+  final ValueChanged<RoadmapRequirement> onOpenRequirement;
 
   const CareerPulseCard({
     super.key,
@@ -20,6 +24,8 @@ class CareerPulseCard extends StatefulWidget {
     required this.onPrimaryAction,
     required this.onOpenAdvance,
     required this.onGapAction,
+    required this.onOpenDepartment,
+    required this.onOpenRequirement,
   });
 
   @override
@@ -30,9 +36,11 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
   final CareerRecordStore _recordsStore = CareerRecordStore();
   final CareerProgressHistoryStore _historyStore = CareerProgressHistoryStore();
   final ResponderRoadmapApi _api = ResponderRoadmapApi();
+  final CareerCoachPreferences _coachPreferences = CareerCoachPreferences();
   List<CareerRecord> _records = const [];
   CareerProgressTrend? _trend;
   DepartmentSkillMastery? _skillMastery;
+  List<CareerCoachPrompt> _coachPrompts = const [];
   bool _loading = true;
   String? _goalId;
 
@@ -63,6 +71,12 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
     }
     final analysis =
         AdvancementAnalyzer.analyze(app: widget.app, records: records);
+    final dismissed = await _coachPreferences.loadDismissed();
+    final coachPrompts = CareerCoachEngine.build(
+      app: widget.app,
+      records: records,
+      skillMastery: skillMastery,
+    ).where((prompt) => !dismissed.containsKey(prompt.id)).toList();
     final goalId = widget.app.selectedGoal?.id;
     CareerProgressTrend? trend;
     if (goalId != null) {
@@ -83,9 +97,60 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
       _records = records;
       _trend = trend;
       _skillMastery = skillMastery;
+      _coachPrompts = coachPrompts;
       _goalId = goalId;
       _loading = false;
     });
+  }
+
+  Future<void> _dismissCoach(CareerCoachPrompt prompt) async {
+    await _coachPreferences.dismiss(prompt.id);
+    if (!mounted) return;
+    setState(() {
+      _coachPrompts =
+          _coachPrompts.where((item) => item.id != prompt.id).toList();
+    });
+  }
+
+  Future<void> _actOnCoach(CareerCoachPrompt prompt) async {
+    if (prompt.kind == CareerCoachKind.skillReassessment ||
+        prompt.kind == CareerCoachKind.skillImprovement) {
+      widget.onOpenDepartment();
+      return;
+    }
+    if (prompt.kind == CareerCoachKind.evidenceSuggestion &&
+        prompt.recordId != null &&
+        prompt.requirement != null) {
+      final matches = _records.where((record) => record.id == prompt.recordId);
+      if (matches.isEmpty) return;
+      final record = matches.first;
+      final goalId = widget.app.roadmap?.goal.id;
+      if (goalId == null) return;
+      final updated = record.copyWith(
+        relatedGoalId: goalId,
+        relatedRequirementId: prompt.requirement!.requirement.id,
+        details: {
+          ...record.details,
+          'linkedByCareerCoach': true,
+          'linkedAt': DateTime.now().toIso8601String(),
+        },
+        updatedAt: DateTime.now(),
+      );
+      final saved = await _recordsStore.upsert(updated);
+      if (!saved || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${record.title} now supports ${prompt.requirement!.requirement.name}.',
+          ),
+        ),
+      );
+      await _load();
+      return;
+    }
+    if (prompt.requirement != null) {
+      widget.onOpenRequirement(prompt.requirement!);
+    }
   }
 
   @override
@@ -260,6 +325,103 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
                     ],
                   ),
                 ),
+                if (_coachPrompts.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: cs.secondaryContainer.withValues(alpha: 0.42),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'CAREER COACH',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.4,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        ..._coachPrompts.take(2).map(
+                              (prompt) => Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: cs.surface.withValues(alpha: 0.72),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: cs.outline.withValues(alpha: 0.12),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              prompt.title,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleSmall
+                                                  ?.copyWith(fontWeight: FontWeight.w900),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            tooltip: 'Dismiss for two weeks',
+                                            onPressed: () => _dismissCoach(prompt),
+                                            icon: const Icon(Icons.close_rounded, size: 18),
+                                            visualDensity: VisualDensity.compact,
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        prompt.detail,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(color: cs.onSurfaceVariant),
+                                      ),
+                                      const SizedBox(height: 7),
+                                      Text(
+                                        'Why am I seeing this?',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelMedium
+                                            ?.copyWith(fontWeight: FontWeight.w900),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        prompt.why,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: cs.onSurfaceVariant,
+                                              height: 1.35,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: FilledButton.tonal(
+                                          onPressed: () => _actOnCoach(prompt),
+                                          child: Text(prompt.actionLabel),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (gap != null) ...[
                   const SizedBox(height: 12),
                   Container(
