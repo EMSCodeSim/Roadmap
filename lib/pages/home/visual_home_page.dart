@@ -62,6 +62,8 @@ class VisualHomePage extends StatelessWidget {
                 child: CareerPulseCard(
                   app: app,
                   onOpenAdvance: () => context.go(AppRoutes.growth),
+                  onOpenCompetencyMap: () =>
+                      context.push(AppRoutes.competencyMap),
                   onOpenDepartment: () => context.go(AppRoutes.department),
                   onOpenRequirement: (item) {
                     AppRouter.openRequirement(
