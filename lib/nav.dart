@@ -24,7 +24,6 @@ import 'package:firepath/pages/career/career_export_page.dart';
 import 'package:firepath/pages/career/career_inbox_page.dart';
 import 'package:firepath/pages/career/promotion_portfolio_review_page.dart';
 import 'package:firepath/pages/career/department_transfer_page.dart';
-import 'package:firepath/pages/department/my_department_page.dart';
 import 'package:firepath/pages/department/department_tab_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
