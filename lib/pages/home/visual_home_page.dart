@@ -63,31 +63,35 @@ class VisualHomePage extends StatelessWidget {
                   onOpenAdvance: () => context.go(AppRoutes.growth),
                   onPrimaryAction: (analysis) {
                     final recommendation = analysis.recommendation;
-                    switch (recommendation.kind) {
-                      case AdvancementActionKind.chooseGoal:
-                        context.push(AppRoutes.goalSetup);
-                      case AdvancementActionKind.workRoadmap:
-                        final requirementId = recommendation.requirementId;
-                        if (requirementId != null) {
-                          final matches = roadmap.included.where(
-                            (item) => item.requirement.id == requirementId,
-                          );
-                          if (matches.isNotEmpty) {
-                            AppRouter.openRequirement(
-                              context,
-                              matches.first.requirement,
-                            );
-                            return;
-                          }
-                        }
-                        context.go(AppRoutes.myPath);
-                      case AdvancementActionKind.documentRequirement:
-                        context.push(AppRoutes.growthDetails);
-                      case AdvancementActionKind.buildCompetency:
-                        context.go(AppRoutes.personalLog);
-                      case AdvancementActionKind.maintainMomentum:
-                        context.go(AppRoutes.personalLog);
+                    if (recommendation.kind ==
+                        AdvancementActionKind.chooseGoal) {
+                      context.push(AppRoutes.goalSetup);
+                      return;
                     }
+                    if (recommendation.kind ==
+                        AdvancementActionKind.workRoadmap) {
+                      final requirementId = recommendation.requirementId;
+                      if (requirementId != null) {
+                        final matches = roadmap.included.where(
+                          (item) => item.requirement.id == requirementId,
+                        );
+                        if (matches.isNotEmpty) {
+                          AppRouter.openRequirement(
+                            context,
+                            matches.first.requirement,
+                          );
+                          return;
+                        }
+                      }
+                      context.go(AppRoutes.myPath);
+                      return;
+                    }
+                    if (recommendation.kind ==
+                        AdvancementActionKind.documentRequirement) {
+                      context.push(AppRoutes.growthDetails);
+                      return;
+                    }
+                    context.go(AppRoutes.personalLog);
                   },
                 ),
               ),
