@@ -325,6 +325,103 @@ class _CareerPulseCardState extends State<CareerPulseCard> {
                     ],
                   ),
                 ),
+                if (_coachPrompts.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: cs.secondaryContainer.withValues(alpha: 0.42),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'CAREER COACH',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.4,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        ..._coachPrompts.take(2).map(
+                              (prompt) => Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: cs.surface.withValues(alpha: 0.72),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: cs.outline.withValues(alpha: 0.12),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              prompt.title,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleSmall
+                                                  ?.copyWith(fontWeight: FontWeight.w900),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            tooltip: 'Dismiss for two weeks',
+                                            onPressed: () => _dismissCoach(prompt),
+                                            icon: const Icon(Icons.close_rounded, size: 18),
+                                            visualDensity: VisualDensity.compact,
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        prompt.detail,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(color: cs.onSurfaceVariant),
+                                      ),
+                                      const SizedBox(height: 7),
+                                      Text(
+                                        'Why am I seeing this?',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelMedium
+                                            ?.copyWith(fontWeight: FontWeight.w900),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        prompt.why,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: cs.onSurfaceVariant,
+                                              height: 1.35,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: FilledButton.tonal(
+                                          onPressed: () => _actOnCoach(prompt),
+                                          child: Text(prompt.actionLabel),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (gap != null) ...[
                   const SizedBox(height: 12),
                   Container(
