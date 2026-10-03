@@ -114,7 +114,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Exposure captures repeatable experience', (tester) async {
+  testWidgets('Exposure captures possible health hazard context', (tester) async {
     await tester.pumpWidget(
       ChangeNotifierProvider(
         create: (_) => AppModeController(),
@@ -127,11 +127,13 @@ void main() {
     await tester.ensureVisible(find.text('EXPOSURE'));
     await tester.tap(find.text('EXPOSURE'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Fireground command'));
-    await tester.tap(find.text('Fireground command'));
+    await tester.ensureVisible(find.text('Smoke / combustion products'));
+    await tester.tap(find.text('Smoke / combustion products'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Exposures / reps'), findsOneWidget);
+    expect(find.text('Approx. exposure time (minutes)'), findsOneWidget);
+    expect(find.textContaining('not an official exposure report'), findsOneWidget);
+    expect(find.textContaining('document the incident with an officer'), findsOneWidget);
     expect(find.text('Personal only'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
