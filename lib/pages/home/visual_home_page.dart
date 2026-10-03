@@ -62,6 +62,14 @@ class VisualHomePage extends StatelessWidget {
                 child: CareerPulseCard(
                   app: app,
                   onOpenAdvance: () => context.go(AppRoutes.growth),
+                  onOpenDepartment: () => context.go(AppRoutes.department),
+                  onOpenRequirement: (item) {
+                    AppRouter.openRequirement(
+                      context,
+                      item.requirement,
+                      goalId: roadmap.goal.id,
+                    );
+                  },
                   onGapAction: (gap) {
                     final requirement = gap.item.requirement;
                     if (gap.mastery?.status == 'NEEDS_IMPROVEMENT' ||
