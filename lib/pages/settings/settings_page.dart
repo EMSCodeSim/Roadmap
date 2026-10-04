@@ -159,7 +159,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   leading: Icon(Icons.info_outline),
                   title: Text('About Responder Roadmap'),
                   subtitle: Text('Career planning and professional record'),
-                  trailing: Text('1.1.10 (17)'),
+                  trailing: Text('1.2.5 (35)'),
                 ),
               ],
             ),
