@@ -774,6 +774,26 @@ class TaskBookController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateCustomTask(TaskBookTaskDefinition task) async {
+    if (!task.isCustom ||
+        (task.goalId ?? '').trim().isEmpty ||
+        (task.requirementId ?? '').trim().isEmpty ||
+        task.id.trim().isEmpty) {
+      debugPrint('TaskBookController.updateCustomTask invalid custom task');
+      return;
+    }
+    final idx = _customTasks.indexWhere(
+      (item) =>
+          item.id == task.id &&
+          item.goalId == task.goalId &&
+          item.requirementId == task.requirementId,
+    );
+    if (idx < 0) return;
+    _customTasks[idx] = task;
+    await _persist();
+    notifyListeners();
+  }
+
   Future<void> deleteCustomTask({required String goalId, required String requirementId, required String taskId}) async {
     _customTasks.removeWhere((t) => t.isCustom && t.goalId == goalId && t.requirementId == requirementId && t.id == taskId);
 
