@@ -66,7 +66,7 @@ class ProductionQuickLogSheet extends StatelessWidget {
                           context.push(AppRoutes.departmentQrScan),
                       icon: const Icon(Icons.qr_code_scanner_rounded),
                       label: const Text(
-                        'Scan Class QR',
+                        'Scan Training Sheet',
                         textAlign: TextAlign.center,
                       ),
                     ),
