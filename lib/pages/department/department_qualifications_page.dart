@@ -4,7 +4,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 
 class DepartmentQualificationsPage extends StatefulWidget {
-  const DepartmentQualificationsPage({super.key});
+  const DepartmentQualificationsPage({
+    super.key,
+    this.focusLookup = false,
+  });
+
+  final bool focusLookup;
 
   @override
   State<DepartmentQualificationsPage> createState() => _DepartmentQualificationsPageState();
@@ -18,6 +23,15 @@ class _DepartmentQualificationsPageState extends State<DepartmentQualificationsP
   bool _canLookup = true;
   String? _error;
   String _query = '';
+  bool _approvedOnly = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.focusLookup && !_approvedOnly) {
+      _approvedOnly = true;
+    }
+  }
 
   @override
   void initState() {
@@ -56,18 +70,35 @@ class _DepartmentQualificationsPageState extends State<DepartmentQualificationsP
   @override
   Widget build(BuildContext context) {
     final q = _query.trim().toLowerCase();
-    final filtered = _members.where((member) {
-      if (q.isEmpty) return true;
-      if (member.name.toLowerCase().contains(q) ||
-          member.rank.toLowerCase().contains(q) ||
-          member.position.toLowerCase().contains(q)) return true;
-      return member.qualifications.any((role) =>
-          role.name.toLowerCase().contains(q) ||
-          role.status.toLowerCase().contains(q));
-    }).toList();
+
+    List<DepartmentQualificationRole> visibleRoles(
+      DepartmentQualificationMember member,
+    ) {
+      return member.qualifications.where((role) {
+        if (_approvedOnly && role.status != 'APPROVED') return false;
+        if (q.isEmpty) return true;
+        final memberMatch =
+            member.name.toLowerCase().contains(q) ||
+            member.rank.toLowerCase().contains(q) ||
+            member.position.toLowerCase().contains(q);
+        final roleMatch =
+            role.name.toLowerCase().contains(q) ||
+            role.category.toLowerCase().contains(q) ||
+            role.status.toLowerCase().contains(q);
+        return memberMatch || roleMatch;
+      }).toList(growable: false);
+    }
+
+    final filtered = _members
+        .where((member) => visibleRoles(member).isNotEmpty)
+        .toList(growable: false);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Qualifications')),
+      appBar: AppBar(
+        title: Text(
+          widget.focusLookup ? 'Check Member Eligibility' : 'Qualifications',
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
@@ -102,15 +133,46 @@ class _DepartmentQualificationsPageState extends State<DepartmentQualificationsP
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Who Can Do What', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                            Text(
+                              'Who is cleared?',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                            ),
                             const SizedBox(height: 4),
-                            const Text('Read-only lookup for Acting Officer and other authorized department roles.'),
+                            const Text(
+                              'Search department authorization records. "Cleared" means APPROVED by the department, not just training completed.',
+                            ),
                             const SizedBox(height: 10),
                             TextField(
-                              decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Medic Driver, Acting Officer, Smith…'),
+                              autofocus: widget.focusLookup,
+                              decoration: const InputDecoration(
+                                prefixIcon: Icon(Icons.search_rounded),
+                                hintText: 'Driver, Medic Driver, Acting Officer, Smith…',
+                              ),
                               onChanged: (value) => setState(() => _query = value),
                             ),
                             const SizedBox(height: 8),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              value: _approvedOnly,
+                              onChanged: (value) => setState(() => _approvedOnly = value),
+                              title: const Text(
+                                'Cleared only',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                              subtitle: const Text(
+                                'Show only department-APPROVED members.',
+                              ),
+                            ),
+                            if (filtered.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Text(
+                                  '${filtered.length} matching member${filtered.length == 1 ? '' : 's'}',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                ),
+                              ),
                             if (filtered.isEmpty)
                               const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Text('No matching qualifications.'))
                             else
@@ -118,10 +180,16 @@ class _DepartmentQualificationsPageState extends State<DepartmentQualificationsP
                                 tilePadding: EdgeInsets.zero,
                                 title: Text(member.name, style: const TextStyle(fontWeight: FontWeight.w800)),
                                 subtitle: Text([member.rank, member.position].where((v) => v.trim().isNotEmpty).join(' · ')),
-                                children: member.qualifications.map((role) => ListTile(
+                                children: visibleRoles(member).map((role) => ListTile(
                                   dense: true,
                                   contentPadding: const EdgeInsets.only(left: 16),
+                                  leading: role.status == 'APPROVED'
+                                      ? const Icon(Icons.verified_user_rounded, color: Colors.green)
+                                      : const Icon(Icons.pending_actions_outlined),
                                   title: Text(role.name),
+                                  subtitle: role.restriction.isEmpty
+                                      ? null
+                                      : Text('Restriction: ${role.restriction}'),
                                   trailing: Text(role.status.replaceAll('_', ' ')),
                                 )).toList(),
                               )),
