@@ -1353,6 +1353,130 @@ Requirement _reqCert(
   );
 }
 
+Requirement _reqDepartmentGate(
+  String id,
+  String name, {
+  required int sortOrder,
+  required String description,
+}) {
+  return Requirement(
+    id: id,
+    name: name,
+    category: 'Department',
+    priority: RequirementPriority.department,
+    description: description,
+    type: RequirementType.trainingCourse,
+    requirementSource: RequirementSource.departmentRequirement,
+    defaultRequired: true,
+    stateDependent: false,
+    departmentDependent: true,
+    completed: false,
+    progressCurrent: null,
+    progressRequired: null,
+    progressUnit: null,
+    experienceValue: null,
+    experienceUnit: null,
+    certificationReference: null,
+    certificationDefinitionId: null,
+    allowExpiredCertification: false,
+    prerequisiteRequirementIds: const [],
+    resourceIds: const [],
+    resourceLinks: const [],
+    sortOrder: sortOrder,
+    estimatedDurationDays: null,
+    recommendedLeadTimeDays: null,
+    canRunConcurrent: true,
+    timelineCategory: TimelineCategory.departmentRequirement,
+    suggestedStartDate: null,
+    suggestedCompletionDate: null,
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  );
+}
+
+Requirement _reqPromotionStep(
+  String id,
+  String name, {
+  required int sortOrder,
+  required RequirementType type,
+  required String description,
+}) {
+  return Requirement(
+    id: id,
+    name: name,
+    category: 'Promotion Process',
+    priority: RequirementPriority.department,
+    description: description,
+    type: type,
+    requirementSource: RequirementSource.departmentRequirement,
+    defaultRequired: true,
+    stateDependent: false,
+    departmentDependent: true,
+    completed: false,
+    progressCurrent: null,
+    progressRequired: null,
+    progressUnit: null,
+    experienceValue: null,
+    experienceUnit: null,
+    certificationReference: null,
+    certificationDefinitionId: null,
+    allowExpiredCertification: false,
+    prerequisiteRequirementIds: const [],
+    resourceIds: const [],
+    resourceLinks: const [],
+    sortOrder: sortOrder,
+    estimatedDurationDays: null,
+    recommendedLeadTimeDays: null,
+    canRunConcurrent: false,
+    timelineCategory: TimelineCategory.promotionalPreparation,
+    suggestedStartDate: null,
+    suggestedCompletionDate: null,
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  );
+}
+
+Requirement _reqEvidenceMilestone(
+  String id,
+  String name, {
+  required int sortOrder,
+  required String description,
+}) {
+  return Requirement(
+    id: id,
+    name: name,
+    category: 'Leadership Evidence',
+    priority: RequirementPriority.development,
+    description: description,
+    type: RequirementType.numericProgress,
+    requirementSource: RequirementSource.recommended,
+    defaultRequired: true,
+    stateDependent: false,
+    departmentDependent: false,
+    completed: false,
+    progressCurrent: 0,
+    progressRequired: 1,
+    progressUnit: 'documented example',
+    experienceValue: null,
+    experienceUnit: null,
+    certificationReference: null,
+    certificationDefinitionId: null,
+    allowExpiredCertification: false,
+    prerequisiteRequirementIds: const [],
+    resourceIds: const [],
+    resourceLinks: const [],
+    sortOrder: sortOrder,
+    estimatedDurationDays: null,
+    recommendedLeadTimeDays: null,
+    canRunConcurrent: true,
+    timelineCategory: TimelineCategory.development,
+    suggestedStartDate: null,
+    suggestedCompletionDate: null,
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  );
+}
+
 Requirement _reqCourse(
   String id,
   String name, {
