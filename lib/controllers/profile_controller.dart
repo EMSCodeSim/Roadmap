@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:collection/collection.dart';
 
 import 'package:firepath/models/career_goal.dart';
 import 'package:firepath/models/career_path.dart';
@@ -100,11 +101,23 @@ class ProfileController extends ChangeNotifier {
     final byId = <String, CareerGoal>{
       for (final goal in FireOpsCatalog.goals()) goal.id: goal,
     };
-    return ladder
-        .take(targetIndex + 1)
-        .map((id) => byId[id])
-        .whereType<CareerGoal>()
-        .toList();
+
+    Iterable<String> stageIds = ladder.take(targetIndex + 1);
+    if (identical(ladder, FireOpsCatalog.fireOperationsLadder) ||
+        const ListEquality<String>()
+            .equals(ladder, FireOpsCatalog.fireOperationsLadder)) {
+      final visibleStages = _profile.fireCareerStages.isEmpty
+          ? FireOpsCatalog.fireCareerStages
+          : _profile.fireCareerStages;
+      final enabledGoalIds = visibleStages
+          .map(FireOpsCatalog.fireGoalIdForStageLabel)
+          .whereType<String>()
+          .toSet()
+        ..add(target.id);
+      stageIds = stageIds.where(enabledGoalIds.contains);
+    }
+
+    return stageIds.map((id) => byId[id]).whereType<CareerGoal>().toList();
   }
 
   CareerGoal _combineCareerStages(
@@ -309,6 +322,28 @@ class ProfileController extends ChangeNotifier {
 
   Future<void> setCurrentRoles(List<String> roles) =>
       updateProfile(_profile.copyWith(currentRoles: roles, updatedAt: DateTime.now()));
+
+  Future<void> setFireCareerStages(List<String> stages) async {
+    final cleaned = stages
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    await updateProfile(
+      _profile.copyWith(
+        fireCareerStages: cleaned,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  Future<void> resetFireCareerStages() async {
+    await updateProfile(
+      _profile.copyWith(
+        fireCareerStages: const [],
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
 
   /// Updates Personal career path without deleting logs, certs, or progress.
   Future<void> setCareerPath({
