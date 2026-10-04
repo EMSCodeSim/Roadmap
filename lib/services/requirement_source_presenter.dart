@@ -12,9 +12,13 @@ class RequirementSourcePresenter {
   static String badgeText(Requirement r, {required String? profileStateCode}) {
     switch (r.requirementSource) {
       case RequirementSource.stateRequirement:
+        if (!isVerifiedStateRequirement(r, profileStateCode: profileStateCode)) {
+          final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? profileStateCode);
+          return stateName == null ? 'State source • verify' : '$stateName source • verify';
+        }
         final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? profileStateCode);
         if (stateName != null && stateName.trim().isNotEmpty) return 'Required in $stateName';
-        return 'State requirement';
+        return 'Verified state requirement';
       case RequirementSource.departmentRequirement:
         return 'Department requirement';
       case RequirementSource.commonlyRequired:
@@ -27,8 +31,12 @@ class RequirementSourcePresenter {
   static String shortLine(Requirement r, {required String? profileStateCode}) {
     switch (r.requirementSource) {
       case RequirementSource.stateRequirement:
+        if (!isVerifiedStateRequirement(r, profileStateCode: profileStateCode)) {
+          final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? profileStateCode);
+          return stateName == null ? 'State source added by you • verify' : '$stateName source added by you • verify';
+        }
         final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? profileStateCode);
-        return stateName == null ? 'State requirement' : '$stateName requirement';
+        return stateName == null ? 'Verified state requirement' : '$stateName requirement';
       case RequirementSource.departmentRequirement:
         return 'Department requirement';
       case RequirementSource.commonlyRequired:
@@ -53,6 +61,11 @@ class RequirementSourcePresenter {
     final state = (r.sourceStateCode ?? profileStateCode)?.trim().toUpperCase();
     final src = r.sourceStateCode?.trim().toUpperCase();
     if (src == null || src.isEmpty) return false;
+    if (r.sourceVerifiedDate == null ||
+        (r.sourceTitle?.trim().isNotEmpty != true) ||
+        (r.sourceUrl?.trim().isNotEmpty != true)) {
+      return false;
+    }
     if (state == null || state.isEmpty) return true;
     return src == state;
   }
