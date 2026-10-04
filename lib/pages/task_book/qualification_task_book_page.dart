@@ -65,6 +65,7 @@ class QualificationTaskBookPage extends StatelessWidget {
       (grouped[t.section] ??= <TaskBookTaskDefinition>[]).add(t);
     }
     const sectionOrder = [
+      'PLAN THE CERTIFICATION',
       'GETTING STARTED',
       'TRAINING',
       'PRACTICAL / JPR PREPARATION',
@@ -99,6 +100,13 @@ class QualificationTaskBookPage extends StatelessWidget {
         ? 0.0
         : ((completed / total).clamp(0, 1)).toDouble();
 
+    final currentPhaseIndex = orderedSections.indexWhere((section) {
+      final items = grouped[section] ?? const <TaskBookTaskDefinition>[];
+      return items.any((task) => statusFor(task) != TaskBookTaskStatus.complete);
+    });
+    final resolvedPhaseIndex =
+        currentPhaseIndex < 0 ? orderedSections.length - 1 : currentPhaseIndex;
+
     final stateCode = state.profile.state?.trim().toUpperCase();
     final authority = StateFireAuthorityCatalog.forState(stateCode);
 
@@ -125,6 +133,15 @@ class QualificationTaskBookPage extends StatelessWidget {
             ],
             if (guide != null && authority != null) ...[
               _OfficialSourceCard(authority: authority),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            if (orderedSections.isNotEmpty) ...[
+              _CertificationPhaseRail(
+                sections: orderedSections,
+                grouped: grouped,
+                statusFor: statusFor,
+                currentIndex: resolvedPhaseIndex,
+              ),
               const SizedBox(height: AppSpacing.md),
             ],
             Container(
@@ -381,6 +398,150 @@ class QualificationTaskBookPage extends StatelessWidget {
   }
 }
 
+class _CertificationPhaseRail extends StatelessWidget {
+  const _CertificationPhaseRail({
+    required this.sections,
+    required this.grouped,
+    required this.statusFor,
+    required this.currentIndex,
+  });
+
+  final List<String> sections;
+  final Map<String, List<TaskBookTaskDefinition>> grouped;
+  final TaskBookTaskStatus Function(TaskBookTaskDefinition) statusFor;
+  final int currentIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: AppSpacing.paddingMd,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'CERTIFICATION PHASES',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: cs.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 74,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: sections.length,
+              separatorBuilder: (_, __) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 16,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              itemBuilder: (context, index) {
+                final section = sections[index];
+                final tasks =
+                    grouped[section] ?? const <TaskBookTaskDefinition>[];
+                final done = tasks
+                    .where((task) =>
+                        statusFor(task) == TaskBookTaskStatus.complete)
+                    .length;
+                final complete = tasks.isNotEmpty && done == tasks.length;
+                final current = index == currentIndex && !complete;
+                final label = _phaseLabel(section);
+                return Container(
+                  width: 128,
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(
+                      color: complete
+                          ? FireOpsSemanticColors.completed.withValues(alpha: 0.5)
+                          : current
+                              ? cs.primary.withValues(alpha: 0.65)
+                              : cs.outline.withValues(alpha: 0.18),
+                    ),
+                    color: complete
+                        ? FireOpsSemanticColors.completed.withValues(alpha: 0.08)
+                        : current
+                            ? cs.primaryContainer.withValues(alpha: 0.35)
+                            : cs.surface,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        complete
+                            ? Icons.check_circle_rounded
+                            : current
+                                ? Icons.radio_button_checked_rounded
+                                : Icons.circle_outlined,
+                        size: 17,
+                        color: complete
+                            ? FireOpsSemanticColors.completed
+                            : current
+                                ? cs.primary
+                                : cs.onSurfaceVariant,
+                      ),
+                      const Spacer(),
+                      Text(
+                        label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                      Text(
+                        complete
+                            ? 'Complete'
+                            : current
+                                ? 'Do this now'
+                                : '$done/${tasks.length}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Work left to right. Later phases stay visible so you can plan ahead, but Today guidance will favor the earliest incomplete phase.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.4,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _phaseLabel(String section) => switch (section) {
+        'PLAN THE CERTIFICATION' => 'Plan',
+        'GETTING STARTED' => 'Start',
+        'TRAINING' => 'Learn',
+        'PRACTICAL / JPR PREPARATION' => 'Practice / Master',
+        'TESTING' => 'Test',
+        'CERTIFICATION' => 'Credential',
+        'KNOWLEDGE' => 'Knowledge',
+        'APPARATUS OPERATIONS' => 'Operations',
+        'PERFORMANCE' => 'Performance',
+        _ => section,
+      };
+}
+
 class _CertificationGuideCard extends StatelessWidget {
   final CertificationPathwayGuide guide;
   const _CertificationGuideCard({required this.guide});
@@ -546,6 +707,10 @@ class _TaskTile extends StatelessWidget {
       TaskBookTaskStatus.readyForEvaluation => (
           Icons.verified_outlined,
           cs.primary,
+        ),
+      TaskBookTaskStatus.learning => (
+          Icons.menu_book_outlined,
+          cs.tertiary,
         ),
       TaskBookTaskStatus.practicing => (
           Icons.play_circle_outline,
