@@ -51,8 +51,15 @@ class QualificationTaskBookPage extends StatelessWidget {
               ));
     final base = TaskBookLibrary.tasksForRequirement(req);
     final guideTasks = guide?.tasks ?? const <TaskBookTaskDefinition>[];
+    final completionGates =
+        TaskBookLibrary.certificationCompletionGates(req);
     final custom = state.customTasksFor(goalId: goalId, requirementId: req.id);
-    final tasks = [...base, ...guideTasks, ...custom];
+    final tasks = [
+      ...base,
+      ...guideTasks,
+      ...completionGates,
+      ...custom,
+    ];
     final grouped = <String, List<TaskBookTaskDefinition>>{};
     for (final t in tasks) {
       (grouped[t.section] ??= <TaskBookTaskDefinition>[]).add(t);
