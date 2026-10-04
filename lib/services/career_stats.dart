@@ -1,4 +1,5 @@
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/services/scored_skill_store.dart';
 
 class CareerSuccessStats {
   final int attempts;
@@ -170,6 +171,19 @@ class CareerStats {
 
   static bool isExposureRecord(CareerRecord record) =>
       isMedicalExposureRecord(record) || isHazardExposureRecord(record);
+
+  static String? skillTrackingKey(CareerRecord record) {
+    if (record.type != CareerRecordType.skill || isDrivingRecord(record)) {
+      return null;
+    }
+    final existing = (record.trackingKey ?? '').trim();
+    if (existing.isNotEmpty &&
+        existing != 'quick.skill' &&
+        existing != 'quick.custom') {
+      return existing;
+    }
+    return ScoredSkillStore.keyForTitle(record.title);
+  }
 
   /// Returns measured success statistics for a procedure or skill.
   ///
