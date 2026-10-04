@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
 
@@ -130,6 +131,15 @@ class _DepartmentQualificationsPageState extends State<DepartmentQualificationsP
                     ),
                   ],
                   const SizedBox(height: 14),
+                  OutlinedButton.icon(
+                    onPressed: () => launchUrl(
+                      Uri.parse('https://responderroadmap.com/qualifications'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: const Text('Manage qualifications in Dashboard'),
+                  ),
+                  const SizedBox(height: 10),
                   const Card(
                     child: Padding(
                       padding: EdgeInsets.all(16),
