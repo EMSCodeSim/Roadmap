@@ -621,7 +621,7 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
               borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
             child: Text(
-              'FireOps preparation tasks are designed to help organize training and professional development. Always verify certification and performance requirements with your department, state authority, official task book, or certifying organization.',
+              'Responder Roadmap preparation tasks are designed to help organize training and professional development. Always verify certification and performance requirements with your department, state authority, official task book, or certifying organization.',
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
             ),
