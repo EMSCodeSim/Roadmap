@@ -77,8 +77,17 @@ class SmartNextStepEngine {
   SmartNextStepEngine._();
 
   static SmartNextStepDecision? resolve(AppState state, {DateTime? now}) {
+    final options = alternatives(state, now: now, limit: 1);
+    return options.isEmpty ? null : options.first;
+  }
+
+  static List<SmartNextStepDecision> alternatives(
+    AppState state, {
+    DateTime? now,
+    int limit = 3,
+  }) {
     final roadmap = state.roadmap;
-    if (roadmap == null) return null;
+    if (roadmap == null || limit <= 0) return const [];
     final clock = now ?? DateTime.now();
 
     final completion = <String, bool>{
@@ -97,53 +106,81 @@ class SmartNextStepEngine {
       getId: (raw) => raw.requirement.id,
     );
 
+    final decisions = <SmartNextStepDecision>[];
+    var unfinishedStageCount = 0;
+
     for (final section in plan.sections) {
       final candidates = section.items
           .where((item) => !item.isComplete && item.canStartNow)
           .toList();
       if (candidates.isEmpty) continue;
 
+      unfinishedStageCount += 1;
       candidates.sort((a, b) {
-        final ar = _workRank(state, roadmap.goal.id, a.requirement, clock);
-        final br = _workRank(state, roadmap.goal.id, b.requirement, clock);
-        final rank = ar.compareTo(br);
-        if (rank != 0) return rank;
+        final ar = _careerActionScore(
+          state,
+          roadmap.goal.id,
+          a.requirement,
+          clock,
+        );
+        final br = _careerActionScore(
+          state,
+          roadmap.goal.id,
+          b.requirement,
+          clock,
+        );
+        final score = ar.compareTo(br);
+        if (score != 0) return score;
         final priority = _priorityRank(a.requirement.priority)
             .compareTo(_priorityRank(b.requirement.priority));
         if (priority != 0) return priority;
         return a.originalIndex.compareTo(b.originalIndex);
       });
 
-      final picked = candidates.first;
-      final requirement = picked.requirement;
-      final activity = state.activityStatusFor(
-        goalId: roadmap.goal.id,
-        requirementId: requirement.id,
-      );
-      final focusTitle = deepestIncompleteTitle(
-        state,
-        goalId: roadmap.goal.id,
-        requirement: requirement,
-      );
-      final today = _todayAction(
-        state,
-        roadmap.goal.id,
-        requirement,
-        focusTitle,
-        clock,
-      );
-      return SmartNextStepDecision(
-        requirement: requirement,
-        focusTitle: focusTitle,
-        stage: section.meta.stage,
-        activityStatus: activity,
-        reason: _reasonFor(state, roadmap.goal.id, requirement, clock),
-        actionTitle: today.$1,
-        actionDetail: today.$2,
-        actionLabel: today.$3,
-      );
+      for (final picked in candidates) {
+        final requirement = picked.requirement;
+        final activity = state.activityStatusFor(
+          goalId: roadmap.goal.id,
+          requirementId: requirement.id,
+        );
+        final focusTitle = deepestIncompleteTitle(
+          state,
+          goalId: roadmap.goal.id,
+          requirement: requirement,
+        );
+        final today = _todayAction(
+          state,
+          roadmap.goal.id,
+          requirement,
+          focusTitle,
+          clock,
+        );
+        decisions.add(
+          SmartNextStepDecision(
+            requirement: requirement,
+            focusTitle: focusTitle,
+            stage: section.meta.stage,
+            activityStatus: activity,
+            reason: _reasonFor(
+              state,
+              roadmap.goal.id,
+              requirement,
+              clock,
+            ),
+            actionTitle: today.$1,
+            actionDetail: today.$2,
+            actionLabel: today.$3,
+          ),
+        );
+        if (decisions.length >= limit) return decisions;
+      }
+
+      // Keep recommendations close to the user's current stage. One later
+      // stage may provide a useful alternative, but we do not jump far ahead.
+      if (unfinishedStageCount >= 2) break;
     }
-    return null;
+
+    return decisions;
   }
 
   static SmartProgressRollup rollup(AppState state) {
@@ -332,39 +369,120 @@ class SmartNextStepEngine {
     String goalId,
     Requirement requirement,
     DateTime now,
+  ) =>
+      _careerActionScore(state, goalId, requirement, now);
+
+  static int _careerActionScore(
+    AppState state,
+    String goalId,
+    Requirement requirement,
+    DateTime now,
   ) {
-    final status = state.activityStatusFor(
+    var score = 100;
+
+    // Momentum: finish active work before creating new open loops.
+    final activity = state.activityStatusFor(
       goalId: goalId,
       requirementId: requirement.id,
     );
-    if (status == RequirementActivityStatus.inProgress) return 0;
+    if (activity == RequirementActivityStatus.inProgress) score -= 35;
+    if (activity == RequirementActivityStatus.planning) score -= 12;
 
     final roadmapItem = state.roadmap?.included
         .where((item) => item.requirement.id == requirement.id)
         .firstOrNull;
-    if (roadmapItem != null &&
-        requirementProgress(
-              state,
-              goalId: goalId,
-              item: roadmapItem,
-            ) >
-            0) {
-      return 0;
+    if (roadmapItem != null) {
+      final progress = requirementProgress(
+        state,
+        goalId: goalId,
+        item: roadmapItem,
+      );
+      if (progress > 0 && progress < 1) score -= 25;
+      if (progress >= 0.75 && progress < 1) score -= 8;
     }
 
+    // Urgency: scheduled work and near-term dates rise quickly.
     final schedule = state.scheduleFor(
       goalId: goalId,
       requirementId: requirement.id,
     );
-    if (schedule != null || status == RequirementActivityStatus.scheduled) {
-      final start = schedule?.startDate;
-      if (start == null || !start.isAfter(now.add(const Duration(days: 14)))) {
-        return 1;
+    final start = schedule?.startDate;
+    if (start != null) {
+      final days = start.difference(now).inDays;
+      if (days <= 0) {
+        score -= 35;
+      } else if (days <= 7) {
+        score -= 28;
+      } else if (days <= 14) {
+        score -= 20;
+      } else if (days <= 30) {
+        score -= 8;
       }
-      return 4;
+    } else if (activity == RequirementActivityStatus.scheduled) {
+      score -= 18;
     }
-    if (status == RequirementActivityStatus.planning) return 2;
-    return 3;
+
+    // Career impact: work that unlocks later requirements is more valuable.
+    final normalizedIds = <String>{
+      requirement.id.trim().toLowerCase(),
+      requirement.name.trim().toLowerCase(),
+      (requirement.certificationReference ?? '').trim().toLowerCase(),
+    }..remove('');
+    final unlockCount = state.roadmap?.included.where((item) {
+          return item.requirement.prerequisiteRequirementIds.any(
+            (id) => normalizedIds.contains(id.trim().toLowerCase()),
+          );
+        }).length ??
+        0;
+    score -= (unlockCount.clamp(0, 4) * 6);
+
+    // Competency / evaluation opportunity: once a skill is ready for an
+    // evaluator, doing that evaluation is usually more valuable than more
+    // generic preparation.
+    final guide = CertificationGuideLibrary.guideForRequirement(requirement);
+    final tasks = <TaskBookTaskDefinition>[
+      ...TaskBookLibrary.tasksForRequirement(requirement),
+      ...?guide?.tasks,
+      ...TaskBookLibrary.certificationCompletionGates(requirement),
+      ...state.customTasksFor(
+        goalId: goalId,
+        requirementId: requirement.id,
+      ),
+    ];
+    var hasReadyEvaluation = false;
+    var hasActivePractice = false;
+    for (final task in tasks) {
+      final taskStatus = state.taskStatusFor(
+        goalId: goalId,
+        requirementId: requirement.id,
+        taskId: task.id,
+      );
+      if (taskStatus == TaskBookTaskStatus.readyForEvaluation) {
+        hasReadyEvaluation = true;
+      } else if (taskStatus == TaskBookTaskStatus.practicing ||
+          taskStatus == TaskBookTaskStatus.learning) {
+        hasActivePractice = true;
+      }
+    }
+    if (hasReadyEvaluation) score -= 26;
+    if (hasActivePractice) score -= 12;
+
+    // Effort: give a small advantage to useful actions that can realistically
+    // be moved today without letting quick wins outrank true gates.
+    score += switch (requirement.type) {
+      RequirementType.custom => -5,
+      RequirementType.interview => -4,
+      RequirementType.promotionalTest => -3,
+      RequirementType.practical => -2,
+      RequirementType.trainingCourse || RequirementType.course => 0,
+      RequirementType.taskBook => 0,
+      RequirementType.certification => 2,
+      RequirementType.numericProgress => 3,
+      RequirementType.experience => 5,
+      RequirementType.education => 4,
+    };
+
+    return score;
   }
 
   static (String, String, String) todayActionFor(
