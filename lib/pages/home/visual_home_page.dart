@@ -3,20 +3,15 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
-import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_inbox.dart';
-import 'package:firepath/services/advancement_analyzer.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/needs_attention_engine.dart';
 import 'package:firepath/services/smart_next_step.dart';
-import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
-import 'package:firepath/widgets/career_inbox_preview.dart';
-import 'package:firepath/widgets/career_pulse_card.dart';
+import 'package:firepath/state/app_state.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
-import 'package:firepath/widgets/needs_attention_preview.dart';
-import 'package:firepath/widgets/status_pill.dart';
 
 class VisualHomePage extends StatelessWidget {
   const VisualHomePage({super.key});
@@ -24,10 +19,8 @@ class VisualHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final department = context.watch<DepartmentInboxController>();
     final roadmap = app.roadmap;
-    final goal = roadmap?.goal;
-    final smartNext = SmartNextStepEngine.resolve(app);
-    final next = smartNext?.requirement;
     final hasRoadmap = roadmap != null && roadmap.totalCount > 0;
 
     return Scaffold(
@@ -35,101 +28,15 @@ class VisualHomePage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
           children: [
-            _Header(
-              onSettings: () => context.push(AppRoutes.settings),
-            ),
+            _Header(onSettings: () => context.push(AppRoutes.settings)),
             const SizedBox(height: 14),
-            _TodayRail(
-              hasRoadmap: hasRoadmap,
-              goalTitle: goal?.title,
-              nextTitle: smartNext?.focusTitle ?? next?.name,
-              nextReason: smartNext?.reason,
-              onDailyFocus: () => context.push(AppRoutes.dailyFocus),
-              onQuickLog: () => context.go(AppRoutes.personalLog),
-              onMyPath: () => context.go(AppRoutes.myPath),
-            ),
+            _MyStatusCard(app: app, department: department),
             const SizedBox(height: 14),
-            _CredentialAttentionCard(app: app),
-            const SizedBox(height: 14),
-            if (!hasRoadmap)
-              _ChooseGoalCard(
-                onChooseGoal: () => context.go(AppRoutes.myPath),
-              )
-            else ...[
-              _AnimatedAppear(
-                delay: const Duration(milliseconds: 110),
-                child: CareerPulseCard(
-                  app: app,
-                  onOpenAdvance: () => context.go(AppRoutes.growth),
-                  onOpenCompetencyMap: () =>
-                      context.push(AppRoutes.competencyMap),
-                  onOpenDepartment: () => context.go(AppRoutes.department),
-                  onOpenRequirement: (item) {
-                    AppRouter.openRequirement(
-                      context,
-                      item.requirement,
-                      goalId: roadmap.goal.id,
-                    );
-                  },
-                  onGapAction: (gap) {
-                    final requirement = gap.item.requirement;
-                    if (gap.mastery?.status == 'NEEDS_IMPROVEMENT' ||
-                        gap.mastery?.status == 'REASSESS') {
-                      context.go(AppRoutes.department);
-                      return;
-                    }
-                    if (requirement.type == RequirementType.experience ||
-                        requirement.type == RequirementType.numericProgress) {
-                      context.go(AppRoutes.personalLog);
-                      return;
-                    }
-                    if (requirement.type == RequirementType.certification) {
-                      context.go(AppRoutes.certifications);
-                      return;
-                    }
-                    AppRouter.openRequirement(
-                      context,
-                      requirement,
-                      goalId: roadmap.goal.id,
-                    );
-                  },
-                  onPrimaryAction: (analysis) {
-                    final recommendation = analysis.recommendation;
-                    if (recommendation.kind ==
-                        AdvancementActionKind.chooseGoal) {
-                      context.push(AppRoutes.goalSetup);
-                      return;
-                    }
-                    if (recommendation.kind ==
-                        AdvancementActionKind.workRoadmap) {
-                      final requirementId = recommendation.requirementId;
-                      if (requirementId != null) {
-                        final matches = roadmap.included.where(
-                          (item) => item.requirement.id == requirementId,
-                        );
-                        if (matches.isNotEmpty) {
-                          AppRouter.openRequirement(
-                            context,
-                            matches.first.requirement,
-                          );
-                          return;
-                        }
-                      }
-                      context.go(AppRoutes.myPath);
-                      return;
-                    }
-                    if (recommendation.kind ==
-                        AdvancementActionKind.documentRequirement) {
-                      context.push(AppRoutes.growthDetails);
-                      return;
-                    }
-                    context.go(AppRoutes.personalLog);
-                  },
-                ),
-              ),
+            _HomeActionCenter(app: app, department: department),
+            if (!hasRoadmap) ...[
+              const SizedBox(height: 14),
+              _ChooseGoalCard(onChooseGoal: () => context.go(AppRoutes.myPath)),
             ],
-            const SizedBox(height: 14),
-            const _AnimatedAppear(delay: Duration(milliseconds: 140), child: _HomeUpdatesSection()),
           ],
         ),
       ),
@@ -137,299 +44,73 @@ class VisualHomePage extends StatelessWidget {
   }
 }
 
-class _CredentialAttentionCard extends StatelessWidget {
+class _MyStatusCard extends StatelessWidget {
   final AppState app;
+  final DepartmentInboxController department;
 
-  const _CredentialAttentionCard({required this.app});
+  const _MyStatusCard({required this.app, required this.department});
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final roadmap = app.roadmap;
+    final currentRole = app.profile.currentRoles.isEmpty
+        ? 'Not set'
+        : app.profile.currentRoles.first;
+    final nextTarget = roadmap?.goal.title ?? 'Choose a roadmap';
+    final progress =
+        roadmap == null ? null : (roadmap.percentComplete * 100).round();
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final flagged = app.certifications.where((cert) {
+    final credentialAttention = app.certifications.where((cert) {
       if (cert.doesNotExpire) return false;
-      final expiration = cert.expirationDate;
-      if (expiration == null) return true;
-      return expiration.difference(today).inDays <= 60;
-    }).toList()
-      ..sort((a, b) {
-        int priority(dynamic cert) {
-          if (!cert.doesNotExpire && cert.expirationDate == null) return 0;
-          final days = cert.expirationDate!.difference(today).inDays;
-          if (days < 0) return 1;
-          return 2;
-        }
-
-        final byPriority = priority(a).compareTo(priority(b));
-        if (byPriority != 0) return byPriority;
-        final aDate = a.expirationDate ?? DateTime(1900);
-        final bDate = b.expirationDate ?? DateTime(1900);
-        return aDate.compareTo(bDate);
-      });
-
-    if (flagged.isEmpty) return const SizedBox.shrink();
-
-    final cs = Theme.of(context).colorScheme;
-    final shown = flagged.take(3).toList();
-
-    String detail(dynamic cert) {
-      if (!cert.doesNotExpire && cert.expirationDate == null) {
-        return 'No expiration date listed';
-      }
-      final days = cert.expirationDate!.difference(today).inDays;
-      if (days < 0) return 'Expired ${-days} day${days == -1 ? '' : 's'} ago';
-      if (days == 0) return 'Expires today';
-      return 'Expires in $days day${days == 1 ? '' : 's'}';
-    }
-
-    IconData iconFor(dynamic cert) {
-      if (!cert.doesNotExpire && cert.expirationDate == null) {
-        return Icons.event_busy_outlined;
-      }
-      final days = cert.expirationDate!.difference(today).inDays;
-      return days < 0 ? Icons.error_outline_rounded : Icons.schedule_rounded;
-    }
+      if (cert.expirationDate == null) return true;
+      return cert.expirationDate!.difference(today).inDays <= 60;
+    }).length;
 
     return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        onTap: () => context.go(AppRoutes.certifications),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 12, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.workspace_premium_outlined, color: cs.error),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Text(
-                      'Credentials need attention',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                  ),
-                  Text(
-                    '${flagged.length}',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: cs.error,
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right_rounded),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Add missing dates or review credentials that are expired or expiring within 60 days.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              ...shown.map(
-                (cert) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Icon(iconFor(cert), size: 18, color: cs.error),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          app.certificationDisplayName(cert),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        detail(cert),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (flagged.length > shown.length)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    '+${flagged.length - shown.length} more',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AnimatedAppear extends StatefulWidget {
-  final Widget child;
-  final Duration delay;
-
-  const _AnimatedAppear({required this.child, this.delay = Duration.zero});
-
-  @override
-  State<_AnimatedAppear> createState() => _AnimatedAppearState();
-}
-
-class _AnimatedAppearState extends State<_AnimatedAppear> {
-  bool _show = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.delay == Duration.zero) {
-      _show = true;
-    } else {
-      Future<void>.delayed(widget.delay, () {
-        if (!mounted) return;
-        setState(() => _show = true);
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 260),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, anim) {
-        return FadeTransition(
-          opacity: anim,
-          child: SlideTransition(
-            position: anim.drive(Tween(begin: const Offset(0, 0.06), end: Offset.zero)),
-            child: child,
-          ),
-        );
-      },
-      child: _show ? widget.child : const SizedBox.shrink(),
-    );
-  }
-}
-
-class _TodayRail extends StatelessWidget {
-  final bool hasRoadmap;
-  final String? goalTitle;
-  final String? nextTitle;
-  final String? nextReason;
-  final VoidCallback onDailyFocus;
-  final VoidCallback onQuickLog;
-  final VoidCallback onMyPath;
-
-  const _TodayRail({
-    required this.hasRoadmap,
-    required this.goalTitle,
-    required this.nextTitle,
-    required this.nextReason,
-    required this.onDailyFocus,
-    required this.onQuickLog,
-    required this.onMyPath,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-
-    final headline = hasRoadmap
-        ? (nextTitle?.trim().isNotEmpty == true ? nextTitle!.trim() : 'Pick one win for today')
-        : 'Set up your Task Book in a few taps';
-    final sub = hasRoadmap
-        ? (nextReason?.trim().isNotEmpty == true
-            ? nextReason!.trim()
-            : 'Do one small step — the plan updates automatically.')
-        : 'Start with a goal, then log progress and follow next steps.';
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-      builder: (context, v, child) {
-        return Opacity(
-          opacity: v,
-          child: Transform.translate(offset: Offset(0, 10 * (1 - v)), child: child),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          color: cs.surface,
-          border: Border.all(color: cs.outline.withValues(alpha: 0.9)),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: cs.outline.withValues(alpha: 0.9)),
-                  ),
-                  child: Icon(Icons.today_rounded, color: cs.onSurface),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Today',
-                        style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                      if ((goalTitle ?? '').trim().isNotEmpty)
-                        Text(
-                          goalTitle!.trim(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: t.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+            Text(
+              'My status',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 10),
-            Text(
-              headline,
-              style: t.titleLarge?.copyWith(fontWeight: FontWeight.w800, height: 1.15),
+            _StatusLine(label: 'Current level', value: currentRole),
+            _StatusLine(label: 'Next target', value: nextTarget),
+            _StatusLine(
+              label: 'Credentials needing attention',
+              value: '$credentialAttention',
+              alert: credentialAttention > 0,
             ),
-            const SizedBox(height: 6),
-            Text(
-              sub,
-              style: t.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+            _StatusLine(
+              label: 'Department actions',
+              value: '${department.actionCount}',
+              alert: department.actionCount > 0,
             ),
-            const SizedBox(height: 12),
-            _TodayPrimaryActions(
-              onDailyFocus: onDailyFocus,
-              onQuickLog: onQuickLog,
-              onMyPath: onMyPath,
+            _StatusLine(
+              label: 'Current roadmap progress',
+              value: progress == null ? 'Not started' : '$progress%',
             ),
-            const SizedBox(height: 12),
-            const _HomeStatusStrip(),
+            if (progress != null) ...[
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: (progress / 100).clamp(0, 1),
+                  minHeight: 8,
+                  backgroundColor:
+                      cs.surfaceContainerHighest.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -437,74 +118,66 @@ class _TodayRail extends StatelessWidget {
   }
 }
 
-class _TodayPrimaryActions extends StatelessWidget {
-  final VoidCallback onDailyFocus;
-  final VoidCallback onQuickLog;
-  final VoidCallback onMyPath;
+class _StatusLine extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool alert;
 
-  const _TodayPrimaryActions({
-    required this.onDailyFocus,
-    required this.onQuickLog,
-    required this.onMyPath,
+  const _StatusLine({
+    required this.label,
+    required this.value,
+    this.alert = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: FilledButton.icon(
-                  onPressed: onDailyFocus,
-                  icon: Icon(Icons.track_changes, color: cs.onPrimary),
-                  label: Text('Daily Focus', style: TextStyle(color: cs.onPrimary)),
-                ),
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: onQuickLog,
-                  icon: Icon(Icons.note_alt_outlined, color: cs.primary),
-                  label: Text('Quick Log', style: TextStyle(color: cs.primary)),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 48,
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: onMyPath,
-            icon: Icon(Icons.route_outlined, size: 18, color: cs.primary),
-            label: Text('My Path', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w900)),
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: alert ? cs.error : cs.onSurface,
+                  ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _HomeStatusStrip extends StatefulWidget {
-  const _HomeStatusStrip();
+class _HomeActionCenter extends StatefulWidget {
+  final AppState app;
+  final DepartmentInboxController department;
+
+  const _HomeActionCenter({
+    required this.app,
+    required this.department,
+  });
 
   @override
-  State<_HomeStatusStrip> createState() => _HomeStatusStripState();
+  State<_HomeActionCenter> createState() => _HomeActionCenterState();
 }
 
-class _HomeStatusStripState extends State<_HomeStatusStrip> {
-  final CareerRecordStore _store = CareerRecordStore();
-  bool _loading = true;
+class _HomeActionCenterState extends State<_HomeActionCenter> {
+  final CareerRecordStore _recordStore = CareerRecordStore();
   List<CareerRecord> _records = const [];
+  bool _loading = true;
 
   @override
   void initState() {
@@ -514,7 +187,7 @@ class _HomeStatusStripState extends State<_HomeStatusStrip> {
 
   Future<void> _load() async {
     try {
-      final records = await _store.load();
+      final records = await _recordStore.load();
       if (!mounted) return;
       setState(() {
         _records = records;
@@ -529,110 +202,334 @@ class _HomeStatusStripState extends State<_HomeStatusStrip> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const SizedBox(
-        height: 26,
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(22),
+          child: Center(child: CircularProgressIndicator()),
         ),
       );
     }
 
-    final app = context.watch<AppState>();
-    final inboxItems = CareerInbox.build(app: app, records: _records);
-    final needsItems = NeedsAttentionEngine.analyze(app: app, records: _records);
-    final needsNow = needsItems.where((e) => e.urgency == NeedsAttentionUrgency.now).length;
+    final app = widget.app;
+    final department = widget.department;
+    final attention = _buildAttention(app, department);
+    final next = _resolveNext(app, attention);
 
-    // If nothing exists, keep the rail clean.
-    if (inboxItems.isEmpty && needsItems.isEmpty) return const SizedBox.shrink();
-
-    final cs = Theme.of(context).colorScheme;
-
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+    return Column(
       children: [
-        if (inboxItems.isNotEmpty)
-          InkWell(
-            borderRadius: BorderRadius.circular(999),
-            onTap: () => context.push(AppRoutes.careerInbox),
-            child: StatusPill(
-              icon: Icons.inbox_outlined,
-              text: 'Inbox ${inboxItems.length}',
-              backgroundColor: cs.secondaryContainer.withValues(alpha: 0.55),
-              foregroundColor: cs.onSecondaryContainer,
-              maxWidth: 140,
-            ),
-          ),
-        if (needsItems.isNotEmpty)
-          InkWell(
-            borderRadius: BorderRadius.circular(999),
-            onTap: () => context.push(AppRoutes.needsAttention),
-            child: StatusPill(
-              icon: needsNow > 0 ? Icons.notifications_active_outlined : Icons.notifications_none_rounded,
-              text: needsNow > 0 ? 'Now $needsNow' : 'Needs ${needsItems.length}',
-              backgroundColor: cs.errorContainer.withValues(alpha: 0.38),
-              foregroundColor: cs.error,
-              maxWidth: 150,
-            ),
-          ),
+        _WhatNextCard(item: next),
+        const SizedBox(height: 14),
+        _NeedsMyAttentionCard(items: attention),
       ],
+    );
+  }
+
+  List<_HomeAttentionItem> _buildAttention(
+    AppState app,
+    DepartmentInboxController department,
+  ) {
+    final items = <_HomeAttentionItem>[];
+
+    for (final assignment in department.urgentAssignments) {
+      final returned = assignment.sections
+          .expand((section) => section.requirements)
+          .any((requirement) =>
+              requirement.correctionNotes.trim().isNotEmpty &&
+              !requirement.isFullyApproved);
+      items.add(
+        _HomeAttentionItem(
+          id: 'dept-assignment:${assignment.id}',
+          priority: returned ? 0 : 1,
+          title: assignment.taskBookTitle,
+          detail: returned
+              ? 'Returned by your department — correction needed.'
+              : 'Department assignment is overdue.',
+          icon: returned
+              ? Icons.assignment_return_outlined
+              : Icons.schedule_rounded,
+          actionLabel: 'Open Department',
+          onTap: (context) => context.go(AppRoutes.department),
+        ),
+      );
+    }
+
+    for (final action in department.inbox?.needsAction ?? const []) {
+      items.add(
+        _HomeAttentionItem(
+          id: 'dept-action:${action.id}',
+          priority: 2,
+          title: action.title,
+          detail: action.subtitle.isEmpty
+              ? 'Department action is waiting for you.'
+              : action.subtitle,
+          icon: Icons.fact_check_outlined,
+          actionLabel: 'Open Department',
+          onTap: (context) => context.go(AppRoutes.department),
+        ),
+      );
+    }
+
+    final needs = NeedsAttentionEngine.analyze(app: app, records: _records);
+    for (final item in needs) {
+      items.add(
+        _HomeAttentionItem(
+          id: 'needs:${item.id}',
+          priority: switch (item.urgency) {
+            NeedsAttentionUrgency.now => 3,
+            NeedsAttentionUrgency.soon => 5,
+            NeedsAttentionUrgency.later => 8,
+          },
+          title: item.title,
+          detail: item.detail,
+          icon: item.certificationId != null
+              ? Icons.workspace_premium_outlined
+              : Icons.route_outlined,
+          actionLabel: item.actionLabel,
+          onTap: (context) {
+            if (item.certificationId != null) {
+              context.go(AppRoutes.certifications);
+              return;
+            }
+            final requirementId = item.requirementId;
+            final roadmap = app.roadmap;
+            if (requirementId != null && roadmap != null) {
+              final matches = roadmap.all
+                  .where((entry) => entry.requirement.id == requirementId);
+              if (matches.isNotEmpty) {
+                AppRouter.openRequirement(
+                  context,
+                  matches.first.requirement,
+                  goalId: roadmap.goal.id,
+                );
+                return;
+              }
+            }
+            context.go(AppRoutes.myPath);
+          },
+        ),
+      );
+    }
+
+    final careerInbox = CareerInbox.build(app: app, records: _records);
+    for (final item in careerInbox) {
+      if (items.any((entry) =>
+          entry.title.toLowerCase() == item.title.toLowerCase())) {
+        continue;
+      }
+      items.add(
+        _HomeAttentionItem(
+          id: 'career:${item.id}',
+          priority: 10 + item.priority,
+          title: item.title,
+          detail: item.detail,
+          icon: Icons.inbox_outlined,
+          actionLabel: item.actionLabel,
+          onTap: (context) {
+            if (item.certificationId != null) {
+              context.go(AppRoutes.certifications);
+            } else if (item.requirementId != null) {
+              context.go(AppRoutes.myPath);
+            } else {
+              context.go(AppRoutes.personalLog);
+            }
+          },
+        ),
+      );
+    }
+
+    items.sort((a, b) {
+      final p = a.priority.compareTo(b.priority);
+      if (p != 0) return p;
+      return a.title.compareTo(b.title);
+    });
+    return items.take(8).toList(growable: false);
+  }
+
+  _HomeAttentionItem _resolveNext(
+    AppState app,
+    List<_HomeAttentionItem> attention,
+  ) {
+    if (attention.isNotEmpty) return attention.first;
+
+    final smart = SmartNextStepEngine.resolve(app);
+    final requirement = smart?.requirement;
+    if (requirement != null) {
+      return _HomeAttentionItem(
+        id: 'roadmap-next:${requirement.id}',
+        priority: 20,
+        title: smart?.focusTitle ?? requirement.name,
+        detail: smart?.reason ?? 'This is the next useful step in your roadmap.',
+        icon: Icons.route_outlined,
+        actionLabel: 'Open next step',
+        onTap: (context) => AppRouter.openRequirement(
+          context,
+          requirement,
+          goalId: app.roadmap?.goal.id,
+        ),
+      );
+    }
+
+    if (app.roadmap == null) {
+      return _HomeAttentionItem(
+        id: 'build-roadmap',
+        priority: 30,
+        title: 'Build your roadmap',
+        detail: 'Choose what you are working toward so Responder Roadmap can guide the next step.',
+        icon: Icons.route_outlined,
+        actionLabel: 'Build My Roadmap',
+        onTap: (context) => context.go(AppRoutes.myPath),
+      );
+    }
+
+    return _HomeAttentionItem(
+      id: 'caught-up',
+      priority: 99,
+      title: 'You are caught up',
+      detail: 'No urgent department, credential, or roadmap action is waiting right now.',
+      icon: Icons.check_circle_outline_rounded,
+      actionLabel: 'Open My Roadmap',
+      onTap: (context) => context.go(AppRoutes.myPath),
     );
   }
 }
 
-class _HomeUpdatesSection extends StatefulWidget {
-  const _HomeUpdatesSection();
+class _WhatNextCard extends StatelessWidget {
+  final _HomeAttentionItem item;
 
-  @override
-  State<_HomeUpdatesSection> createState() => _HomeUpdatesSectionState();
-}
-
-class _HomeUpdatesSectionState extends State<_HomeUpdatesSection>
-    with SingleTickerProviderStateMixin {
-  bool _expanded = false;
+  const _WhatNextCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      alignment: Alignment.topCenter,
-      child: Container(
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
-        ),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _UpdatesHeader(
-              expanded: _expanded,
-              onTap: () => setState(() => _expanded = !_expanded),
+            Row(
+              children: [
+                Icon(Icons.bolt_rounded, color: cs.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'What should I do next?',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ],
             ),
-            if (_expanded) ...[
-              const Padding(
-                padding: EdgeInsets.fromLTRB(14, 0, 14, 14),
-                child: Column(
-                  children: [
-                    SizedBox(height: 8),
-                    NeedsAttentionPreview(),
-                    SizedBox(height: 12),
-                    CareerInboxPreview(),
-                  ],
+            const SizedBox(height: 12),
+            Text(
+              item.title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              item.detail,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: () => item.onTap(context),
+              icon: Icon(item.icon),
+              label: Text(item.actionLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NeedsMyAttentionCard extends StatelessWidget {
+  final List<_HomeAttentionItem> items;
+
+  const _NeedsMyAttentionCard({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final visible = items.take(5).toList();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  visible.isEmpty
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.notifications_active_outlined,
+                  color: visible.isEmpty ? cs.primary : cs.error,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Needs My Attention',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                Text(
+                  '${items.length}',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+            if (visible.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'Nothing needs action right now.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+              )
+            else
+              ...visible.map(
+                (item) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(item.icon),
+                  title: Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    item.detail,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => item.onTap(context),
                 ),
               ),
-            ] else
-              const Padding(
-                padding: EdgeInsets.fromLTRB(14, 0, 14, 14),
-                child: Column(
-                  children: [
-                    SizedBox(height: 8),
-                    CareerInboxPreview(),
-                  ],
+            if (items.length > visible.length)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  '+${items.length - visible.length} more items',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ),
           ],
@@ -642,59 +539,24 @@ class _HomeUpdatesSectionState extends State<_HomeUpdatesSection>
   }
 }
 
-class _UpdatesHeader extends StatelessWidget {
-  final bool expanded;
-  final VoidCallback onTap;
+class _HomeAttentionItem {
+  final String id;
+  final int priority;
+  final String title;
+  final String detail;
+  final IconData icon;
+  final String actionLabel;
+  final void Function(BuildContext context) onTap;
 
-  const _UpdatesHeader({required this.expanded, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      label: expanded ? 'Collapse updates' : 'Expand updates',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-          child: Row(
-            children: [
-              Icon(Icons.notifications_none_rounded, color: cs.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Updates',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      expanded ? 'Tap to hide' : 'Tap to view details',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              AnimatedRotation(
-                turns: expanded ? 0.5 : 0,
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                child: Icon(Icons.keyboard_arrow_down_rounded, color: cs.primary),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  const _HomeAttentionItem({
+    required this.id,
+    required this.priority,
+    required this.title,
+    required this.detail,
+    required this.icon,
+    required this.actionLabel,
+    required this.onTap,
+  });
 }
 
 class _Header extends StatelessWidget {
@@ -717,8 +579,12 @@ class _Header extends StatelessWidget {
               const FirefighterRoadmapWordmark(),
               const SizedBox(height: 4),
               Text(
-                'One clear focus. Faster progress.',
-                style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.25, fontWeight: FontWeight.w600),
+                'Know where you are. Know what comes next.',
+                style: t.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.25,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -731,7 +597,7 @@ class _Header extends StatelessWidget {
             side: BorderSide(color: cs.outline.withValues(alpha: 0.12)),
           ),
           child: IconButton(
-            tooltip: 'Settings',
+            tooltip: 'Settings and profile',
             onPressed: onSettings,
             icon: Icon(Icons.settings_outlined, color: cs.onSurface),
           ),
@@ -750,40 +616,35 @@ class _ChooseGoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Choose what you are working toward.',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Build your Task Book first. Responder Roadmap will then turn the next requirement into one clear focus for today.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.45,
-                ),
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: FilledButton.icon(
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Choose what you are working toward',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Pick a starting point and target. You can skip, replace, or customize stages later.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
               onPressed: onChooseGoal,
               icon: const Icon(Icons.route_outlined),
-              label: const Text('Build My Task Book'),
+              label: const Text('Build My Roadmap'),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
