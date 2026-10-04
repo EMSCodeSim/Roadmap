@@ -72,7 +72,7 @@ class CareerBackupService {
             name: fileName,
           ),
         ],
-        subject: 'FireOps Career Portfolio backup',
+        subject: 'Responder Roadmap portfolio backup',
         text:
             'Responder Roadmap backup. Keep this file somewhere safe; restoring it replaces the portfolio on a device.',
         fileNameOverrides: [fileName],
