@@ -30,6 +30,70 @@ class TaskBookLibrary {
   static bool hasTasksForRequirement(Requirement r) =>
       tasksForRequirement(r).isNotEmpty;
 
+  /// Explicit testing gates shown at the end of certification-oriented task
+  /// books. These are personal progress checkoffs only; the official testing
+  /// authority determines whether the candidate actually passed.
+  static List<TaskBookTaskDefinition> certificationCompletionGates(
+    Requirement requirement,
+  ) {
+    if (requirement.type != RequirementType.certification) {
+      return const <TaskBookTaskDefinition>[];
+    }
+
+    return const <TaskBookTaskDefinition>[
+      TaskBookTaskDefinition(
+        id: 'cert_pass_jpr_practical',
+        title: 'Pass JPR / practical evaluation',
+        section: 'TESTING',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Record completion only after the official practical/JPR evaluation has been passed through the applicable testing authority.',
+        whatToKnow: [
+          'The official evaluator packet, testing authority, and current passing criteria control the result.',
+          'Responder Roadmap does not determine or grant a passing practical result.',
+        ],
+        performanceTasks: [
+          'Complete the official practical/JPR evaluation.',
+          'Confirm the testing authority recorded a passing result.',
+          'Retain result documentation when available.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Marking practice or a mock evaluation as the official passing JPR result.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'cert_pass_written_test',
+        title: 'Pass written test',
+        section: 'TESTING',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Record completion only after the official written or knowledge examination has been passed through the applicable testing authority.',
+        whatToKnow: [
+          'Use the current candidate handbook or testing authority information for passing score, retest rules, and exam requirements.',
+          'Responder Roadmap records the result but does not determine a passing score.',
+        ],
+        performanceTasks: [
+          'Complete the official written/knowledge examination.',
+          'Confirm the testing authority recorded a passing result.',
+          'Retain result documentation when available.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Treating course completion or a practice exam as the official written-test result.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+    ];
+  }
+
   static List<TaskBookTaskDefinition> _withCompanionResources(
     List<TaskBookTaskDefinition> tasks, {
     required String certificationId,
