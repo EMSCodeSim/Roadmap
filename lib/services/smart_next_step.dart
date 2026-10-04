@@ -12,6 +12,9 @@ class SmartNextStepDecision {
   final TaskBookStage stage;
   final RequirementActivityStatus activityStatus;
   final String reason;
+  final String actionTitle;
+  final String actionDetail;
+  final String actionLabel;
 
   const SmartNextStepDecision({
     required this.requirement,
@@ -19,6 +22,9 @@ class SmartNextStepDecision {
     required this.stage,
     required this.activityStatus,
     required this.reason,
+    required this.actionTitle,
+    required this.actionDetail,
+    required this.actionLabel,
   });
 }
 
@@ -113,16 +119,27 @@ class SmartNextStepEngine {
         goalId: roadmap.goal.id,
         requirementId: requirement.id,
       );
+      final focusTitle = deepestIncompleteTitle(
+        state,
+        goalId: roadmap.goal.id,
+        requirement: requirement,
+      );
+      final today = _todayAction(
+        state,
+        roadmap.goal.id,
+        requirement,
+        focusTitle,
+        clock,
+      );
       return SmartNextStepDecision(
         requirement: requirement,
-        focusTitle: deepestIncompleteTitle(
-          state,
-          goalId: roadmap.goal.id,
-          requirement: requirement,
-        ),
+        focusTitle: focusTitle,
         stage: section.meta.stage,
         activityStatus: activity,
         reason: _reasonFor(state, roadmap.goal.id, requirement, clock),
+        actionTitle: today.$1,
+        actionDetail: today.$2,
+        actionLabel: today.$3,
       );
     }
     return null;
@@ -343,6 +360,104 @@ class SmartNextStepEngine {
     }
     if (status == RequirementActivityStatus.planning) return 2;
     return 3;
+  }
+
+  static (String, String, String) _todayAction(
+    AppState state,
+    String goalId,
+    Requirement requirement,
+    String focusTitle,
+    DateTime now,
+  ) {
+    final status = state.activityStatusFor(
+      goalId: goalId,
+      requirementId: requirement.id,
+    );
+    final schedule = state.scheduleFor(
+      goalId: goalId,
+      requirementId: requirement.id,
+    );
+
+    if (status == RequirementActivityStatus.inProgress) {
+      return (
+        focusTitle,
+        'Continue the work you already started. Finishing active work usually moves your roadmap faster than opening another requirement.',
+        'Continue'
+      );
+    }
+
+    if (schedule?.startDate != null &&
+        !schedule!.startDate!.isAfter(now.add(const Duration(days: 14)))) {
+      return (
+        'Prepare for ${requirement.name}',
+        'Your scheduled date is coming up. Review the requirement, gather what you need, and complete the next preparation step today.',
+        'Prepare now'
+      );
+    }
+
+    switch (requirement.type) {
+      case RequirementType.promotionalTest:
+        return (
+          'Find the next test date and register',
+          'Check the official testing source for ${requirement.name}, confirm eligibility and deadlines, then register or add the registration deadline to your plan.',
+          'Plan test'
+        );
+      case RequirementType.practical:
+        return (
+          'Schedule the practical evaluation',
+          'Identify the approved evaluator or testing site for ${requirement.name} and get the practical/JPR evaluation on your calendar.',
+          'Plan evaluation'
+        );
+      case RequirementType.certification:
+        return (
+          'Find the official path for ${requirement.name}',
+          'Confirm the certifying authority, approved course or testing center, prerequisites, application steps, and the next available date. Then complete the first registration step.',
+          'Find next step'
+        );
+      case RequirementType.trainingCourse:
+      case RequirementType.course:
+        return (
+          'Find and enroll in ${requirement.name}',
+          'Locate an approved upcoming class, confirm prerequisites and cost, then register or save the next enrollment deadline.',
+          'Find a class'
+        );
+      case RequirementType.interview:
+        return (
+          'Prepare for ${requirement.name}',
+          'Build one focused preparation block today: review likely questions, write examples from your experience, and schedule a practice interview.',
+          'Start prep'
+        );
+      case RequirementType.education:
+        return (
+          'Take the next enrollment step for ${requirement.name}',
+          'Identify the program or provider, verify admission requirements and deadlines, and complete one concrete application or enrollment step.',
+          'Plan enrollment'
+        );
+      case RequirementType.taskBook:
+        return (
+          focusTitle,
+          'Complete the next unfinished Task Book item that advances ${requirement.name}. If it requires an evaluator, get the practice or evaluation scheduled.',
+          'Open Task Book'
+        );
+      case RequirementType.experience:
+        return (
+          'Create an opportunity to build ${requirement.name}',
+          'Choose one realistic shift, drill, assignment, ride-along, or supervised opportunity that adds meaningful experience toward this requirement.',
+          'Plan experience'
+        );
+      case RequirementType.numericProgress:
+        return (
+          'Add progress toward ${requirement.name}',
+          'Pick one measurable action today that moves this requirement forward and record the result when you finish.',
+          'Log progress'
+        );
+      case RequirementType.custom:
+        return (
+          focusTitle,
+          'Complete the smallest meaningful action that moves this roadmap requirement forward today.',
+          'Open next step'
+        );
+    }
   }
 
   static String _reasonFor(
