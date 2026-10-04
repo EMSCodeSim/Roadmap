@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/pages/career/simple_quick_log_sheet.dart';
+import 'package:firepath/pages/department/department_classes_page.dart';
+import 'package:firepath/state/app_mode_controller.dart';
 
-/// Scroll-safe production wrapper for the simplified Quick Log.
+/// Scroll-safe production wrapper for the simplified Quick Add experience.
 ///
-/// Bottom sheets can be short in landscape, on smaller phones, or when text
-/// scaling is increased. The confirm step inside [SimpleQuickLogSheet] applies
-/// keyboard viewInsets so Save Log stays reachable while typing.
+/// Department instructors/admins get a direct Training Sheet action here so
+/// field workflows start from the universal Quick Add button rather than from
+/// a separate Department-page shortcut.
 class ProductionQuickLogSheet extends StatelessWidget {
   final LogPrefill? prefill;
 
@@ -15,11 +18,40 @@ class ProductionQuickLogSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mode = context.watch<AppModeController>();
+    final canCreateTrainingSheet =
+        mode.departmentLink != null && (mode.isInstructor || mode.isAdmin);
+
     // Do not nest another viewInsets pad here — confirm/detail steps already
     // scroll with MediaQuery.viewInsets so the primary action stays reachable.
     return SingleChildScrollView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      child: SimpleQuickLogSheet(prefill: prefill),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (canCreateTrainingSheet) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: FilledButton.icon(
+                key: const Key('quick_add_training_sheet'),
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const DepartmentClassesPage(
+                        openCreateTraining: true,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.assignment_add),
+                label: const Text('Create Training Sheet'),
+              ),
+            ),
+          ],
+          SimpleQuickLogSheet(prefill: prefill),
+        ],
+      ),
     );
   }
 }
