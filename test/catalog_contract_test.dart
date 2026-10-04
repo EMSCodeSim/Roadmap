@@ -116,6 +116,60 @@ void main() {
     expect(defIds, containsAll(<String>['fire_officer_1', 'fire_instructor_1']));
   });
 
+  test('officer and chief pathways include promotion gates and evidence', () {
+    final company =
+        FireOpsCatalog.goals().firstWhere((g) => g.id == 'ops_company_officer');
+    final battalion =
+        FireOpsCatalog.goals().firstWhere((g) => g.id == 'ops_battalion_chief');
+    final chief =
+        FireOpsCatalog.goals().firstWhere((g) => g.id == 'ops_fire_chief');
+
+    expect(
+      company.requirements.map((r) => r.id),
+      containsAll(<String>[
+        'officer_readiness_review',
+        'acting_time',
+        'co_apply',
+        'co_written',
+        'co_tactical',
+        'co_oral_board',
+        'co_eligibility_list',
+      ]),
+    );
+    expect(
+      battalion.requirements.map((r) => r.id),
+      containsAll(<String>[
+        'multi_company',
+        'bc_eligibility',
+        'bc_apply',
+        'bc_assessment',
+        'bc_interview',
+      ]),
+    );
+    expect(
+      chief.requirements.map((r) => r.id),
+      containsAll(<String>[
+        'chief_portfolio',
+        'chief_eligibility',
+        'chief_apply',
+        'chief_presentation',
+        'chief_interview',
+        'chief_selection',
+      ]),
+    );
+
+    expect(
+      company.requirements
+          .firstWhere((r) => r.id == 'officer_readiness_review')
+          .departmentDependent,
+      isTrue,
+    );
+    expect(
+      company.requirements.firstWhere((r) => r.id == 'acting_time').progressRequired,
+      1,
+    );
+  });
+
   test('chief pathway goals require progressive Fire Officer levels', () {
     String? requiredOfficer(String goalId) {
       final goal = FireOpsCatalog.goals().firstWhere((g) => g.id == goalId);
