@@ -14,6 +14,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/apparatus_profile_store.dart';
 import 'package:firepath/services/career_stats.dart';
+import 'package:firepath/services/scored_skill_store.dart';
 import 'package:firepath/services/quick_log_preferences_store.dart';
 import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/services/quick_log_path_suggester.dart';
@@ -1511,7 +1512,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
       relatedRequirementId: _taskLink?.relatedRequirementId,
       relatedTaskId: _taskLink?.relatedTaskId,
       highlight: false,
-      trackingKey: widget.seed?.trackingKey ?? _trackingKey(widget.mode),
+      trackingKey: widget.seed?.trackingKey ?? _trackingKey(widget.mode, title),
       outcome: _outcome,
       details: driveDetails,
       createdAt: now,
@@ -1766,9 +1767,11 @@ class _QuickLogFormState extends State<_QuickLogForm> {
         QuickLogMode.custom => 'Custom',
       };
 
-  static String _trackingKey(QuickLogMode mode) => switch (mode) {
+  static String _trackingKey(QuickLogMode mode, String title) =>
+      switch (mode) {
         QuickLogMode.driveTime => 'quick.drive_time',
         QuickLogMode.awardRecognition => 'quick.award',
+        QuickLogMode.skill => ScoredSkillStore.keyForTitle(title),
         _ => 'quick.${mode.name}',
       };
 }
