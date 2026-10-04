@@ -6,6 +6,7 @@ import 'package:firepath/pages/department/department_review_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/pages/department/department_qualifications_page.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
@@ -237,11 +238,50 @@ class _SyncLine extends StatelessWidget {
       DepartmentSyncState.syncing => 'Syncing…',
       DepartmentSyncState.disconnected => 'Disconnected',
     };
+    final cs = Theme.of(context).colorScheme;
+    final synced = inbox.syncState == DepartmentSyncState.synced;
     return Row(children: [
-      Icon(inbox.syncState == DepartmentSyncState.synced ? Icons.cloud_done_outlined : Icons.cloud_sync_outlined, size: 18),
-      const SizedBox(width: 7),
-      Text(label, style: Theme.of(context).textTheme.bodySmall),
-      if (inbox.unreadCount > 0) ...[const Spacer(), Text('${inbox.unreadCount} update${inbox.unreadCount == 1 ? '' : 's'}')],
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: (synced ? FireOpsSemanticColors.green : FireOpsSemanticColors.amber)
+              .withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: (synced ? FireOpsSemanticColors.green : FireOpsSemanticColors.amber)
+                .withValues(alpha: 0.25),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              synced ? Icons.cloud_done_outlined : Icons.cloud_sync_outlined,
+              size: 16,
+              color: synced
+                  ? FireOpsSemanticColors.green
+                  : FireOpsSemanticColors.amber,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ],
+        ),
+      ),
+      if (inbox.unreadCount > 0) ...[
+        const Spacer(),
+        Text(
+          '${inbox.unreadCount} update${inbox.unreadCount == 1 ? '' : 's'}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+      ],
     ]);
   }
 }
@@ -256,11 +296,20 @@ class _NextCard extends StatelessWidget {
     child: Padding(
       padding: const EdgeInsets.all(18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('DO THIS NEXT', style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        Text(item.taskBookTitle, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 5),
-        Text(status),
+        Text(
+          'DEPARTMENT PRIORITY',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.6,
+              ),
+        ),
+        const SizedBox(height: 3),
+        Text('Do this next', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+        const SizedBox(height: 10),
+        Text(item.taskBookTitle, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+        const SizedBox(height: 6),
+        _DepartmentStatusPill(label: status),
         const SizedBox(height: 12),
         LinearProgressIndicator(value: (item.progress.clamp(0, 100)) / 100),
         const SizedBox(height: 12),
@@ -284,7 +333,22 @@ class _Section extends StatelessWidget {
     else ...items.map((item) => Card(
       child: ListTile(
         title: Text(item.taskBookTitle),
-        subtitle: Text('${status(item)} · ${item.progress}%'),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Row(
+            children: [
+              _DepartmentStatusPill(label: status(item), compact: true),
+              const SizedBox(width: 8),
+              Text(
+                '${item.progress}%',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
+          ),
+        ),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: () => onTap(item),
       ),
@@ -292,6 +356,49 @@ class _Section extends StatelessWidget {
   ]);
 }
 
+
+class _DepartmentStatusPill extends StatelessWidget {
+  const _DepartmentStatusPill({
+    required this.label,
+    this.compact = false,
+  });
+
+  final String label;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final lower = label.toLowerCase();
+    final color = lower.contains('return') || lower.contains('overdue')
+        ? FireOpsSemanticColors.red
+        : lower.contains('waiting')
+            ? FireOpsSemanticColors.blue
+            : lower.contains('complete')
+                ? FireOpsSemanticColors.green
+                : FireOpsSemanticColors.amber;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 9,
+        vertical: compact ? 3 : 4,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
+  }
+}
 
 class _NeedsAttention extends StatelessWidget {
   final List<DepartmentTaskBookAssignment> returned;
