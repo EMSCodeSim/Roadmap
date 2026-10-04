@@ -162,21 +162,44 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                   ),
                   const SizedBox(height: 12),
                   Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.verified_user_outlined),
-                      title: const Text(
-                        'Qualifications',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      subtitle: const Text(
-                        'My readiness and department authorization status',
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const DepartmentQualificationsPage(),
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.verified_user_outlined),
+                          title: const Text(
+                            'Check Member Eligibility',
+                            style: TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                          subtitle: const Text(
+                            'Who is cleared to drive, act as officer, or perform another department-approved role?',
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const DepartmentQualificationsPage(
+                                focusLookup: true,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.person_search_outlined),
+                          title: const Text(
+                            'My Qualifications',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          subtitle: const Text(
+                            'See my readiness and department authorization status',
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const DepartmentQualificationsPage(),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),
