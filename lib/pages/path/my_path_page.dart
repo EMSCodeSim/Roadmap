@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
 import 'package:firepath/models/requirement.dart';
+import 'package:firepath/models/career_path.dart';
 import 'package:firepath/pages/path/timeline/career_timeline_tab.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
@@ -831,8 +832,20 @@ class _CustomizePathSheet extends StatelessWidget {
       children: [
         Text('Customize My Path', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
         const SizedBox(height: AppSpacing.xs),
-        Text('Turn requirements on/off for your department and edit experience minimums.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
+        Text('Adjust the recommended progression and requirements to match your department. Personal changes never alter official Department Mode ranks or authorizations.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
         const SizedBox(height: AppSpacing.md),
+        if (state.profile.effectiveCareerPath != CareerPath.ems) ...[
+          OutlinedButton.icon(
+            onPressed: () => _showCareerStagesEditor(context, state),
+            icon: const Icon(Icons.account_tree_outlined),
+            label: const Text('Customize career stages'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
         SizedBox(
           height: MediaQuery.sizeOf(context).height * 0.62,
           child: ListView.builder(
@@ -905,6 +918,209 @@ class _CustomizePathSheet extends StatelessWidget {
           child: const Text('Done'),
         ),
       ],
+    );
+  }
+
+  static Future<void> _showCareerStagesEditor(
+    BuildContext context,
+    AppState state,
+  ) async {
+    var stages = state.fireCareerStages;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> persist(List<String> next) async {
+              stages = List<String>.from(next);
+              await state.setFireCareerStages(stages);
+              if (context.mounted) setModalState(() {});
+            }
+
+            Future<void> replaceStage(int index) async {
+              final controller = TextEditingController(text: stages[index]);
+              final replacement = await showDialog<String>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('Replace career stage'),
+                  content: TextField(
+                    controller: controller,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Your department’s stage or rank',
+                      hintText: 'Example: Sergeant',
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(
+                        dialogContext,
+                        controller.text.trim(),
+                      ),
+                      child: const Text('Replace'),
+                    ),
+                  ],
+                ),
+              );
+              controller.dispose();
+              if (replacement == null || replacement.trim().isEmpty) return;
+              final next = List<String>.from(stages);
+              next[index] = replacement.trim();
+              await persist(next);
+            }
+
+            Future<void> addStage() async {
+              final controller = TextEditingController();
+              final value = await showDialog<String>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('Add career stage'),
+                  content: TextField(
+                    controller: controller,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Stage or rank',
+                      hintText: 'Example: Senior Firefighter',
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(
+                        dialogContext,
+                        controller.text.trim(),
+                      ),
+                      child: const Text('Add'),
+                    ),
+                  ],
+                ),
+              );
+              controller.dispose();
+              if (value == null || value.trim().isEmpty) return;
+              await persist([...stages, value.trim()]);
+            }
+
+            return SizedBox(
+              height: MediaQuery.sizeOf(context).height * 0.82,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Fire career progression',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'This is a recommended path, not a rule. Skip stages your department does not use, replace a stage with your equivalent rank, or add another stage. Skipped default stages also remove that stage’s default requirement bundle from your Personal Roadmap. You can add your own requirements separately.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ReorderableListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: stages.length,
+                      onReorder: (oldIndex, newIndex) async {
+                        if (newIndex > oldIndex) newIndex -= 1;
+                        final next = List<String>.from(stages);
+                        final item = next.removeAt(oldIndex);
+                        next.insert(newIndex, item);
+                        await persist(next);
+                      },
+                      itemBuilder: (context, index) {
+                        final label = stages[index];
+                        return Card(
+                          key: ValueKey('$index-$label'),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              child: Text('${index + 1}'),
+                            ),
+                            title: Text(
+                              label,
+                              style: const TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                            subtitle: const Text('Drag to reorder'),
+                            trailing: PopupMenuButton<String>(
+                              onSelected: (value) async {
+                                if (value == 'replace') {
+                                  await replaceStage(index);
+                                } else if (value == 'skip') {
+                                  final next = List<String>.from(stages)
+                                    ..removeAt(index);
+                                  await persist(next);
+                                }
+                              },
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'replace',
+                                  child: Text('Replace this stage'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'skip',
+                                  child: Text('Skip this stage'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: addStage,
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add stage'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () async {
+                              await state.resetFireCareerStages();
+                              stages = state.fireCareerStages;
+                              if (context.mounted) setModalState(() {});
+                            },
+                            child: const Text('Restore defaults'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
