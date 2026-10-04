@@ -68,6 +68,21 @@ void main() {
     expect(ids, contains('ff2_preincident_planning'));
   });
 
+  test('Firefighter II walks the user through planning and testing logistics', () {
+    final ids = CertificationGuideLibrary.firefighterII.tasks
+        .map((task) => task.id)
+        .toSet();
+
+    expect(ids, contains('ff2_confirm_required_jprs'));
+    expect(ids, contains('ff2_confirm_required_reading'));
+    expect(ids, contains('ff2_build_mastery_checklist'));
+    expect(ids, contains('ff2_build_reading_checklist'));
+    expect(ids, contains('ff2_find_test_location'));
+    expect(ids, contains('ff2_confirm_test_dates_fees'));
+    expect(ids, contains('ff2_register_written'));
+    expect(ids, contains('ff2_register_practical'));
+  });
+
   test('guide explicitly distinguishes preparation from official JPR criteria', () {
     final note = CertificationGuideLibrary.firefighterII.officialSourceNote;
     expect(note.toLowerCase(), contains('not copied official jpr'));
