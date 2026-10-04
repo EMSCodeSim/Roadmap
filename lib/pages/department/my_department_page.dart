@@ -6,10 +6,13 @@ import 'package:provider/provider.dart';
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_inbox_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
+import 'package:firepath/pages/task_book/task_book_page.dart';
+import 'package:firepath/models/custom_task_book.dart';
 import 'package:firepath/services/department_link_store.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_mode_controller.dart';
+import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
 class MyDepartmentPage extends StatefulWidget {
@@ -470,6 +473,22 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     return result;
   }
 
+  Future<void> _openPersonalCareerRoad() async {
+    await context.read<AppState>().taskBookController.setActiveTaskBook(null);
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const TaskBookPage()),
+    );
+  }
+
+  Future<void> _openPersonalCustomBook(CustomTaskBook book) async {
+    await context.read<AppState>().taskBookController.setActiveTaskBook(book.id);
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const TaskBookPage()),
+    );
+  }
+
   Future<void> _openAssignment(DepartmentTaskBookAssignment assignment) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -502,6 +521,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
   @override
   Widget build(BuildContext context) {
     final inbox = context.watch<DepartmentInboxController>();
+    final app = context.watch<AppState>();
     final taskBooks = _assignments
         .where((assignment) => !assignment.isSingleTask)
         .toList(growable: false);
@@ -512,7 +532,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.taskBooksOnly ? 'Department Task Books' : 'Department',
+          widget.taskBooksOnly ? 'Task Books' : 'Department',
         ),
         actions: [
           if (_link != null)
@@ -538,6 +558,14 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
                   children: [
+                    if (widget.taskBooksOnly) ...[
+                      _PersonalTaskBooksSection(
+                        state: app,
+                        onOpenCareerRoad: _openPersonalCareerRoad,
+                        onOpenCustom: _openPersonalCustomBook,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     if (_link == null) ...[
                       _ConnectCard(
                         busy: _syncing,
@@ -545,12 +573,28 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                         onConnect: _connect,
                         onCreateAccount: _createDepartmentAccount,
                       ),
-                      const SizedBox(height: 12),
-                      const _DepartmentSetupGuide(),
+                      if (!widget.taskBooksOnly) ...[
+                        const SizedBox(height: 12),
+                        const _DepartmentSetupGuide(),
+                      ],
                     ] else ...[
-                      if (widget.taskBooksOnly)
-                        _SyncStatusCard(controller: inbox)
-                      else
+                      if (widget.taskBooksOnly) ...[
+                        Text(
+                          'Department Task Books',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Official department-issued Task Books and approved progress.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                        const SizedBox(height: 10),
+                        _SyncStatusCard(controller: inbox),
+                      ] else
                         _DepartmentConnectionCard(
                           link: _link!,
                           controller: inbox,
@@ -597,9 +641,10 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                       const SizedBox(height: 20),
                       _DepartmentAssignmentSection(
                         key: _taskBooksSectionKey,
-                        title: 'Task Books',
-                        description:
-                            'Department-issued task books and approved progress.',
+                        title: widget.taskBooksOnly ? 'Assigned by my department' : 'Task Books',
+                        description: widget.taskBooksOnly
+                            ? 'These are official department records. Progress requires department approval.'
+                            : 'Department-issued task books and approved progress.',
                         emptyMessage:
                             'No department Task Books are assigned to you yet.',
                         assignments: taskBooks,
@@ -626,6 +671,188 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                   ],
                 ),
               ),
+      ),
+    );
+  }
+}
+
+class _PersonalTaskBooksSection extends StatelessWidget {
+  const _PersonalTaskBooksSection({
+    required this.state,
+    required this.onOpenCareerRoad,
+    required this.onOpenCustom,
+  });
+
+  final AppState state;
+  final VoidCallback onOpenCareerRoad;
+  final void Function(CustomTaskBook book) onOpenCustom;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final roadmap = state.roadmap;
+    final personalCustom = state.customTaskBooks
+        .where((book) => !book.archived && !book.departmentSpecific)
+        .toList(growable: false);
+
+    int completedFor(CustomTaskBook book) {
+      var count = 0;
+      for (final requirement in book.requirements) {
+        final override = state.taskBookController.getOverride(
+          book.pseudoGoalId,
+          requirement.id,
+        );
+        if ((override?.completed ?? requirement.completed) == true) count++;
+      }
+      return count;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Personal Task Books',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+            ),
+            Text(
+              '${(roadmap == null ? 0 : 1) + personalCustom.length}',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: cs.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Your career roadmap and personal/custom Task Books. These stay separate from official department records.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 10),
+        if (roadmap != null)
+          _PersonalTaskBookCard(
+            title: roadmap.goal.title,
+            subtitle: 'Personal Career Road',
+            percent: (roadmap.percentComplete * 100).round(),
+            completed: roadmap.completedCount,
+            total: roadmap.totalCount,
+            onTap: onOpenCareerRoad,
+          ),
+        ...personalCustom.map((book) {
+          final completed = completedFor(book);
+          final total = book.requirements.length;
+          final percent = total == 0 ? 0 : ((completed / total) * 100).round();
+          return _PersonalTaskBookCard(
+            title: book.name,
+            subtitle: 'Personal Task Book',
+            percent: percent,
+            completed: completed,
+            total: total,
+            onTap: () => onOpenCustom(book),
+          );
+        }),
+        if (roadmap == null && personalCustom.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'No personal Task Book yet. Build your Career Road from My Roadmap to create one.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _PersonalTaskBookCard extends StatelessWidget {
+  const _PersonalTaskBookCard({
+    required this.title,
+    required this.subtitle,
+    required this.percent,
+    required this.completed,
+    required this.total,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final int percent;
+  final int completed;
+  final int total;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    '$percent%',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: (percent.clamp(0, 100)) / 100,
+                  minHeight: 8,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$completed/$total complete',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
