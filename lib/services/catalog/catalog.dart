@@ -14,6 +14,7 @@ class FireOpsCatalog {
 
   /// Fire operations roles shown during Personal setup.
   static const List<String> fireRoles = <String>[
+    'Recruit / Probationary',
     'Firefighter',
     'Firefighter (Probationary)',
     'Driver/Operator',
@@ -50,6 +51,7 @@ class FireOpsCatalog {
 
   /// Combined list kept for back-compat callers.
   static const List<String> commonRoles = <String>[
+    'Recruit / Probationary',
     'Firefighter',
     'Firefighter (Probationary)',
     'Driver/Operator',
