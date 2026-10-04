@@ -248,6 +248,7 @@ class _StatusCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     String label(TaskBookTaskStatus s) => switch (s) {
       TaskBookTaskStatus.notStarted => 'Not Started',
+      TaskBookTaskStatus.learning => 'Learning',
       TaskBookTaskStatus.practicing => 'Practicing',
       TaskBookTaskStatus.readyForEvaluation => 'Ready for Evaluation',
       TaskBookTaskStatus.complete => 'Complete',
@@ -256,6 +257,7 @@ class _StatusCard extends StatelessWidget {
     Color tone(TaskBookTaskStatus s) => switch (s) {
       TaskBookTaskStatus.complete => FireOpsSemanticColors.completed,
       TaskBookTaskStatus.readyForEvaluation => cs.primary,
+      TaskBookTaskStatus.learning => cs.tertiary,
       TaskBookTaskStatus.practicing => cs.secondary,
       TaskBookTaskStatus.notStarted => cs.onSurfaceVariant,
     };
