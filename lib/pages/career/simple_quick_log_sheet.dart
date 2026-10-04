@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/scored_skill_store.dart';
 import 'package:firepath/services/department_activity_sharing.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/services/theme.dart';
@@ -282,10 +283,8 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
     String? prefillKey,
   ) {
     if (mode == _SimpleMode.drive) return 'fire.driver';
-    final normalized = title.toLowerCase();
-    if (mode == _SimpleMode.skill &&
-        (normalized.contains('iv') || normalized.contains('vascular'))) {
-      return 'ems.iv';
+    if (mode == _SimpleMode.skill) {
+      return prefillKey ?? ScoredSkillStore.keyForTitle(title);
     }
     return prefillKey;
   }
