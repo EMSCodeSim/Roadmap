@@ -18,6 +18,7 @@ class DepartmentInboxController extends ChangeNotifier {
   final LocalStore _store;
   Timer? _timer;
   DepartmentInbox? _inbox;
+  List<DepartmentTaskBookAssignment> _urgentAssignments = const [];
   DepartmentSyncState _syncState = DepartmentSyncState.disconnected;
   DateTime? _lastSyncedAt;
   String? _lastError;
@@ -30,7 +31,8 @@ class DepartmentInboxController extends ChangeNotifier {
 
   DepartmentInbox? get inbox => _inbox;
   int get unreadCount => _inbox?.unreadCount ?? 0;
-  int get actionCount => _inbox?.needsAction.length ?? 0;
+  int get actionCount => (_inbox?.needsAction.length ?? 0) + _urgentAssignments.length;
+  List<DepartmentTaskBookAssignment> get urgentAssignments => _urgentAssignments;
   DepartmentSyncState get syncState => _syncState;
   DateTime? get lastSyncedAt => _lastSyncedAt;
   String? get lastError => _lastError;
@@ -58,6 +60,37 @@ class DepartmentInboxController extends ChangeNotifier {
       await _api.retryPendingClassMutations();
       final pending = await _api.pendingSubmissionCount() + await _api.pendingClassMutationCount();
       _inbox = await _api.getInbox();
+      try {
+        final assignments = await _api.listAssignments();
+        final now = DateTime.now();
+        _urgentAssignments = assignments.where((assignment) {
+          final returned = assignment.sections
+              .expand((section) => section.requirements)
+              .any((requirement) =>
+                  requirement.correctionNotes.trim().isNotEmpty &&
+                  !requirement.isFullyApproved);
+          final overdue = assignment.overdue > 0 ||
+              (assignment.dueDate != null &&
+                  assignment.dueDate!.isBefore(now) &&
+                  assignment.progress < 100);
+          return returned || overdue;
+        }).toList()
+          ..sort((a, b) {
+            bool returned(DepartmentTaskBookAssignment assignment) =>
+                assignment.sections
+                    .expand((section) => section.requirements)
+                    .any((requirement) =>
+                        requirement.correctionNotes.trim().isNotEmpty &&
+                        !requirement.isFullyApproved);
+            final ar = returned(a);
+            final br = returned(b);
+            if (ar != br) return ar ? -1 : 1;
+            return (a.dueDate ?? DateTime(9999))
+                .compareTo(b.dueDate ?? DateTime(9999));
+          });
+      } catch (_) {
+        _urgentAssignments = const [];
+      }
       _lastSyncedAt = _inbox?.serverTime ?? DateTime.now();
       _lastError = null;
       _syncState = pending > 0 ? DepartmentSyncState.waitingToUpload : DepartmentSyncState.synced;
