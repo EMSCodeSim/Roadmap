@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_review_page.dart';
+import 'package:firepath/pages/department/department_qualifications_page.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
@@ -146,6 +147,25 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     reviews: _reviews,
                     onAssignment: _open,
                     onReview: (item) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentReviewPage(initialReviewId: item.id))),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.verified_user_outlined),
+                      title: const Text(
+                        'Qualifications',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      subtitle: const Text(
+                        'My readiness and department authorization status',
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const DepartmentQualificationsPage(),
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   if (next != null) _NextCard(item: next, status: _status(next), onTap: () => _open(next))
