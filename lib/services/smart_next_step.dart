@@ -2,6 +2,7 @@ import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/services/task_book_checklist_hierarchy.dart';
 import 'package:firepath/services/task_book_library.dart';
+import 'package:firepath/services/certification_guide_library.dart';
 import 'package:firepath/services/national_task_book_baseline.dart';
 import 'package:firepath/services/task_book_stage_planner.dart';
 import 'package:firepath/state/app_state.dart';
@@ -306,8 +307,12 @@ class SmartNextStepEngine {
       if (!child.isDone) return child.title;
     }
 
+    final guide =
+        CertificationGuideLibrary.guideForRequirement(requirement);
     final tasks = <TaskBookTaskDefinition>[
       ...TaskBookLibrary.tasksForRequirement(requirement),
+      ...?guide?.tasks,
+      ...TaskBookLibrary.certificationCompletionGates(requirement),
       ...state.customTasksFor(goalId: goalId, requirementId: requirement.id),
     ];
     for (final task in tasks) {
