@@ -76,7 +76,7 @@ class CareerPdfExport {
   }) async {
     final snapshot = CareerIntelligence.analyze(records);
     final advancement = AdvancementAnalyzer.analyze(app: app, records: records);
-    final doc = pw.Document(title: 'FireOps Career Portfolio');
+    final doc = pw.Document(title: 'Responder Roadmap Career Portfolio');
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
