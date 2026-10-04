@@ -9,6 +9,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
+import 'package:firepath/services/scored_skill_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
@@ -49,8 +50,10 @@ class CareerRecordV2Page extends StatefulWidget {
 
 class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
   final CareerRecordStore _store = CareerRecordStore();
+  final ScoredSkillStore _scoredSkillStore = ScoredSkillStore();
   final TextEditingController _search = TextEditingController();
   List<CareerRecord> _records = const [];
+  List<ScoredSkillPreference> _scoredSkills = const [];
   bool _loading = true;
   bool _career = false;
   int _year = DateTime.now().year;
@@ -134,10 +137,12 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
 
   Future<void> _load() async {
     final records = await _store.load();
+    final scoredSkills = await _scoredSkillStore.load();
     records.sort((a, b) => b.date.compareTo(a.date));
     if (!mounted) return;
     setState(() {
       _records = records;
+      _scoredSkills = scoredSkills;
       _loading = false;
     });
   }
@@ -291,35 +296,58 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 ),
                 const SizedBox(height: 8),
                 _SummaryGrid(stats: stats),
-                if (procedureStats.isNotEmpty) ...[
+                if (_scoredSkills.isNotEmpty) ...[
                   const SizedBox(height: 22),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
-                          'PROCEDURE SUCCESS',
+                          'SCORED SKILLS',
                           style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                 fontWeight: FontWeight.w900,
                                 color: cs.onSurfaceVariant,
                               ),
                         ),
                       ),
-                      Text(
-                        'measured attempts',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: cs.onSurfaceVariant),
+                      TextButton.icon(
+                        onPressed: _chooseScoredSkills,
+                        icon: const Icon(Icons.tune_rounded, size: 18),
+                        label: const Text('Choose'),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Success percentages are shown only for the skills you choose to score.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                  ),
                   const SizedBox(height: 8),
-                  ...procedureStats.take(8).map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _ProcedureRateCard(item: item),
+                  if (procedureStats.isEmpty)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Text(
+                          'No measured attempts yet for your selected skills. Log a skill as Successful or Unsuccessful to start the score.',
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
+                    )
+                  else
+                    ...procedureStats.take(12).map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _ProcedureRateCard(item: item),
+                          ),
+                        ),
+                ] else ...[
+                  const SizedBox(height: 22),
+                  OutlinedButton.icon(
+                    onPressed: _chooseScoredSkills,
+                    icon: const Icon(Icons.add_chart_outlined),
+                    label: const Text('Choose skills to score'),
+                  ),
                 ],
                 const SizedBox(height: 22),
                 Text(
@@ -360,10 +388,13 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
   }
 
   List<_ProcedureStat> _procedureStats(List<CareerRecord> records) {
+    final enabled = {
+      for (final skill in _scoredSkills) skill.keyName: skill.title,
+    };
     final grouped = <String, List<CareerRecord>>{};
     for (final record in records) {
-      final key = record.trackingKey;
-      if (key == null || key.isEmpty) continue;
+      final key = CareerStats.skillTrackingKey(record);
+      if (key == null || !enabled.containsKey(key)) continue;
       if (record.outcome != CareerRecordOutcome.successful &&
           record.outcome != CareerRecordOutcome.unsuccessful) {
         continue;
@@ -372,13 +403,25 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
     }
     final result = <_ProcedureStat>[];
     for (final entry in grouped.entries) {
-      final measured = CareerStats.successFor(entry.value, trackingKey: entry.key);
+      var attempts = 0;
+      var successes = 0;
+      for (final record in entry.value) {
+        final count = record.repetitions < 1 ? 1 : record.repetitions;
+        if (record.outcome == CareerRecordOutcome.successful) {
+          attempts += count;
+          successes += 1;
+        } else if (record.outcome == CareerRecordOutcome.unsuccessful) {
+          attempts += count;
+        }
+      }
+      final measured = CareerSuccessStats(
+        attempts: attempts,
+        successful: successes,
+      );
       if (measured.attempts <= 0) continue;
-      final latest = [...entry.value]
-        ..sort((a, b) => b.date.compareTo(a.date));
       result.add(
         _ProcedureStat(
-          title: latest.first.title,
+          title: enabled[entry.key] ?? entry.value.first.title,
           keyName: entry.key,
           stats: measured,
         ),
@@ -386,6 +429,141 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
     }
     result.sort((a, b) => b.stats.attempts.compareTo(a.stats.attempts));
     return result;
+  }
+
+  Future<void> _chooseScoredSkills() async {
+    const defaults = <String>[
+      'IV / vascular access',
+      'Airway management',
+      'Intubation',
+      'IO access',
+      'Medication administration',
+      'Patient assessment',
+      'Pump operations',
+      'Ground ladders',
+      'Hose advancement',
+      'Search and rescue',
+    ];
+
+    final titlesByKey = <String, String>{
+      for (final title in defaults)
+        ScoredSkillStore.keyForTitle(title): title,
+      for (final record in _records)
+        if (record.type == CareerRecordType.skill &&
+            !CareerStats.isDrivingRecord(record))
+          CareerStats.skillTrackingKey(record) ?? 
+              ScoredSkillStore.keyForTitle(record.title): record.title,
+      for (final item in _scoredSkills) item.keyName: item.title,
+    };
+
+    final selected = _scoredSkills.map((item) => item.keyName).toSet();
+    final custom = TextEditingController();
+
+    final result = await showModalBottomSheet<List<ScoredSkillPreference>>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              0,
+              16,
+              18 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Choose scored skills',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Only selected skills show a success percentage. Other skills still count as repetitions without a score.',
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: titlesByKey.entries.map((entry) {
+                      return CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: selected.contains(entry.key),
+                        title: Text(entry.value),
+                        subtitle: Text(entry.key),
+                        onChanged: (value) => setSheetState(() {
+                          if (value == true) {
+                            selected.add(entry.key);
+                          } else {
+                            selected.remove(entry.key);
+                          }
+                        }),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: custom,
+                        decoration: const InputDecoration(
+                          labelText: 'Add another skill',
+                          hintText: 'Example: CPAP placement',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      tooltip: 'Add skill',
+                      onPressed: () {
+                        final title = custom.text.trim();
+                        if (title.isEmpty) return;
+                        final key = ScoredSkillStore.keyForTitle(title);
+                        setSheetState(() {
+                          titlesByKey[key] = title;
+                          selected.add(key);
+                          custom.clear();
+                        });
+                      },
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                FilledButton(
+                  onPressed: () => Navigator.pop(
+                    sheetContext,
+                    titlesByKey.entries
+                        .where((entry) => selected.contains(entry.key))
+                        .map(
+                          (entry) => ScoredSkillPreference(
+                            keyName: entry.key,
+                            title: entry.value,
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                  child: const Text('Save scored skills'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    custom.dispose();
+
+    if (result == null || !mounted) return;
+    await _scoredSkillStore.save(result);
+    if (!mounted) return;
+    setState(() => _scoredSkills = result);
   }
 
   Future<void> _openQuickLog() async {
