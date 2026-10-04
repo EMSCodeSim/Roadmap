@@ -421,6 +421,37 @@ class SmartNextStepEngine {
       );
     }
 
+    if (requirement.requirementSource ==
+            RequirementSource.departmentRequirement ||
+        requirement.departmentDependent) {
+      if (requirement.type == RequirementType.promotionalTest) {
+        return (
+          'Prepare for ${requirement.name}',
+          'Confirm the department announcement, eligibility rules, test format, references, deadlines, and passing/selection process. Then complete the next preparation step.',
+          'Open promotion step'
+        );
+      }
+      if (requirement.type == RequirementType.practical) {
+        return (
+          'Prepare for ${requirement.name}',
+          'Confirm the department assessment format, scoring areas, date, and required materials. Use your documented experience to prepare for the exercise.',
+          'Open assessment'
+        );
+      }
+      if (requirement.type == RequirementType.interview) {
+        return (
+          'Prepare for ${requirement.name}',
+          'Review the department process and build examples from your record that demonstrate leadership, judgment, accountability, and readiness for the role.',
+          'Prepare interview'
+        );
+      }
+      return (
+        requirement.name,
+        'Confirm the exact department requirement, who approves it, and what evidence or minimum experience is required. Record the local rule in your roadmap before marking it complete.',
+        'Confirm department rule'
+      );
+    }
+
     switch (requirement.type) {
       case RequirementType.promotionalTest:
         return (
