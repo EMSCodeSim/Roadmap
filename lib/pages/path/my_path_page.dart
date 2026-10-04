@@ -8,6 +8,7 @@ import 'package:firepath/models/career_path.dart';
 import 'package:firepath/pages/path/timeline/career_timeline_tab.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
+import 'package:firepath/services/catalog.dart';
 
 class MyPathPage extends StatelessWidget {
   const MyPathPage({super.key});
@@ -39,6 +40,8 @@ class MyPathPage extends StatelessWidget {
                 onSelected: (value) {
                   if (value == 'customize') {
                     _showCustomizeSheet(context, state, roadmap);
+                  } else if (value == 'tools') {
+                    _showRoadmapTools(context);
                   }
                 },
                 itemBuilder: (context) => const [
@@ -46,7 +49,14 @@ class MyPathPage extends StatelessWidget {
                     value: 'customize',
                     child: ListTile(
                       leading: Icon(Icons.tune),
-                       title: Text('Customize Task Book requirements'),
+                      title: Text('Customize roadmap'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'tools',
+                    child: ListTile(
+                      leading: Icon(Icons.more_horiz_rounded),
+                      title: Text('More roadmap tools'),
                     ),
                   ),
                 ],
@@ -64,6 +74,59 @@ class MyPathPage extends StatelessWidget {
                   const CareerTimelineTab(),
                 ],
               ),
+      ),
+    );
+  }
+
+  static Future<void> _showRoadmapTools(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: AppSpacing.paddingMd,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.insights_outlined),
+                title: const Text('Career Intelligence'),
+                subtitle: const Text('Deeper readiness and career analysis'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push(AppRoutes.careerIntelligence);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.hub_outlined),
+                title: const Text('Competency Map'),
+                subtitle: const Text('Review competency evidence and freshness'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push(AppRoutes.competencyMap);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.trending_up_rounded),
+                title: const Text('Growth tools'),
+                subtitle: const Text('Evidence, development, and longer-term planning'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push(AppRoutes.growthDetails);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.compare_arrows_rounded),
+                title: const Text('Department transfer planning'),
+                subtitle: const Text('Compare a prospective department without changing official records'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push(AppRoutes.departmentTransfer);
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -311,6 +374,12 @@ class _PathTab extends StatelessWidget {
             percentReady: percentReady,
             targetDate: targetDate,
           ),
+          if (state.profile.effectiveCareerPath != CareerPath.ems) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _CareerPathOverview(state: state, roadmap: roadmap),
+            const SizedBox(height: AppSpacing.lg),
+            _SpecialtyPathsSection(state: state),
+          ],
           const SizedBox(height: AppSpacing.lg),
           _SectionTitle(label: 'NEXT'),
           const SizedBox(height: AppSpacing.sm),
@@ -445,6 +514,461 @@ class _PathTab extends StatelessWidget {
     }
     return 'Other';
   }
+}
+
+class _CareerPathOverview extends StatelessWidget {
+  final AppState state;
+  final Roadmap roadmap;
+
+  const _CareerPathOverview({required this.state, required this.roadmap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final stages = state.fireCareerStages;
+    final currentRole = state.profile.currentRoles.isEmpty
+        ? null
+        : state.profile.currentRoles.first.trim().toLowerCase();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Career path',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () =>
+                      _CustomizePathSheet._showCareerStagesEditor(context, state),
+                  child: const Text('Customize'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Recommended progression. Tap any stage to review it; skip, replace, add, or reorder stages to match your department.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 82,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: stages.length,
+                separatorBuilder: (_, __) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 16,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                itemBuilder: (context, index) {
+                  final stage = stages[index];
+                  final progress = _stageProgress(stage, currentRole);
+                  final completed = progress >= 100;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    onTap: () => _showStage(context, stage, progress),
+                    child: Container(
+                      width: 132,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(
+                          color: completed
+                              ? FireOpsSemanticColors.completed
+                                  .withValues(alpha: 0.5)
+                              : cs.outline.withValues(alpha: 0.25),
+                        ),
+                        color: completed
+                            ? FireOpsSemanticColors.completed
+                                .withValues(alpha: 0.08)
+                            : cs.surface,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                completed
+                                    ? Icons.check_circle_rounded
+                                    : Icons.circle_outlined,
+                                size: 17,
+                                color: completed
+                                    ? FireOpsSemanticColors.completed
+                                    : cs.onSurfaceVariant,
+                              ),
+                              const Spacer(),
+                              Text(
+                                completed ? 'Done' : '$progress%',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: Text(
+                              stage,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  int _stageProgress(String stage, String? currentRole) {
+    final goalId = FireOpsCatalog.fireGoalIdForStageLabel(stage);
+    if (goalId == null) return 0;
+
+    if (currentRole != null && stage.trim().toLowerCase() == currentRole) {
+      return 100;
+    }
+
+    final goalMatches =
+        FireOpsCatalog.goals().where((goal) => goal.id == goalId);
+    if (goalMatches.isEmpty) return 0;
+    final goal = goalMatches.first;
+    if (goal.requirements.isEmpty) return 0;
+
+    final roadmapById = {
+      for (final item in roadmap.all) item.requirement.id: item,
+    };
+    var found = 0;
+    var done = 0;
+    for (final requirement in goal.requirements) {
+      final item = roadmapById[requirement.id];
+      if (item == null) continue;
+      found += 1;
+      if (item.isComplete || item.isExcluded) done += 1;
+    }
+    if (found == 0) {
+      final stageGoalIndex =
+          FireOpsCatalog.fireOperationsLadder.indexOf(goalId);
+      final targetIndex =
+          FireOpsCatalog.fireOperationsLadder.indexOf(roadmap.goal.id);
+      if (stageGoalIndex >= 0 && targetIndex >= 0 && stageGoalIndex < targetIndex) {
+        return 100;
+      }
+      return 0;
+    }
+    return ((done / found) * 100).round();
+  }
+
+  Future<void> _showStage(
+    BuildContext context,
+    String stage,
+    int progress,
+  ) async {
+    final goalId = FireOpsCatalog.fireGoalIdForStageLabel(stage);
+    final matches = goalId == null
+        ? const <CareerGoal>[]
+        : FireOpsCatalog.goals().where((goal) => goal.id == goalId).toList();
+    final goal = matches.isEmpty ? null : matches.first;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: AppSpacing.paddingLg,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                stage,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                goal == null
+                    ? 'Custom stage. Add the requirements that apply to your department.'
+                    : '$progress% of the currently visible requirements for this stage are complete.',
+              ),
+              if (goal != null && goal.requirements.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: goal.requirements
+                        .map(
+                          (requirement) => ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.checklist_rounded),
+                            title: Text(requirement.name),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  _CustomizePathSheet._showCareerStagesEditor(context, state);
+                },
+                icon: const Icon(Icons.tune_rounded),
+                label: const Text('Skip, replace, or customize stages'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SpecialtyPathsSection extends StatelessWidget {
+  final AppState state;
+
+  const _SpecialtyPathsSection({required this.state});
+
+  static const _specialties = <_SpecialtyDefinition>[
+    _SpecialtyDefinition(
+      id: 'wildland_fft2',
+      title: 'Wildland Firefighter',
+      description: 'NWCG-aligned FFT2 foundation and agency qualification path.',
+      icon: Icons.local_fire_department_outlined,
+    ),
+    _SpecialtyDefinition(
+      id: 'acting_officer',
+      title: 'Acting Officer',
+      description: 'Track preparation for department-approved acting assignments.',
+      icon: Icons.supervisor_account_outlined,
+    ),
+    _SpecialtyDefinition(
+      id: 'instructor',
+      title: 'Instructor',
+      description: 'Track teaching credentials, evaluations, and instructional experience.',
+      icon: Icons.school_outlined,
+    ),
+    _SpecialtyDefinition(
+      id: 'hazmat',
+      title: 'HazMat',
+      description: 'Track department or authority-defined hazardous materials development.',
+      icon: Icons.warning_amber_rounded,
+    ),
+    _SpecialtyDefinition(
+      id: 'technical_rescue',
+      title: 'Technical Rescue',
+      description: 'Track locally required rescue disciplines and team qualification steps.',
+      icon: Icons.construction_outlined,
+    ),
+    _SpecialtyDefinition(
+      id: 'medic',
+      title: 'Medic',
+      description: 'Track EMS credential and department-specific medic readiness separately from fire rank.',
+      icon: Icons.medical_services_outlined,
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Specialty paths',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Optional development tracks that sit alongside your rank progression. Status here is personal tracking only; the appropriate department, state, NWCG, or other authority determines official qualification.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            ..._specialties.map(
+              (specialty) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(specialty.icon),
+                title: Text(
+                  specialty.title,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  '${state.specialtyPathStatus(specialty.id)} · ${specialty.description}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _openSpecialty(context, specialty),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSpecialty(
+    BuildContext context,
+    _SpecialtyDefinition specialty,
+  ) async {
+    const statuses = <String>[
+      'Not Started',
+      'In Progress',
+      'Ready for Review',
+      'Qualified',
+    ];
+    var selected = state.specialtyPathStatus(specialty.id);
+    final goalMatches = FireOpsCatalog.goals()
+        .where((goal) => goal.id == specialty.id)
+        .toList();
+    final goal = goalMatches.isEmpty ? null : goalMatches.first;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setModalState) => SafeArea(
+          child: Padding(
+            padding: AppSpacing.paddingLg,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(specialty.icon),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        specialty.title,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(specialty.description),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  initialValue: selected,
+                  decoration:
+                      const InputDecoration(labelText: 'Personal path status'),
+                  items: statuses
+                      .map(
+                        (status) => DropdownMenuItem(
+                          value: status,
+                          child: Text(status),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) async {
+                    if (value == null) return;
+                    selected = value;
+                    await state.setSpecialtyPathStatus(specialty.id, value);
+                    if (context.mounted) setModalState(() {});
+                  },
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  selected == 'Qualified'
+                      ? '“Qualified” records the status you selected. Responder Roadmap does not grant or authorize this qualification.'
+                      : 'Responder Roadmap tracks your development; official authorization remains with the appropriate authority.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                if (goal != null && goal.requirements.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    'Path milestones',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: goal.requirements
+                          .map(
+                            (requirement) => ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.checklist_rounded),
+                              title: Text(requirement.name),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SpecialtyDefinition {
+  final String id;
+  final String title;
+  final String description;
+  final IconData icon;
+
+  const _SpecialtyDefinition({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.icon,
+  });
 }
 
 class _RoadmapHeader extends StatelessWidget {
