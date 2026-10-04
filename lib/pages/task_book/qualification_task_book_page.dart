@@ -138,6 +138,72 @@ class QualificationTaskBookPage extends StatelessWidget {
               _OfficialSourceCard(authority: authority),
               const SizedBox(height: AppSpacing.md),
             ],
+            _BuildTaskBookCard(
+              requirement: req,
+              goalId: goalId,
+              authority: authority,
+              customTasks: custom,
+              savedLinks: state.userResourceLinksFor(
+                goalId: goalId,
+                requirementId: req.id,
+              ),
+              onAddRequirement: () => _addPresetTask(
+                context,
+                goalId: goalId,
+                req: req,
+                section: 'PLAN THE CERTIFICATION',
+                titlePrompt: 'Missing requirement',
+                titleHint: 'Example: Complete department prerequisite course',
+                objective:
+                    'Add a requirement you found in the current official state, academy, testing-provider, or department process.',
+              ),
+              onAddJpr: () => _addPresetTask(
+                context,
+                goalId: goalId,
+                req: req,
+                section: 'PRACTICAL / JPR PREPARATION',
+                titlePrompt: 'Official JPR / practical station',
+                titleHint: 'Example: Master JPR — vehicle extrication',
+                objective:
+                    'Practice this official JPR or practical station using the current evaluator criteria until performance is consistent.',
+                performanceTasks: const [
+                  'Review the current official JPR / evaluator criteria.',
+                  'Practice the station with the required equipment and conditions.',
+                  'Repeat weak steps until performance is consistent.',
+                  'Move to Ready for Evaluation when prepared for formal evaluation.',
+                ],
+              ),
+              onAddReading: () => _addPresetTask(
+                context,
+                goalId: goalId,
+                req: req,
+                section: 'TRAINING',
+                titlePrompt: 'Required reading',
+                titleHint: 'Example: Read Chapter 3 — fire attack',
+                objective:
+                    'Track required reading from the current course, academy, candidate handbook, textbook, or authority.',
+                performanceTasks: const [
+                  'Complete the assigned reading.',
+                  'Note weak topics or material that needs review.',
+                ],
+              ),
+              onAddTestingStep: () => _addPresetTask(
+                context,
+                goalId: goalId,
+                req: req,
+                section: 'TESTING',
+                titlePrompt: 'Testing / registration step',
+                titleHint: 'Example: Register for written test',
+                objective:
+                    'Track a testing, application, registration, deadline, fee, or scheduling step required by your actual certification pathway.',
+              ),
+              onAddLink: () => _addUsefulLink(
+                context,
+                goalId: goalId,
+                req: req,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
             if (orderedSections.isNotEmpty) ...[
               _CertificationPhaseRail(
                 sections: orderedSections,
@@ -293,6 +359,135 @@ class QualificationTaskBookPage extends StatelessWidget {
     );
   }
 
+  Future<void> _addPresetTask(
+    BuildContext context, {
+    required String goalId,
+    required Requirement req,
+    required String section,
+    required String titlePrompt,
+    required String titleHint,
+    required String objective,
+    List<String> performanceTasks = const [],
+  }) async {
+    final controller = TextEditingController();
+    final title = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(titlePrompt),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            labelText: 'Task',
+            hintText: titleHint,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isEmpty) return;
+              Navigator.pop(dialogContext, value);
+            },
+            child: const Text('Add to Task Book'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (title == null || !context.mounted) return;
+
+    final now = DateTime.now();
+    await context.read<AppState>().addCustomTask(
+      TaskBookTaskDefinition(
+        id: 'custom_${now.microsecondsSinceEpoch.toRadixString(36)}',
+        title: title,
+        section: section,
+        goalId: goalId,
+        requirementId: req.id,
+        isCustom: true,
+        fireOpsObjective: objective,
+        whatToKnow: const [],
+        performanceTasks: performanceTasks,
+        safetyPoints: const [],
+        commonMistakes: const [],
+        practiceTools: const [],
+        resources: const [],
+      ),
+    );
+  }
+
+  Future<void> _addUsefulLink(
+    BuildContext context, {
+    required String goalId,
+    required Requirement req,
+  }) async {
+    final titleController = TextEditingController();
+    final urlController = TextEditingController();
+    final result = await showDialog<ResourceLink>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Add official or useful link'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Link name',
+                hintText: 'Example: Firefighter II JPR packet',
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            TextField(
+              controller: urlController,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                labelText: 'URL',
+                hintText: 'https://…',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final title = titleController.text.trim();
+              final url = urlController.text.trim();
+              final uri = Uri.tryParse(url);
+              if (title.isEmpty || uri == null || !uri.hasScheme) return;
+              Navigator.pop(
+                dialogContext,
+                ResourceLink(title: title, url: url),
+              );
+            },
+            child: const Text('Save link'),
+          ),
+        ],
+      ),
+    );
+    titleController.dispose();
+    urlController.dispose();
+    if (result == null || !context.mounted) return;
+    await context.read<AppState>().addUserResourceLink(
+      goalId: goalId,
+      requirementId: req.id,
+      link: result,
+    );
+  }
+
   Future<void> _addTask(
     BuildContext context, {
     required String goalId,
@@ -407,6 +602,231 @@ class QualificationTaskBookPage extends StatelessWidget {
     if (created == null) return;
     if (!context.mounted) return;
     await context.read<AppState>().addCustomTask(created);
+  }
+}
+
+class _BuildTaskBookCard extends StatelessWidget {
+  const _BuildTaskBookCard({
+    required this.requirement,
+    required this.goalId,
+    required this.authority,
+    required this.customTasks,
+    required this.savedLinks,
+    required this.onAddRequirement,
+    required this.onAddJpr,
+    required this.onAddReading,
+    required this.onAddTestingStep,
+    required this.onAddLink,
+  });
+
+  final Requirement requirement;
+  final String goalId;
+  final StateFireAuthority? authority;
+  final List<TaskBookTaskDefinition> customTasks;
+  final List<ResourceLink> savedLinks;
+  final VoidCallback onAddRequirement;
+  final VoidCallback onAddJpr;
+  final VoidCallback onAddReading;
+  final VoidCallback onAddTestingStep;
+  final VoidCallback onAddLink;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final jprs = customTasks
+        .where((task) => task.section == 'PRACTICAL / JPR PREPARATION')
+        .length;
+    final reading =
+        customTasks.where((task) => task.section == 'TRAINING').length;
+    final localRequirements = customTasks
+        .where((task) => task.section == 'PLAN THE CERTIFICATION')
+        .length;
+
+    return Container(
+      padding: AppSpacing.paddingMd,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.build_outlined, color: cs.primary),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'BUILD THIS TASK BOOK',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: cs.primary,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.6,
+                          ),
+                    ),
+                    Text(
+                      'Make the starter book match your real requirements',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'The premade book is a starting point. Use the current official state/certifying source, your academy or testing provider, and your department requirements to add anything missing. Keep this book updated as the process changes.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.45,
+                ),
+          ),
+          const SizedBox(height: 12),
+          _BuilderAction(
+            icon: Icons.public_outlined,
+            title: '1. Look up official requirements',
+            detail: authority == null
+                ? 'Set your state in Profile, then open the official source.'
+                : authority!.sourceTitle,
+            action: authority == null ? null : 'Open',
+            onTap: authority == null
+                ? null
+                : () async {
+                    final uri = Uri.tryParse(authority!.sourceUrl);
+                    if (uri != null) {
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    }
+                  },
+          ),
+          _BuilderAction(
+            icon: Icons.add_task_outlined,
+            title: '2. Add missing requirements',
+            detail: localRequirements == 0
+                ? 'Add prerequisites, academy steps, department rules, or paperwork the starter book does not know about.'
+                : '$localRequirements local requirement${localRequirements == 1 ? '' : 's'} added',
+            action: 'Add',
+            onTap: onAddRequirement,
+          ),
+          _BuilderAction(
+            icon: Icons.fact_check_outlined,
+            title: '3. Add every official JPR / practical station',
+            detail: jprs == 0
+                ? 'Use the official JPR/evaluator packet. Add one task per station so each can be practiced and evaluated.'
+                : '$jprs local JPR/practical task${jprs == 1 ? '' : 's'} added',
+            action: 'Add JPR',
+            onTap: onAddJpr,
+          ),
+          _BuilderAction(
+            icon: Icons.menu_book_outlined,
+            title: '4. Add required reading',
+            detail: reading == 0
+                ? 'Add assigned chapters, candidate-handbook sections, protocols, standards, or academy modules.'
+                : '$reading local reading/training item${reading == 1 ? '' : 's'} added',
+            action: 'Add reading',
+            onTap: onAddReading,
+          ),
+          _BuilderAction(
+            icon: Icons.event_available_outlined,
+            title: '5. Add testing and registration steps',
+            detail:
+                'Add your real written/practical registration, deadlines, fees, test dates, retest rules, and issuance steps.',
+            action: 'Add step',
+            onTap: onAddTestingStep,
+          ),
+          _BuilderAction(
+            icon: Icons.link_outlined,
+            title: '6. Save the links you actually use',
+            detail: savedLinks.isEmpty
+                ? 'Save the JPR packet, candidate handbook, testing portal, course page, or department reference inside the book.'
+                : '${savedLinks.length} saved link${savedLinks.length == 1 ? '' : 's'}',
+            action: 'Add link',
+            onTap: onAddLink,
+          ),
+          if (savedLinks.isNotEmpty) ...[
+            const Divider(height: 22),
+            ...savedLinks.take(5).map(
+                  (link) => ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.open_in_new, size: 18),
+                    title: Text(link.title),
+                    subtitle: link.url == null ? null : Text(link.url!),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: link.url == null
+                        ? null
+                        : () async {
+                            final uri = Uri.tryParse(link.url!);
+                            if (uri != null) {
+                              await launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              );
+                            }
+                          },
+                  ),
+                ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BuilderAction extends StatelessWidget {
+  const _BuilderAction({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.action,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final String? action;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: cs.primary),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+      subtitle: Text(
+        detail,
+        style: TextStyle(color: cs.onSurfaceVariant),
+      ),
+      trailing: action == null
+          ? null
+          : TextButton(
+              onPressed: onTap,
+              child: Text(action!),
+            ),
+      onTap: onTap,
+    );
   }
 }
 
