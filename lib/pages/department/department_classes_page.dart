@@ -315,6 +315,92 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     finally{if(mounted)setState(()=>_busy=false);}
   }
 
+  Future<void> _approveTrainingSheet() async {
+    final d = _detail;
+    if (d == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      _setDetail(await _api.approveTrainingSheet(d.id));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Training Sheet approved. RMS entry is now needed.')),
+        );
+      }
+    } on ResponderRoadmapApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _markRmsEntered() async {
+    final d = _detail;
+    if (d == null || _busy) return;
+    final reference = TextEditingController(text: d.rmsReference);
+    final note = TextEditingController(text: d.rmsEntryNote);
+    final result = await showDialog<(String, String)>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Mark RMS Entered'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: reference,
+              decoration: const InputDecoration(
+                labelText: 'RMS reference (optional)',
+                hintText: 'Record or incident number',
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: note,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Note (optional)',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+              dialogContext,
+              (reference.text.trim(), note.text.trim()),
+            ),
+            child: const Text('Mark Entered'),
+          ),
+        ],
+      ),
+    );
+    reference.dispose();
+    note.dispose();
+    if (result == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      _setDetail(
+        await _api.markTrainingSheetEnteredIntoRms(
+          d.id,
+          reference: result.$1,
+          note: result.$2,
+        ),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('RMS entry recorded with server timestamp.')),
+        );
+      }
+    } on ResponderRoadmapApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _repeatTraining() async {
     final d=_detail; if(d==null||_busy)return;
     final date=await showDatePicker(context:context,initialDate:DateTime.now().add(const Duration(days:7)),firstDate:DateTime.now(),lastDate:DateTime.now().add(const Duration(days:730)));
@@ -386,7 +472,73 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       }),
 
       if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.check_circle_outline_rounded), label: const Text('Close Training'))]),
-      if (detail.status == 'COMPLETE') ...[const Card(child: Padding(padding:EdgeInsets.all(14),child:Row(children:[Icon(Icons.verified_rounded),SizedBox(width:10),Expanded(child:Text('Training closed — official digital training sheet finalized.'))]))), const SizedBox(height:8), Wrap(spacing:8,runSpacing:8,children:[OutlinedButton.icon(onPressed:_busy?null:_repeatTraining,icon:const Icon(Icons.replay_rounded),label:const Text('Repeat Training')),OutlinedButton.icon(onPressed:_busy?null:_exportCsv,icon:const Icon(Icons.table_view_outlined),label:const Text('Export CSV for RMS')),OutlinedButton.icon(onPressed:_busy?null:()=>Share.share('Open the canonical training record at https://responderroadmap.com/classes/${detail.id} to print/save as PDF.',subject:'${detail.title} training record'),icon:const Icon(Icons.picture_as_pdf_outlined),label:const Text('PDF / Print Record'))])],
+      if (detail.status == 'COMPLETE') ...[
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(
+                  detail.rmsStatus == 'RMS_ENTERED'
+                      ? Icons.task_alt_rounded
+                      : detail.rmsStatus == 'AWAITING_ENTRY'
+                          ? Icons.assignment_late_outlined
+                          : Icons.verified_rounded,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    detail.rmsStatus == 'RMS_ENTERED'
+                        ? 'Training approved and RMS entry recorded.'
+                        : detail.rmsStatus == 'AWAITING_ENTRY'
+                            ? 'Instructor approved — RMS Actions Needed.'
+                            : 'Training closed — instructor approval is still required.',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (detail.rmsStatus == 'NOT_READY')
+              FilledButton.icon(
+                onPressed: _busy ? null : _approveTrainingSheet,
+                icon: const Icon(Icons.approval_outlined),
+                label: const Text('Instructor Approve'),
+              ),
+            if (detail.rmsStatus == 'AWAITING_ENTRY')
+              FilledButton.icon(
+                onPressed: _busy ? null : _markRmsEntered,
+                icon: const Icon(Icons.fact_check_outlined),
+                label: const Text('Mark RMS Entered'),
+              ),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _repeatTraining,
+              icon: const Icon(Icons.replay_rounded),
+              label: const Text('Repeat Training'),
+            ),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _exportCsv,
+              icon: const Icon(Icons.table_view_outlined),
+              label: const Text('Export CSV for RMS'),
+            ),
+            OutlinedButton.icon(
+              onPressed: _busy
+                  ? null
+                  : () => Share.share(
+                        'Open the canonical training record at https://responderroadmap.com/classes/${detail.id} to print/save as PDF.',
+                        subject: '${detail.title} training record',
+                      ),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('PDF / Print Record'),
+            ),
+          ],
+        ),
+      ],
       const SizedBox(height: 12),
       DropdownButtonFormField<String>(initialValue: _studentId, decoration: const InputDecoration(labelText: 'Student'), items: detail.roster.map((item) => DropdownMenuItem(value: item.id, child: Text('${item.name} · ${item.finalResult.replaceAll('_', ' ')}'))).toList(), onChanged: (value) => setState(() => _studentId = value)),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
