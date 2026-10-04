@@ -705,11 +705,18 @@ final List<CareerGoal> _goals = <CareerGoal>[
     subtitle: 'Core certs + foundational training',
     typicalPrerequisiteRoles: const ['Firefighter (Probationary)', 'Volunteer Firefighter'],
     requirements: <Requirement>[
-      _reqCourse(
+      _reqDepartmentGate(
         'recruit_orientation',
         'Department orientation and safety',
         sortOrder: 10,
-        description: 'Complete department orientation, code of conduct, reporting expectations, accountability, injury/exposure reporting, and core safety policies.',
+        description: 'Complete your department orientation, code of conduct, reporting expectations, accountability, injury/exposure reporting, and core safety policies.',
+      ),
+      _reqCourse(
+        'state_firefighter_path',
+        'Confirm your state firefighter certification pathway',
+        sortOrder: 15,
+        stateDependent: true,
+        description: 'Use the current official state fire-training/certification source to confirm which Firefighter, HazMat, testing, reciprocity, or academy requirements apply to you. Do not assume a common national pathway is your state rule.',
       ),
       _reqCourse(
         'cpr_bls',
@@ -792,7 +799,7 @@ final List<CareerGoal> _goals = <CareerGoal>[
       _reqCert('ff1', 'Firefighter I', defId: 'firefighter_1', sortOrder: 150, stateDependent: true),
       _reqCert('haz_awareness', 'HazMat Awareness', defId: 'hazmat_awareness', sortOrder: 160, stateDependent: true),
       _reqCert('haz_ops', 'HazMat Operations', defId: 'hazmat_operations', sortOrder: 170, stateDependent: true),
-      _reqCourse(
+      _reqDepartmentGate(
         'probationary_signoff',
         'Probationary / recruit task book sign-off',
         sortOrder: 180,
@@ -814,7 +821,7 @@ final List<CareerGoal> _goals = <CareerGoal>[
     typicalPrerequisiteRoles: const ['Firefighter'],
     requirements: <Requirement>[
       _reqCert('ff2', 'Firefighter II', defId: 'firefighter_2', sortOrder: 10, stateDependent: true),
-      _reqCourse('driver_prereq_review', 'Driver qualification prerequisites review', sortOrder: 20, description: 'Confirm license, driving-record, age/experience, medical, insurance, and department prerequisites before beginning apparatus qualification.'),
+      _reqDepartmentGate('driver_prereq_review', 'Driver qualification prerequisites review', sortOrder: 20, description: 'Confirm license, driving-record, age/experience, medical, insurance, and department prerequisites before beginning apparatus qualification.'),
       _reqCourse('evoc', 'Emergency vehicle operations / EVOC', sortOrder: 30, stateDependent: true, description: 'Complete the emergency vehicle operations course or department-approved equivalent required for apparatus response driving.'),
       _reqCourse('apparatus_inspection', 'Apparatus inspection and deficiency reporting', sortOrder: 40, description: 'Perform documented daily/weekly apparatus checks, identify deficiencies, and follow the department reporting process.'),
       _reqCourse('backing_spotting', 'Backing, spotting, and cone-course skills', sortOrder: 50, description: 'Demonstrate controlled backing, spotter communication, turning, positioning, clearance judgment, and department cone-course skills.'),
@@ -825,7 +832,7 @@ final List<CareerGoal> _goals = <CareerGoal>[
       _reqCourse('pump_operations', 'Practical pump operations', sortOrder: 100, description: 'Demonstrate engagement, tank-to-pump, hydrant supply, multiple handlines, master streams, troubleshooting, and safe shutdown procedures.'),
       _reqCert('do_pumper', 'Driver/Operator – Pumper', defId: 'driver_operator_pumper', sortOrder: 110, stateDependent: true),
       _reqCourse('state_driver_policy', 'State driver/operator policy check', sortOrder: 120, stateDependent: true, description: 'Confirm your state’s current driver/operator training and certification policy, then confirm your department SOPs.'),
-      _reqCourse('driver_release', 'Department driver/operator release', sortOrder: 130, description: 'Complete department evaluator sign-offs and final authorization for the apparatus or role you are qualifying on.'),
+      _reqDepartmentGate('driver_release', 'Department driver/operator release', sortOrder: 130, description: 'Complete department evaluator sign-offs and final authorization for the apparatus or role you are qualifying on.'),
     ],
     recommendedExperience: const [],
     resourceIds: const ['state_fire_authority'],
