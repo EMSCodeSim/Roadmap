@@ -326,7 +326,18 @@ ThemeData get lightTheme => ThemeData(
   ),
   chipTheme: ChipThemeData(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-    labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
+    backgroundColor: LightModeColors.lightSurface,
+    selectedColor: LightModeColors.navy,
+    disabledColor: LightModeColors.lightSurfaceVariant,
+    checkmarkColor: Colors.white,
+    labelStyle: GoogleFonts.inter(
+      fontWeight: FontWeight.w700,
+      color: LightModeColors.lightOnSurface,
+    ),
+    secondaryLabelStyle: GoogleFonts.inter(
+      fontWeight: FontWeight.w700,
+      color: Colors.white,
+    ),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(999),
       side: BorderSide(color: LightModeColors.lightOutline.withValues(alpha: 0.9)),
@@ -465,7 +476,18 @@ ThemeData get darkTheme => ThemeData(
   ),
   chipTheme: ChipThemeData(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-    labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
+    backgroundColor: DarkModeColors.darkSurfaceVariant,
+    selectedColor: DarkModeColors.darkPrimary,
+    disabledColor: DarkModeColors.darkSurfaceVariant,
+    checkmarkColor: Colors.white,
+    labelStyle: GoogleFonts.inter(
+      fontWeight: FontWeight.w700,
+      color: DarkModeColors.darkOnSurface,
+    ),
+    secondaryLabelStyle: GoogleFonts.inter(
+      fontWeight: FontWeight.w700,
+      color: Colors.white,
+    ),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(999),
       side: BorderSide(color: DarkModeColors.darkOutline.withValues(alpha: 0.95)),
