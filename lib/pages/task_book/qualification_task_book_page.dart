@@ -1401,12 +1401,134 @@ class _TaskTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+              if (task.isCustom)
+                PopupMenuButton<String>(
+                  tooltip: 'Edit Task Book item',
+                  onSelected: (value) async {
+                    if (value == 'edit') {
+                      await _editCustomTask(context);
+                    } else if (value == 'delete') {
+                      await context.read<AppState>().deleteCustomTask(
+                            goalId: goalId,
+                            requirementId: requirementId,
+                            taskId: task.id,
+                          );
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: ListTile(
+                        leading: Icon(Icons.edit_outlined),
+                        title: Text('Edit item'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: ListTile(
+                        leading: Icon(Icons.delete_outline),
+                        title: Text('Delete item'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _editCustomTask(BuildContext context) async {
+    final titleController = TextEditingController(text: task.title);
+    final sectionController = TextEditingController(text: task.section);
+    final objectiveController =
+        TextEditingController(text: task.fireOpsObjective ?? '');
+
+    final updated = await showDialog<TaskBookTaskDefinition>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit Task Book item'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(labelText: 'Task'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: sectionController,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  labelText: 'Section',
+                  hintText: 'TESTING',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: objectiveController,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Directions / objective',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final title = titleController.text.trim();
+              if (title.isEmpty) return;
+              Navigator.pop(
+                dialogContext,
+                TaskBookTaskDefinition(
+                  id: task.id,
+                  title: title,
+                  section: sectionController.text.trim().isEmpty
+                      ? task.section
+                      : sectionController.text.trim().toUpperCase(),
+                  goalId: task.goalId,
+                  requirementId: task.requirementId,
+                  isCustom: true,
+                  fireOpsObjective:
+                      objectiveController.text.trim().isEmpty
+                          ? null
+                          : objectiveController.text.trim(),
+                  whatToKnow: task.whatToKnow,
+                  performanceTasks: task.performanceTasks,
+                  safetyPoints: task.safetyPoints,
+                  commonMistakes: task.commonMistakes,
+                  practiceTools: task.practiceTools,
+                  resources: task.resources,
+                ),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    titleController.dispose();
+    sectionController.dispose();
+    objectiveController.dispose();
+
+    if (updated == null || !context.mounted) return;
+    await context.read<AppState>().updateCustomTask(updated);
   }
 }
 
