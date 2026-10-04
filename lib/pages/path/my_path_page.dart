@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
 import 'package:firepath/models/requirement.dart';
+import 'package:firepath/models/career_goal.dart';
 import 'package:firepath/models/career_path.dart';
 import 'package:firepath/pages/path/timeline/career_timeline_tab.dart';
 import 'package:firepath/state/app_state.dart';
