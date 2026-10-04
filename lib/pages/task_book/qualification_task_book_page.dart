@@ -6,9 +6,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/task_book.dart';
+import 'package:firepath/models/roadmap_models.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/advanced_certification_guide_data.dart';
 import 'package:firepath/services/certification_guide_library.dart';
+import 'package:firepath/services/national_task_book_baseline.dart';
+import 'package:firepath/services/task_book_checklist_hierarchy.dart';
 import 'package:firepath/services/state_fire_authority_catalog.dart';
 import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/state/app_state.dart';
@@ -218,6 +221,15 @@ class QualificationTaskBookPage extends StatelessWidget {
                       statusFor(task) == TaskBookTaskStatus.complete)
                   .length;
               return [
+                if (section == 'TESTING' &&
+                    NationalTaskBookBaseline.standardFor(req) != null) ...[
+                  _NationalBaselineSection(
+                    goalId: goalId,
+                    requirement: req,
+                    state: state,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
                 Row(
                   children: [
                     Expanded(
@@ -395,6 +407,169 @@ class QualificationTaskBookPage extends StatelessWidget {
     if (created == null) return;
     if (!context.mounted) return;
     await context.read<AppState>().addCustomTask(created);
+  }
+}
+
+class _NationalBaselineSection extends StatelessWidget {
+  const _NationalBaselineSection({
+    required this.goalId,
+    required this.requirement,
+    required this.state,
+  });
+
+  final String goalId;
+  final Requirement requirement;
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final standard = NationalTaskBookBaseline.standardFor(requirement);
+    if (standard == null) return const SizedBox.shrink();
+
+    final controller = state.taskBookController;
+    final steps = NationalTaskBookBaseline.effectiveSteps(
+      requirement,
+      controller.planStepsFor(
+        goalId: goalId,
+        requirementId: requirement.id,
+      ),
+    );
+    final subTasks = NationalTaskBookBaseline.effectiveSubTasks(
+      requirement,
+      controller.subTasksFor(
+        goalId: goalId,
+        requirementId: requirement.id,
+      ),
+    );
+
+    final total = subTasks.length;
+    final done = subTasks.where((item) => item.isDone).length;
+    final cs = Theme.of(context).colorScheme;
+
+    Future<void> toggleChild(
+      RequirementPlanStep parent,
+      RequirementSubTask child,
+      bool value,
+    ) async {
+      await controller.upsertSubTask(
+        goalId: goalId,
+        requirementId: requirement.id,
+        subTask: child.copyWith(isDone: value),
+      );
+      final updated = NationalTaskBookBaseline.effectiveSubTasks(
+        requirement,
+        controller.subTasksFor(
+          goalId: goalId,
+          requirementId: requirement.id,
+        ),
+      );
+      final parentDone = TaskBookChecklistHierarchy.stepCompleteFromChildren(
+        parent.id,
+        updated,
+      );
+      if (parentDone != parent.isDone) {
+        await controller.upsertPlanStep(
+          goalId: goalId,
+          requirementId: requirement.id,
+          step: parent.copyWith(isDone: parentDone),
+        );
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'SKILLS / JPR MASTERY',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: cs.onSurfaceVariant,
+                    ),
+              ),
+            ),
+            Text(
+              '$done/$total',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        Text(
+          '${standard.citation} national baseline • complete these alongside your official state, academy, and department JPRs.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                height: 1.4,
+              ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        ...steps.map((step) {
+          final children =
+              TaskBookChecklistHierarchy.childrenFor(step.id, subTasks);
+          final childDone = children.where((item) => item.isDone).length;
+          final complete = children.isNotEmpty
+              ? childDone == children.length
+              : step.isDone;
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+            clipBehavior: Clip.antiAlias,
+            child: ExpansionTile(
+              leading: Icon(
+                complete
+                    ? Icons.check_circle_rounded
+                    : Icons.fact_check_outlined,
+                color: complete
+                    ? FireOpsSemanticColors.completed
+                    : cs.primary,
+              ),
+              title: Text(
+                step.title,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              subtitle: Text(
+                '$childDone of ${children.length} objectives complete',
+                style: TextStyle(color: cs.onSurfaceVariant),
+              ),
+              children: [
+                ...children.map(
+                  (child) => CheckboxListTile(
+                    value: child.isDone,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Text(child.title),
+                    subtitle: TaskBookChecklistHierarchy.visibleNotes(child) ==
+                            null
+                        ? null
+                        : Text(
+                            TaskBookChecklistHierarchy.visibleNotes(child)!,
+                          ),
+                    onChanged: (value) =>
+                        toggleChild(step, child, value ?? false),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Use the current official evaluator/JPR packet for exact testing criteria.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
   }
 }
 
