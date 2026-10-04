@@ -347,6 +347,21 @@ class ProfileController extends ChangeNotifier {
     );
   }
 
+  Future<void> setSpecialtyPathStatus(String id, String status) async {
+    final next = Map<String, String>.from(_profile.specialtyPathStatuses);
+    if (status.trim().isEmpty || status == 'Not Started') {
+      next.remove(id);
+    } else {
+      next[id] = status.trim();
+    }
+    await updateProfile(
+      _profile.copyWith(
+        specialtyPathStatuses: next,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
   /// Updates Personal career path without deleting logs, certs, or progress.
   Future<void> setCareerPath({
     required CareerPath careerPath,
