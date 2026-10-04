@@ -190,7 +190,7 @@ class _DepartmentTransferPageState extends State<DepartmentTransferPage> {
                     icon: Icons.rule_folder_outlined,
                     title: 'Add the receiving department’s requirements',
                     text:
-                        'Start from a typical FireOps path, then add or edit local certifications, experience, task books, education, practicals, and promotional steps.',
+                        'Start from a typical Responder Roadmap path, then add or edit local certifications, experience, task books, education, practicals, and promotional steps.',
                   )
                 else
                   ...evaluation.items.map(
