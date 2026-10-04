@@ -39,8 +39,13 @@ extension _SimpleModeX on _SimpleMode {
 
 class SimpleQuickLogSheet extends StatefulWidget {
   final LogPrefill? prefill;
+  final bool showDepartmentQrAction;
 
-  const SimpleQuickLogSheet({super.key, this.prefill});
+  const SimpleQuickLogSheet({
+    super.key,
+    this.prefill,
+    this.showDepartmentQrAction = true,
+  });
 
   @override
   State<SimpleQuickLogSheet> createState() => _SimpleQuickLogSheetState();
@@ -136,6 +141,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                   : _CategoryStep(
                       key: const ValueKey('category'),
                       onPick: (mode) => setState(() => _mode = mode),
+                      showScanQr: widget.showDepartmentQrAction,
                       onScanQr: () => Navigator.of(context).pop(SimpleQuickLogResult.scanDepartmentQr),
                       onMoreDetails: () => Navigator.of(context)
                           .pop(SimpleQuickLogResult.moreDetails),
@@ -319,12 +325,14 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
 
 class _CategoryStep extends StatelessWidget {
   final ValueChanged<_SimpleMode> onPick;
+  final bool showScanQr;
   final VoidCallback onScanQr;
   final VoidCallback onMoreDetails;
 
   const _CategoryStep({
     super.key,
     required this.onPick,
+    required this.showScanQr,
     required this.onScanQr,
     required this.onMoreDetails,
   });
@@ -399,12 +407,14 @@ class _CategoryStep extends StatelessWidget {
           },
         ),
         const SizedBox(height: 10),
-        OutlinedButton.icon(
-          onPressed: onScanQr,
-          icon: const Icon(Icons.qr_code_scanner_rounded),
-          label: const Text('Scan department class QR'),
-        ),
-        const SizedBox(height: 4),
+        if (showScanQr) ...[
+          OutlinedButton.icon(
+            onPressed: onScanQr,
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            label: const Text('Scan department class QR'),
+          ),
+          const SizedBox(height: 4),
+        ],
         TextButton.icon(
           onPressed: onMoreDetails,
           icon: const Icon(Icons.tune_outlined),
