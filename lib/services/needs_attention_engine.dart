@@ -8,6 +8,7 @@ enum NeedsAttentionUrgency { now, soon, later }
 enum NeedsAttentionKind {
   certificationExpired,
   certificationExpiring,
+  certificationMissingExpiration,
   certificationMatch,
   missingRequiredCertification,
   stalledTaskBook,
@@ -45,12 +46,23 @@ class NeedsAttentionEngine {
     final items = <NeedsAttentionItem>[];
 
     for (final cert in app.certifications) {
-      if (cert.doesNotExpire || cert.expirationDate == null) continue;
+      if (cert.doesNotExpire) continue;
+      final name = app.certificationDisplayName(cert);
+      if (cert.expirationDate == null) {
+        items.add(NeedsAttentionItem(
+          id: 'cert-missing-expiration:${cert.id}',
+          kind: NeedsAttentionKind.certificationMissingExpiration,
+          urgency: NeedsAttentionUrgency.now,
+          title: '$name needs an expiration date',
+          detail: 'Add an expiration date or mark the credential Does Not Expire so readiness is not overstated.',
+          actionLabel: 'Update cert',
+          certificationId: cert.id,
+        ));
+        continue;
+      }
       final days = cert.expirationDate!
           .difference(DateTime(today.year, today.month, today.day))
           .inDays;
-      final name = app.certificationDisplayName(cert);
-
       if (days < 0) {
         items.add(NeedsAttentionItem(
           id: 'cert-expired:${cert.id}',
@@ -151,7 +163,7 @@ class NeedsAttentionEngine {
                 ? NeedsAttentionUrgency.now
                 : NeedsAttentionUrgency.soon,
             title: '${roadmap.goal.title} has been quiet for $daysSince days',
-            detail: 'No linked Task Book progress has been recorded recently. A short Daily Focus session can restart momentum.',
+            detail: 'No linked Task Book progress has been recorded recently. Open the Task Book and choose the next small step to restart momentum.',
             actionLabel: 'Open Task Book',
           ));
         }
