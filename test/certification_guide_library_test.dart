@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/services/certification_guide_library.dart';
+import 'package:firepath/services/task_book_library.dart';
 
 void main() {
   Requirement firefighterIIRequirement() => Requirement(
@@ -71,5 +72,26 @@ void main() {
     final note = CertificationGuideLibrary.firefighterII.officialSourceNote;
     expect(note.toLowerCase(), contains('not copied official jpr'));
     expect(note.toLowerCase(), contains('current skill sheets'));
+  });
+
+  test('certification task books include explicit pass gates', () {
+    final gates = TaskBookLibrary.certificationCompletionGates(
+      firefighterIIRequirement(),
+    );
+
+    expect(gates.map((task) => task.title), contains('Pass JPR / practical evaluation'));
+    expect(gates.map((task) => task.title), contains('Pass written test'));
+    expect(gates.every((task) => task.section == 'TESTING'), isTrue);
+  });
+
+  test('non-certification requirements do not get certification pass gates', () {
+    final requirement = firefighterIIRequirement().copyWith(
+      type: RequirementType.trainingCourse,
+    );
+
+    expect(
+      TaskBookLibrary.certificationCompletionGates(requirement),
+      isEmpty,
+    );
   });
 }
