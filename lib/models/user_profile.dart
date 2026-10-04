@@ -105,6 +105,12 @@ class UserProfile {
   /// changing Department Mode ranks or authorizations.
   final List<String> fireCareerStages;
 
+  /// Personal tracking state for optional specialty paths.
+  ///
+  /// These values are planning labels only. They do not grant department,
+  /// state, NWCG, or other agency authorization.
+  final Map<String, String> specialtyPathStatuses;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -121,6 +127,7 @@ class UserProfile {
     this.primaryTrack,
     this.careerPathConfirmed = false,
     this.fireCareerStages = const [],
+    this.specialtyPathStatuses = const {},
     required this.createdAt,
     required this.updatedAt,
   });
@@ -152,6 +159,7 @@ class UserProfile {
       primaryTrack: null,
       careerPathConfirmed: false,
       fireCareerStages: const [],
+      specialtyPathStatuses: const {},
       createdAt: now,
       updatedAt: now,
     );
@@ -170,6 +178,7 @@ class UserProfile {
     CareerPath? primaryTrack,
     bool? careerPathConfirmed,
     List<String>? fireCareerStages,
+    Map<String, String>? specialtyPathStatuses,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool clearPrimaryGoalId = false,
@@ -189,6 +198,8 @@ class UserProfile {
       primaryTrack: clearPrimaryTrack ? null : (primaryTrack ?? this.primaryTrack),
       careerPathConfirmed: careerPathConfirmed ?? this.careerPathConfirmed,
       fireCareerStages: fireCareerStages ?? this.fireCareerStages,
+      specialtyPathStatuses:
+          specialtyPathStatuses ?? this.specialtyPathStatuses,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -207,6 +218,7 @@ class UserProfile {
     'primaryTrack': primaryTrack?.storageValue,
     'careerPathConfirmed': careerPathConfirmed,
     'fireCareerStages': fireCareerStages,
+    'specialtyPathStatuses': specialtyPathStatuses,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
   };
@@ -252,6 +264,18 @@ class UserProfile {
             .toList()
         : <String>[];
 
+    final specialtyRaw = json['specialtyPathStatuses'];
+    final specialtyPathStatuses = specialtyRaw is Map
+        ? Map<String, String>.fromEntries(
+            specialtyRaw.entries
+                .where((entry) => entry.key is String && entry.value is String)
+                .map((entry) => MapEntry(
+                      entry.key as String,
+                      entry.value as String,
+                    )),
+          )
+        : <String, String>{};
+
     final parsedPath = CareerPathX.tryParse(json['careerPath']);
     var parsedPrimary = CareerPathX.tryParse(json['primaryTrack']);
     if (parsedPrimary == CareerPath.both) {
@@ -271,6 +295,7 @@ class UserProfile {
       primaryTrack: parsedPrimary,
       careerPathConfirmed: (json['careerPathConfirmed'] as bool?) ?? false,
       fireCareerStages: fireCareerStages,
+      specialtyPathStatuses: specialtyPathStatuses,
       createdAt: created,
       updatedAt: updated,
     );
