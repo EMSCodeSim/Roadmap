@@ -794,6 +794,11 @@ class AppState extends ChangeNotifier {
     await _persistAll();
   }
 
+  Future<void> updateCustomTask(TaskBookTaskDefinition task) async {
+    await taskBookController.updateCustomTask(task);
+    await _persistAll();
+  }
+
   Future<void> deleteCustomTask(
       {required String goalId,
       required String requirementId,
