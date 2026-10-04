@@ -402,6 +402,14 @@ class AppState extends ChangeNotifier {
     await _persistAll();
   }
 
+  String specialtyPathStatus(String id) =>
+      profile.specialtyPathStatuses[id] ?? 'Not Started';
+
+  Future<void> setSpecialtyPathStatus(String id, String status) async {
+    await profileController.setSpecialtyPathStatus(id, status);
+    await _persistAll();
+  }
+
   Certification? getCertificationById(String id) =>
       certificationController.getById(id);
 
