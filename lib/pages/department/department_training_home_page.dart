@@ -22,6 +22,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   final _api = ResponderRoadmapApi();
   List<DepartmentTaskBookAssignment> _assignments = const [];
   List<DepartmentReviewItem> _reviews = const [];
+  List<DepartmentClassDetail> _rmsActions = const [];
   bool _loading = true;
   bool _refreshing = false;
   String? _error;
@@ -51,15 +52,19 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       final session = await _api.currentSession();
       final items = await _api.listAssignments();
       List<DepartmentReviewItem> reviews = const [];
+      List<DepartmentClassDetail> rmsActions = const [];
       final role = (session.role ?? '').toUpperCase();
       if (const {'EVALUATOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
         try { reviews = await _api.listReviewQueue(); } catch (_) {}
+      }
+      if (const {'INSTRUCTOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
+        try { rmsActions = await _api.listRmsActionTrainingSheets(); } catch (_) {}
       }
       await context.read<DepartmentInboxController>().refresh(silent: true);
       if (!mounted) return;
       await context.read<AppModeController>().refreshFromSession(session);
       items.sort(_priorityCompare);
-      setState(() { _assignments = items; _reviews = reviews; _error = null; _loading = false; });
+      setState(() { _assignments = items; _reviews = reviews; _rmsActions = rmsActions; _error = null; _loading = false; });
     } on ResponderRoadmapApiException catch (e) {
       if (!mounted) return;
       setState(() { _error = e.message; _loading = false; });
@@ -145,8 +150,14 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     returned: returned,
                     overdue: overdue,
                     reviews: _reviews,
+                    rmsActions: _rmsActions,
                     onAssignment: _open,
                     onReview: (item) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentReviewPage(initialReviewId: item.id))),
+                    onRmsAction: (item) => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => DepartmentClassDetailPage(classId: item.id),
+                      ),
+                    ).then((_) => _refresh(silent: true)),
                   ),
                   const SizedBox(height: 12),
                   Card(
@@ -262,20 +273,24 @@ class _NeedsAttention extends StatelessWidget {
   final List<DepartmentTaskBookAssignment> returned;
   final List<DepartmentTaskBookAssignment> overdue;
   final List<DepartmentReviewItem> reviews;
+  final List<DepartmentClassDetail> rmsActions;
   final Future<void> Function(DepartmentTaskBookAssignment) onAssignment;
   final void Function(DepartmentReviewItem) onReview;
+  final void Function(DepartmentClassDetail) onRmsAction;
 
   const _NeedsAttention({
     required this.returned,
     required this.overdue,
     required this.reviews,
+    required this.rmsActions,
     required this.onAssignment,
     required this.onReview,
+    required this.onRmsAction,
   });
 
   @override
   Widget build(BuildContext context) {
-    final count = returned.length + overdue.length + reviews.length;
+    final count = returned.length + overdue.length + reviews.length + rmsActions.length;
     if (count == 0) {
       return Card(
         child: Padding(
@@ -319,6 +334,16 @@ class _NeedsAttention extends StatelessWidget {
         subtitle: Text('${item.memberName} · evaluation waiting'),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: () => onReview(item),
+      ));
+    }
+    for (final item in rmsActions.take(2)) {
+      tiles.add(ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.assignment_late_outlined),
+        title: Text(item.title),
+        subtitle: const Text('RMS Actions Needed'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => onRmsAction(item),
       ));
     }
 
