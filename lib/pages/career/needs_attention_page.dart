@@ -125,6 +125,7 @@ class _NeedsAttentionPageState extends State<NeedsAttentionPage> {
     switch (item.kind) {
       case NeedsAttentionKind.certificationExpired:
       case NeedsAttentionKind.certificationExpiring:
+      case NeedsAttentionKind.certificationMissingExpiration:
         final id = item.certificationId;
         if (id != null) {
           context.push(
@@ -167,6 +168,7 @@ class _AttentionTile extends StatelessWidget {
     final icon = switch (item.kind) {
       NeedsAttentionKind.certificationExpired => Icons.error_outline,
       NeedsAttentionKind.certificationExpiring => Icons.event_outlined,
+      NeedsAttentionKind.certificationMissingExpiration => Icons.event_busy_outlined,
       NeedsAttentionKind.certificationMatch => Icons.rule_outlined,
       NeedsAttentionKind.missingRequiredCertification => Icons.school_outlined,
       NeedsAttentionKind.stalledTaskBook => Icons.pause_circle_outline,
