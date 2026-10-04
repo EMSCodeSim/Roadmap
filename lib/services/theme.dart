@@ -35,10 +35,11 @@ class AppSpacing {
 
 /// Border radius constants for consistent rounded corners
 class AppRadius {
+  // Operational UI: restrained rounding (better information density).
   static const double sm = 8.0;
   static const double md = 12.0;
-  static const double lg = 16.0;
-  static const double xl = 24.0;
+  static const double lg = 14.0;
+  static const double xl = 18.0;
 }
 
 // =============================================================================
@@ -79,22 +80,22 @@ extension TextStyleExtensions on TextStyle {
 // COLORS
 // =============================================================================
 
-/// Modern, neutral color palette for light mode
-/// Uses soft grays and blues instead of purple for a contemporary look
 class LightModeColors {
-  // FireOps Path palette
-  // - Dark navy/charcoal header
-  // - White/light gray background
-  // - Red primary accent
-  static const lightPrimary = Color(0xFFB3261E); // deep fire red
-  static const lightOnPrimary = Color(0xFFFFFFFF);
-  static const lightPrimaryContainer = Color(0xFFFFDAD5);
-  static const lightOnPrimaryContainer = Color(0xFF410001);
+  /// Operational palette:
+  /// - Primary action/accent: #E11D48
+  /// - Primary dark/navy:     #0B1220
+  static const navy = Color(0xFF0B1220);
+  static const accent = Color(0xFFE11D48);
 
-  static const lightSecondary = Color(0xFF0E2A3B); // navy
+  static const lightPrimary = accent;
+  static const lightOnPrimary = Color(0xFFFFFFFF);
+  static const lightPrimaryContainer = Color(0xFFFDE7EF); // subtle rose tint
+  static const lightOnPrimaryContainer = navy;
+
+  static const lightSecondary = navy;
   static const lightOnSecondary = Color(0xFFFFFFFF);
 
-  static const lightTertiary = Color(0xFF1E3A2B); // muted green
+  static const lightTertiary = Color(0xFF1F2937); // slate (neutral)
   static const lightOnTertiary = Color(0xFFFFFFFF);
 
   // Error colors
@@ -103,30 +104,33 @@ class LightModeColors {
   static const lightErrorContainer = Color(0xFFFFDAD6);
   static const lightOnErrorContainer = Color(0xFF410002);
 
-  static const lightSurface = Color(0xFFFBFBFC);
-  static const lightOnSurface = Color(0xFF111418);
-  static const lightBackground = Color(0xFFF4F6F8);
-  static const lightSurfaceVariant = Color(0xFFE7ECF1);
-  static const lightOnSurfaceVariant = Color(0xFF3E4650);
+  static const lightSurface = Color(0xFFFFFFFF);
+  static const lightOnSurface = navy;
+  static const lightBackground = Color(0xFFF7F8FA);
+  static const lightSurfaceVariant = Color(0xFFF1F3F6);
+  static const lightOnSurfaceVariant = Color(0xFF475569);
 
   // Outline and shadow
-  static const lightOutline = Color(0xFF74777F);
+  static const lightOutline = Color(0xFFCBD5E1); // light slate border
   static const lightShadow = Color(0xFF000000);
-  static const lightInversePrimary = Color(0xFFFFB4AB);
+  static const lightInversePrimary = accent;
 }
 
 /// Dark mode colors with good contrast
 class DarkModeColors {
-  static const darkPrimary = Color(0xFFFFB4AB);
-  static const darkOnPrimary = Color(0xFF690005);
-  static const darkPrimaryContainer = Color(0xFF8F130D);
-  static const darkOnPrimaryContainer = Color(0xFFFFDAD5);
+  static const navy = Color(0xFF0B1220);
+  static const accent = Color(0xFFE11D48);
 
-  static const darkSecondary = Color(0xFF9FC6DD);
-  static const darkOnSecondary = Color(0xFF003546);
+  static const darkPrimary = accent;
+  static const darkOnPrimary = Color(0xFFFFFFFF);
+  static const darkPrimaryContainer = Color(0xFF2B0B16);
+  static const darkOnPrimaryContainer = Color(0xFFFDE7EF);
 
-  static const darkTertiary = Color(0xFFA6D1B8);
-  static const darkOnTertiary = Color(0xFF043724);
+  static const darkSecondary = Color(0xFF94A3B8); // slate
+  static const darkOnSecondary = navy;
+
+  static const darkTertiary = Color(0xFFCBD5E1);
+  static const darkOnTertiary = navy;
 
   // Error colors
   static const darkError = Color(0xFFFFB4AB);
@@ -134,27 +138,33 @@ class DarkModeColors {
   static const darkErrorContainer = Color(0xFF93000A);
   static const darkOnErrorContainer = Color(0xFFFFDAD6);
 
-  static const darkSurface = Color(0xFF0E1114);
-  static const darkOnSurface = Color(0xFFE6ECF2);
-  static const darkSurfaceVariant = Color(0xFF2B3138);
-  static const darkOnSurfaceVariant = Color(0xFFCAD3DC);
+  static const darkSurface = Color(0xFF0B1220);
+  static const darkOnSurface = Color(0xFFE5E7EB);
+  static const darkSurfaceVariant = Color(0xFF111B2E);
+  static const darkOnSurfaceVariant = Color(0xFFB6C2D1);
 
   // Outline and shadow
-  static const darkOutline = Color(0xFF8E9099);
+  static const darkOutline = Color(0xFF22304A);
   static const darkShadow = Color(0xFF000000);
-  static const darkInversePrimary = Color(0xFFB3261E);
+  static const darkInversePrimary = accent;
 }
 
 /// Semantic colors used across FireOps Path UI (status + header)
 class FireOpsSemanticColors {
-  static const headerDark = Color(0xFF0B1A24);
+  static const headerDark = Color(0xFF0B1220);
 
-  // Status semantics used across Task Book + Certs.
-  // Keep these consistent so status is instantly readable.
-  static const current = Color(0xFF1B5E20); // deep green
-  static const expiring = Color(0xFFF59E0B); // amber
-  static const expired = Color(0xFFB91C1C); // red
-  static const complete = Color(0xFF166534); // green (slightly different from current)
+  // Status semantics: keep meaning consistent across the app.
+  static const green = Color(0xFF16A34A); // approved/current/complete
+  static const amber = Color(0xFFF59E0B); // attention/in progress/expiring
+  static const red = Color(0xFFDC2626); // overdue/expired/returned/restricted
+  static const blue = Color(0xFF2563EB); // informational/pending
+  static const gray = Color(0xFF64748B); // inactive/not started
+
+  // Convenience aliases used by existing widgets.
+  static const current = green;
+  static const expiring = amber;
+  static const expired = red;
+  static const complete = green;
 
   // Back-compat (older references)
   static const completed = complete;
@@ -172,6 +182,12 @@ class AppCardTokens {
   static const double toneBorderAlpha = 0.28;
   static const EdgeInsets padding = AppSpacing.paddingMd;
   static const double radius = AppRadius.lg;
+}
+
+/// Shared sizing for touch targets.
+class AppTouchTargets {
+  static const double minButtonHeight = 48;
+  static const double minFieldHeight = 52;
 }
 
 /// App-wide motion constants.
@@ -230,6 +246,7 @@ ThemeData get lightTheme => ThemeData(
   ),
   brightness: Brightness.light,
   scaffoldBackgroundColor: LightModeColors.lightBackground,
+  iconTheme: const IconThemeData(color: LightModeColors.lightOnSurface),
   appBarTheme: const AppBarTheme(
     backgroundColor: Colors.transparent,
     foregroundColor: LightModeColors.lightOnSurface,
@@ -238,12 +255,37 @@ ThemeData get lightTheme => ThemeData(
     centerTitle: false,
     titleSpacing: 16,
   ),
+  listTileTheme: const ListTileThemeData(
+    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+    minLeadingWidth: 18,
+  ),
+  inputDecorationTheme: InputDecorationTheme(
+    isDense: true,
+    filled: true,
+    fillColor: LightModeColors.lightSurface,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderSide: BorderSide(color: LightModeColors.lightOutline.withValues(alpha: 0.9)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderSide: BorderSide(color: LightModeColors.lightOutline.withValues(alpha: 0.9)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderSide: BorderSide(color: LightModeColors.lightPrimary.withValues(alpha: 0.95), width: 1.4),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderSide: BorderSide(color: LightModeColors.lightError.withValues(alpha: 0.95)),
+    ),
+  ),
   cardTheme: CardThemeData(
     elevation: 0,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppCardTokens.radius),
       side: BorderSide(
-        color: LightModeColors.lightOutline.withValues(alpha: AppCardTokens.borderAlpha),
+        color: LightModeColors.lightOutline.withValues(alpha: 0.9),
         width: 1,
       ),
     ),
@@ -264,24 +306,48 @@ ThemeData get lightTheme => ThemeData(
   ),
   filledButtonTheme: FilledButtonThemeData(
     style: FilledButton.styleFrom(
+      minimumSize: const Size(0, AppTouchTargets.minButtonHeight),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+      textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
     ),
   ),
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
+      minimumSize: const Size(0, AppTouchTargets.minButtonHeight),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+      textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
+    ),
+  ),
+  textButtonTheme: TextButtonThemeData(
+    style: TextButton.styleFrom(
+      minimumSize: const Size(0, AppTouchTargets.minButtonHeight),
+      textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
+    ),
+  ),
+  chipTheme: ChipThemeData(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(999),
+      side: BorderSide(color: LightModeColors.lightOutline.withValues(alpha: 0.9)),
     ),
   ),
   navigationBarTheme: NavigationBarThemeData(
-    height: 74,
+    height: 68,
     elevation: 0,
     indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    indicatorColor: LightModeColors.lightPrimaryContainer,
+    backgroundColor: LightModeColors.lightSurface,
     labelTextStyle: WidgetStateProperty.resolveWith(
       (states) {
         final selected = states.contains(WidgetState.selected);
         return GoogleFonts.inter(fontSize: 12, fontWeight: selected ? FontWeight.w700 : FontWeight.w600);
       },
     ),
+    iconTheme: WidgetStateProperty.resolveWith((states) {
+      final selected = states.contains(WidgetState.selected);
+      return IconThemeData(color: selected ? LightModeColors.lightPrimary : LightModeColors.lightOnSurfaceVariant);
+    }),
   ),
   pageTransitionsTheme: const PageTransitionsTheme(
     builders: {
@@ -319,6 +385,7 @@ ThemeData get darkTheme => ThemeData(
   ),
   brightness: Brightness.dark,
   scaffoldBackgroundColor: DarkModeColors.darkSurface,
+  iconTheme: const IconThemeData(color: DarkModeColors.darkOnSurface),
   appBarTheme: const AppBarTheme(
     backgroundColor: Colors.transparent,
     foregroundColor: DarkModeColors.darkOnSurface,
@@ -327,12 +394,37 @@ ThemeData get darkTheme => ThemeData(
     centerTitle: false,
     titleSpacing: 16,
   ),
+  listTileTheme: const ListTileThemeData(
+    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+    minLeadingWidth: 18,
+  ),
+  inputDecorationTheme: InputDecorationTheme(
+    isDense: true,
+    filled: true,
+    fillColor: DarkModeColors.darkSurfaceVariant,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderSide: BorderSide(color: DarkModeColors.darkOutline.withValues(alpha: 0.95)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderSide: BorderSide(color: DarkModeColors.darkOutline.withValues(alpha: 0.95)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderSide: BorderSide(color: DarkModeColors.darkPrimary.withValues(alpha: 0.95), width: 1.4),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderSide: BorderSide(color: DarkModeColors.darkError.withValues(alpha: 0.95)),
+    ),
+  ),
   cardTheme: CardThemeData(
     elevation: 0,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppCardTokens.radius),
       side: BorderSide(
-        color: DarkModeColors.darkOutline.withValues(alpha: AppCardTokens.borderAlpha),
+        color: DarkModeColors.darkOutline.withValues(alpha: 0.95),
         width: 1,
       ),
     ),
@@ -353,24 +445,48 @@ ThemeData get darkTheme => ThemeData(
   ),
   filledButtonTheme: FilledButtonThemeData(
     style: FilledButton.styleFrom(
+      minimumSize: const Size(0, AppTouchTargets.minButtonHeight),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+      textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
     ),
   ),
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
+      minimumSize: const Size(0, AppTouchTargets.minButtonHeight),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+      textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
+    ),
+  ),
+  textButtonTheme: TextButtonThemeData(
+    style: TextButton.styleFrom(
+      minimumSize: const Size(0, AppTouchTargets.minButtonHeight),
+      textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
+    ),
+  ),
+  chipTheme: ChipThemeData(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(999),
+      side: BorderSide(color: DarkModeColors.darkOutline.withValues(alpha: 0.95)),
     ),
   ),
   navigationBarTheme: NavigationBarThemeData(
-    height: 74,
+    height: 68,
     elevation: 0,
     indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    indicatorColor: DarkModeColors.darkPrimaryContainer,
+    backgroundColor: DarkModeColors.darkSurface,
     labelTextStyle: WidgetStateProperty.resolveWith(
       (states) {
         final selected = states.contains(WidgetState.selected);
         return GoogleFonts.inter(fontSize: 12, fontWeight: selected ? FontWeight.w700 : FontWeight.w600);
       },
     ),
+    iconTheme: WidgetStateProperty.resolveWith((states) {
+      final selected = states.contains(WidgetState.selected);
+      return IconThemeData(color: selected ? DarkModeColors.darkPrimary : DarkModeColors.darkOnSurfaceVariant);
+    }),
   ),
   pageTransitionsTheme: const PageTransitionsTheme(
     builders: {
@@ -413,15 +529,15 @@ TextTheme _buildTextTheme(Brightness brightness) {
     ),
     titleLarge: GoogleFonts.inter(
       fontSize: FontSizes.titleLarge,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w700,
     ),
     titleMedium: GoogleFonts.inter(
       fontSize: FontSizes.titleMedium,
-      fontWeight: FontWeight.w500,
+      fontWeight: FontWeight.w600,
     ),
     titleSmall: GoogleFonts.inter(
       fontSize: FontSizes.titleSmall,
-      fontWeight: FontWeight.w500,
+      fontWeight: FontWeight.w600,
     ),
     labelLarge: GoogleFonts.inter(
       fontSize: FontSizes.labelLarge,
@@ -447,11 +563,13 @@ TextTheme _buildTextTheme(Brightness brightness) {
       fontSize: FontSizes.bodyMedium,
       fontWeight: FontWeight.w400,
       letterSpacing: 0.25,
+      height: 1.35,
     ),
     bodySmall: GoogleFonts.inter(
       fontSize: FontSizes.bodySmall,
       fontWeight: FontWeight.w400,
       letterSpacing: 0.4,
+      height: 1.3,
     ),
   );
 }

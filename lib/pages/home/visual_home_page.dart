@@ -231,15 +231,8 @@ class _TodayRail extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.xl),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              cs.secondaryContainer.withValues(alpha: 0.55),
-              cs.surfaceContainerHighest.withValues(alpha: 0.70),
-            ],
-          ),
-          border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+          color: cs.surface,
+          border: Border.all(color: cs.outline.withValues(alpha: 0.9)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -250,9 +243,9 @@ class _TodayRail extends StatelessWidget {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: cs.surface.withValues(alpha: 0.55),
+                    color: cs.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
+                    border: Border.all(color: cs.outline.withValues(alpha: 0.9)),
                   ),
                   child: Icon(Icons.today_rounded, color: cs.onSurface),
                 ),
@@ -263,7 +256,7 @@ class _TodayRail extends StatelessWidget {
                     children: [
                       Text(
                         'Today',
-                        style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                        style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       if ((goalTitle ?? '').trim().isNotEmpty)
                         Text(
@@ -272,7 +265,7 @@ class _TodayRail extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: t.bodySmall?.copyWith(
                             color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                     ],
@@ -283,7 +276,7 @@ class _TodayRail extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               headline,
-              style: t.titleLarge?.copyWith(fontWeight: FontWeight.w900, height: 1.15),
+              style: t.titleLarge?.copyWith(fontWeight: FontWeight.w800, height: 1.15),
             ),
             const SizedBox(height: 6),
             Text(
@@ -499,15 +492,8 @@ class _GettingStartedCardState extends State<_GettingStartedCard> {
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.xl),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              cs.primaryContainer.withValues(alpha: 0.85),
-              cs.surfaceContainerHighest.withValues(alpha: 0.55),
-            ],
-          ),
-          border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+          color: cs.primaryContainer,
+          border: Border.all(color: cs.outline.withValues(alpha: 0.9)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -518,9 +504,9 @@ class _GettingStartedCardState extends State<_GettingStartedCard> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: cs.surface.withValues(alpha: 0.45),
+                    color: cs.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
+                    border: Border.all(color: cs.outline.withValues(alpha: 0.9)),
                   ),
                   child: Icon(Icons.flag_outlined, color: cs.onSurface),
                 ),
@@ -528,7 +514,7 @@ class _GettingStartedCardState extends State<_GettingStartedCard> {
                 Expanded(
                   child: Text(
                     'Start here (2 minutes)',
-                    style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                    style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                   ),
                 ),
                 IconButton(

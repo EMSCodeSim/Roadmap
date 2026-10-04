@@ -49,33 +49,36 @@ class _NeedsAttentionPreviewState extends State<NeedsAttentionPreview> {
     final preview = items.take(2).toList();
     final cs = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: AppSpacing.paddingMd,
-      decoration: BoxDecoration(
-        color: cs.errorContainer.withValues(alpha: .34),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: cs.error.withValues(alpha: .18)),
-      ),
-      child: Column(
+    return Card(
+      child: Padding(
+        padding: AppCardTokens.padding,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.notifications_active_outlined, color: cs.error),
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: FireOpsSemanticColors.red,
+                  shape: BoxShape.circle,
+                ),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Needs Attention',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                       ),
                 ),
               ),
               Text(
                 '${items.length}',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: cs.error,
+                      fontWeight: FontWeight.w800,
+                      color: FireOpsSemanticColors.red,
                     ),
               ),
             ],
@@ -125,10 +128,11 @@ class _NeedsAttentionPreviewState extends State<NeedsAttentionPreview> {
             child: OutlinedButton.icon(
               onPressed: () => context.push(AppRoutes.needsAttention),
               icon: const Icon(Icons.rule_outlined),
-              label: const Text('Review'),
+              label: const Text('Review items'),
             ),
           ),
         ],
+      ),
       ),
     );
   }

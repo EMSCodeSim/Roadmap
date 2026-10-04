@@ -3,6 +3,9 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
+import 'package:firepath/services/theme.dart';
+import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
+import 'package:firepath/widgets/status_pill.dart';
 
 class DepartmentClassQrScannerPage extends StatefulWidget {
   const DepartmentClassQrScannerPage({super.key});
@@ -83,41 +86,89 @@ class _DepartmentClassQrScannerPageState extends State<DepartmentClassQrScannerP
       final session = _session ?? await _api.currentSession();
       if (!mounted) return;
 
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showModalBottomSheet<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Join this class roster?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(preview.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-              if (preview.location.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(preview.location),
+        useSafeArea: true,
+        showDragHandle: true,
+        isScrollControlled: true,
+        builder: (sheetContext) {
+          final cs = Theme.of(sheetContext).colorScheme;
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Join class roster', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 10),
+                Card(
+                  child: Padding(
+                    padding: AppCardTokens.padding,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(preview.title, style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                        if (preview.location.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(preview.location, style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text('You will be registered as:', style: Theme.of(sheetContext).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant)),
+                const SizedBox(height: 6),
+                Card(
+                  child: Padding(
+                    padding: AppCardTokens.padding,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(session.name, style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        Text(session.email, style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                        if ((session.departmentName ?? '').isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: StatusPill(
+                              text: session.departmentName!,
+                              icon: Icons.apartment_rounded,
+                              maxWidth: double.infinity,
+                              backgroundColor: cs.surfaceContainerHighest,
+                              foregroundColor: cs.onSurface,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'An instructor still confirms attendance and any evaluation results.',
+                  style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => sheetContext.pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: preview.open ? () => sheetContext.pop(true) : null,
+                        child: Text(preview.open ? 'Join roster' : 'Registration closed'),
+                      ),
+                    ),
+                  ],
+                ),
               ],
-              const SizedBox(height: 14),
-              const Text('Responder information', style: TextStyle(fontWeight: FontWeight.w800)),
-              Text(session.name),
-              Text(session.email),
-              if ((session.departmentName ?? '').isNotEmpty) Text(session.departmentName!),
-              const SizedBox(height: 12),
-              const Text(
-                'Your signed-in department profile will be used. An instructor must still confirm attendance and any skill results.',
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => context.pop(false),
-              child: const Text('Cancel'),
             ),
-            FilledButton(
-              onPressed: preview.open ? () => context.pop(true) : null,
-              child: Text(preview.open ? 'Join roster' : 'Registration closed'),
-            ),
-          ],
-        ),
+          );
+        },
       );
 
       if (confirmed != true) {
@@ -155,8 +206,10 @@ class _DepartmentClassQrScannerPageState extends State<DepartmentClassQrScannerP
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Scan Class QR')),
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Scaffold(
+        appBar: const FirefighterRoadmapAppBar(subtitle: 'Scan Class QR'),
         body: Column(
           children: [
             Expanded(
@@ -164,13 +217,25 @@ class _DepartmentClassQrScannerPageState extends State<DepartmentClassQrScannerP
                 fit: StackFit.expand,
                 children: [
                   MobileScanner(controller: _controller, onDetect: _onDetect),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          cs.surface.withValues(alpha: 0.00),
+                          cs.surface.withValues(alpha: 0.12),
+                        ],
+                      ),
+                    ),
+                  ),
                   Center(
                     child: Container(
                       width: 250,
                       height: 250,
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white, width: 3),
-                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.92), width: 2.5),
+                        borderRadius: BorderRadius.circular(AppRadius.xl),
                       ),
                     ),
                   ),
@@ -189,6 +254,7 @@ class _DepartmentClassQrScannerPageState extends State<DepartmentClassQrScannerP
                           ? (_message ?? 'Registration complete.')
                           : _message ?? 'Point the camera at a Responder Roadmap class QR code.',
                       textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     if (_message != null && !_registered) ...[
                       const SizedBox(height: 12),
@@ -210,6 +276,6 @@ class _DepartmentClassQrScannerPageState extends State<DepartmentClassQrScannerP
               ),
             ),
           ],
-        ),
-      );
+        ));
+  }
 }

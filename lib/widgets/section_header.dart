@@ -16,28 +16,21 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: theme.textTheme.titleMedium),
-              if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  subtitle!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        if (trailing != null) trailing!,
-      ],
-    );
+    final cs = theme.colorScheme;
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+          if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle!,
+              style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.25),
+            ),
+          ],
+        ]),
+      ),
+      if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+    ]);
   }
 }

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/pages/department/department_task_book_page.dart';
-import 'package:firepath/pages/department/department_class_qr_scanner_page.dart';
+import 'package:firepath/nav.dart';
 import 'package:firepath/pages/department/department_review_page.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/career_record_store.dart';
@@ -197,11 +198,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: () async {
-                        final joined = await Navigator.of(context).push<bool>(
-                          MaterialPageRoute(
-                            builder: (_) => const DepartmentClassQrScannerPage(),
-                          ),
-                        );
+                        final joined = await context.push<bool>(AppRoutes.departmentQrScan);
                         if (joined == true && mounted) await _refresh(silent: true);
                       },
                       icon: const Icon(Icons.qr_code_scanner_rounded),

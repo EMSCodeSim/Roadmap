@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/pages/career/production_quick_log_sheet.dart';
 import 'package:firepath/pages/career/quick_log_sheet.dart';
 import 'package:firepath/pages/career/simple_quick_log_sheet.dart';
-import 'package:firepath/pages/department/department_class_qr_scanner_page.dart';
+import 'package:firepath/nav.dart';
 
 /// Unified entry point for Quick Add.
 ///
@@ -33,11 +34,7 @@ class QuickLogLauncher {
 
       if (!context.mounted) return;
       if (result == SimpleQuickLogResult.scanDepartmentQr) {
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => const DepartmentClassQrScannerPage(),
-          ),
-        );
+        await context.push(AppRoutes.departmentQrScan);
         return;
       }
       if (result != SimpleQuickLogResult.moreDetails) return;
