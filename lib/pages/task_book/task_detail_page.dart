@@ -158,10 +158,12 @@ class TaskDetailPage extends StatelessWidget {
               emptyText: 'No notes yet. Add what your crew expects on this skill.',
             ),
             const SizedBox(height: AppSpacing.md),
-            _ExpandableListCard(
-              title: 'PERFORMANCE TASKS',
-              items: task.performanceTasks,
-              emptyText: 'No steps listed yet. Add the checklist you get signed off on.',
+            _PerformanceChecklistCard(
+              state: state,
+              goalId: goalId,
+              requirementId: requirementId,
+              task: task,
+              status: status,
             ),
             const SizedBox(height: AppSpacing.md),
             _ExpandableListCard(
@@ -360,6 +362,150 @@ class _InfoCard extends StatelessWidget {
             ).textTheme.bodyMedium?.copyWith(height: 1.55),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PerformanceChecklistCard extends StatelessWidget {
+  const _PerformanceChecklistCard({
+    required this.state,
+    required this.goalId,
+    required this.requirementId,
+    required this.task,
+    required this.status,
+  });
+
+  final AppState state;
+  final String goalId;
+  final String requirementId;
+  final TaskBookTaskDefinition task;
+  final TaskBookTaskStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final saved = state.subTasksFor(
+      goalId: goalId,
+      requirementId: requirementId,
+    );
+    final byId = {for (final item in saved) item.id: item};
+
+    String idFor(int index) => 'task:${task.id}:performance:$index';
+
+    final doneCount = task.performanceTasks.asMap().entries.where((entry) {
+      return byId[idFor(entry.key)]?.isDone == true;
+    }).length;
+
+    Future<void> toggle(int index, String title, bool value) async {
+      final id = idFor(index);
+      await state.taskBookController.upsertSubTask(
+        goalId: goalId,
+        requirementId: requirementId,
+        subTask: RequirementSubTask(
+          id: id,
+          title: title,
+          isDone: value,
+          notes: 'task:${task.id}',
+        ),
+      );
+
+      if (!context.mounted) return;
+      final nextDone = value ? doneCount + 1 : doneCount - 1;
+      if (task.performanceTasks.isNotEmpty &&
+          nextDone >= task.performanceTasks.length &&
+          status != TaskBookTaskStatus.complete &&
+          status != TaskBookTaskStatus.readyForEvaluation) {
+        await state.setTaskStatus(
+          goalId: goalId,
+          requirementId: requirementId,
+          taskId: task.id,
+          status: TaskBookTaskStatus.readyForEvaluation,
+          completionSource: null,
+        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'All performance steps checked. Task moved to Ready for Evaluation.',
+              ),
+            ),
+          );
+        }
+      } else if (value &&
+          status == TaskBookTaskStatus.notStarted) {
+        await state.setTaskStatus(
+          goalId: goalId,
+          requirementId: requirementId,
+          taskId: task.id,
+          status: TaskBookTaskStatus.practicing,
+          completionSource: null,
+        );
+      }
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.sm,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'PERFORMANCE CHECKLIST',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                ),
+                if (task.performanceTasks.isNotEmpty)
+                  Text(
+                    '$doneCount/${task.performanceTasks.length}',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (task.performanceTasks.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  'No steps listed yet. Add the checklist you get signed off on.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+              )
+            else
+              ...task.performanceTasks.asMap().entries.map((entry) {
+                final checked = byId[idFor(entry.key)]?.isDone == true;
+                return CheckboxListTile(
+                  value: checked,
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: Text(entry.value),
+                  onChanged: (value) =>
+                      toggle(entry.key, entry.value, value ?? false),
+                );
+              }),
+          ],
+        ),
       ),
     );
   }
