@@ -213,11 +213,19 @@ class _HomeActionCenterState extends State<_HomeActionCenter> {
     final app = widget.app;
     final department = widget.department;
     final attention = _buildAttention(app, department);
-    final next = _resolveNext(app, attention);
+    final smartOptions = SmartNextStepEngine.alternatives(app, limit: 3);
+    final next = _resolveNext(app, attention, smartOptions);
+    final blocking = attention.any((item) => item.priority <= 1);
+    final alternatives = blocking
+        ? const <_HomeAttentionItem>[]
+        : smartOptions
+            .skip(1)
+            .map((decision) => _smartDecisionItem(app, decision))
+            .toList(growable: false);
 
     return Column(
       children: [
-        _WhatNextCard(item: next),
+        _WhatNextCard(item: next, alternatives: alternatives),
         const SizedBox(height: 14),
         _NeedsMyAttentionCard(items: attention),
       ],
@@ -348,28 +356,15 @@ class _HomeActionCenterState extends State<_HomeActionCenter> {
   _HomeAttentionItem _resolveNext(
     AppState app,
     List<_HomeAttentionItem> attention,
+    List<SmartNextStepDecision> smartOptions,
   ) {
     final careerBlocking = attention
         .where((item) => item.priority <= 1)
         .toList(growable: false);
     if (careerBlocking.isNotEmpty) return careerBlocking.first;
 
-    final smart = SmartNextStepEngine.resolve(app);
-    final requirement = smart?.requirement;
-    if (requirement != null && smart != null) {
-      return _HomeAttentionItem(
-        id: 'roadmap-next:${requirement.id}',
-        priority: 20,
-        title: smart.actionTitle,
-        detail: smart.actionDetail,
-        icon: _todayActionIcon(requirement.type),
-        actionLabel: smart.actionLabel,
-        onTap: (context) => AppRouter.openRequirement(
-          context,
-          requirement,
-          goalId: app.roadmap?.goal.id,
-        ),
-      );
+    if (smartOptions.isNotEmpty) {
+      return _smartDecisionItem(app, smartOptions.first);
     }
 
     if (app.roadmap == null) {
@@ -394,6 +389,25 @@ class _HomeActionCenterState extends State<_HomeActionCenter> {
       onTap: (context) => context.go(AppRoutes.myPath),
     );
   }
+  _HomeAttentionItem _smartDecisionItem(
+    AppState app,
+    SmartNextStepDecision decision,
+  ) {
+    final requirement = decision.requirement;
+    return _HomeAttentionItem(
+      id: 'roadmap-next:${requirement.id}',
+      priority: 20,
+      title: decision.actionTitle,
+      detail: decision.actionDetail,
+      icon: _todayActionIcon(requirement.type),
+      actionLabel: decision.actionLabel,
+      onTap: (context) => AppRouter.openRequirement(
+        context,
+        requirement,
+        goalId: app.roadmap?.goal.id,
+      ),
+    );
+  }
 }
 
 IconData _todayActionIcon(RequirementType type) => switch (type) {
@@ -412,8 +426,12 @@ IconData _todayActionIcon(RequirementType type) => switch (type) {
 
 class _WhatNextCard extends StatelessWidget {
   final _HomeAttentionItem item;
+  final List<_HomeAttentionItem> alternatives;
 
-  const _WhatNextCard({required this.item});
+  const _WhatNextCard({
+    required this.item,
+    this.alternatives = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -459,6 +477,36 @@ class _WhatNextCard extends StatelessWidget {
               icon: Icon(item.icon),
               label: Text(item.actionLabel),
             ),
+            if (alternatives.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Also useful today',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              ...alternatives.take(2).map(
+                    (alternative) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      leading: Icon(alternative.icon, size: 20),
+                      title: Text(
+                        alternative.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        alternative.detail,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => alternative.onTap(context),
+                    ),
+                  ),
+            ],
           ],
         ),
       ),
