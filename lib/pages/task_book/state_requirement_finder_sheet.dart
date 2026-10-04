@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firepath/models/custom_task_book.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/state_fire_authority_catalog.dart';
@@ -7,7 +6,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 Future<Requirement?> showStateRequirementFinderSheet(
   BuildContext context, {
-  required CustomTaskBook book,
+  required String requirementScopeId,
+  required int currentCount,
   required String? currentStateCode,
 }) {
   return showModalBottomSheet<Requirement>(
@@ -16,7 +16,8 @@ Future<Requirement?> showStateRequirementFinderSheet(
     useSafeArea: true,
     showDragHandle: true,
     builder: (_) => _StateRequirementFinderSheet(
-      book: book,
+      requirementScopeId: requirementScopeId,
+      currentCount: currentCount,
       currentStateCode: currentStateCode,
     ),
   );
@@ -25,11 +26,13 @@ Future<Requirement?> showStateRequirementFinderSheet(
 enum _StateRequirementArea { fire, ems }
 
 class _StateRequirementFinderSheet extends StatefulWidget {
-  final CustomTaskBook book;
+  final String requirementScopeId;
+  final int currentCount;
   final String? currentStateCode;
 
   const _StateRequirementFinderSheet({
-    required this.book,
+    required this.requirementScopeId,
+    required this.currentCount,
     required this.currentStateCode,
   });
 
@@ -125,7 +128,7 @@ class _StateRequirementFinderSheetState
     final now = DateTime.now();
     final stateName = FireOpsCatalog.stateNameForCode(_stateCode) ?? _stateCode;
     final requirement = Requirement(
-      id: '${widget.book.pseudoGoalId}::state_${now.microsecondsSinceEpoch}',
+      id: '${widget.requirementScopeId}::state_${now.microsecondsSinceEpoch}',
       name: name,
       category: 'State — ' + stateName,
       priority: RequirementPriority.state,
@@ -151,7 +154,7 @@ class _StateRequirementFinderSheetState
       prerequisiteRequirementIds: const [],
       resourceIds: const [],
       resourceLinks: [ResourceLink(title: title, url: url)],
-      sortOrder: widget.book.requirements.length + 1,
+      sortOrder: widget.currentCount + 1,
       sourceStateCode: _stateCode,
       sourceTitle: title,
       sourceUrl: url,

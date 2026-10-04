@@ -220,7 +220,8 @@ class _CustomTaskBookBuilderScaffoldState extends State<_CustomTaskBookBuilderSc
     final appState = context.read<AppState>();
     final requirement = await showStateRequirementFinderSheet(
       context,
-      book: book,
+      requirementScopeId: book.pseudoGoalId,
+      currentCount: book.requirements.length,
       currentStateCode: FireOpsCatalog.stateCodeFromLegacyValue(appState.profile.state),
     );
     if (requirement == null || !context.mounted) return;
