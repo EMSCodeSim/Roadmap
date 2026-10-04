@@ -135,6 +135,106 @@ class CertificationGuideLibrary {
         resources: [],
       ),
       TaskBookTaskDefinition(
+        id: 'ff2_confirm_required_jprs',
+        title: 'Confirm the required official JPRs',
+        section: 'PLAN THE CERTIFICATION',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Build your checklist from the current official Firefighter II practical/JPR packet before you start checking off skill mastery.',
+        whatToKnow: [
+          'The number, order, wording, and critical criteria of official JPRs can vary by authority and revision.',
+          'Responder Roadmap should organize the official requirements, not invent them.',
+        ],
+        performanceTasks: [
+          'Open the current official Firefighter II JPR/practical packet.',
+          'Confirm the revision or effective date.',
+          'Identify every JPR or practical station you may be required to complete.',
+          'Add any locally specific JPRs or stations to this Task Book as custom tasks.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Using an old academy checklist or another state’s JPR packet without confirming that it applies.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'ff2_confirm_required_reading',
+        title: 'Confirm required reading and reference material',
+        section: 'PLAN THE CERTIFICATION',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Identify the exact textbook chapters, candidate handbook sections, standards, policies, and other material your course or testing authority expects you to study.',
+        whatToKnow: [
+          'Required chapters and reference editions vary by course and testing provider.',
+          'A general study guide should not replace the official reading list.',
+        ],
+        performanceTasks: [
+          'Confirm the required textbook title and edition.',
+          'Confirm the assigned chapters or modules.',
+          'Confirm any candidate handbook, policy, standard, or supplemental reading.',
+          'Add each major reading assignment to this Task Book as a custom task when you want a separate checkbox for it.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Studying from the right textbook but the wrong edition or skipping provider-assigned chapters.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'ff2_build_mastery_checklist',
+        title: 'Build the JPR mastery checklist',
+        section: 'PLAN THE CERTIFICATION',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Turn the official JPR packet into a set of individual practice targets so each required station can be mastered and checked off separately.',
+        whatToKnow: [
+          'Use the exact official JPR names or station identifiers when adding custom mastery tasks.',
+          'Mastery in Responder Roadmap is preparation status; only the official evaluator or testing authority determines a passing result.',
+        ],
+        performanceTasks: [
+          'Create a separate custom Task Book item for each official JPR or station.',
+          'Use a consistent name such as “Master JPR — [official station name]”.',
+          'Mark each mastery item complete only after you can perform it consistently to the current official criteria.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Treating one successful practice attempt as mastery.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'ff2_build_reading_checklist',
+        title: 'Build the reading checklist',
+        section: 'PLAN THE CERTIFICATION',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Break the official reading assignment into small checkoffs so required material is not lost inside one large “study” task.',
+        whatToKnow: [
+          'Examples could be “Read Chapter 3,” “Read Chapter 4,” or “Review candidate handbook testing rules,” but only add material your provider actually requires.',
+        ],
+        performanceTasks: [
+          'Create one custom task per assigned chapter, module, or required reference section.',
+          'Complete each reading item and note any weak topics that need review.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Checking off reading based on a summary without completing required source material.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
         id: 'ff2_complete_instruction',
         title: 'Complete required Firefighter II instruction',
         section: 'TRAINING',
@@ -161,7 +261,7 @@ class CertificationGuideLibrary {
       ),
       TaskBookTaskDefinition(
         id: 'ff2_command_communications',
-        title: 'Command, communications, and incident coordination',
+        title: 'Master practice area — command and communications',
         section: 'PRACTICAL / JPR PREPARATION',
         goalId: null,
         requirementId: null,
@@ -196,7 +296,7 @@ class CertificationGuideLibrary {
       ),
       TaskBookTaskDefinition(
         id: 'ff2_fire_attack_support',
-        title: 'Advanced fire attack and hose-line operations',
+        title: 'Master practice area — fire attack and hose operations',
         section: 'PRACTICAL / JPR PREPARATION',
         goalId: null,
         requirementId: null,
@@ -231,7 +331,7 @@ class CertificationGuideLibrary {
       ),
       TaskBookTaskDefinition(
         id: 'ff2_search_rescue',
-        title: 'Search, rescue, and firefighter support',
+        title: 'Master practice area — search and rescue',
         section: 'PRACTICAL / JPR PREPARATION',
         goalId: null,
         requirementId: null,
@@ -259,7 +359,7 @@ class CertificationGuideLibrary {
       ),
       TaskBookTaskDefinition(
         id: 'ff2_ventilation',
-        title: 'Ventilation operations and coordination',
+        title: 'Master practice area — ventilation',
         section: 'PRACTICAL / JPR PREPARATION',
         goalId: null,
         requirementId: null,
@@ -293,7 +393,7 @@ class CertificationGuideLibrary {
       ),
       TaskBookTaskDefinition(
         id: 'ff2_overhaul_property',
-        title: 'Overhaul, salvage, and property conservation',
+        title: 'Master practice area — overhaul and property conservation',
         section: 'PRACTICAL / JPR PREPARATION',
         goalId: null,
         requirementId: null,
@@ -321,7 +421,7 @@ class CertificationGuideLibrary {
       ),
       TaskBookTaskDefinition(
         id: 'ff2_vehicle_extrication',
-        title: 'Vehicle rescue and extrication support',
+        title: 'Master practice area — vehicle rescue/extrication',
         section: 'PRACTICAL / JPR PREPARATION',
         goalId: null,
         requirementId: null,
@@ -349,7 +449,7 @@ class CertificationGuideLibrary {
       ),
       TaskBookTaskDefinition(
         id: 'ff2_prevention_public_ed',
-        title: 'Fire prevention, inspections, and public education',
+        title: 'Master practice area — prevention and public education',
         section: 'PRACTICAL / JPR PREPARATION',
         goalId: null,
         requirementId: null,
@@ -375,7 +475,7 @@ class CertificationGuideLibrary {
       ),
       TaskBookTaskDefinition(
         id: 'ff2_preincident_planning',
-        title: 'Preincident planning and building information',
+        title: 'Master practice area — preincident planning',
         section: 'PRACTICAL / JPR PREPARATION',
         goalId: null,
         requirementId: null,
@@ -399,7 +499,7 @@ class CertificationGuideLibrary {
       ),
       TaskBookTaskDefinition(
         id: 'ff2_equipment_maintenance',
-        title: 'Equipment inspection and maintenance responsibilities',
+        title: 'Master practice area — equipment inspection/maintenance',
         section: 'PRACTICAL / JPR PREPARATION',
         goalId: null,
         requirementId: null,
@@ -482,25 +582,99 @@ class CertificationGuideLibrary {
         resources: [],
       ),
       TaskBookTaskDefinition(
-        id: 'ff2_complete_testing',
-        title: 'Complete required Firefighter II testing',
+        id: 'ff2_find_test_location',
+        title: 'Find an approved testing location',
         section: 'TESTING',
         goalId: null,
         requirementId: null,
         isCustom: false,
         fireOpsObjective:
-            'Complete the required knowledge and practical evaluations through the correct testing authority.',
+            'Identify where your written and practical Firefighter II testing can be completed through the authority that applies to you.',
         whatToKnow: [
-          'Know registration, identification, equipment/PPE, result, and retest procedures before test day.',
+          'Written and practical testing may occur at different locations or through different providers.',
+          'Confirm that the site is approved for the credential pathway your department recognizes.',
         ],
         performanceTasks: [
-          'Register for all required testing components.',
-          'Complete the required testing components.',
-          'Save official result documentation or completion records.',
+          'Find an approved written-test location or provider.',
+          'Find an approved practical/JPR evaluation location or provider.',
+          'Save contact information and testing instructions.',
         ],
         safetyPoints: [],
         commonMistakes: [
-          'Assuming course completion automatically means the certification has been issued.',
+          'Registering with a convenient provider before confirming that the result is accepted by the certifying authority.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'ff2_confirm_test_dates_fees',
+        title: 'Confirm test dates, deadlines, fees, and required documents',
+        section: 'TESTING',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Know the logistics before registration so no administrative detail delays testing.',
+        whatToKnow: [
+          'Testing providers may require proof of prerequisites, course completion, identification, PPE/equipment, affiliation, or payment.',
+        ],
+        performanceTasks: [
+          'Confirm the next available written and practical dates.',
+          'Record registration deadlines.',
+          'Confirm fees and cancellation/retest policies.',
+          'Gather required identification, course completion, prerequisite, or affiliation documentation.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Waiting until test week to discover missing prerequisite documentation.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'ff2_register_written',
+        title: 'Register for the written test',
+        section: 'TESTING',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Complete the official registration step for the Firefighter II written/knowledge examination.',
+        whatToKnow: [
+          'Confirm the appointment, location or remote-testing rules, identification requirements, and rescheduling policy.',
+        ],
+        performanceTasks: [
+          'Submit the required registration or application.',
+          'Pay any required fee.',
+          'Save the confirmation and test date.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Assuming course enrollment automatically registers you for the certification exam.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'ff2_register_practical',
+        title: 'Register for the practical/JPR test',
+        section: 'TESTING',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Complete the official registration or scheduling step for the Firefighter II practical/JPR evaluation.',
+        whatToKnow: [
+          'Confirm which equipment/PPE you must provide and whether station assignments are known in advance.',
+        ],
+        performanceTasks: [
+          'Submit the required registration or scheduling request.',
+          'Confirm location, arrival time, PPE/equipment requirements, and evaluator instructions.',
+          'Save the confirmation and test date.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Preparing for the skills but forgetting the provider-specific check-in or equipment requirements.',
         ],
         practiceTools: [],
         resources: [],
