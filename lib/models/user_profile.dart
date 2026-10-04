@@ -98,6 +98,13 @@ class UserProfile {
   /// True after the user explicitly chose or confirmed their Personal path.
   final bool careerPathConfirmed;
 
+  /// Optional customized Fire career-stage sequence.
+  ///
+  /// Empty means use [FireOpsCatalog.fireCareerStages]. Values are display
+  /// labels so users can remove (skip) or rename (replace) a stage without
+  /// changing Department Mode ranks or authorizations.
+  final List<String> fireCareerStages;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -113,6 +120,7 @@ class UserProfile {
     this.careerPath,
     this.primaryTrack,
     this.careerPathConfirmed = false,
+    this.fireCareerStages = const [],
     required this.createdAt,
     required this.updatedAt,
   });
@@ -143,6 +151,7 @@ class UserProfile {
       careerPath: null,
       primaryTrack: null,
       careerPathConfirmed: false,
+      fireCareerStages: const [],
       createdAt: now,
       updatedAt: now,
     );
@@ -160,6 +169,7 @@ class UserProfile {
     CareerPath? careerPath,
     CareerPath? primaryTrack,
     bool? careerPathConfirmed,
+    List<String>? fireCareerStages,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool clearPrimaryGoalId = false,
@@ -178,6 +188,7 @@ class UserProfile {
       careerPath: clearCareerPath ? null : (careerPath ?? this.careerPath),
       primaryTrack: clearPrimaryTrack ? null : (primaryTrack ?? this.primaryTrack),
       careerPathConfirmed: careerPathConfirmed ?? this.careerPathConfirmed,
+      fireCareerStages: fireCareerStages ?? this.fireCareerStages,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -195,6 +206,7 @@ class UserProfile {
     'careerPath': careerPath?.storageValue,
     'primaryTrack': primaryTrack?.storageValue,
     'careerPathConfirmed': careerPathConfirmed,
+    'fireCareerStages': fireCareerStages,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
   };
@@ -231,6 +243,15 @@ class UserProfile {
       plan = plan.copyWith(goalId: primaryGoalId);
     }
 
+    final fireCareerStagesRaw = json['fireCareerStages'];
+    final fireCareerStages = fireCareerStagesRaw is List
+        ? fireCareerStagesRaw
+            .whereType<String>()
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList()
+        : <String>[];
+
     final parsedPath = CareerPathX.tryParse(json['careerPath']);
     var parsedPrimary = CareerPathX.tryParse(json['primaryTrack']);
     if (parsedPrimary == CareerPath.both) {
@@ -249,6 +270,7 @@ class UserProfile {
       careerPath: parsedPath,
       primaryTrack: parsedPrimary,
       careerPathConfirmed: (json['careerPathConfirmed'] as bool?) ?? false,
+      fireCareerStages: fireCareerStages,
       createdAt: created,
       updatedAt: updated,
     );
