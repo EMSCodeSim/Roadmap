@@ -255,12 +255,21 @@ class _HomeActionCenterState extends State<_HomeActionCenter> {
     final smartOptions = SmartNextStepEngine.alternatives(app, limit: 3);
     final next = _resolveNext(app, attention, smartOptions);
     final blocking = attention.any((item) => item.priority <= 1);
-    final alternatives = blocking
-        ? const <_HomeAttentionItem>[]
-        : smartOptions
-            .skip(1)
-            .map((decision) => _smartDecisionItem(app, decision))
-            .toList(growable: false);
+    final alternatives = <_HomeAttentionItem>[];
+    if (!blocking && smartOptions.isNotEmpty) {
+      final primary = smartOptions.first;
+      final secondary = primary.secondaryFocusTitle;
+      if (secondary != null && secondary.trim().isNotEmpty) {
+        alternatives.add(_secondaryTaskItem(app, primary, secondary));
+      }
+      for (final decision in smartOptions.skip(1)) {
+        if (alternatives.length >= 2) break;
+        alternatives.add(_smartDecisionItem(app, decision));
+      }
+      if (alternatives.length < 2) {
+        alternatives.add(_maintenanceItem(app));
+      }
+    }
 
     return Column(
       children: [
@@ -428,6 +437,46 @@ class _HomeActionCenterState extends State<_HomeActionCenter> {
       onTap: (context) => context.go(AppRoutes.myPath),
     );
   }
+  _HomeAttentionItem _secondaryTaskItem(
+    AppState app,
+    SmartNextStepDecision decision,
+    String title,
+  ) {
+    final requirement = decision.requirement;
+    return _HomeAttentionItem(
+      id: 'roadmap-secondary:${requirement.id}:$title',
+      priority: 21,
+      title: title,
+      detail:
+          'Another useful Task Book step for ${requirement.name}. Do this if the primary task is not practical today.',
+      icon: Icons.checklist_rounded,
+      actionLabel: 'Open Task Book',
+      onTap: (context) => AppRouter.openRequirement(
+        context,
+        requirement,
+        goalId: app.roadmap?.goal.id,
+      ),
+    );
+  }
+
+  _HomeAttentionItem _maintenanceItem(AppState app) {
+    final goalId = app.roadmap?.goal.id ?? '';
+    final ems = goalId.startsWith('ems_');
+    return _HomeAttentionItem(
+      id: ems ? 'maintenance-ems-protocols' : 'maintenance-fire-sops',
+      priority: 40,
+      title: ems
+          ? 'Review one local EMS protocol'
+          : 'Review one department SOP / SOG',
+      detail: ems
+          ? 'Pick a protocol you use on calls, review the current local version, and note one decision point, medication, or change you want to remember.'
+          : 'Pick an operational SOP/SOG you use on shift, review the current local version, and note one action, limitation, or change you want to remember.',
+      icon: Icons.menu_book_outlined,
+      actionLabel: 'Open resources',
+      onTap: (context) => context.push(AppRoutes.resources),
+    );
+  }
+
   _HomeAttentionItem _smartDecisionItem(
     AppState app,
     SmartNextStepDecision decision,
