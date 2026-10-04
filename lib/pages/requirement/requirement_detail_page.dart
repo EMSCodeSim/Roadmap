@@ -8,6 +8,7 @@ import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/catalog.dart';
+import 'package:firepath/services/career_guidance.dart';
 import 'package:firepath/services/task_book_library.dart';
 import 'package:firepath/services/requirement_source_presenter.dart';
 import 'package:firepath/services/task_book_navigation.dart';
@@ -61,6 +62,15 @@ class RequirementDetailPage extends StatelessWidget {
     final hasTaskBook = TaskBookLibrary.hasTasksForRequirement(req);
     final hasSkillsChecklist = TaskBookNavigation.hasSkillsChecklist(req);
     final hasPreparationTasks = TaskBookNavigation.hasPreparationTasks(req);
+    final activeGoal = state.roadmap?.goal;
+    final guidance = activeGoal != null && goalId != null
+        ? CareerGuidanceEngine.build(
+            state: state,
+            goal: activeGoal,
+            requirement: req,
+            goalId: goalId,
+          )
+        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -102,6 +112,16 @@ class RequirementDetailPage extends StatelessWidget {
               progressLabel: _progressLabel(req),
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            if (guidance != null) ...[
+              _CareerGuidanceCard(
+                guidance: guidance,
+                goalTitle: activeGoal!.title,
+                onOpenCompetency: () => context.push(AppRoutes.competencyMap),
+                onOpenDepartment: () => context.go(AppRoutes.department),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
 
             _SectionTitle(
               icon: Icons.playlist_add_check,
@@ -189,6 +209,143 @@ class RequirementDetailPage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CareerGuidanceCard extends StatelessWidget {
+  const _CareerGuidanceCard({
+    required this.guidance,
+    required this.goalTitle,
+    required this.onOpenCompetency,
+    required this.onOpenDepartment,
+  });
+
+  final CareerGuidanceSummary guidance;
+  final String goalTitle;
+  final VoidCallback onOpenCompetency;
+  final VoidCallback onOpenDepartment;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    Widget row(IconData icon, String label, String value) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 19, color: cs.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: cs.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          height: 1.45,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: AppSpacing.paddingLg,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.route_outlined, color: cs.primary),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  'CAREER GUIDANCE',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+              Text(
+                goalTitle,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          row(Icons.help_outline_rounded, 'WHY THIS MATTERS', guidance.whyItMatters),
+          row(Icons.account_balance_outlined, 'WHO REQUIRES IT', guidance.requiredBy),
+          row(Icons.bolt_rounded, 'BEST NEXT ACTION', guidance.nextActionTitle),
+          Padding(
+            padding: const EdgeInsets.only(left: 29, bottom: 12),
+            child: Text(
+              guidance.nextActionDetail,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.45,
+                  ),
+            ),
+          ),
+          row(Icons.lock_open_outlined, 'WHAT IT UNLOCKS', guidance.unlocks),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: Text(
+              guidance.authorityNote,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onOpenCompetency,
+                  icon: const Icon(Icons.insights_outlined),
+                  label: const Text('Competency'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onOpenDepartment,
+                  icon: const Icon(Icons.verified_user_outlined),
+                  label: const Text('Authorization'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
