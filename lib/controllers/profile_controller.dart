@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:collection/collection.dart';
 
 import 'package:firepath/models/career_goal.dart';
 import 'package:firepath/models/career_path.dart';
@@ -103,9 +102,12 @@ class ProfileController extends ChangeNotifier {
     };
 
     Iterable<String> stageIds = ladder.take(targetIndex + 1);
-    if (identical(ladder, FireOpsCatalog.fireOperationsLadder) ||
-        const ListEquality<String>()
-            .equals(ladder, FireOpsCatalog.fireOperationsLadder)) {
+    final isFireLadder = ladder.length == FireOpsCatalog.fireOperationsLadder.length &&
+        List.generate(
+          ladder.length,
+          (i) => ladder[i] == FireOpsCatalog.fireOperationsLadder[i],
+        ).every((matches) => matches);
+    if (isFireLadder) {
       final visibleStages = _profile.fireCareerStages.isEmpty
           ? FireOpsCatalog.fireCareerStages
           : _profile.fireCareerStages;
