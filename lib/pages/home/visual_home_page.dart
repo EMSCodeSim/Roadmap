@@ -50,7 +50,7 @@ class VisualHomePage extends StatelessWidget {
               onMyPath: () => context.go(AppRoutes.myPath),
             ),
             const SizedBox(height: 14),
-            const _AnimatedAppear(delay: Duration(milliseconds: 80), child: _GettingStartedCard()),
+            _CredentialAttentionCard(app: app),
             const SizedBox(height: 14),
             if (!hasRoadmap)
               _ChooseGoalCard(
@@ -132,6 +132,146 @@ class VisualHomePage extends StatelessWidget {
             const SizedBox(height: 14),
             const _AnimatedAppear(delay: Duration(milliseconds: 140), child: _HomeUpdatesSection()),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CredentialAttentionCard extends StatelessWidget {
+  final AppState app;
+
+  const _CredentialAttentionCard({required this.app});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final flagged = app.certifications.where((cert) {
+      if (cert.doesNotExpire) return false;
+      final expiration = cert.expirationDate;
+      if (expiration == null) return true;
+      return expiration.difference(today).inDays <= 60;
+    }).toList()
+      ..sort((a, b) {
+        int priority(dynamic cert) {
+          if (!cert.doesNotExpire && cert.expirationDate == null) return 0;
+          final days = cert.expirationDate!.difference(today).inDays;
+          if (days < 0) return 1;
+          return 2;
+        }
+
+        final byPriority = priority(a).compareTo(priority(b));
+        if (byPriority != 0) return byPriority;
+        final aDate = a.expirationDate ?? DateTime(1900);
+        final bDate = b.expirationDate ?? DateTime(1900);
+        return aDate.compareTo(bDate);
+      });
+
+    if (flagged.isEmpty) return const SizedBox.shrink();
+
+    final cs = Theme.of(context).colorScheme;
+    final shown = flagged.take(3).toList();
+
+    String detail(dynamic cert) {
+      if (!cert.doesNotExpire && cert.expirationDate == null) {
+        return 'No expiration date listed';
+      }
+      final days = cert.expirationDate!.difference(today).inDays;
+      if (days < 0) return 'Expired ${-days} day${days == -1 ? '' : 's'} ago';
+      if (days == 0) return 'Expires today';
+      return 'Expires in $days day${days == 1 ? '' : 's'}';
+    }
+
+    IconData iconFor(dynamic cert) {
+      if (!cert.doesNotExpire && cert.expirationDate == null) {
+        return Icons.event_busy_outlined;
+      }
+      final days = cert.expirationDate!.difference(today).inDays;
+      return days < 0 ? Icons.error_outline_rounded : Icons.schedule_rounded;
+    }
+
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        onTap: () => context.go(AppRoutes.certifications),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 12, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.workspace_premium_outlined, color: cs.error),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      'Credentials need attention',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                  ),
+                  Text(
+                    '${flagged.length}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: cs.error,
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Add missing dates or review credentials that are expired or expiring within 60 days.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              ...shown.map(
+                (cert) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(iconFor(cert), size: 18, color: cs.error),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          app.certificationDisplayName(cert),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        detail(cert),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (flagged.length > shown.length)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    '+${flagged.length - shown.length} more',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
