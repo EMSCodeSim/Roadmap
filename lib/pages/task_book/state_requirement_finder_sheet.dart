@@ -43,7 +43,7 @@ class _StateRequirementFinderSheet extends StatefulWidget {
 
 class _StateRequirementFinderSheetState
     extends State<_StateRequirementFinderSheet> {
-  late String _stateCode;
+  String? _stateCode;
   _StateRequirementArea _area = _StateRequirementArea.fire;
   RequirementType _type = RequirementType.certification;
   late final TextEditingController _name;
@@ -63,7 +63,7 @@ class _StateRequirementFinderSheetState
     );
     _stateCode = profileState != null && validStates.contains(profileState)
         ? profileState
-        : 'CO';
+        : null;
     _name = TextEditingController();
     _details = TextEditingController();
     _sourceTitle = TextEditingController();
@@ -81,15 +81,19 @@ class _StateRequirementFinderSheetState
   }
 
   String get _sourceLink {
+    final stateCode = _stateCode;
+    if (stateCode == null) return '';
     if (_area == _StateRequirementArea.fire) {
-      return StateFireAuthorityCatalog.forState(_stateCode)?.sourceUrl ?? '';
+      return StateFireAuthorityCatalog.forState(stateCode)?.sourceUrl ?? '';
     }
     return 'https://www.nremt.org/maps';
   }
 
   String get _sourceLabel {
     if (_area == _StateRequirementArea.fire) {
-      return StateFireAuthorityCatalog.forState(_stateCode)?.sourceTitle ??
+      final stateCode = _stateCode;
+      if (stateCode == null) return 'Choose a state';
+      return StateFireAuthorityCatalog.forState(stateCode)?.sourceTitle ??
           'State fire training authority';
     }
     return 'National Registry State EMS Office Map';
@@ -114,8 +118,9 @@ class _StateRequirementFinderSheetState
     final name = _name.text.trim();
     final title = _sourceTitle.text.trim();
     final url = _sourceUrl.text.trim();
+    final stateCode = _stateCode;
     final uri = Uri.tryParse(url);
-    if (name.isEmpty || title.isEmpty || uri == null ||
+    if (stateCode == null || name.isEmpty || title.isEmpty || uri == null ||
         (uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -126,7 +131,7 @@ class _StateRequirementFinderSheetState
     }
 
     final now = DateTime.now();
-    final stateName = FireOpsCatalog.stateNameForCode(_stateCode) ?? _stateCode;
+    final stateName = FireOpsCatalog.stateNameForCode(stateCode) ?? stateCode;
     final requirement = Requirement(
       id: '${widget.requirementScopeId}::state_${now.microsecondsSinceEpoch}',
       name: name,
@@ -155,7 +160,7 @@ class _StateRequirementFinderSheetState
       resourceIds: const [],
       resourceLinks: [ResourceLink(title: title, url: url)],
       sortOrder: widget.currentCount + 1,
-      sourceStateCode: _stateCode,
+      sourceStateCode: stateCode,
       sourceTitle: title,
       sourceUrl: url,
       sourceNotes:
@@ -175,8 +180,8 @@ class _StateRequirementFinderSheetState
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final authority = _area == _StateRequirementArea.fire
-        ? StateFireAuthorityCatalog.forState(_stateCode)
+    final authority = _area == _StateRequirementArea.fire && _stateCode != null
+        ? StateFireAuthorityCatalog.forState(_stateCode!)
         : null;
     final validStates = FireOpsCatalog.usStateOptions
         .where((item) => item.code != FireOpsCatalog.otherStateCode)
@@ -212,6 +217,7 @@ class _StateRequirementFinderSheetState
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _stateCode,
+              hint: const Text('Choose a state'),
               decoration: const InputDecoration(labelText: 'State'),
               items: validStates
                   .map((item) => DropdownMenuItem(
@@ -268,10 +274,12 @@ class _StateRequirementFinderSheetState
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _area == _StateRequirementArea.fire
-                        ? authority?.guidance ??
-                            'Use your state fire training authority and confirm any department-specific requirement.'
-                        : 'Use the state EMS office map to find your state licensing authority. Check licensure, renewal, education, scope, and reciprocity rules.',
+                    _stateCode == null
+                        ? 'Select your state to open its fire authority or the EMS office directory.'
+                        : _area == _StateRequirementArea.fire
+                            ? authority?.guidance ??
+                                'Use your state fire training authority and confirm any department-specific requirement.'
+                            : 'Use the state EMS office map to find your state licensing authority. Check licensure, renewal, education, scope, and reciprocity rules.',
                     style: Theme.of(context)
                         .textTheme
                         .bodySmall
@@ -282,7 +290,7 @@ class _StateRequirementFinderSheetState
                     child: TextButton.icon(
                       onPressed: _sourceLink.isEmpty ? null : _openSource,
                       icon: const Icon(Icons.open_in_new, size: 18),
-                      label: const Text('Open official resource'),
+                      label: const Text('Open source directory'),
                     ),
                   ),
                 ],
@@ -359,7 +367,8 @@ class _StateRequirementFinderSheetState
                     controller: _sourceUrl,
                     keyboardType: TextInputType.url,
                     decoration: const InputDecoration(
-                      labelText: 'Official requirement page URL',
+                      labelText: 'State requirement page URL',
+                      hintText: 'Paste the exact state page you checked.',
                     ),
                   ),
                   const SizedBox(height: 8),

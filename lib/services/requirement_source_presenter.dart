@@ -13,10 +13,10 @@ class RequirementSourcePresenter {
     switch (r.requirementSource) {
       case RequirementSource.stateRequirement:
         if (!isVerifiedStateRequirement(r, profileStateCode: profileStateCode)) {
-          final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? profileStateCode);
+          final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? FireOpsCatalog.stateCodeFromLegacyValue(profileStateCode));
           return stateName == null ? 'State source • verify' : '$stateName source • verify';
         }
-        final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? profileStateCode);
+        final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? FireOpsCatalog.stateCodeFromLegacyValue(profileStateCode));
         if (stateName != null && stateName.trim().isNotEmpty) return 'Required in $stateName';
         return 'Verified state requirement';
       case RequirementSource.departmentRequirement:
@@ -32,10 +32,10 @@ class RequirementSourcePresenter {
     switch (r.requirementSource) {
       case RequirementSource.stateRequirement:
         if (!isVerifiedStateRequirement(r, profileStateCode: profileStateCode)) {
-          final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? profileStateCode);
+          final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? FireOpsCatalog.stateCodeFromLegacyValue(profileStateCode));
           return stateName == null ? 'State source added by you • verify' : '$stateName source added by you • verify';
         }
-        final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? profileStateCode);
+        final stateName = FireOpsCatalog.stateNameForCode(r.sourceStateCode ?? FireOpsCatalog.stateCodeFromLegacyValue(profileStateCode));
         return stateName == null ? 'Verified state requirement' : '$stateName requirement';
       case RequirementSource.departmentRequirement:
         return 'Department requirement';
@@ -58,7 +58,7 @@ class RequirementSourcePresenter {
 
   static bool isVerifiedStateRequirement(Requirement r, {required String? profileStateCode}) {
     if (r.requirementSource != RequirementSource.stateRequirement) return false;
-    final state = (r.sourceStateCode ?? profileStateCode)?.trim().toUpperCase();
+    final state = r.sourceStateCode?.trim().toUpperCase() ?? FireOpsCatalog.stateCodeFromLegacyValue(profileStateCode)?.toUpperCase();
     final src = r.sourceStateCode?.trim().toUpperCase();
     if (src == null || src.isEmpty) return false;
     if (r.sourceVerifiedDate == null ||

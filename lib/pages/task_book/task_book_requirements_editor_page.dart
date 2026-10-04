@@ -42,8 +42,8 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
 
     final national = bySource(RequirementSource.commonlyRequired);
     final stateReqs = bySource(RequirementSource.stateRequirement);
-    final verifiedStateReqs = stateReqs.where((e) => RequirementSourcePresenter.isVerifiedStateRequirement(e.requirement, profileStateCode: state.profile.state)).toList();
-    final addedStateReqs = stateReqs.where((e) => !RequirementSourcePresenter.isVerifiedStateRequirement(e.requirement, profileStateCode: state.profile.state)).toList();
+    final verifiedStateReqs = stateReqs.where((e) => RequirementSourcePresenter.isVerifiedStateRequirement(e.requirement, profileStateCode: FireOpsCatalog.stateCodeFromLegacyValue(state.profile.state))).toList();
+    final addedStateReqs = stateReqs.where((e) => !RequirementSourcePresenter.isVerifiedStateRequirement(e.requirement, profileStateCode: FireOpsCatalog.stateCodeFromLegacyValue(state.profile.state))).toList();
     final local = bySource(RequirementSource.departmentRequirement);
     final recommended = bySource(RequirementSource.recommended);
 
