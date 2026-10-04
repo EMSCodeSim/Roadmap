@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/models/task_book.dart';
+import 'package:firepath/models/roadmap_models.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
