@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_inbox.dart';
 import 'package:firepath/services/career_record_store.dart';
@@ -348,18 +349,21 @@ class _HomeActionCenterState extends State<_HomeActionCenter> {
     AppState app,
     List<_HomeAttentionItem> attention,
   ) {
-    if (attention.isNotEmpty) return attention.first;
+    final careerBlocking = attention
+        .where((item) => item.priority <= 1)
+        .toList(growable: false);
+    if (careerBlocking.isNotEmpty) return careerBlocking.first;
 
     final smart = SmartNextStepEngine.resolve(app);
     final requirement = smart?.requirement;
-    if (requirement != null) {
+    if (requirement != null && smart != null) {
       return _HomeAttentionItem(
         id: 'roadmap-next:${requirement.id}',
         priority: 20,
-        title: smart?.focusTitle ?? requirement.name,
-        detail: smart?.reason ?? 'This is the next useful step in your roadmap.',
-        icon: Icons.route_outlined,
-        actionLabel: 'Open next step',
+        title: smart.actionTitle,
+        detail: smart.actionDetail,
+        icon: _todayActionIcon(requirement.type),
+        actionLabel: smart.actionLabel,
         onTap: (context) => AppRouter.openRequirement(
           context,
           requirement,
@@ -391,6 +395,20 @@ class _HomeActionCenterState extends State<_HomeActionCenter> {
     );
   }
 }
+
+IconData _todayActionIcon(RequirementType type) => switch (type) {
+      RequirementType.certification => Icons.workspace_premium_outlined,
+      RequirementType.trainingCourse || RequirementType.course =>
+        Icons.school_outlined,
+      RequirementType.promotionalTest => Icons.event_available_outlined,
+      RequirementType.practical => Icons.fact_check_outlined,
+      RequirementType.interview => Icons.record_voice_over_outlined,
+      RequirementType.education => Icons.school_outlined,
+      RequirementType.taskBook => Icons.menu_book_outlined,
+      RequirementType.experience => Icons.trending_up_rounded,
+      RequirementType.numericProgress => Icons.add_task_outlined,
+      RequirementType.custom => Icons.route_outlined,
+    };
 
 class _WhatNextCard extends StatelessWidget {
   final _HomeAttentionItem item;
