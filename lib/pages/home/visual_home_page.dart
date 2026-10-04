@@ -9,6 +9,7 @@ import 'package:firepath/services/career_inbox.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/needs_attention_engine.dart';
 import 'package:firepath/services/smart_next_step.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
@@ -75,12 +76,50 @@ class _MyStatusCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'My status',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w900),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'CAREER SNAPSHOT',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.6,
+                            ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'My status',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ],
+                  ),
+                ),
+                if (progress != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '$progress%',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: cs.onPrimaryContainer,
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 10),
             _StatusLine(label: 'Current level', value: currentRole),
@@ -443,15 +482,41 @@ class _WhatNextCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.bolt_rounded, color: cs.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'What should I do today?',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.bolt_rounded, color: cs.primary),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'BEST MOVE TODAY',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: cs.primary,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.6,
+                            ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'What should I do today?',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -571,7 +636,16 @@ class _NeedsMyAttentionCard extends StatelessWidget {
               ...visible.map(
                 (item) => ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(item.icon),
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(item.icon, size: 19),
+                  ),
                   title: Text(
                     item.title,
                     maxLines: 2,
