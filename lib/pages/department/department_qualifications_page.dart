@@ -71,7 +71,7 @@ class _DepartmentQualificationsPageState extends State<DepartmentQualificationsP
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
-            ? const ListView(children: [SizedBox(height: 220), Center(child: CircularProgressIndicator())])
+            ? ListView(children: const [SizedBox(height: 220), Center(child: CircularProgressIndicator())])
             : ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                 children: [
