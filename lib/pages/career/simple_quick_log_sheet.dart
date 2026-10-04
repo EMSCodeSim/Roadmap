@@ -343,7 +343,6 @@ class _CategoryStep extends StatelessWidget {
     _SimpleMode.exposure,
     _SimpleMode.drive,
     _SimpleMode.career,
-    _SimpleMode.taskBook,
   ];
 
   @override
@@ -404,6 +403,16 @@ class _CategoryStep extends StatelessWidget {
               ),
             );
           },
+        ),
+        const SizedBox(height: 10),
+        FilledButton.tonalIcon(
+          onPressed: () => onPick(_SimpleMode.taskBook),
+          icon: const Icon(Icons.menu_book_outlined),
+          label: const Text('Task Book / Career Road progress'),
+          style: FilledButton.styleFrom(
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
         ),
         const SizedBox(height: 10),
         if (showScanQr) ...[
