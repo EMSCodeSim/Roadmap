@@ -6,9 +6,8 @@ import 'package:firepath/services/task_book_library.dart';
 
 /// Where a Task Book requirement should open.
 ///
-/// Certifications open their JPR/skills checklist first. Preparation-task
-/// books (Learn / Practice / Record) remain available as a secondary layer
-/// when FireOps has authored that content.
+/// Certifications open the full guided Task Book first. National skills/JPR
+/// objectives are part of that Task Book instead of a competing destination.
 enum TaskBookOpenTarget {
   skillsChecklist,
   preparationTasks,
@@ -51,11 +50,11 @@ class TaskBookNavigation {
   }
 
   static TaskBookOpenTarget targetFor(Requirement requirement) {
-    if (hasSkillsChecklist(requirement)) {
-      return TaskBookOpenTarget.skillsChecklist;
-    }
     if (hasPreparationTasks(requirement)) {
       return TaskBookOpenTarget.preparationTasks;
+    }
+    if (hasSkillsChecklist(requirement)) {
+      return TaskBookOpenTarget.skillsChecklist;
     }
     return TaskBookOpenTarget.requirementDetail;
   }
