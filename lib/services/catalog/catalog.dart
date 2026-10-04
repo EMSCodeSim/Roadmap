@@ -117,7 +117,59 @@ class FireOpsCatalog {
     'EVOC',
   ];
 
-  /// Cumulative Fire operations ladder used by [ProfileController].
+  /// Recommended visible Fire career-stage sequence.
+  ///
+  /// This is intentionally more granular than [fireOperationsLadder]. Multiple
+  /// visible stages can share one requirement bundle. Users may customize this
+  /// sequence in Personal Roadmap without changing Department Mode ranks.
+  static const List<String> fireCareerStages = <String>[
+    'Recruit',
+    'Probationary Firefighter',
+    'Firefighter',
+    'Driver/Operator',
+    'Engineer',
+    'Lieutenant',
+    'Captain',
+    'Battalion Chief',
+    'Division Chief',
+    'Assistant Chief',
+    'Deputy Chief',
+    'Fire Chief',
+  ];
+
+  /// Specialty qualifications stay outside the straight promotion ladder.
+  static const List<String> fireSpecialtyQualifications = <String>[
+    'Driver Trainee',
+    'Acting Officer',
+    'Company Officer Qualification',
+    'Instructor',
+    'Training Officer',
+    'Wildland Firefighter',
+    'HazMat',
+    'Technical Rescue',
+    'Investigator',
+    'Medic',
+  ];
+
+  /// Maps a visible stage to the cumulative requirement bundle it belongs to.
+  ///
+  /// Unknown/custom replacement labels intentionally return null. This lets a
+  /// user replace a default stage and then add department-specific requirements
+  /// without silently inheriting requirements from a rank they do not use.
+  static String? fireGoalIdForStageLabel(String label) {
+    return switch (label.trim().toLowerCase()) {
+      'recruit' || 'recruit / probationary' || 'probationary firefighter' || 'firefighter' => 'ops_firefighter',
+      'driver/operator' || 'driver operator' || 'engineer' => 'ops_engineer',
+      'company officer' || 'lieutenant' || 'captain' => 'ops_company_officer',
+      'battalion chief' => 'ops_battalion_chief',
+      'division chief' || 'assistant chief' => 'ops_division_chief',
+      'deputy chief' => 'ops_deputy_chief',
+      'fire chief' => 'ops_fire_chief',
+      _ => null,
+    };
+  }
+
+  /// Cumulative Fire operations requirement bundles used by [ProfileController].
   static const List<String> fireOperationsLadder = <String>[
     'ops_firefighter',
     'ops_engineer',
