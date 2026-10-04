@@ -699,26 +699,31 @@ class _TaskTile extends StatelessWidget {
       taskId: task.id,
     );
 
-    final (icon, color) = switch (status) {
+    final (icon, color, label) = switch (status) {
       TaskBookTaskStatus.complete => (
           Icons.check_circle,
           FireOpsSemanticColors.completed,
+          'Complete',
         ),
       TaskBookTaskStatus.readyForEvaluation => (
           Icons.verified_outlined,
-          cs.primary,
+          FireOpsSemanticColors.blue,
+          'Ready for evaluation',
         ),
       TaskBookTaskStatus.learning => (
           Icons.menu_book_outlined,
-          cs.tertiary,
+          FireOpsSemanticColors.blue,
+          'Learning',
         ),
       TaskBookTaskStatus.practicing => (
           Icons.play_circle_outline,
-          cs.secondary,
+          FireOpsSemanticColors.amber,
+          'Practicing',
         ),
       TaskBookTaskStatus.notStarted => (
           Icons.circle_outlined,
-          cs.onSurfaceVariant,
+          FireOpsSemanticColors.gray,
+          'Not started',
         ),
     };
 
@@ -760,18 +765,43 @@ class _TaskTile extends StatelessWidget {
                           .titleSmall
                           ?.copyWith(fontWeight: FontWeight.w800),
                     ),
-                    if ((task.fireOpsObjective ?? '').trim().isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        task.fireOpsObjective!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                              height: 1.3,
+                    const SizedBox(height: 5),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.25),
                             ),
-                      ),
-                    ],
+                          ),
+                          child: Text(
+                            label,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: color,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                        ),
+                        if ((task.fireOpsObjective ?? '').trim().isNotEmpty)
+                          Text(
+                            task.fireOpsObjective!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
