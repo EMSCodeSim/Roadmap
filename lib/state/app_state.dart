@@ -388,6 +388,20 @@ class AppState extends ChangeNotifier {
     await _persistAll();
   }
 
+  List<String> get fireCareerStages => profile.fireCareerStages.isEmpty
+      ? List<String>.from(FireOpsCatalog.fireCareerStages)
+      : List<String>.from(profile.fireCareerStages);
+
+  Future<void> setFireCareerStages(List<String> stages) async {
+    await profileController.setFireCareerStages(stages);
+    await _persistAll();
+  }
+
+  Future<void> resetFireCareerStages() async {
+    await profileController.resetFireCareerStages();
+    await _persistAll();
+  }
+
   Certification? getCertificationById(String id) =>
       certificationController.getById(id);
 
