@@ -1058,9 +1058,19 @@ final List<CareerGoal> _goals = <CareerGoal>[
         description: 'Complete RT-130 when required to maintain currency. NWCG notes that RT-130 is not required during the first year as FFT2 but is required in subsequent years.',
       ),
     ],
-    recommendedExperience: const [
-      'Participate in supervised wildland drills, prescribed fire, fuels work, or initial-attack operations when authorized by your agency.',
-      'Continue development toward Firefighter Type 1 (FFT1) or an apparatus/single-resource qualification if it matches your role.',
+    recommendedExperience: <Requirement>[
+      _reqCourse(
+        'fft2_supervised_experience',
+        'Supervised wildland field experience',
+        sortOrder: 170,
+        description: 'Participate in supervised wildland drills, prescribed fire, fuels work, or initial-attack operations when authorized by your agency.',
+      ),
+      _reqCourse(
+        'fft2_next_qualification',
+        'Plan the next wildland qualification',
+        sortOrder: 180,
+        description: 'After FFT2, identify whether FFT1 or an apparatus/single-resource qualification matches your agency role and development plan.',
+      ),
     ],
     resourceIds: const ['nwcg_fft2', 'state_fire_authority'],
     nextRoles: const ['Firefighter Type 1 (FFT1)', 'Engine Boss (ENGB)'],
