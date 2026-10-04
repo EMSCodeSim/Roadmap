@@ -476,7 +476,7 @@ class _CareerHubPageState extends State<CareerHubPage> {
                       icon: Icons.flag_outlined,
                       title: 'Select your next role',
                       text:
-                          'Once a target is selected, FireOps can compare your roadmap with your Career Vault and prioritize missing proof.',
+                          'Once a target is selected, Responder Roadmap can compare your roadmap with your Career Record and prioritize missing proof.',
                       actionLabel: 'Choose roadmap',
                       onAction: () => context.go(AppRoutes.myPath),
                     )
