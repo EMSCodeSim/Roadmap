@@ -300,7 +300,9 @@ class FireOpsCatalog {
   }
 
   static bool _isFireGoal(CareerGoal goal) =>
-      goal.id.startsWith('ops_') || goal.category == 'Operations';
+      goal.id.startsWith('ops_') ||
+      goal.category == 'Operations' ||
+      goal.category == 'Fire Specialty';
 
   static bool _isEmsGoal(CareerGoal goal) =>
       goal.id.startsWith('ems_') ||
@@ -658,6 +660,21 @@ final List<Resource> _resources = <Resource>[
     updatedAt: _seedNow,
   ),
   Resource(
+    id: 'nwcg_fft2',
+    title: 'NWCG Firefighter Type 2 (FFT2) qualification requirements',
+    description: 'Official NWCG training, fitness, and qualification requirements for Firefighter Type 2 (Crewmember).',
+    type: ResourceType.officialStateAgency,
+    url: 'https://www.nwcg.gov/positions/firefighter-type-2-crewmember/qualification-requirements',
+    state: null,
+    relatedCertificationDefinitionIds: const [],
+    relatedCareerGoalIds: const ['wildland_fft2'],
+    verified: true,
+    lastVerifiedDate: _seedNow,
+    sourceType: ResourceSourceType.official,
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+  Resource(
     id: 'state_ems_authority',
     title: 'Your state EMS office',
     description: 'Find the official source for EMT/AEMT/Paramedic certification, CE, and scope-of-practice rules.',
@@ -931,6 +948,122 @@ final List<CareerGoal> _goals = <CareerGoal>[
     recommendedExperience: const [],
     resourceIds: const ['state_fire_authority'],
     nextRoles: const [],
+    createdAt: _seedNow,
+    updatedAt: _seedNow,
+  ),
+
+  // ── Fire specialty path: Wildland Firefighter ───────────────────────────
+  CareerGoal(
+    id: 'wildland_fft2',
+    title: 'Wildland Firefighter (FFT2)',
+    category: 'Fire Specialty',
+    description: 'Build the nationally recognized entry-level wildland fire foundation for Firefighter Type 2 (Crewmember), then complete your agency’s local qualification and certification process.',
+    subtitle: 'NWCG foundation + agency qualification',
+    typicalPrerequisiteRoles: const ['Recruit / Probationary', 'Firefighter', 'Wildland Firefighter'],
+    requirements: <Requirement>[
+      _reqCourse(
+        'fft2_agency_orientation',
+        'Wildland program and agency orientation',
+        sortOrder: 10,
+        description: 'Review your agency’s wildland program, PPE, deployment expectations, communications, medical plan, accountability, driving/transport practices, and local qualification process.',
+      ),
+      _reqCourse(
+        'fft2_ics100',
+        'ICS-100: Introduction to ICS',
+        sortOrder: 20,
+        description: 'Complete ICS-100 as required for NWCG Firefighter Type 2.',
+      ),
+      _reqCourse(
+        'fft2_is700',
+        'IS-700: NIMS, An Introduction',
+        sortOrder: 30,
+        description: 'Complete IS-700/NIMS introductory training as required for NWCG Firefighter Type 2.',
+      ),
+      _reqCourse(
+        'fft2_l180',
+        'L-180: Human Factors in the Wildland Fire Service',
+        sortOrder: 40,
+        description: 'Complete L-180 and apply human-performance, communication, leadership, and situational-awareness concepts to wildland operations.',
+      ),
+      _reqCourse(
+        'fft2_s190',
+        'S-190: Introduction to Wildland Fire Behavior',
+        sortOrder: 50,
+        description: 'Complete S-190 and demonstrate foundational recognition of fuels, weather, topography, fire behavior, and changing fire conditions.',
+      ),
+      _reqCourse(
+        'fft2_s130',
+        'S-130: Firefighter Training',
+        sortOrder: 60,
+        description: 'Complete S-130, including the required practical/incident exercise. S-190 is a prerequisite for the current NWCG S-130 course.',
+      ),
+      _reqCourse(
+        'fft2_lces',
+        'LCES and Standard Firefighting Orders',
+        sortOrder: 70,
+        description: 'Demonstrate Lookouts, Communications, Escape Routes, Safety Zones, the Standard Firefighting Orders, Watch Out Situations, and when to disengage.',
+      ),
+      _reqCourse(
+        'fft2_fire_shelter',
+        'Fire shelter and entrapment procedures',
+        sortOrder: 80,
+        description: 'Demonstrate inspection, carrying, deployment-site selection, shelter deployment, entrapment actions, and post-deployment considerations according to current agency training.',
+      ),
+      _reqCourse(
+        'fft2_hand_tools',
+        'Wildland hand tools and fireline construction',
+        sortOrder: 90,
+        description: 'Demonstrate safe tool use, spacing, scraping/cutting techniques, fireline construction to standard, and coordinated crew work.',
+      ),
+      _reqCourse(
+        'fft2_progressive_hose',
+        'Wildland hose, pumps, and water-use fundamentals',
+        sortOrder: 100,
+        description: 'Demonstrate the agency’s basic progressive hose lay, portable-pump, nozzle, and water-use procedures when applicable to the assigned resource.',
+      ),
+      _reqCourse(
+        'fft2_mopup_patrol',
+        'Mop-up, patrol, and cold-trailing fundamentals',
+        sortOrder: 110,
+        description: 'Demonstrate safe mop-up, patrol, cold trailing, hotspot identification, extinguishment, and communication of changing conditions.',
+      ),
+      _reqCourse(
+        'fft2_radio',
+        'Wildland radio communications',
+        sortOrder: 120,
+        description: 'Demonstrate radio programming/use appropriate to the agency, clear tactical communications, check-in, emergency traffic, and location reporting.',
+      ),
+      _reqCourse(
+        'fft2_fitness',
+        'Arduous physical-fitness qualification',
+        sortOrder: 130,
+        description: 'Meet the agency-approved measurable fitness standard for an NWCG position with an Arduous physical-fitness level. The evaluating agency determines the accepted test method.',
+      ),
+      _reqCourse(
+        'fft2_field_eval',
+        'Wildland field skills evaluation',
+        sortOrder: 140,
+        description: 'Complete an agency field evaluation covering PPE, fireline safety, tools, communications, fire behavior recognition, line construction, shelter use, and crew operations.',
+      ),
+      _reqCourse(
+        'fft2_agency_certification',
+        'Agency qualification / certification review',
+        sortOrder: 150,
+        description: 'Have the home unit or agency review the completed training and local requirements and determine whether you are qualified for deployment as FFT2 or the agency’s local equivalent. Responder Roadmap records progress but does not grant the qualification.',
+      ),
+      _reqCourse(
+        'fft2_rt130',
+        'RT-130 annual fireline safety refresher',
+        sortOrder: 160,
+        description: 'Complete RT-130 when required to maintain currency. NWCG notes that RT-130 is not required during the first year as FFT2 but is required in subsequent years.',
+      ),
+    ],
+    recommendedExperience: const [
+      'Participate in supervised wildland drills, prescribed fire, fuels work, or initial-attack operations when authorized by your agency.',
+      'Continue development toward Firefighter Type 1 (FFT1) or an apparatus/single-resource qualification if it matches your role.',
+    ],
+    resourceIds: const ['nwcg_fft2', 'state_fire_authority'],
+    nextRoles: const ['Firefighter Type 1 (FFT1)', 'Engine Boss (ENGB)'],
     createdAt: _seedNow,
     updatedAt: _seedNow,
   ),
