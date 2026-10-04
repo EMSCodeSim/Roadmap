@@ -429,7 +429,7 @@ class _WhatNextCard extends StatelessWidget {
                 Icon(Icons.bolt_rounded, color: cs.primary),
                 const SizedBox(width: 8),
                 Text(
-                  'What should I do next?',
+                  'What should I do today?',
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
