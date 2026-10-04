@@ -146,7 +146,8 @@ class CareerInbox {
         continue;
       }
 
-      if (progress.status == TaskBookTaskStatus.practicing ||
+      if (progress.status == TaskBookTaskStatus.learning ||
+          progress.status == TaskBookTaskStatus.practicing ||
           progress.status == TaskBookTaskStatus.readyForEvaluation) {
         final idleDays = today.difference(progress.updatedAt).inDays;
         if (idleDays < 30) continue;
