@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/custom_task_book.dart';
+import 'package:firepath/pages/task_book/state_requirement_finder_sheet.dart';
+import 'package:firepath/services/catalog.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_state.dart';
@@ -94,7 +96,7 @@ class _CustomTaskBookBuilderScaffoldState extends State<_CustomTaskBookBuilderSc
                     children: [
                       Expanded(
                         child: Text(
-                          'Department Task Book',
+                          book.departmentSpecific ? 'Department Task Book' : 'Personal Task Book',
                           style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w900),
                         ),
                       ),
@@ -138,6 +140,34 @@ class _CustomTaskBookBuilderScaffoldState extends State<_CustomTaskBookBuilderSc
             _QuickAddPanel(
               onAdd: (draft) => _showAddOrEditRequirement(context, book, null, draft),
             ),
+            if (!book.departmentSpecific) ...[
+              const SizedBox(height: AppSpacing.md),
+              Card(
+                child: Padding(
+                  padding: AppSpacing.paddingMd,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Add official state requirements',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Open your state authority, confirm what applies to your role, and save the requirement with its source link.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton.tonalIcon(
+                        onPressed: () => _addStateRequirement(context, book),
+                        icon: const Icon(Icons.travel_explore),
+                        label: const Text('Find State Requirements'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.md),
             _ViewToggle(
               value: _view,
@@ -183,6 +213,20 @@ class _CustomTaskBookBuilderScaffoldState extends State<_CustomTaskBookBuilderSc
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _addStateRequirement(BuildContext context, CustomTaskBook book) async {
+    final appState = context.read<AppState>();
+    final requirement = await showStateRequirementFinderSheet(
+      context,
+      requirementScopeId: book.pseudoGoalId,
+      currentCount: book.requirements.length,
+      currentStateCode: FireOpsCatalog.stateCodeFromLegacyValue(appState.profile.state),
+    );
+    if (requirement == null || !context.mounted) return;
+    await context.read<AppState>().taskBookController.updateCustomTaskBook(
+      book.copyWith(requirements: [...book.requirements, requirement]),
     );
   }
 

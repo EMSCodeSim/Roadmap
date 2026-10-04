@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/pages/task_book/requirement_checklist_page.dart';
+import 'package:firepath/pages/task_book/state_requirement_finder_sheet.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/services/national_task_book_baseline.dart';
+import 'package:firepath/services/requirement_source_presenter.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
@@ -40,6 +42,8 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
 
     final national = bySource(RequirementSource.commonlyRequired);
     final stateReqs = bySource(RequirementSource.stateRequirement);
+    final verifiedStateReqs = stateReqs.where((e) => RequirementSourcePresenter.isVerifiedStateRequirement(e.requirement, profileStateCode: FireOpsCatalog.stateCodeFromLegacyValue(state.profile.state))).toList();
+    final addedStateReqs = stateReqs.where((e) => !RequirementSourcePresenter.isVerifiedStateRequirement(e.requirement, profileStateCode: FireOpsCatalog.stateCodeFromLegacyValue(state.profile.state))).toList();
     final local = bySource(RequirementSource.departmentRequirement);
     final recommended = bySource(RequirementSource.recommended);
 
@@ -50,11 +54,17 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
           'Start here, then verify state and department requirements.',
           national,
         ),
-      if (stateReqs.isNotEmpty)
+      if (verifiedStateReqs.isNotEmpty)
         (
-          'STATE',
-          'Verified state-specific requirements available to this profile.',
-          stateReqs,
+          'VERIFIED STATE',
+          'Requirements Roadmap has matched to an official state source.',
+          verifiedStateReqs,
+        ),
+      if (addedStateReqs.isNotEmpty)
+        (
+          'STATE SOURCES TO VERIFY',
+          'Items you added from state resources. Confirm the rule and how it applies to your role.',
+          addedStateReqs,
         ),
       if (local.isNotEmpty)
         (
@@ -123,7 +133,16 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
             const SizedBox(height: 14),
             SizedBox(
               height: 54,
-              child: FilledButton.icon(
+              child: FilledButton.tonalIcon(
+                onPressed: () => _showStateRequirementFinder(context, state, goalId, items.length),
+                icon: const Icon(Icons.travel_explore),
+                label: const Text('Find State Requirements'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 54,
+              child: OutlinedButton.icon(
                 onPressed: () => _showAddRequirement(context, state, goalId),
                 icon: const Icon(Icons.add),
                 label: const Text('Add Local Requirement'),
@@ -179,6 +198,22 @@ class TaskBookRequirementsEditorPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static Future<void> _showStateRequirementFinder(
+    BuildContext context,
+    AppState state,
+    String goalId,
+    int requirementCount,
+  ) async {
+    final requirement = await showStateRequirementFinderSheet(
+      context,
+      requirementScopeId: goalId,
+      currentCount: requirementCount,
+      currentStateCode: state.profile.state,
+    );
+    if (requirement == null || !context.mounted) return;
+    await state.addDepartmentRequirement(goalId: goalId, requirement: requirement);
   }
 
   static Future<void> _showAddRequirement(
