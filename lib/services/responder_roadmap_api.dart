@@ -525,6 +525,143 @@ class DepartmentReviewItem {
   }
 }
 
+class DepartmentQualificationRole {
+  final String id;
+  final String name;
+  final String category;
+  final String description;
+  final String status;
+  final bool requirementsMet;
+  final List<String> missingCredentialTypeIds;
+  final List<String> missingTaskBookTemplateIds;
+  final List<String> missingRequirementIds;
+  final String restriction;
+  final String note;
+  final DateTime? approvedAt;
+  final DateTime? reviewDate;
+
+  const DepartmentQualificationRole({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.description,
+    required this.status,
+    required this.requirementsMet,
+    required this.missingCredentialTypeIds,
+    required this.missingTaskBookTemplateIds,
+    required this.missingRequirementIds,
+    required this.restriction,
+    required this.note,
+    required this.approvedAt,
+    required this.reviewDate,
+  });
+
+  factory DepartmentQualificationRole.fromJson(Map<String, dynamic> json) {
+    final missing = json['missing'] is Map
+        ? Map<String, dynamic>.from(json['missing'] as Map)
+        : const <String, dynamic>{};
+    final authorization = json['authorization'] is Map
+        ? Map<String, dynamic>.from(json['authorization'] as Map)
+        : const <String, dynamic>{};
+    List<String> ids(Object? raw) => (raw as List? ?? const <dynamic>[])
+        .map((item) => item.toString())
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
+
+    return DepartmentQualificationRole(
+      id: (json['id'] as String?) ?? '',
+      name: (json['name'] as String?) ?? 'Qualification',
+      category: (json['category'] as String?) ?? 'OPERATIONS',
+      description: (json['description'] as String?) ?? '',
+      status: (json['status'] as String?) ?? 'NOT_STARTED',
+      requirementsMet: json['requirementsMet'] == true,
+      missingCredentialTypeIds: ids(missing['credentialTypeIds']),
+      missingTaskBookTemplateIds: ids(missing['taskBookTemplateIds']),
+      missingRequirementIds: ids(missing['requirementIds']),
+      restriction: (authorization['restriction'] as String?) ?? '',
+      note: (authorization['note'] as String?) ?? '',
+      approvedAt:
+          DateTime.tryParse((authorization['approvedAt'] as String?) ?? ''),
+      reviewDate:
+          DateTime.tryParse((authorization['reviewDate'] as String?) ?? ''),
+    );
+  }
+
+  int get missingCount =>
+      missingCredentialTypeIds.length +
+      missingTaskBookTemplateIds.length +
+      missingRequirementIds.length;
+}
+
+class DepartmentQualificationMember {
+  final String membershipId;
+  final String name;
+  final String rank;
+  final String position;
+  final List<DepartmentQualificationRole> qualifications;
+
+  const DepartmentQualificationMember({
+    required this.membershipId,
+    required this.name,
+    required this.rank,
+    required this.position,
+    required this.qualifications,
+  });
+
+  factory DepartmentQualificationMember.fromJson(Map<String, dynamic> json) =>
+      DepartmentQualificationMember(
+        membershipId: (json['membershipId'] as String?) ?? '',
+        name: (json['name'] as String?) ?? 'Member',
+        rank: (json['rank'] as String?) ?? '',
+        position: (json['position'] as String?) ?? '',
+        qualifications: (json['qualifications'] as List? ?? const <dynamic>[])
+            .whereType<Map>()
+            .map((item) => DepartmentQualificationRole.fromJson(
+                  Map<String, dynamic>.from(item),
+                ))
+            .toList(growable: false),
+      );
+}
+
+class DepartmentServerCredential {
+  final String id;
+  final String source;
+  final String sourceExternalId;
+  final String credentialName;
+  final DateTime? expirationDate;
+  final bool doesNotExpire;
+  final String verificationStatus;
+  final String health;
+  final String window;
+
+  const DepartmentServerCredential({
+    required this.id,
+    required this.source,
+    required this.sourceExternalId,
+    required this.credentialName,
+    required this.expirationDate,
+    required this.doesNotExpire,
+    required this.verificationStatus,
+    required this.health,
+    required this.window,
+  });
+
+  factory DepartmentServerCredential.fromJson(Map<String, dynamic> json) =>
+      DepartmentServerCredential(
+        id: (json['id'] as String?) ?? '',
+        source: (json['source'] as String?) ?? '',
+        sourceExternalId: (json['sourceExternalId'] as String?) ?? '',
+        credentialName: (json['credentialName'] as String?) ?? 'Credential',
+        expirationDate:
+            DateTime.tryParse((json['expirationDate'] as String?) ?? ''),
+        doesNotExpire: json['doesNotExpire'] == true,
+        verificationStatus:
+            (json['verificationStatus'] as String?) ?? 'UNVERIFIED',
+        health: (json['health'] as String?) ?? 'missing',
+        window: (json['window'] as String?) ?? 'missing',
+      );
+}
+
 class DepartmentTrainingSheetTemplate {
   final String id;
   final String name;
@@ -705,6 +842,11 @@ class DepartmentClassDetail {
   final String notes;
   final List<String> proctorUserIds;
   final String status;
+  final String rmsStatus;
+  final DateTime? instructorApprovedAt;
+  final DateTime? rmsEnteredAt;
+  final String rmsReference;
+  final String rmsEntryNote;
   final bool registrationEnabled;
   final String registrationToken;
   final List<DepartmentClassSection> sections;
@@ -723,6 +865,11 @@ class DepartmentClassDetail {
     required this.notes,
     required this.proctorUserIds,
     required this.status,
+    required this.rmsStatus,
+    required this.instructorApprovedAt,
+    required this.rmsEnteredAt,
+    required this.rmsReference,
+    required this.rmsEntryNote,
     required this.registrationEnabled,
     required this.registrationToken,
     required this.sections,
@@ -746,6 +893,13 @@ class DepartmentClassDetail {
             .where((v) => v.isNotEmpty)
             .toList(growable: false),
         status: (json['status'] as String?) ?? 'DRAFT',
+        rmsStatus: (json['rmsStatus'] as String?) ?? 'NOT_READY',
+        instructorApprovedAt:
+            DateTime.tryParse((json['instructorApprovedAt'] as String?) ?? ''),
+        rmsEnteredAt:
+            DateTime.tryParse((json['rmsEnteredAt'] as String?) ?? ''),
+        rmsReference: (json['rmsReference'] as String?) ?? '',
+        rmsEntryNote: (json['rmsEntryNote'] as String?) ?? '',
         registrationEnabled: json['registrationEnabled'] == true,
         registrationToken: (json['registrationToken'] as String?) ?? '',
         sections: (json['sections'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSection.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
@@ -1234,6 +1388,79 @@ class ResponderRoadmapApi {
   Future<List<DepartmentClassSummary>> listClasses() async {
     final data = await _request('GET', 'classes?view=mine');
     return (data is List ? data : const <dynamic>[]).whereType<Map>().map((item) => DepartmentClassSummary.fromJson(Map<String, dynamic>.from(item))).toList(growable: false);
+  }
+
+  Future<List<DepartmentQualificationRole>> getMyQualifications() async {
+    final data = _asMap(await _request('GET', 'app/qualifications'));
+    return (data['roles'] as List? ?? const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => DepartmentQualificationRole.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList(growable: false);
+  }
+
+  Future<List<DepartmentQualificationMember>> getDepartmentQualifications() async {
+    final data = _asMap(await _request('GET', 'app/department-qualifications'));
+    return (data['members'] as List? ?? const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => DepartmentQualificationMember.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList(growable: false);
+  }
+
+  Future<List<DepartmentServerCredential>> getMyDepartmentCredentials() async {
+    final data = _asMap(await _request('GET', 'app/certifications'));
+    return (data['credentials'] as List? ?? const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => DepartmentServerCredential.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList(growable: false);
+  }
+
+  Future<DepartmentClassDetail> getTrainingSheet(String classId) async {
+    final data = await _request(
+      'GET',
+      'app/training-sheets/${Uri.encodeComponent(classId)}',
+    );
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> approveTrainingSheet(String classId) async {
+    final data = await _request(
+      'POST',
+      'app/training-sheets/${Uri.encodeComponent(classId)}/approve',
+      body: const <String, dynamic>{},
+    );
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<List<DepartmentClassDetail>> listRmsActionTrainingSheets() async {
+    final data = await _request('GET', 'app/training-sheets/rms-actions');
+    return (data is List ? data : const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => DepartmentClassDetail.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList(growable: false);
+  }
+
+  Future<DepartmentClassDetail> markTrainingSheetEnteredIntoRms(
+    String classId, {
+    String reference = '',
+    String note = '',
+  }) async {
+    final data = await _request(
+      'POST',
+      'app/training-sheets/${Uri.encodeComponent(classId)}/rms-entered',
+      body: <String, dynamic>{
+        if (reference.trim().isNotEmpty) 'reference': reference.trim(),
+        if (note.trim().isNotEmpty) 'note': note.trim(),
+      },
+    );
+    return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
   Future<DepartmentClassDetail> getClass(String classId) async {
