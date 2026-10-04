@@ -16,6 +16,7 @@ class SmartNextStepDecision {
   final String actionTitle;
   final String actionDetail;
   final String actionLabel;
+  final String? secondaryFocusTitle;
 
   const SmartNextStepDecision({
     required this.requirement,
@@ -26,6 +27,7 @@ class SmartNextStepDecision {
     required this.actionTitle,
     required this.actionDetail,
     required this.actionLabel,
+    this.secondaryFocusTitle,
   });
 }
 
@@ -143,11 +145,15 @@ class SmartNextStepEngine {
           goalId: roadmap.goal.id,
           requirementId: requirement.id,
         );
-        final focusTitle = deepestIncompleteTitle(
+        final incompleteTitles = _nextIncompleteTitles(
           state,
           goalId: roadmap.goal.id,
           requirement: requirement,
+          limit: 2,
         );
+        final focusTitle = incompleteTitles.isEmpty
+            ? requirement.name
+            : incompleteTitles.first;
         final today = _todayAction(
           state,
           roadmap.goal.id,
@@ -170,6 +176,8 @@ class SmartNextStepEngine {
             actionTitle: today.$1,
             actionDetail: today.$2,
             actionLabel: today.$3,
+            secondaryFocusTitle:
+                incompleteTitles.length > 1 ? incompleteTitles[1] : null,
           ),
         );
         if (decisions.length >= limit) return decisions;
@@ -317,6 +325,29 @@ class SmartNextStepEngine {
     required String goalId,
     required Requirement requirement,
   }) {
+    final titles = _nextIncompleteTitles(
+      state,
+      goalId: goalId,
+      requirement: requirement,
+      limit: 1,
+    );
+    return titles.isEmpty ? requirement.name : titles.first;
+  }
+
+  static List<String> _nextIncompleteTitles(
+    AppState state, {
+    required String goalId,
+    required Requirement requirement,
+    int limit = 2,
+  }) {
+    final out = <String>[];
+
+    void add(String value) {
+      final clean = value.trim();
+      if (clean.isEmpty || out.contains(clean) || out.length >= limit) return;
+      out.add(clean);
+    }
+
     final steps = NationalTaskBookBaseline.effectiveSteps(
       requirement,
       state.planStepsFor(
@@ -335,13 +366,16 @@ class SmartNextStepEngine {
     for (final step in steps) {
       final children = TaskBookChecklistHierarchy.childrenFor(step.id, subTasks);
       for (final child in children) {
-        if (!child.isDone) return child.title;
+        if (!child.isDone) add(child.title);
+        if (out.length >= limit) return out;
       }
-      if (!effectiveStepComplete(step, subTasks)) return step.title;
+      if (!effectiveStepComplete(step, subTasks)) add(step.title);
+      if (out.length >= limit) return out;
     }
 
     for (final child in TaskBookChecklistHierarchy.unassigned(subTasks)) {
-      if (!child.isDone) return child.title;
+      if (!child.isDone) add(child.title);
+      if (out.length >= limit) return out;
     }
 
     final guide =
@@ -358,10 +392,11 @@ class SmartNextStepEngine {
         requirementId: requirement.id,
         taskId: task.id,
       );
-      if (status != TaskBookTaskStatus.complete) return task.title;
+      if (status != TaskBookTaskStatus.complete) add(task.title);
+      if (out.length >= limit) return out;
     }
 
-    return requirement.name;
+    return out;
   }
 
   static int _workRank(
@@ -584,10 +619,17 @@ class SmartNextStepEngine {
           'Plan evaluation'
         );
       case RequirementType.certification:
+        if (focusTitle != requirement.name) {
+          return (
+            focusTitle,
+            'This is the next incomplete step in your ${requirement.name} Task Book. Complete it, document what you learned or practiced, and then move to the next step.',
+            'Open Task Book'
+          );
+        }
         return (
           'Find the official path for ${requirement.name}',
           'Confirm the certifying authority, approved course or testing center, prerequisites, application steps, and the next available date. Then complete the first registration step.',
-          'Find next step'
+          'Open Task Book'
         );
       case RequirementType.trainingCourse:
       case RequirementType.course:
