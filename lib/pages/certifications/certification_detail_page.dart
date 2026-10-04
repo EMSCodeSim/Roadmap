@@ -50,6 +50,8 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
   bool _departmentConnected = false;
   String? _departmentName;
   String? _sharingError;
+  String? _departmentVerificationStatus;
+  String? _departmentCredentialHealth;
 
   @override
   void initState() {
@@ -173,11 +175,26 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
         return;
       }
       final sharing = await _departmentApi.getCertificationSharing();
+      DepartmentServerCredential? serverCredential;
+      try {
+        final credentials = await _departmentApi.getMyDepartmentCredentials();
+        for (final item in credentials) {
+          if (item.sourceExternalId == _cert.id ||
+              (item.sourceExternalId.isEmpty &&
+                  item.credentialName.trim().toLowerCase() ==
+                      _cert.name.trim().toLowerCase())) {
+            serverCredential = item;
+            break;
+          }
+        }
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _departmentConnected = true;
         _departmentName = session.departmentName;
         _sharedCertificationIds = sharing.sharedSourceIds;
+        _departmentVerificationStatus = serverCredential?.verificationStatus;
+        _departmentCredentialHealth = serverCredential?.health;
         _sharingLoading = false;
       });
     } on ResponderRoadmapApiException catch (error) {
@@ -904,6 +921,8 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
                   loading: _sharingLoading,
                   saving: _sharingSaving,
                   error: _sharingError,
+                  verificationStatus: _departmentVerificationStatus,
+                  credentialHealth: _departmentCredentialHealth,
                   expirationDate: _cert.expirationDate,
                   doesNotExpire: _cert.doesNotExpire,
                   onChanged: _setDepartmentShared,
@@ -944,6 +963,8 @@ class _DepartmentSharingCard extends StatelessWidget {
   final bool loading;
   final bool saving;
   final String? error;
+  final String? verificationStatus;
+  final String? credentialHealth;
   final DateTime? expirationDate;
   final bool doesNotExpire;
   final ValueChanged<bool> onChanged;
@@ -955,6 +976,8 @@ class _DepartmentSharingCard extends StatelessWidget {
     required this.loading,
     required this.saving,
     required this.error,
+    required this.verificationStatus,
+    required this.credentialHealth,
     required this.expirationDate,
     required this.doesNotExpire,
     required this.onChanged,
@@ -1003,12 +1026,27 @@ class _DepartmentSharingCard extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-            child: Text(
-              'The department receives the certification name, issuer, issue date, and expiration date or does-not-expire status. Your credential number and personal notes stay private.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    height: 1.4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'The department receives the certification name, issuer, issue date, and expiration date or does-not-expire status. Your credential number and personal notes stay private.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                ),
+                if (shared && verificationStatus != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Department record: ${verificationStatus!.replaceAll('_', ' ')}${credentialHealth == null ? '' : ' · ${credentialHealth!.replaceAll('_', ' ')}'}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: cs.onSurface,
+                        ),
                   ),
+                ],
+              ],
             ),
           ),
           if (error != null)
