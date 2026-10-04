@@ -581,6 +581,166 @@ class _HomeStatusStripState extends State<_HomeStatusStrip> {
   }
 }
 
+class _HomeUpdatesSection extends StatefulWidget {
+  const _HomeUpdatesSection();
+
+  @override
+  State<_HomeUpdatesSection> createState() => _HomeUpdatesSectionState();
+}
+
+class _HomeUpdatesSectionState extends State<_HomeUpdatesSection>
+    with SingleTickerProviderStateMixin {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: Container(
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _UpdatesHeader(
+              expanded: _expanded,
+              onTap: () => setState(() => _expanded = !_expanded),
+            ),
+            if (_expanded) ...[
+              const Padding(
+                padding: EdgeInsets.fromLTRB(14, 0, 14, 14),
+                child: Column(
+                  children: [
+                    SizedBox(height: 8),
+                    NeedsAttentionPreview(),
+                    SizedBox(height: 12),
+                    CareerInboxPreview(),
+                  ],
+                ),
+              ),
+            ] else
+              const Padding(
+                padding: EdgeInsets.fromLTRB(14, 0, 14, 14),
+                child: Column(
+                  children: [
+                    SizedBox(height: 8),
+                    CareerInboxPreview(),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UpdatesHeader extends StatelessWidget {
+  final bool expanded;
+  final VoidCallback onTap;
+
+  const _UpdatesHeader({required this.expanded, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      label: expanded ? 'Collapse updates' : 'Expand updates',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+          child: Row(
+            children: [
+              Icon(Icons.notifications_none_rounded, color: cs.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Updates',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      expanded ? 'Tap to hide' : 'Tap to view details',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedRotation(
+                turns: expanded ? 0.5 : 0,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                child: Icon(Icons.keyboard_arrow_down_rounded, color: cs.primary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  final VoidCallback onSettings;
+
+  const _Header({required this.onSettings});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const FirefighterRoadmapWordmark(),
+              const SizedBox(height: 4),
+              Text(
+                'One clear focus. Faster progress.',
+                style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.25, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Material(
+          color: cs.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: cs.outline.withValues(alpha: 0.12)),
+          ),
+          child: IconButton(
+            tooltip: 'Settings',
+            onPressed: onSettings,
+            icon: Icon(Icons.settings_outlined, color: cs.onSurface),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ChooseGoalCard extends StatelessWidget {
   final VoidCallback onChooseGoal;
 
