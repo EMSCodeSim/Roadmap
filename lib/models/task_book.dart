@@ -4,7 +4,7 @@
 /// later be synced/managed by a department (Department Pro).
 library;
 
-enum TaskBookTaskStatus { notStarted, practicing, readyForEvaluation, complete }
+enum TaskBookTaskStatus { notStarted, learning, practicing, readyForEvaluation, complete }
 
 enum TaskBookCompletionSource {
   selfVerified,
