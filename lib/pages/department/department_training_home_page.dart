@@ -3,11 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_review_page.dart';
-import 'package:firepath/models/career_record.dart';
-import 'package:firepath/services/career_record_store.dart';
-import 'package:firepath/services/competency_evidence_bridge.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
-import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
@@ -23,10 +19,8 @@ class DepartmentTrainingHomePage extends StatefulWidget {
 class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     with WidgetsBindingObserver {
   final _api = ResponderRoadmapApi();
-  final _recordStore = CareerRecordStore();
   List<DepartmentTaskBookAssignment> _assignments = const [];
   List<DepartmentReviewItem> _reviews = const [];
-  List<CareerRecord> _careerRecords = const [];
   bool _loading = true;
   bool _refreshing = false;
   String? _error;
@@ -55,7 +49,6 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     try {
       final session = await _api.currentSession();
       final items = await _api.listAssignments();
-      final careerRecords = await _recordStore.load();
       List<DepartmentReviewItem> reviews = const [];
       final role = (session.role ?? '').toUpperCase();
       if (const {'EVALUATOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
@@ -65,7 +58,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       if (!mounted) return;
       await context.read<AppModeController>().refreshFromSession(session);
       items.sort(_priorityCompare);
-      setState(() { _assignments = items; _reviews = reviews; _careerRecords = careerRecords; _error = null; _loading = false; });
+      setState(() { _assignments = items; _reviews = reviews; _error = null; _loading = false; });
     } on ResponderRoadmapApiException catch (e) {
       if (!mounted) return;
       setState(() { _error = e.message; _loading = false; });
@@ -106,61 +99,16 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     if (mounted) await _refresh(silent: true);
   }
 
-  Future<void> _addToCareerRoad(
-    DepartmentTaskBookAssignment assignment,
-    CompetencyMatch match,
-  ) async {
-    if (CompetencyEvidenceBridge.isImported(_careerRecords, assignment)) return;
-    final app = context.read<AppState>();
-    final mode = context.read<AppModeController>();
-    final road = app.roadmap;
-    final record = CompetencyEvidenceBridge.toVerifiedCareerRecord(
-      assignment: assignment,
-      departmentName: mode.departmentLink?.departmentName ?? 'Department',
-      relatedGoalId: road?.goal.id,
-      match: match,
-    );
-    final saved = await _recordStore.upsert(record);
-    if (!saved || !mounted) return;
-
-    if (road != null && !match.item.isComplete) {
-      await app.setRequirementCompleted(
-        goalId: road.goal.id,
-        requirementId: match.item.requirement.id,
-        completed: true,
-      );
-    }
-    if (!mounted) return;
-    setState(() => _careerRecords = [..._careerRecords, record]);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${assignment.taskBookTitle} was added as department-verified evidence on your Career Road.',
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final mode = context.watch<AppModeController>();
     final inbox = context.watch<DepartmentInboxController>();
-    final app = context.watch<AppState>();
-    final roadmap = app.roadmap;
     final active = _assignments.where((a) => _status(a) != 'Complete').toList();
     final waiting = _assignments.where((a) => _status(a) == 'Waiting for evaluator').toList();
     final completed = _assignments.where((a) => _status(a) == 'Complete').take(5).toList();
     final next = active.where((a) => _status(a) != 'Waiting for evaluator').firstOrNull;
     final returned = active.where((a) => _status(a).startsWith('Returned')).toList();
     final overdue = active.where((a) => _status(a) == 'Overdue').toList();
-    final roadmapMatches = _assignments
-        .map((assignment) => (
-              assignment: assignment,
-              match: CompetencyEvidenceBridge.matchAssignment(assignment, roadmap),
-            ))
-        .where((entry) => entry.match != null)
-        .toList();
-
     return Scaffold(
       appBar: AppBar(
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -199,20 +147,6 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     onAssignment: _open,
                     onReview: (item) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentReviewPage(initialReviewId: item.id))),
                   ),
-                  if (roadmapMatches.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    _CareerRoadConnectionCard(
-                      goalTitle: roadmap?.goal.title ?? 'Career Road',
-                      entries: roadmapMatches,
-                      imported: _careerRecords
-                          .map((record) => record.trackingKey)
-                          .whereType<String>()
-                          .toSet(),
-                      status: _status,
-                      onOpen: _open,
-                      onImport: _addToCareerRoad,
-                    ),
-                  ],
                   const SizedBox(height: 12),
                   if (next != null) _NextCard(item: next, status: _status(next), onTap: () => _open(next))
                   else if (waiting.isNotEmpty)
@@ -380,121 +314,6 @@ class _NeedsAttention extends StatelessWidget {
           Text('Open the item that needs action now.', style: Theme.of(context).textTheme.bodySmall),
           ...tiles,
         ]),
-      ),
-    );
-  }
-}
-
-class _CareerRoadConnectionCard extends StatelessWidget {
-  final String goalTitle;
-  final List<({
-    DepartmentTaskBookAssignment assignment,
-    CompetencyMatch? match,
-  })> entries;
-  final Set<String> imported;
-  final String Function(DepartmentTaskBookAssignment) status;
-  final Future<void> Function(DepartmentTaskBookAssignment) onOpen;
-  final Future<void> Function(
-    DepartmentTaskBookAssignment assignment,
-    CompetencyMatch match,
-  ) onImport;
-
-  const _CareerRoadConnectionCard({
-    required this.goalTitle,
-    required this.entries,
-    required this.imported,
-    required this.status,
-    required this.onOpen,
-    required this.onImport,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final relevant = entries.take(4).toList();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Also advances my roadmap',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Department work below also supports your $goalTitle goal. Official department records stay separate until you choose to add completed work to your personal Career Road.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 8),
-            ...relevant.map((entry) {
-              final assignment = entry.assignment;
-              final match = entry.match!;
-              final done = status(assignment) == 'Complete';
-              final key =
-                  CompetencyEvidenceBridge.trackingKeyForAssignment(assignment.id);
-              final alreadyAdded = imported.contains(key);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .outline
-                          .withValues(alpha: 0.14),
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          assignment.taskBookTitle,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'Supports: ${match.item.requirement.name} · ${status(assignment)}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            TextButton(
-                              onPressed: () => onOpen(assignment),
-                              child: const Text('Open department work'),
-                            ),
-                            const Spacer(),
-                            if (done && !alreadyAdded)
-                              FilledButton.tonalIcon(
-                                onPressed: () => onImport(assignment, match),
-                                icon: const Icon(Icons.verified_outlined),
-                                label: const Text('Add to Career Road'),
-                              )
-                            else if (alreadyAdded)
-                              const Chip(
-                                avatar: Icon(Icons.verified_rounded, size: 18),
-                                label: Text('Added'),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ],
-        ),
       ),
     );
   }
