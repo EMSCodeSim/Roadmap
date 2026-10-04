@@ -40,7 +40,12 @@ class TaskBookLibrary {
       return const <TaskBookTaskDefinition>[];
     }
 
-    return const <TaskBookTaskDefinition>[
+    final hasDetailedProcess =
+        requirement.certificationDefinitionId == 'firefighter_2' ||
+        requirement.name.trim().toLowerCase() == 'firefighter ii' ||
+        requirement.name.trim().toLowerCase() == 'firefighter 2';
+
+    const passGates = <TaskBookTaskDefinition>[
       TaskBookTaskDefinition(
         id: 'cert_pass_jpr_practical',
         title: 'Pass JPR / practical evaluation',
@@ -87,6 +92,204 @@ class TaskBookLibrary {
         safetyPoints: [],
         commonMistakes: [
           'Treating course completion or a practice exam as the official written-test result.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+    ];
+
+    if (hasDetailedProcess) return passGates;
+
+    return const <TaskBookTaskDefinition>[
+      TaskBookTaskDefinition(
+        id: 'cert_confirm_official_requirements',
+        title: 'Confirm official certification requirements',
+        section: 'PLAN THE CERTIFICATION',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Identify the exact authority, current candidate information, prerequisites, and required steps for this certification.',
+        whatToKnow: [
+          'Certification requirements can vary by state, department, academy, testing provider, and revision.',
+        ],
+        performanceTasks: [
+          'Identify the certifying or recognizing authority.',
+          'Save the current official certification page or candidate handbook.',
+          'Confirm prerequisites, eligibility, and application rules.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Following a generic checklist without confirming the authority that applies to you.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'cert_confirm_jpr_list',
+        title: 'Confirm required JPRs / practical stations',
+        section: 'PLAN THE CERTIFICATION',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Use the current official skill/JPR packet to define exactly what practical performance must be mastered.',
+        whatToKnow: [
+          'Responder Roadmap does not invent official JPR criteria.',
+        ],
+        performanceTasks: [
+          'Obtain the current official JPR or practical packet.',
+          'Confirm the revision/effective date.',
+          'Add individual JPR mastery items as custom Task Book tasks when separate checkboxes are useful.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Practicing from an outdated or unofficial skill sheet.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'cert_confirm_reading',
+        title: 'Confirm required reading and study material',
+        section: 'PLAN THE CERTIFICATION',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Identify the exact textbook edition, chapters, modules, standards, and candidate material required by the provider.',
+        whatToKnow: [
+          'Reading assignments differ between programs even when the certification title is the same.',
+        ],
+        performanceTasks: [
+          'Confirm the required textbook/reference edition.',
+          'Confirm assigned chapters or modules.',
+          'Add major reading assignments as separate custom tasks when you want chapter-by-chapter checkoffs.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Using the wrong edition or assuming a study guide replaces assigned material.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'cert_complete_required_training',
+        title: 'Complete required course or training',
+        section: 'TRAINING',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Complete the approved instruction required before testing or certification.',
+        whatToKnow: [
+          'Attendance, course hours, assignments, labs, and instructor sign-offs vary by provider.',
+        ],
+        performanceTasks: [
+          'Enroll in the approved course or training pathway.',
+          'Complete attendance, modules, assignments, and required practice.',
+          'Save course completion documentation.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Assuming training completion automatically issues the certification.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'cert_master_practical_requirements',
+        title: 'Master each required JPR / practical station',
+        section: 'PRACTICAL / JPR PREPARATION',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Work through every official practical station until performance is consistent and ready for formal evaluation.',
+        whatToKnow: [
+          'Mastery here is preparation status; only the official testing authority determines a pass.',
+        ],
+        performanceTasks: [
+          'Practice every official JPR/station with the current criteria.',
+          'Use separate custom tasks for JPR 1, JPR 2, and additional stations when you want individual checkoffs.',
+          'Repeat weak stations until performance is consistent.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Calling one successful practice attempt mastery.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'cert_find_test_location',
+        title: 'Find approved testing location or provider',
+        section: 'TESTING',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Identify where the required written and practical testing can be completed for the credential pathway that applies to you.',
+        whatToKnow: [
+          'Written and practical components may use different providers or locations.',
+        ],
+        performanceTasks: [
+          'Find an approved written-test provider or site.',
+          'Find an approved practical/JPR provider or site.',
+          'Save the testing instructions and contact information.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Choosing a convenient testing site before confirming the result is accepted.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      TaskBookTaskDefinition(
+        id: 'cert_register_testing',
+        title: 'Register for required testing',
+        section: 'TESTING',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Complete the administrative steps needed to secure your written and practical testing dates.',
+        whatToKnow: [
+          'Check deadlines, fees, identification, prerequisite documentation, PPE/equipment, and retest rules.',
+        ],
+        performanceTasks: [
+          'Register for the written/knowledge exam when required.',
+          'Register or schedule the practical/JPR evaluation when required.',
+          'Save confirmations and testing dates.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Assuming course registration also registers you for certification testing.',
+        ],
+        practiceTools: [],
+        resources: [],
+      ),
+      ...passGates,
+      TaskBookTaskDefinition(
+        id: 'cert_confirm_issuance',
+        title: 'Confirm certification was issued',
+        section: 'CERTIFICATION',
+        goalId: null,
+        requirementId: null,
+        isCustom: false,
+        fireOpsObjective:
+            'Finish the process by confirming the credential was formally issued or recorded by the applicable authority.',
+        whatToKnow: [
+          'Some authorities issue automatically after testing; others require an application, fee, affiliation, or department verification.',
+        ],
+        performanceTasks: [
+          'Complete any post-test application or document submission.',
+          'Confirm the credential appears in the official system or has been issued.',
+          'Add the credential and expiration/Does Not Expire status to Responder Roadmap.',
+        ],
+        safetyPoints: [],
+        commonMistakes: [
+          'Stopping after passing the tests without verifying formal issuance.',
         ],
         practiceTools: [],
         resources: [],
