@@ -367,6 +367,27 @@ class SmartNextStepEngine {
     return 3;
   }
 
+  static (String, String, String) todayActionFor(
+    AppState state, {
+    required String goalId,
+    required Requirement requirement,
+    DateTime? now,
+  }) {
+    final clock = now ?? DateTime.now();
+    final focusTitle = deepestIncompleteTitle(
+      state,
+      goalId: goalId,
+      requirement: requirement,
+    );
+    return _todayAction(
+      state,
+      goalId,
+      requirement,
+      focusTitle,
+      clock,
+    );
+  }
+
   static (String, String, String) _todayAction(
     AppState state,
     String goalId,
