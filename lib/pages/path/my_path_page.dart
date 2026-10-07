@@ -385,6 +385,21 @@ class _PathTab extends StatelessWidget {
             percentReady: percentReady,
             targetDate: targetDate,
           ),
+          if (state.roadmapUpdateMessage != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.auto_awesome_outlined),
+                title: const Text('Roadmap updated', style: TextStyle(fontWeight: FontWeight.w900)),
+                subtitle: Text(state.roadmapUpdateMessage!),
+                trailing: IconButton(
+                  tooltip: 'Dismiss',
+                  onPressed: state.clearRoadmapUpdateMessage,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           Card(
             child: Padding(
