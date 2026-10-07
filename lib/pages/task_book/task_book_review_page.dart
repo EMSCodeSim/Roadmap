@@ -14,7 +14,7 @@ import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/widgets/progress_ring.dart';
 import 'package:firepath/widgets/status_pill.dart';
 
-/// “Your Task Book is Ready” summary screen.
+/// Personal Starter Roadmap review screen.
 ///
 /// This is shown immediately after onboarding and also after a rebuild.
 class TaskBookReviewPage extends StatefulWidget {
@@ -49,7 +49,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
       return Scaffold(
         appBar: AppBar(
           leading: const AppBackButton.toTaskBook(),
-          title: const Text('Your Task Book'),
+          title: const Text('Your Starter Roadmap'),
         ),
         body: SafeArea(
           child: Padding(
@@ -57,7 +57,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Choose your Next Level before building a Task Book.'),
+                const Text('Choose what you are working toward before building your next steps.'),
                 const SizedBox(height: 16),
                 SizedBox(
                   height: 56,
@@ -99,7 +99,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton.toTaskBook(),
-        title: const Text('Your Task Book'),
+        title: const Text('Your Starter Roadmap'),
       ),
       body: SafeArea(
         child: ListView(
@@ -138,7 +138,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
             ),
             const SizedBox(height: 18),
             Text(
-              'Remaining requirements',
+              'Suggested next steps',
               style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
@@ -157,7 +157,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
               child: Text(
-                'This plan is designed to help organize training and advancement. Always verify requirements with your department, state authority, official task book, or certifying organization.',
+                'This is a personal starting guide, not a finished or official Task Book. Verify requirements with your department, state authority, official task book, employer, academy, or certifying organization, then add the official items that apply to you.',
                 style: t.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                   height: 1.45,
@@ -181,7 +181,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
                   onPressed: _finishing ? null : _acceptAndStart,
                   icon: const Icon(Icons.rocket_launch_outlined),
                   label: Text(
-                    _finishing ? 'Saving…' : 'Accept & Start Task Book',
+                    _finishing ? 'Saving…' : 'Start My Roadmap',
                   ),
                 ),
               ),
@@ -233,7 +233,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
                   label: Text(
                     _rebuilding
                         ? 'Rebuilding…'
-                        : 'Rebuild Task Book from current info',
+                        : 'Refresh suggestions from current info',
                   ),
                 ),
               ),
@@ -255,7 +255,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            label == null ? 'Task Book refreshed.' : 'Task Book refreshed for $label.',
+            label == null ? 'Starter Roadmap refreshed.' : 'Starter Roadmap refreshed for $label.',
           ),
         ),
       );
@@ -271,7 +271,7 @@ class _TaskBookReviewPageState extends State<TaskBookReviewPage> {
     try {
       await _setupStore.setReviewPending(false);
       if (!mounted) return;
-      // This summary is explicitly for the generated Career Road task book.
+      // Personal Career Road suggestions are not an official department Task Book.
       await context.read<AppState>().taskBookController.setActiveTaskBook(null);
       if (!mounted) return;
       context.go(AppRoutes.home);
@@ -334,7 +334,7 @@ class _HeroCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Your Career Road is ready',
+                      'Your Starter Roadmap is ready',
                       style: t.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w900,
                         height: 1.10,
@@ -361,7 +361,7 @@ class _HeroCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Based on your role and the certs you already have, we built a Task Book for this Next Level. Review what’s already satisfied, then accept or customize before you start logging progress.',
+            'Based on where you are and where you want to go, we built an editable starting path. These are suggested next steps, not official department, state, or certification requirements. Add or replace them as you confirm what applies to you.',
             style: t.bodyMedium?.copyWith(
               color: cs.onSurfaceVariant,
               height: 1.45,
