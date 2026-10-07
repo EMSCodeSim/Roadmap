@@ -68,8 +68,8 @@ class StateFireAuthorityCatalog {
     'CO': StateFireAuthority(
       stateCode: 'CO',
       sourceTitle: 'Colorado Division of Fire Prevention and Control — Professional Qualifications and Training',
-      sourceUrl: 'https://dfpc.colorado.gov/fire-service-training-and-certification-advisory-board',
-      guidance: 'Colorado firefighter certification is a voluntary state program. Individual departments determine which certifications are required for hiring, assignment, and promotion.',
+      sourceUrl: 'https://dfpc.colorado.gov/sections/professional-qualifications-and-training/policy-and-procedures-manual',
+      guidance: 'Start with the current DFPC Professional Qualifications certification manual. Use it to confirm prerequisites, the applicable certification standard, current testing/certification procedures, and the official process before relying on a roadmap suggestion. Then confirm any additional hiring, assignment, or promotion requirements with your department.',
       verifiedDate: _verified,
     ),
     'CT': StateFireAuthority(
