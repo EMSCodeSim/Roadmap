@@ -433,7 +433,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                     onPressed: _saving ? null : _next,
                     child: Text(
                       _saving
-                          ? 'Building your path…'
+                          ? 'Building your next steps…'
                           : _step == 4
                               ? 'Build My Roadmap'
                               : _step == 0
@@ -466,7 +466,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
             OnboardingHero(
               headline: 'Your career roadmap, organized.',
               supporting:
-                  'Responder Roadmap keeps your Fire and EMS career plan, certifications, experience, task books, and department assignments together in one app.',
+                  'Responder Roadmap helps you plan your Fire and EMS career, record experience, manage credentials, and keep official department work clearly separate.',
               progressValue: 0,
               progressLabel:
                   'Four quick setup steps · You can change everything later',
@@ -481,9 +481,9 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
             const SizedBox(height: 8),
             const _WelcomeFeatureCard(
               icon: Icons.assignment_turned_in_outlined,
-              title: 'Complete task books and assignments',
+              title: 'Build on your next steps',
               detail:
-                  'Track each requirement, attach proof, and keep progress from getting lost.',
+                  'Start with a useful roadmap, add official requirements as you find them, and keep your progress from getting lost.',
             ),
             const SizedBox(height: 8),
             const _WelcomeFeatureCard(
@@ -1034,7 +1034,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Choose your next goal. Responder Roadmap will build a personal starting plan; department task books remain separate.',
+          'Choose your next goal. Responder Roadmap will build an editable Starter Roadmap with suggested next steps; official department Task Books remain separate.',
           style: Theme.of(context).textTheme.bodyMedium
               ?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
         ),
