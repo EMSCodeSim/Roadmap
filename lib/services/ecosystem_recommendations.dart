@@ -127,13 +127,17 @@ class EcosystemRecommendations {
       'trauma assessment',
       'ems',
     ])) {
-      return const EcosystemRecommendation(
+      final url = Uri.https('emscodesim.com', '/ems-training-tools.html', <String, String>{
+        'source': 'roadmap',
+        'topic': rawTopic?.trim() ?? '',
+      }).toString();
+      return EcosystemRecommendation(
         product: 'EMSCodeSim',
-        title: 'Practice the patient side in EMSCodeSim',
+        title: 'Practice this EMS step in EMSCodeSim',
         reason:
-            'Your current development area is EMS-focused. EMSCodeSim provides patient-assessment and decision-making practice that complements the Career Road task.',
-        actionLabel: 'Open EMSCodeSim',
-        url: 'https://emscodesim.com',
+            'EMSCodeSim will carry this Roadmap focus into learning, focused practice, patient simulation, drills, and NREMT resources. Return here to record the durable progress.',
+        actionLabel: 'Practice in EMSCodeSim',
+        url: url,
       );
     }
 
