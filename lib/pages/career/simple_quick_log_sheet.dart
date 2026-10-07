@@ -7,6 +7,7 @@ import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/scored_skill_store.dart';
 import 'package:firepath/services/department_activity_sharing.dart';
 import 'package:firepath/state/app_mode_controller.dart';
+import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/keyboard_aware_form.dart';
 
@@ -201,6 +202,13 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
     final ok = await _store.upsert(record);
     if (!mounted) return;
     if (ok) {
+      try {
+        await context.read<AppState>().applyLogToRequirementProgress(record);
+      } catch (_) {
+        // Personal history is already durable. Adaptive roadmap updates are
+        // best-effort and must never block the field log from saving.
+      }
+      if (!mounted) return;
       var shared = false;
       if (_shareWithDepartment) {
         try {
