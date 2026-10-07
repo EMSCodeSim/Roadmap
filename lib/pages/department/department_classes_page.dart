@@ -274,6 +274,24 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
   void _setDetail(DepartmentClassDetail detail) { if (!mounted) return; setState(() { _detail = detail; _studentId = detail.roster.any((item) => item.id == _studentId) ? _studentId : (detail.roster.isEmpty ? null : detail.roster.first.id); _error = null; }); }
   DepartmentClassStudent? get _student { for (final item in _detail?.roster ?? const <DepartmentClassStudent>[]) { if (item.id == _studentId) return item; } return null; }
+
+  bool _studentComplete(DepartmentClassDetail detail, DepartmentClassStudent student) {
+    if (student.attendance != 'PRESENT') return false;
+    final required = detail.sections.expand((section) => section.skills).where((skill) => skill.required);
+    for (final skill in required) {
+      final matches = student.results.where((result) => result.requirementId == skill.id);
+      if (matches.isEmpty || matches.last.result != 'PASS') return false;
+    }
+    return true;
+  }
+
+  int _requiredSkillCount(DepartmentClassDetail detail) =>
+      detail.sections.expand((section) => section.skills).where((skill) => skill.required).length;
+
+  int _passedRequiredCount(DepartmentClassDetail detail, DepartmentClassStudent student) {
+    final requiredIds = detail.sections.expand((section) => section.skills).where((skill) => skill.required).map((skill) => skill.id).toSet();
+    return student.results.where((result) => requiredIds.contains(result.requirementId) && result.result == 'PASS').map((result) => result.requirementId).toSet().length;
+  }
   String get _registrationUrl => _detail?.registrationToken.isNotEmpty == true ? 'https://responderroadmap.com/class-join/${_detail!.registrationToken}' : '';
 
   Future<void> _registration(String action) async {
@@ -567,10 +585,51 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ),
       ],
       const SizedBox(height: 12),
-      DropdownButtonFormField<String>(initialValue: _studentId, decoration: const InputDecoration(labelText: 'Student'), items: detail.roster.map((item) => DropdownMenuItem(value: item.id, child: Text('${item.name} · ${item.finalResult.replaceAll('_', ' ')}'))).toList(), onChanged: (value) => setState(() => _studentId = value)),
+      Row(children: [
+        Expanded(child: Text('Roster', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
+        Text('${detail.roster.where((item) => _studentComplete(detail, item)).length}/${detail.roster.length} ready', style: Theme.of(context).textTheme.labelLarge),
+      ]),
+      const SizedBox(height: 8),
+      SizedBox(
+        height: 54,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: detail.roster.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final item = detail.roster[index];
+            final selected = item.id == _studentId;
+            final complete = _studentComplete(detail, item);
+            return ChoiceChip(
+              selected: selected,
+              avatar: Icon(complete ? Icons.check_circle_rounded : Icons.person_outline_rounded, size: 18),
+              label: Text(item.name),
+              onSelected: (_) => setState(() => _studentId = item.id),
+            );
+          },
+        ),
+      ),
+      const SizedBox(height: 10),
+      DropdownButtonFormField<String>(initialValue: _studentId, decoration: const InputDecoration(labelText: 'Selected student'), items: detail.roster.map((item) => DropdownMenuItem(value: item.id, child: Text('${item.name} · ${item.finalResult.replaceAll('_', ' ')}'))).toList(), onChanged: (value) => setState(() => _studentId = value)),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
       if (student != null) ...[
-        const SizedBox(height: 12), DropdownButtonFormField<String>(initialValue: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null)_setDetail(saved.detail!); if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } finally { if (mounted) setState(() => _busy = false); } }),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(children: [
+              CircleAvatar(child: Text(student.name.trim().isEmpty ? '?' : student.name.trim().substring(0, 1).toUpperCase())),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(student.name, style: const TextStyle(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 3),
+                Text('${student.attendance.replaceAll('_', ' ')} · ${_passedRequiredCount(detail, student)}/${_requiredSkillCount(detail)} required skills passed'),
+              ])),
+              Icon(_studentComplete(detail, student) ? Icons.check_circle_rounded : Icons.pending_actions_rounded),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 10), DropdownButtonFormField<String>(initialValue: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null)_setDetail(saved.detail!); if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } finally { if (mounted) setState(() => _busy = false); } }),
         const SizedBox(height: 18),
         ...detail.sections.map((section) => Card(margin: const EdgeInsets.only(bottom: 14), clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(width: double.infinity, padding: const EdgeInsets.all(14), color: Theme.of(context).colorScheme.surfaceContainerHighest, child: Text(section.title, style: const TextStyle(fontWeight: FontWeight.w900))),
