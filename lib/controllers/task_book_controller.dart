@@ -117,7 +117,14 @@ class TaskBookController extends ChangeNotifier {
   /// prunes overrides that point at requirements that no longer exist.
   Future<void> pruneOverridesForGoal({required String goalId, required Set<String> keepRequirementIds}) async {
     final before = _overrides.length;
-    _overrides.removeWhere((o) => o.goalId == goalId && !keepRequirementIds.contains(o.requirementId));
+    // Never erase completed personal-roadmap history during a rebuild. A
+    // requirement may temporarily disappear after a goal/state change, but
+    // its completion record remains valuable career history and can become
+    // relevant again if the user returns to that path.
+    _overrides.removeWhere((o) =>
+        o.goalId == goalId &&
+        !keepRequirementIds.contains(o.requirementId) &&
+        o.completed != true);
     if (_overrides.length == before) return;
     await _persist();
     notifyListeners();
