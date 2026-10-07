@@ -123,7 +123,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(16), children: [
         Text('My Classes', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
-        const SizedBox(height: 6), Text((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) ? 'Create training sheets or open a class to manage its roster and document skill results.' : 'Assigned class rosters and skill checklists.'),
+        const SizedBox(height: 6), Text((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) ? 'Run the full field workflow here: create training → QR/roster → attendance & skills → review → instructor approval. RMS entry remains a separate department-record step.' : 'Assigned class rosters and skill checklists.'),
         if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
         if (_classes!.any((row) => row.status != 'COMPLETE')) ...[
           const SizedBox(height: 12),
@@ -457,6 +457,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   @override
   Widget build(BuildContext context) {
     final detail = _detail; final student = _student;
+    final mode = context.watch<AppModeController>();
+    final canRecordRmsEntry = mode.isAdmin;
     return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Class roster')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       Text(detail.checklistTitle, style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 10),
       Consumer<DepartmentInboxController>(builder:(context,sync,_) {
@@ -471,7 +473,27 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ])));
       }),
 
-      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.check_circle_outline_rounded), label: const Text('Close Training'))]),
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('TRAINING SHEET WORKFLOW', style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            Text(
+              detail.status != 'COMPLETE'
+                  ? '1  Roster / QR   →   2  Attendance & skills   →   3  Review & close   →   4  Instructor approve'
+                  : detail.rmsStatus == 'NOT_READY'
+                      ? 'Roster and results are closed. Review the completed sheet, then approve it as the instructor.'
+                      : detail.rmsStatus == 'AWAITING_ENTRY'
+                          ? 'Instructor work complete. This Training Sheet is now waiting for the department RMS-entry step.'
+                          : 'Training Sheet complete. RMS entry has been recorded.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45),
+            ),
+          ]),
+        ),
+      ),
+      const SizedBox(height: 10),
+      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), FilledButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Close'))]),
       if (detail.status == 'COMPLETE') ...[
         Card(
           child: Padding(
@@ -510,11 +532,16 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 icon: const Icon(Icons.approval_outlined),
                 label: const Text('Instructor Approve'),
               ),
-            if (detail.rmsStatus == 'AWAITING_ENTRY')
+            if (detail.rmsStatus == 'AWAITING_ENTRY' && canRecordRmsEntry)
               FilledButton.icon(
                 onPressed: _busy ? null : _markRmsEntered,
                 icon: const Icon(Icons.fact_check_outlined),
                 label: const Text('Mark RMS Entered'),
+              ),
+            if (detail.rmsStatus == 'AWAITING_ENTRY' && !canRecordRmsEntry)
+              const Chip(
+                avatar: Icon(Icons.forward_to_inbox_outlined, size: 18),
+                label: Text('Sent to RMS Actions Needed'),
               ),
             OutlinedButton.icon(
               onPressed: _busy ? null : _repeatTraining,
