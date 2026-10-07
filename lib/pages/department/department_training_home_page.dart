@@ -6,9 +6,12 @@ import 'package:firepath/pages/department/department_review_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/pages/department/department_qualifications_page.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
+import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/competency_evidence_bridge.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
+import 'package:firepath/state/app_state.dart';
 
 /// Canonical department home for members. Official department records are read
 /// from responderroadmap.com; no local department database is used here.
@@ -22,6 +25,7 @@ class DepartmentTrainingHomePage extends StatefulWidget {
 class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     with WidgetsBindingObserver {
   final _api = ResponderRoadmapApi();
+  final _careerRecordStore = CareerRecordStore();
   List<DepartmentTaskBookAssignment> _assignments = const [];
   List<DepartmentReviewItem> _reviews = const [];
   List<DepartmentClassDetail> _rmsActions = const [];
@@ -65,6 +69,47 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       await context.read<DepartmentInboxController>().refresh(silent: true);
       if (!mounted) return;
       await context.read<AppModeController>().refreshFromSession(session);
+
+      // Bridge newly completed department training into the responder's
+      // personal evidence without changing the official department record.
+      // Matching is conservative: the verified record can support roadmap
+      // progress, but it never fabricates a certification or authorization.
+      try {
+        final app = context.read<AppState>();
+        final existing = await _careerRecordStore.load();
+        var importedAny = false;
+        for (final assignment in items.where((a) =>
+            a.progress >= 100 ||
+            a.status == 'COMPLETE' ||
+            a.status == 'COMPLETED')) {
+          if (CompetencyEvidenceBridge.isImported(existing, assignment)) {
+            continue;
+          }
+          final match =
+              CompetencyEvidenceBridge.matchAssignment(assignment, app.roadmap);
+          final record = CompetencyEvidenceBridge.toVerifiedCareerRecord(
+            assignment: assignment,
+            departmentName: session.departmentName ?? 'Department',
+            relatedGoalId: app.roadmap?.goal.id,
+            match: match,
+          );
+          if (await _careerRecordStore.upsert(record)) {
+            existing.add(record);
+            importedAny = true;
+            await app.applyLogToRequirementProgress(record);
+          }
+        }
+        if (importedAny) {
+          app.roadmapEvidenceChanged(
+            reason:
+                'Completed department training was added as verified evidence. Your Personal Roadmap was recalculated.',
+          );
+        }
+      } catch (_) {
+        // Department Home must remain available even if personal evidence
+        // bridging cannot run on this refresh.
+      }
+
       items.sort(_priorityCompare);
       setState(() { _assignments = items; _reviews = reviews; _rmsActions = rmsActions; _error = null; _loading = false; });
     } on ResponderRoadmapApiException catch (e) {
