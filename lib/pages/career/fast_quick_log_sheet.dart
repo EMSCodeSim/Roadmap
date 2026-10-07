@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/fast_quick_log_shortcuts_store.dart';
 import 'package:firepath/services/theme.dart';
+import 'package:firepath/state/app_state.dart';
 
 enum FastQuickLogResult { moreDetails }
 
@@ -206,6 +208,13 @@ class _FastQuickLogSheetState extends State<FastQuickLogSheet> {
     final ok = await _store.upsert(record);
     if (!mounted) return;
     if (ok) {
+      try {
+        await context.read<AppState>().applyLogToRequirementProgress(record);
+      } catch (_) {
+        // The durable Career Record is already saved; roadmap recalculation is
+        // additive and must never make Quick Add fail.
+      }
+      if (!mounted) return;
       if (widget.prefill == null) {
         await _shortcutsStore.recordRecent(
           FastQuickLogShortcut(modeKey: mode.key, title: title),
