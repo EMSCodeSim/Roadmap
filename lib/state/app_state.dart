@@ -88,6 +88,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void roadmapEvidenceChanged({String? reason}) {
+    _recordAdaptiveRoadmapUpdate(
+      _completedRequirementIds(),
+      fallback: reason ?? 'New evidence was added. Your Personal Roadmap was recalculated.',
+    );
+  }
+
   void _forwardChildChange() {
     if (_disposed) return;
     notifyListeners();
