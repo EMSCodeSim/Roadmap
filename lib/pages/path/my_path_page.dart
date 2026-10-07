@@ -39,13 +39,23 @@ class MyPathPage extends StatelessWidget {
               PopupMenuButton<String>(
                 tooltip: 'Task Book tools',
                 onSelected: (value) {
-                  if (value == 'customize') {
+                  if (value == 'change_goal') {
+                    context.push(AppRoutes.goalSetup);
+                  } else if (value == 'customize') {
                     _showCustomizeSheet(context, state, roadmap);
                   } else if (value == 'tools') {
                     _showRoadmapTools(context);
                   }
                 },
                 itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'change_goal',
+                    child: ListTile(
+                      leading: Icon(Icons.swap_horiz_rounded),
+                      title: Text('Change end path'),
+                      subtitle: Text('Keep your records and choose a new goal'),
+                    ),
+                  ),
                   PopupMenuItem(
                     value: 'customize',
                     child: ListTile(
@@ -1283,6 +1293,20 @@ class _PathHeader extends StatelessWidget {
           Text(roadmap.goal.title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
           const SizedBox(height: AppSpacing.xs),
           Text('$from → ${roadmap.goal.title}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () => context.push(AppRoutes.goalSetup),
+            icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+            label: const Text('Change end path'),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Changing your end path keeps your credentials, career history, Quick Add records, and completed work. Only the future roadmap is rebuilt for the new goal.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.4,
+                ),
+          ),
           const SizedBox(height: AppSpacing.md),
           Text('${roadmap.completedCount} of ${roadmap.totalCount} complete', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
           const SizedBox(height: AppSpacing.xs),
