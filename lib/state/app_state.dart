@@ -41,6 +41,52 @@ class AppState extends ChangeNotifier {
 
   bool _bootstrapped = false;
   bool _disposed = false;
+  String? _roadmapUpdateMessage;
+  DateTime? _roadmapUpdateAt;
+
+  String? get roadmapUpdateMessage => _roadmapUpdateMessage;
+  DateTime? get roadmapUpdateAt => _roadmapUpdateAt;
+
+  Set<String> _completedRequirementIds() =>
+      roadmap?.completed.map((item) => item.requirement.id).toSet() ?? <String>{};
+
+  void _recordAdaptiveRoadmapUpdate(
+    Set<String> beforeCompleted, {
+    String? fallback,
+  }) {
+    final current = roadmap;
+    if (current == null) return;
+    final afterCompleted =
+        current.completed.map((item) => item.requirement.id).toSet();
+    final newlyCompleted = afterCompleted.difference(beforeCompleted);
+    final next = current.nextStep?.requirement.name;
+
+    if (newlyCompleted.isNotEmpty) {
+      final completedName = current.completed
+          .where((item) => newlyCompleted.contains(item.requirement.id))
+          .map((item) => item.requirement.name)
+          .firstOrNull;
+      _roadmapUpdateMessage = next == null
+          ? 'You completed ${completedName ?? 'a roadmap requirement'}. Your current roadmap is complete.'
+          : 'You completed ${completedName ?? 'a roadmap requirement'}. Your new best next step is $next.';
+    } else if (fallback != null && fallback.trim().isNotEmpty) {
+      _roadmapUpdateMessage = next == null
+          ? fallback
+          : '$fallback Your best next step is $next.';
+    } else {
+      _roadmapUpdateMessage = next == null
+          ? 'Your Personal Roadmap is up to date.'
+          : 'Roadmap recalculated. Your best next step is $next.';
+    }
+    _roadmapUpdateAt = DateTime.now();
+    notifyListeners();
+  }
+
+  void clearRoadmapUpdateMessage() {
+    if (_roadmapUpdateMessage == null) return;
+    _roadmapUpdateMessage = null;
+    notifyListeners();
+  }
 
   void _forwardChildChange() {
     if (_disposed) return;
@@ -353,9 +399,14 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> setPrimaryGoal(String goalId) async {
+    final beforeCompleted = _completedRequirementIds();
     await profileController.setPrimaryGoal(goalId);
     _ensureCustomGoalStarterRequirements(goalId);
     await _persistAll();
+    _recordAdaptiveRoadmapUpdate(
+      beforeCompleted,
+      fallback: 'Goal changed. Your future Personal Roadmap was recalculated without removing completed history.',
+    );
   }
 
   /// Personal career path only — never touches Department Mode.
@@ -413,8 +464,13 @@ class AppState extends ChangeNotifier {
       certificationController.getById(id);
 
   Future<void> upsertCertification(Certification cert) async {
+    final beforeCompleted = _completedRequirementIds();
     await certificationController.upsert(cert);
     await _persistAll();
+    _recordAdaptiveRoadmapUpdate(
+      beforeCompleted,
+      fallback: 'Credential updated. Your Personal Roadmap was recalculated.',
+    );
   }
 
   Future<void> deleteCertification(String id) async {
@@ -642,9 +698,11 @@ class AppState extends ChangeNotifier {
       {required String goalId,
       required String requirementId,
       required bool completed}) async {
+    final beforeCompleted = _completedRequirementIds();
     await taskBookController.setRequirementCompleted(
         goalId: goalId, requirementId: requirementId, completed: completed);
     await _persistAll();
+    _recordAdaptiveRoadmapUpdate(beforeCompleted);
   }
 
   Future<void> setNumericProgress(
@@ -653,6 +711,7 @@ class AppState extends ChangeNotifier {
       required double current,
       required double required,
       String? unit}) async {
+    final beforeCompleted = _completedRequirementIds();
     await taskBookController.setNumericProgress(
         goalId: goalId,
         requirementId: requirementId,
@@ -660,6 +719,7 @@ class AppState extends ChangeNotifier {
         required: required,
         unit: unit);
     await _persistAll();
+    _recordAdaptiveRoadmapUpdate(beforeCompleted);
   }
 
   Future<void> moveTimelineEarlier(
