@@ -87,7 +87,7 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'Pick the position or specialty you want to work toward. You can change this later without changing your certifications or career log.',
+                    'Pick the position or specialty you want to work toward. Changing this rebuilds your future Starter Roadmap but keeps your certifications, career history, Quick Add records, and completed work.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: cs.onSurfaceVariant,
                       height: 1.5,
@@ -229,8 +229,8 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                     _saving
                         ? 'Saving…'
                         : hadGoal
-                        ? 'Build & review Task Book'
-                        : 'Build & review Task Book',
+                        ? 'Change End Path'
+                        : 'Build My Next Steps',
                   ),
                 ),
               ),
