@@ -183,23 +183,6 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                             ),
                           ),
                         ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(Icons.person_search_outlined),
-                          title: const Text(
-                            'My Qualifications',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          subtitle: const Text(
-                            'See my readiness and department authorization status',
-                          ),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const DepartmentQualificationsPage(),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
