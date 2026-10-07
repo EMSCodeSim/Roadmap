@@ -23,7 +23,7 @@ class MyPathPage extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Task Book'),
+          title: const Text('Personal Roadmap'),
           centerTitle: false,
           bottom: roadmap == null
               ? null
@@ -37,7 +37,7 @@ class MyPathPage extends StatelessWidget {
           actions: [
             if (roadmap != null)
               PopupMenuButton<String>(
-                tooltip: 'Task Book tools',
+                tooltip: 'Personal Roadmap tools',
                 onSelected: (value) {
                   if (value == 'change_goal') {
                     context.push(AppRoutes.goalSetup);
@@ -199,9 +199,9 @@ class MyPathPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Add Department Requirement', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              Text('Add Personal Roadmap Item', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
               const SizedBox(height: AppSpacing.md),
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Requirement name')),
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Roadmap item name')),
               const SizedBox(height: AppSpacing.md),
               ValueListenableBuilder<RequirementType>(
                 valueListenable: type,
@@ -212,7 +212,7 @@ class MyPathPage extends StatelessWidget {
                     items: const [
                       DropdownMenuItem(value: RequirementType.certification, child: Text('Certification')),
                       DropdownMenuItem(value: RequirementType.trainingCourse, child: Text('Course')),
-                      DropdownMenuItem(value: RequirementType.taskBook, child: Text('Task Book')),
+                      DropdownMenuItem(value: RequirementType.taskBook, child: Text('Milestone / Task')),
                       DropdownMenuItem(value: RequirementType.experience, child: Text('Experience')),
                       DropdownMenuItem(value: RequirementType.numericProgress, child: Text('Numeric Progress')),
                       DropdownMenuItem(value: RequirementType.promotionalTest, child: Text('Promotional Test')),
@@ -267,7 +267,7 @@ class MyPathPage extends StatelessWidget {
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
                 style: FilledButton.styleFrom(backgroundColor: cs.primary, foregroundColor: cs.onPrimary),
-                child: const Text('Add Requirement'),
+                child: const Text('Add to Personal Roadmap'),
               ),
             ],
           ),
@@ -292,14 +292,14 @@ class MyPathPage extends StatelessWidget {
     final requirement = Requirement(
       id: id,
       name: name,
-      category: 'Department',
-      priority: RequirementPriority.department,
-      description: 'Custom department requirement you added.',
+      category: 'Personal Roadmap',
+      priority: RequirementPriority.development,
+      description: 'User-added Personal Roadmap item. Edit it as your plan changes.',
       type: reqType,
-      requirementSource: RequirementSource.departmentRequirement,
+      requirementSource: RequirementSource.recommended,
       defaultRequired: true,
       stateDependent: false,
-      departmentDependent: true,
+      departmentDependent: false,
       completed: false,
       progressCurrent: reqType == RequirementType.numericProgress ? (current ?? 0) : null,
       progressRequired: reqType == RequirementType.numericProgress ? (required ?? 0) : null,
@@ -316,7 +316,7 @@ class MyPathPage extends StatelessWidget {
       estimatedDurationDays: null,
       recommendedLeadTimeDays: null,
       canRunConcurrent: true,
-      timelineCategory: TimelineCategory.departmentRequirement,
+      timelineCategory: TimelineCategory.development,
       suggestedStartDate: null,
       suggestedCompletionDate: null,
       createdAt: now,
@@ -1230,12 +1230,15 @@ class _ReqTile extends StatelessWidget {
 
   static String _subtitleFor(Requirement r) {
     final parts = <String>[];
-    parts.add(switch (r.requirementSource) {
-      RequirementSource.commonlyRequired => 'Commonly Required',
-      RequirementSource.recommended => 'Commonly Recommended',
-      RequirementSource.stateRequirement => 'State Dependent',
-      RequirementSource.departmentRequirement => 'Department Dependent',
-    });
+    final userAdded = r.id.contains('::dept_') || r.id.contains('::custom_');
+    parts.add(userAdded
+        ? 'User Added'
+        : switch (r.requirementSource) {
+            RequirementSource.commonlyRequired => 'Suggested',
+            RequirementSource.recommended => 'Suggested',
+            RequirementSource.stateRequirement => 'Official Source · Verify Current',
+            RequirementSource.departmentRequirement => 'Department Source · Verify Current',
+          });
     if (r.type == RequirementType.experience && r.experienceValue != null) {
       parts.add('${r.experienceValue!.toStringAsFixed(0)} ${r.experienceUnit ?? 'years'}');
     }
@@ -1379,9 +1382,9 @@ class _CustomizePathSheet extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Customize My Path', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+        Text('Edit Personal Roadmap', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
         const SizedBox(height: AppSpacing.xs),
-        Text('Adjust the recommended progression and requirements to match your department. Personal changes never alter official Department Mode ranks or authorizations.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
+        Text('Make this roadmap yours. Add, remove, or adjust personal milestones and requirements as your goal changes. Suggested items are planning guidance; Department Mode remains separate and official records are never changed here.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
         const SizedBox(height: AppSpacing.md),
         if (state.profile.effectiveCareerPath != CareerPath.ems) ...[
           OutlinedButton.icon(
@@ -1406,7 +1409,7 @@ class _CustomizePathSheet extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: onAddRequirement,
                     icon: const Icon(Icons.add),
-                    label: const Text('Add a requirement'),
+                    label: const Text('Add roadmap item'),
                     style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
                   ),
                 );
