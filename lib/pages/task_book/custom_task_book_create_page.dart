@@ -72,7 +72,7 @@ class _CustomTaskBookCreatePageState extends State<CustomTaskBookCreatePage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Capture local SOP sign-offs, quarterly skills, promo steps, and required hours — while keeping your Career Road Task Book intact.',
+                    'Capture local SOP sign-offs, quarterly skills, promo steps, and required hours — while keeping your Personal Starter Roadmap separate.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5),
                   ),
                 ],
@@ -146,8 +146,8 @@ class _CustomTaskBookCreatePageState extends State<CustomTaskBookCreatePage> {
                     enabled: canCopyCareerRoad,
                     title: 'Copy from My Career Road',
                     subtitle: canCopyCareerRoad
-                        ? 'Start with your generated requirements, then add department specifics.'
-                        : 'Choose a career goal first to generate your Career Road Task Book.',
+                        ? 'Start with your personal roadmap suggestions, then add the official department specifics you have confirmed.'
+                        : 'Choose a career goal first to build your Personal Starter Roadmap.',
                     icon: Icons.alt_route,
                     onTap: () => setState(() => _startingPoint = _StartingPoint.copyCareerRoad),
                   ),
@@ -187,7 +187,7 @@ class _CustomTaskBookCreatePageState extends State<CustomTaskBookCreatePage> {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'You can switch between your Career Road and custom books anytime.',
+              'Your Personal Starter Roadmap stays separate from custom and department Task Books.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
             ),
             const SizedBox(height: AppSpacing.lg),
