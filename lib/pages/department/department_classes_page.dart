@@ -612,6 +612,23 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       const SizedBox(height: 10),
       DropdownButtonFormField<String>(initialValue: _studentId, decoration: const InputDecoration(labelText: 'Selected student'), items: detail.roster.map((item) => DropdownMenuItem(value: item.id, child: Text('${item.name} · ${item.finalResult.replaceAll('_', ' ')}'))).toList(), onChanged: (value) => setState(() => _studentId = value)),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
+      if (detail.status != 'COMPLETE' && detail.roster.isNotEmpty && detail.roster.any((item) => !_studentComplete(detail, item)))
+        Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.pending_actions_rounded),
+                const SizedBox(width: 10),
+                Expanded(child: Text(
+                  '${detail.roster.where((item) => !_studentComplete(detail, item)).length} member(s) still need attendance or required skill results before the sheet is ready to finish.',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                )),
+              ]),
+            ),
+          ),
+        ),
       if (student != null) ...[
         const SizedBox(height: 12),
         Card(
