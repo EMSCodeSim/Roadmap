@@ -83,7 +83,7 @@ class _MyStatusCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'CAREER SNAPSHOT',
+                        'MY GOAL · MY PROGRESS',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: cs.onSurfaceVariant,
                               fontWeight: FontWeight.w900,
@@ -92,7 +92,7 @@ class _MyStatusCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'My status',
+                        'My Roadmap',
                         style: Theme.of(context)
                             .textTheme
                             .titleMedium
@@ -123,7 +123,7 @@ class _MyStatusCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             _StatusLine(label: 'Current level', value: currentRole),
-            _StatusLine(label: 'Next target', value: nextTarget),
+            _StatusLine(label: 'Career goal', value: nextTarget),
             _StatusLine(
               label: 'Credentials needing attention',
               value: '$credentialAttention',
@@ -135,7 +135,7 @@ class _MyStatusCard extends StatelessWidget {
               alert: department.actionCount > 0,
             ),
             _StatusLine(
-              label: 'Current roadmap progress',
+              label: 'Starter Roadmap progress',
               value: progress == null ? 'Not started' : '$progress%',
             ),
             if (progress != null) ...[
@@ -419,10 +419,10 @@ class _HomeActionCenterState extends State<_HomeActionCenter> {
       return _HomeAttentionItem(
         id: 'build-roadmap',
         priority: 30,
-        title: 'Build your roadmap',
-        detail: 'Choose what you are working toward so Responder Roadmap can guide the next step.',
+        title: 'Build My Next Steps',
+        detail: 'Choose where you are now and where you want to go. We’ll build an editable starting roadmap you can add to as you confirm official requirements.',
         icon: Icons.route_outlined,
-        actionLabel: 'Build My Roadmap',
+        actionLabel: 'Build My Next Steps',
         onTap: (context) => context.go(AppRoutes.myPath),
       );
     }
@@ -448,9 +448,9 @@ class _HomeActionCenterState extends State<_HomeActionCenter> {
       priority: 21,
       title: title,
       detail:
-          'Another useful Task Book step for ${requirement.name}. Do this if the primary task is not practical today.',
+          'Another useful suggested step for ${requirement.name}. Do this if the primary step is not practical today.',
       icon: Icons.checklist_rounded,
-      actionLabel: 'Open Task Book',
+      actionLabel: 'Open My Roadmap',
       onTap: (context) => AppRouter.openRequirement(
         context,
         requirement,
@@ -549,7 +549,7 @@ class _WhatNextCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'BEST MOVE TODAY',
+                        'YOUR NEXT STEP',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: cs.primary,
                               fontWeight: FontWeight.w900,
@@ -558,7 +558,7 @@ class _WhatNextCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'What should I do today?',
+                        'What should I work on next?',
                         style: Theme.of(context)
                             .textTheme
                             .titleMedium
@@ -819,7 +819,7 @@ class _ChooseGoalCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Pick a starting point and target. You can skip, replace, or customize stages later.',
+              'Choose where you are and where you want to go. We’ll create an editable starting roadmap you can build on as you confirm official requirements.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: cs.onSurfaceVariant,
                     height: 1.4,
@@ -829,7 +829,7 @@ class _ChooseGoalCard extends StatelessWidget {
             FilledButton.icon(
               onPressed: onChooseGoal,
               icon: const Icon(Icons.route_outlined),
-              label: const Text('Build My Roadmap'),
+              label: const Text('Build My Next Steps'),
             ),
           ],
         ),
