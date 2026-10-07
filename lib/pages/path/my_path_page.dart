@@ -360,8 +360,8 @@ class _PathTab extends StatelessWidget {
       'Certifications',
       'Training',
       'Experience',
-      'Task Books',
-      'Department Requirements',
+      'Milestones & Tasks',
+      'Personal Requirements',
       'Promotion Preparation',
       'Other',
     ];
@@ -384,6 +384,30 @@ class _PathTab extends StatelessWidget {
             goalTitle: goalTitle,
             percentReady: percentReady,
             targetDate: targetDate,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Card(
+            child: Padding(
+              padding: AppSpacing.paddingMd,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Icon(Icons.edit_road_outlined),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(child: Text('Your roadmap is editable', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
+                ]),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Open any item for its detailed plan, steps, notes and resources. Use Customize to add or remove personal items. Suggested items are guidance; official-source items should be checked against the current authority.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(spacing: 8, runSpacing: 8, children: const [
+                  Chip(label: Text('Suggested')),
+                  Chip(label: Text('Official Source · Verify')),
+                  Chip(label: Text('User Added')),
+                ]),
+              ]),
+            ),
           ),
           if (state.profile.effectiveCareerPath != CareerPath.ems) ...[
             const SizedBox(height: AppSpacing.lg),
