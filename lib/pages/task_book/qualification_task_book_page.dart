@@ -1181,6 +1181,44 @@ class _CertificationGuideCard extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: AppSpacing.md),
+          Container(
+            width: double.infinity,
+            padding: AppSpacing.paddingMd,
+            decoration: BoxDecoration(
+              color: cs.surface.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'WHAT THIS ROADMAP SHOULD HELP YOU CONFIRM',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                const Text('• Eligibility and prerequisite credentials'),
+                const Text('• Current state / certifying-authority requirements'),
+                const Text('• Applicable standard and official JPR / practical packet'),
+                const Text('• Required course, academy, or department training'),
+                const Text('• Required textbook, edition, chapters, and candidate handbook'),
+                const Text('• Written and practical test eligibility and registration'),
+                const Text('• Application, fees, deadlines, and credential submission'),
+                const SizedBox(height: 8),
+                Text(
+                  'If an exact book, chapter, JPR, fee, or deadline is not published by the applicable authority/provider, add it after you confirm it. Responder Roadmap should never guess an official requirement.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
           ...guide.pathwaySteps.asMap().entries.map(
                 (entry) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
