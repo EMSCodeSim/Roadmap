@@ -15,6 +15,7 @@ class TaskBookResourceComposer {
   const TaskBookResourceComposer._();
 
   static const String _fireOpsSimHost = 'fireopssim.com';
+  static const String _emsCodeSimHost = 'emscodesim.com';
 
   static bool _isEmsCert(String? certId) {
     const emsCerts = {'emt', 'aemt', 'paramedic', 'bls', 'acls', 'pals'};
@@ -34,6 +35,20 @@ class TaskBookResourceComposer {
   }
 
   static Uri fireOpsSimStudyGuidesUri({required String certId}) => Uri.https(_fireOpsSimHost, '/study-guides.html', {'cert': certId});
+
+  static Uri emsCodeSimRoadmapUri({
+    required String certId,
+    String? taskId,
+    String? stateCode,
+  }) {
+    final state = stateCode?.trim().toUpperCase();
+    return Uri.https(_emsCodeSimHost, '/ems-training-tools.html', <String, String>{
+      'source': 'roadmap',
+      'cert': certId,
+      if (taskId != null && taskId.trim().isNotEmpty) 'task': taskId.trim(),
+      if (state != null && state.isNotEmpty && state != FireOpsCatalog.otherStateCode) 'state': state,
+    });
+  }
 
   static Uri fireOpsSimTaskbookResourcesUri({required String certId, required String taskId, required String? stateCode}) {
     final state = stateCode?.trim().toUpperCase();
@@ -146,23 +161,24 @@ class TaskBookResourceComposer {
     final practice = pick({ResourceType.practiceResource, ResourceType.fireOpsTool});
 
     // --- Deterministic FireOpsSim fallbacks (always helpful) ---
+    final ems = _isEmsCert(certId);
     final fireOpsFinder = _link(
-      id: 'fireopssim_school_finder_$certId',
-      title: 'FireOpsSim School Finder',
-      description: 'Find nearby and verified classes for this certification.',
+      id: '${ems ? 'emscodesim' : 'fireopssim'}_school_finder_$certId',
+      title: ems ? 'EMSCodeSim Training & School Resources' : 'FireOpsSim School Finder',
+      description: ems ? 'Find EMS learning, practice, official-source guidance, and training resources for this certification.' : 'Find nearby and verified classes for this certification.',
       type: ResourceType.courseFinder,
       sourceType: ResourceSourceType.training,
-      url: fireOpsSimSchoolFinderUri(certId: certId, stateCode: normalizedState),
+      url: ems ? emsCodeSimRoadmapUri(certId: certId, stateCode: normalizedState) : fireOpsSimSchoolFinderUri(certId: certId, stateCode: normalizedState),
       certId: certId,
     );
 
     final fireOpsStudy = _link(
-      id: 'fireopssim_study_guides_$certId',
-      title: 'FireOpsSim Study Guide',
-      description: 'Study guide focused on the certification’s JPRs and testing topics.',
+      id: '${ems ? 'emscodesim' : 'fireopssim'}_study_guides_$certId',
+      title: ems ? 'EMSCodeSim Roadmap Companion' : 'FireOpsSim Study Guide',
+      description: ems ? 'Learn, practice, simulate, and return to Roadmap to record your EMS development.' : 'Study guide focused on the certification’s JPRs and testing topics.',
       type: ResourceType.studyResource,
       sourceType: ResourceSourceType.study,
-      url: fireOpsSimStudyGuidesUri(certId: certId),
+      url: ems ? emsCodeSimRoadmapUri(certId: certId, stateCode: normalizedState) : fireOpsSimStudyGuidesUri(certId: certId),
       certId: certId,
     );
 
@@ -208,13 +224,14 @@ class TaskBookResourceComposer {
         })
         .toList();
 
+    final ems = _isEmsCert(c);
     final fireOpsTaskbook = _link(
-      id: 'fireopssim_taskbook_resources_${c}_$taskId',
-      title: 'FireOpsSim Task Book Resources',
-      description: 'Skill sheets, JPR references, and tools mapped to this task.',
+      id: '${ems ? 'emscodesim' : 'fireopssim'}_taskbook_resources_${c}_$taskId',
+      title: ems ? 'EMSCodeSim Roadmap Companion' : 'FireOpsSim Task Book Resources',
+      description: ems ? 'EMS learning, focused practice, patient simulation, drills, and official-source guidance mapped to this Roadmap task.' : 'Skill sheets, JPR references, and tools mapped to this task.',
       type: ResourceType.studyResource,
       sourceType: ResourceSourceType.study,
-      url: fireOpsSimTaskbookResourcesUri(certId: c, taskId: taskId, stateCode: normalizedState),
+      url: ems ? emsCodeSimRoadmapUri(certId: c, taskId: taskId, stateCode: normalizedState) : fireOpsSimTaskbookResourcesUri(certId: c, taskId: taskId, stateCode: normalizedState),
       certId: c,
     );
 
