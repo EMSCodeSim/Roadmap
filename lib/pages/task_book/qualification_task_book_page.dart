@@ -1172,6 +1172,14 @@ class _CertificationGuideCard extends StatelessWidget {
             guide.summary,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Use this screen as your working guide. The steps below should answer what applies, what to study, which JPRs to practice, how to prepare for testing, and what to save when you earn the credential.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.45,
+                ),
+          ),
           const SizedBox(height: AppSpacing.md),
           ...guide.pathwaySteps.asMap().entries.map(
                 (entry) => Padding(
@@ -1264,7 +1272,11 @@ class _OfficialSourceCard extends StatelessWidget {
               }
             },
             icon: const Icon(Icons.open_in_new, size: 18),
-            label: const Text('Open official certification source'),
+            label: Text(
+              authority.stateCode == 'CO'
+                  ? 'Open current DFPC certification manual'
+                  : 'Open official requirements',
+            ),
           ),
         ],
       ),
