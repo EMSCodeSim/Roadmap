@@ -25,7 +25,7 @@ class VisualHomePage extends StatelessWidget {
           children: [
             _Header(onSettings: () => context.push(AppRoutes.settings)),
             const SizedBox(height: 14),
-            _MyStatusCard(app: app, department: department),
+            _MyStatusCard(app: app),
             const SizedBox(height: 14),
             _HomeOverview(app: app, department: department),
           ],
@@ -37,9 +37,8 @@ class VisualHomePage extends StatelessWidget {
 
 class _MyStatusCard extends StatelessWidget {
   final AppState app;
-  final DepartmentInboxController department;
 
-  const _MyStatusCard({required this.app, required this.department});
+  const _MyStatusCard({required this.app});
 
   @override
   Widget build(BuildContext context) {
