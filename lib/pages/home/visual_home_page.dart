@@ -309,10 +309,10 @@ class _HomeOverviewState extends State<_HomeOverview>
         const SizedBox(height: 12),
         Text('Needs attention',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-        if (!_loadingPersonal && !_personalRecordsAvailable)
-          const Text('Personal records could not be loaded; refresh the app to try again.'),
         if (_loadingPersonal)
           const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())
+        else if (!_personalRecordsAvailable)
+          const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Personal records could not be loaded; refresh the app to try again.'))
         else if (needs.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
