@@ -1213,6 +1213,7 @@ class ResponderRoadmapApi {
           evaluatorId: row['evaluatorId'] as String?,
           checkedStepIds: (row['checkedStepIds'] as List? ?? const []).whereType<String>().toList(growable: false),
           memberAttested: row['memberAttested'] == true,
+          classSkillResultId: row['classSkillResultId'] as String?,
         ));
       } on ResponderRoadmapApiException {
         // Leave the durable queue intact for the next automatic retry.
