@@ -1,3 +1,115 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'package:firepath/models/career_record.dart';
+import 'package:firepath/nav.dart';
+import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/needs_attention_engine.dart';
+import 'package:firepath/services/responder_roadmap_api.dart';
+import 'package:firepath/state/app_state.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
+import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
+
+class VisualHomePage extends StatelessWidget {
+  const VisualHomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.watch<AppState>();
+    final department = context.watch<DepartmentInboxController>();
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+          children: [
+            _Header(onSettings: () => context.push(AppRoutes.settings)),
+            const SizedBox(height: 14),
+            _MyStatusCard(app: app, department: department),
+            const SizedBox(height: 14),
+            _HomeOverview(app: app, department: department),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MyStatusCard extends StatelessWidget {
+  final AppState app;
+  final DepartmentInboxController department;
+
+  const _MyStatusCard({required this.app, required this.department});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final roadmap = app.roadmap;
+    final currentRole = app.profile.currentRoles.isEmpty
+        ? 'Not set'
+        : app.profile.currentRoles.first;
+    final nextTarget = roadmap?.goal.title ?? 'Choose a roadmap';
+    final progress =
+        roadmap == null ? null : (roadmap.percentComplete * 100).round();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'MY GOAL · MY PROGRESS',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.6,
+                            ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'My Roadmap',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ],
+                  ),
+                ),
+                if (progress != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '$progress%',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: cs.onPrimaryContainer,
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _StatusLine(label: 'Current level', value: currentRole),
+            _StatusLine(label: 'Career goal', value: nextTarget),
+            _StatusLine(
+              label: 'Requirements completed',
+              value: roadmap == null ? 'Not started' : '${roadmap.completedCount}/${roadmap.totalCount}',
+            ),
             if (progress != null) ...[
               const SizedBox(height: 8),
               ClipRRect(
