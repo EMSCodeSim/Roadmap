@@ -286,11 +286,35 @@ class _RequirementSheetState extends State<_RequirementSheet> {
   bool _loadingEvaluators = false;
   final Set<String> _checkedStepIds = <String>{};
   bool _memberAttested = false;
+  List<Map<String, dynamic>> _matchingEvidence = const [];
+  String? _selectedClassSkillResultId;
+  bool _loadingEvidence = true;
+  String? _evidenceLoadError;
+
 
   @override
   void initState() {
     super.initState();
     if (widget.requirement.evaluatorSignOffRequired) _loadEvaluators();
+    _loadTrainingEvidence();
+  }
+
+  Future<void> _loadTrainingEvidence() async {
+    try {
+      final items = await widget.api.getTrainingEvidence(widget.assignment.id);
+      if (!mounted) return;
+      setState(() {
+        _matchingEvidence = items.where((item) => item['requirementId'] == widget.requirement.id).toList(growable: false);
+        _loadingEvidence = false;
+        _evidenceLoadError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loadingEvidence = false;
+        _evidenceLoadError = 'Training Sheet evidence could not be loaded. You can still enter evidence manually.';
+      });
+    }
   }
 
   Future<void> _loadEvaluators() async {
@@ -338,6 +362,7 @@ class _RequirementSheetState extends State<_RequirementSheet> {
         evaluatorId: _evaluatorId,
         checkedStepIds: _checkedStepIds.toList(growable: false),
         memberAttested: _memberAttested,
+        classSkillResultId: _selectedClassSkillResultId,
       );
       if (!mounted) return;
       await context.read<DepartmentInboxController>().refresh(silent: true);
@@ -558,6 +583,30 @@ class _RequirementSheetState extends State<_RequirementSheet> {
                       : 'Describe the evidence for the department reviewer',
                 ),
               ),
+              const SizedBox(height: 12),
+              Text('Verified Training Sheet evidence', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 5),
+              const Text('Use a matching instructor-approved Training Sheet result as supporting evidence. Task Book sign-off remains separate.'),
+              if (_loadingEvidence) const LinearProgressIndicator(),
+              if (_evidenceLoadError != null) Text(_evidenceLoadError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              if (!_loadingEvidence && _matchingEvidence.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('No matching finalized Training Sheet results found.')),
+              if (_matchingEvidence.isNotEmpty) ...[
+                RadioListTile<String?>(
+                  value: null,
+                  groupValue: _selectedClassSkillResultId,
+                  title: const Text('Do not attach a Training Sheet result'),
+                  onChanged: _submitting ? null : (_) => setState(() => _selectedClassSkillResultId = null),
+                ),
+                ..._matchingEvidence.map((item) => RadioListTile<String?>(
+                  value: item['id']?.toString(),
+                  groupValue: _selectedClassSkillResultId,
+                  title: Text(item['classTitle']?.toString() ?? 'Training Sheet'),
+                  subtitle: Text(item['matchType'] == 'APPROVED_EQUIVALENCY'
+                      ? 'Department-approved equivalent skill · PASS'
+                      : 'Exact skill match · PASS'),
+                  onChanged: _submitting ? null : (value) => setState(() => _selectedClassSkillResultId = value),
+                )),
+              ],
               if (requirement.evaluatorSignOffRequired) ...[
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
