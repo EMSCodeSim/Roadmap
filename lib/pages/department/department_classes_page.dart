@@ -590,27 +590,39 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         Text('${detail.roster.where((item) => _studentComplete(detail, item)).length}/${detail.roster.length} ready', style: Theme.of(context).textTheme.labelLarge),
       ]),
       const SizedBox(height: 8),
-      SizedBox(
-        height: 54,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: detail.roster.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            final item = detail.roster[index];
-            final selected = item.id == _studentId;
-            final complete = _studentComplete(detail, item);
-            return ChoiceChip(
-              selected: selected,
-              avatar: Icon(complete ? Icons.check_circle_rounded : Icons.person_outline_rounded, size: 18),
-              label: Text(item.name),
-              onSelected: (_) => setState(() => _studentId = item.id),
-            );
-          },
+      if (detail.roster.isEmpty)
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: Text('No members registered yet. Share the training QR code to build the roster.'),
+        )
+      else
+        Card(
+          child: Column(
+            children: [
+              for (final item in detail.roster)
+                Builder(builder: (context) {
+                  final selected = item.id == _studentId;
+                  final complete = _studentComplete(detail, item);
+                  return ListTile(
+                    selected: selected,
+                    selectedTileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.45),
+                    leading: Icon(
+                      complete ? Icons.check_circle_rounded : Icons.person_outline_rounded,
+                      color: complete ? Colors.green : null,
+                    ),
+                    title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Text(
+                      '${item.attendance.replaceAll('_', ' ')} · ${item.finalResult.replaceAll('_', ' ')}'
+                      ' · ${_passedRequiredCount(detail, item)}/${_requiredSkillCount(detail)} required skills passed',
+                    ),
+                    trailing: Icon(selected ? Icons.keyboard_arrow_down_rounded : Icons.chevron_right_rounded),
+                    onTap: () => setState(() => _studentId = item.id),
+                  );
+                }),
+            ],
+          ),
         ),
-      ),
       const SizedBox(height: 10),
-      DropdownButtonFormField<String>(initialValue: _studentId, decoration: const InputDecoration(labelText: 'Selected student'), items: detail.roster.map((item) => DropdownMenuItem(value: item.id, child: Text('${item.name} · ${item.finalResult.replaceAll('_', ' ')}'))).toList(), onChanged: (value) => setState(() => _studentId = value)),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
       if (detail.status != 'COMPLETE' && detail.roster.isNotEmpty && detail.roster.any((item) => !_studentComplete(detail, item)))
         Padding(
