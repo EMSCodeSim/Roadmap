@@ -198,6 +198,7 @@ class _HomeOverviewState extends State<_HomeOverview>
   List<CareerRecord> _records = const [];
   List<DepartmentTaskBookAssignment>? _assignments;
   bool _loadingPersonal = true;
+  bool _personalRecordsAvailable = false;
   bool _loadingDepartment = true;
   bool _connected = false;
   String? _departmentError;
@@ -225,10 +226,14 @@ class _HomeOverviewState extends State<_HomeOverview>
       final records = await _recordStore.load();
       if (mounted) setState(() {
         _records = records;
+        _personalRecordsAvailable = true;
         _loadingPersonal = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loadingPersonal = false);
+      if (mounted) setState(() {
+        _personalRecordsAvailable = false;
+        _loadingPersonal = false;
+      });
     }
     try {
       final connected = await _api.hasStoredToken;
@@ -297,13 +302,15 @@ class _HomeOverviewState extends State<_HomeOverview>
             alert: credentialNeeds > 0,
           )),
           Expanded(child: _OverviewMetric(
-            value: _loadingPersonal ? '—' : '${_records.length}',
+            value: _loadingPersonal || !_personalRecordsAvailable ? '—' : '${_records.length}',
             label: 'Records logged',
           )),
         ]),
         const SizedBox(height: 12),
         Text('Needs attention',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+        if (!_loadingPersonal && !_personalRecordsAvailable)
+          const Text('Personal records could not be loaded; refresh the app to try again.'),
         if (_loadingPersonal)
           const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())
         else if (needs.isEmpty)
