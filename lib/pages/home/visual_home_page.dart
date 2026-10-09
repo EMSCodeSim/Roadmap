@@ -254,6 +254,7 @@ class _HomeOverviewState extends State<_HomeOverview>
       });
     } catch (_) {
       if (mounted) setState(() {
+        _connected = true;
         _departmentError = 'Department progress could not be refreshed.';
         _loadingDepartment = false;
       });
@@ -340,7 +341,7 @@ class _HomeOverviewState extends State<_HomeOverview>
     final waiting = assignments?.where((item) => item.pendingApproval > 0).length ?? 0;
     final completedSteps = assignments?.fold<int>(0, (total, item) => total + item.complete) ?? 0;
     final requiredSteps = assignments?.fold<int>(0, (total, item) => total + item.totalRequired) ?? 0;
-    final progress = requiredSteps > 0 ? (completedSteps / requiredSteps).clamp(0.0, 1.0) : null;
+    final progress = requiredSteps > 0 ? (completedSteps / requiredSteps).clamp(0.0, 1.0).toDouble() : null;
     final urgent = inbox.urgentAssignments;
     final actions = inbox.inbox?.needsAction ?? const <DepartmentActionItem>[];
     final sync = inbox.syncState;
@@ -410,7 +411,7 @@ class _HomeOverviewState extends State<_HomeOverview>
               Text('${inbox.actionCount}',
                 style: const TextStyle(fontWeight: FontWeight.w800)),
           ]),
-          if (urgent.isEmpty && actions.isEmpty)
+          if (urgent.isEmpty && actions.isEmpty && _departmentError == null)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Text('No overdue, returned or pending department actions.'),
