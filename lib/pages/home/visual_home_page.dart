@@ -3,13 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
-import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
-import 'package:firepath/services/career_inbox.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/needs_attention_engine.dart';
-import 'package:firepath/services/smart_next_step.dart';
-import 'package:firepath/services/theme.dart';
+import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
@@ -21,9 +18,6 @@ class VisualHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     final department = context.watch<DepartmentInboxController>();
-    final roadmap = app.roadmap;
-    final hasRoadmap = roadmap != null && roadmap.totalCount > 0;
-
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -31,13 +25,9 @@ class VisualHomePage extends StatelessWidget {
           children: [
             _Header(onSettings: () => context.push(AppRoutes.settings)),
             const SizedBox(height: 14),
-            _MyStatusCard(app: app, department: department),
+            _MyStatusCard(app: app),
             const SizedBox(height: 14),
-            _HomeActionCenter(app: app, department: department),
-            if (!hasRoadmap) ...[
-              const SizedBox(height: 14),
-              _ChooseGoalCard(onChooseGoal: () => context.go(AppRoutes.myPath)),
-            ],
+            _HomeOverview(app: app, department: department),
           ],
         ),
       ),
@@ -47,9 +37,8 @@ class VisualHomePage extends StatelessWidget {
 
 class _MyStatusCard extends StatelessWidget {
   final AppState app;
-  final DepartmentInboxController department;
 
-  const _MyStatusCard({required this.app, required this.department});
+  const _MyStatusCard({required this.app});
 
   @override
   Widget build(BuildContext context) {
@@ -61,14 +50,6 @@ class _MyStatusCard extends StatelessWidget {
     final nextTarget = roadmap?.goal.title ?? 'Choose a roadmap';
     final progress =
         roadmap == null ? null : (roadmap.percentComplete * 100).round();
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final credentialAttention = app.certifications.where((cert) {
-      if (cert.doesNotExpire) return false;
-      if (cert.expirationDate == null) return true;
-      return cert.expirationDate!.difference(today).inDays <= 60;
-    }).length;
 
     return Card(
       child: Padding(
@@ -125,18 +106,8 @@ class _MyStatusCard extends StatelessWidget {
             _StatusLine(label: 'Current level', value: currentRole),
             _StatusLine(label: 'Career goal', value: nextTarget),
             _StatusLine(
-              label: 'Credentials needing attention',
-              value: '$credentialAttention',
-              alert: credentialAttention > 0,
-            ),
-            _StatusLine(
-              label: 'Department actions',
-              value: '${department.actionCount}',
-              alert: department.actionCount > 0,
-            ),
-            _StatusLine(
-              label: 'Starter Roadmap progress',
-              value: progress == null ? 'Not started' : '$progress%',
+              label: 'Requirements completed',
+              value: roadmap == null ? 'Not started' : '${roadmap.completedCount}/${roadmap.totalCount}',
             ),
             if (progress != null) ...[
               const SizedBox(height: 8),
@@ -150,6 +121,15 @@ class _MyStatusCard extends StatelessWidget {
                 ),
               ),
             ],
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => context.go(AppRoutes.myPath),
+                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                label: Text(roadmap == null ? 'Build My Roadmap' : 'View My Roadmap'),
+              ),
+            ),
           ],
         ),
       ),
@@ -200,526 +180,330 @@ class _StatusLine extends StatelessWidget {
   }
 }
 
-class _HomeActionCenter extends StatefulWidget {
+
+class _HomeOverview extends StatefulWidget {
   final AppState app;
   final DepartmentInboxController department;
 
-  const _HomeActionCenter({
-    required this.app,
-    required this.department,
-  });
+  const _HomeOverview({required this.app, required this.department});
 
   @override
-  State<_HomeActionCenter> createState() => _HomeActionCenterState();
+  State<_HomeOverview> createState() => _HomeOverviewState();
 }
 
-class _HomeActionCenterState extends State<_HomeActionCenter> {
-  final CareerRecordStore _recordStore = CareerRecordStore();
+class _HomeOverviewState extends State<_HomeOverview>
+    with WidgetsBindingObserver {
+  final _recordStore = CareerRecordStore();
+  final _api = ResponderRoadmapApi();
   List<CareerRecord> _records = const [];
-  bool _loading = true;
+  List<DepartmentTaskBookAssignment>? _assignments;
+  bool _loadingPersonal = true;
+  bool _personalRecordsAvailable = false;
+  bool _loadingDepartment = true;
+  bool _connected = false;
+  String? _departmentError;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addObserver(this);
+    _refresh();
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh() async {
     try {
       final records = await _recordStore.load();
-      if (!mounted) return;
-      setState(() {
+      if (mounted) setState(() {
         _records = records;
-        _loading = false;
+        _personalRecordsAvailable = true;
+        _loadingPersonal = false;
       });
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _loading = false);
+      if (mounted) setState(() {
+        _personalRecordsAvailable = false;
+        _loadingPersonal = false;
+      });
+    }
+    try {
+      final connected = await _api.hasStoredToken;
+      if (!connected) {
+        if (mounted) setState(() {
+          _connected = false;
+          _assignments = null;
+          _departmentError = null;
+          _loadingDepartment = false;
+        });
+        return;
+      }
+      if (mounted) setState(() {
+        _connected = true;
+        _loadingDepartment = true;
+      });
+      final assignments = await _api.listAssignments();
+      if (mounted) setState(() {
+        _assignments = assignments;
+        _departmentError = null;
+        _loadingDepartment = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() {
+        _connected = true;
+        _departmentError = 'Department progress could not be refreshed.';
+        _loadingDepartment = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(22),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      );
-    }
+    return Column(children: [
+      _personalCard(context),
+      const SizedBox(height: 14),
+      _departmentCard(context),
+    ]);
+  }
 
+  Widget _personalCard(BuildContext context) {
     final app = widget.app;
-    final department = widget.department;
-    final attention = _buildAttention(app, department);
-    final smartOptions = SmartNextStepEngine.alternatives(app, limit: 3);
-    final next = _resolveNext(app, attention, smartOptions);
-    final blocking = attention.any((item) => item.priority <= 1);
-    final alternatives = <_HomeAttentionItem>[];
-    if (!blocking && smartOptions.isNotEmpty) {
-      final primary = smartOptions.first;
-      final secondary = primary.secondaryFocusTitle;
-      if (secondary != null && secondary.trim().isNotEmpty) {
-        alternatives.add(_secondaryTaskItem(app, primary, secondary));
-      }
-      for (final decision in smartOptions.skip(1)) {
-        if (alternatives.length >= 2) break;
-        alternatives.add(_smartDecisionItem(app, decision));
-      }
-      if (alternatives.length < 2) {
-        alternatives.add(_maintenanceItem(app));
-      }
-    }
+    final roadmap = app.roadmap;
+    final needs = _loadingPersonal
+        ? <NeedsAttentionItem>[]
+        : NeedsAttentionEngine.analyze(app: app, records: _records);
+    final credentialNeeds = needs.where((item) =>
+        item.certificationId != null ||
+        item.kind == NeedsAttentionKind.certificationMatch).length;
 
-    return Column(
+    return _OverviewCard(
+      icon: Icons.person_outline_rounded,
+      title: 'Personal overview',
+      subtitle: 'Your requirements, credentials and next steps',
+      action: 'Open My Roadmap',
+      onAction: () => context.go(AppRoutes.myPath),
       children: [
-        _WhatNextCard(item: next, alternatives: alternatives),
-        const SizedBox(height: 14),
-        _NeedsMyAttentionCard(items: attention),
+        Row(children: [
+          Expanded(child: _OverviewMetric(
+            value: roadmap == null ? '—' : '${roadmap.missing.length}',
+            label: 'Still needed',
+          )),
+          Expanded(child: _OverviewMetric(
+            value: '$credentialNeeds',
+            label: 'Credential needs',
+            alert: credentialNeeds > 0,
+          )),
+          Expanded(child: _OverviewMetric(
+            value: _loadingPersonal || !_personalRecordsAvailable ? '—' : '${_records.length}',
+            label: 'Records logged',
+          )),
+        ]),
+        const SizedBox(height: 12),
+        Text('Needs attention',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+        if (_loadingPersonal)
+          const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())
+        else if (!_personalRecordsAvailable)
+          const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Personal records could not be loaded; refresh the app to try again.'))
+        else if (needs.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text('No urgent personal items right now.'),
+          )
+        else
+          ...needs.take(2).map((item) => ListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            leading: Icon(item.certificationId != null
+                ? Icons.workspace_premium_outlined : Icons.route_outlined),
+            title: Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+            subtitle: Text(item.detail, maxLines: 2, overflow: TextOverflow.ellipsis),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.go(item.certificationId != null ||
+                    item.kind == NeedsAttentionKind.certificationMatch
+                ? AppRoutes.certifications : AppRoutes.myPath),
+          )),
+        if (needs.length > 2)
+          TextButton(
+            onPressed: () => context.go(AppRoutes.myPath),
+            child: Text('${needs.length - 2} more personal items'),
+          ),
       ],
     );
   }
 
-  List<_HomeAttentionItem> _buildAttention(
-    AppState app,
-    DepartmentInboxController department,
-  ) {
-    final items = <_HomeAttentionItem>[];
+  Widget _departmentCard(BuildContext context) {
+    final inbox = widget.department;
+    final assignments = _assignments;
+    final done = assignments?.where((item) => item.progress >= 100).length ?? 0;
+    final waiting = assignments?.where((item) => item.pendingApproval > 0).length ?? 0;
+    final completedSteps = assignments?.fold<int>(0, (total, item) => total + item.complete) ?? 0;
+    final requiredSteps = assignments?.fold<int>(0, (total, item) => total + item.totalRequired) ?? 0;
+    final progress = requiredSteps > 0 ? (completedSteps / requiredSteps).clamp(0.0, 1.0).toDouble() : null;
+    final urgent = inbox.urgentAssignments;
+    final actions = inbox.inbox?.needsAction ?? const <DepartmentActionItem>[];
+    final sync = inbox.syncState;
 
-    for (final assignment in department.urgentAssignments) {
-      final returned = assignment.sections
-          .expand((section) => section.requirements)
-          .any((requirement) =>
-              requirement.correctionNotes.trim().isNotEmpty &&
-              !requirement.isFullyApproved);
-      items.add(
-        _HomeAttentionItem(
-          id: 'dept-assignment:${assignment.id}',
-          priority: returned ? 0 : 1,
-          title: assignment.taskBookTitle,
-          detail: returned
-              ? 'Returned by your department — correction needed.'
-              : 'Department assignment is overdue.',
-          icon: returned
-              ? Icons.assignment_return_outlined
-              : Icons.schedule_rounded,
-          actionLabel: 'Open Department',
-          onTap: (context) => context.go(AppRoutes.department),
-        ),
-      );
-    }
-
-    for (final action in department.inbox?.needsAction ?? const []) {
-      items.add(
-        _HomeAttentionItem(
-          id: 'dept-action:${action.id}',
-          priority: 2,
-          title: action.title,
-          detail: action.subtitle.isEmpty
-              ? 'Department action is waiting for you.'
-              : action.subtitle,
-          icon: Icons.fact_check_outlined,
-          actionLabel: 'Open Department',
-          onTap: (context) => context.go(AppRoutes.department),
-        ),
-      );
-    }
-
-    final needs = NeedsAttentionEngine.analyze(app: app, records: _records);
-    for (final item in needs) {
-      items.add(
-        _HomeAttentionItem(
-          id: 'needs:${item.id}',
-          priority: switch (item.urgency) {
-            NeedsAttentionUrgency.now => 3,
-            NeedsAttentionUrgency.soon => 5,
-            NeedsAttentionUrgency.later => 8,
-          },
-          title: item.title,
-          detail: item.detail,
-          icon: item.certificationId != null
-              ? Icons.workspace_premium_outlined
-              : Icons.route_outlined,
-          actionLabel: item.actionLabel,
-          onTap: (context) {
-            if (item.certificationId != null) {
-              context.go(AppRoutes.certifications);
-              return;
-            }
-            final requirementId = item.requirementId;
-            final roadmap = app.roadmap;
-            if (requirementId != null && roadmap != null) {
-              final matches = roadmap.all
-                  .where((entry) => entry.requirement.id == requirementId);
-              if (matches.isNotEmpty) {
-                AppRouter.openRequirement(
-                  context,
-                  matches.first.requirement,
-                  goalId: roadmap.goal.id,
-                );
-                return;
-              }
-            }
-            context.go(AppRoutes.myPath);
-          },
-        ),
-      );
-    }
-
-    final careerInbox = CareerInbox.build(app: app, records: _records);
-    for (final item in careerInbox) {
-      if (items.any((entry) =>
-          entry.title.toLowerCase() == item.title.toLowerCase())) {
-        continue;
-      }
-      items.add(
-        _HomeAttentionItem(
-          id: 'career:${item.id}',
-          priority: 10 + item.priority,
-          title: item.title,
-          detail: item.detail,
-          icon: Icons.inbox_outlined,
-          actionLabel: item.actionLabel,
-          onTap: (context) {
-            if (item.certificationId != null) {
-              context.go(AppRoutes.certifications);
-            } else if (item.requirementId != null) {
-              context.go(AppRoutes.myPath);
-            } else {
-              context.go(AppRoutes.personalLog);
-            }
-          },
-        ),
-      );
-    }
-
-    items.sort((a, b) {
-      final p = a.priority.compareTo(b.priority);
-      if (p != 0) return p;
-      return a.title.compareTo(b.title);
-    });
-    return items.take(8).toList(growable: false);
-  }
-
-  _HomeAttentionItem _resolveNext(
-    AppState app,
-    List<_HomeAttentionItem> attention,
-    List<SmartNextStepDecision> smartOptions,
-  ) {
-    final careerBlocking = attention
-        .where((item) => item.priority <= 1)
-        .toList(growable: false);
-    if (careerBlocking.isNotEmpty) return careerBlocking.first;
-
-    if (smartOptions.isNotEmpty) {
-      return _smartDecisionItem(app, smartOptions.first);
-    }
-
-    if (app.roadmap == null) {
-      return _HomeAttentionItem(
-        id: 'build-roadmap',
-        priority: 30,
-        title: 'Build My Next Steps',
-        detail: 'Choose where you are now and where you want to go. We’ll build an editable starting roadmap you can add to as you confirm official requirements.',
-        icon: Icons.route_outlined,
-        actionLabel: 'Build My Next Steps',
-        onTap: (context) => context.go(AppRoutes.myPath),
-      );
-    }
-
-    return _HomeAttentionItem(
-      id: 'caught-up',
-      priority: 99,
-      title: 'You are caught up',
-      detail: 'No urgent department, credential, or roadmap action is waiting right now.',
-      icon: Icons.check_circle_outline_rounded,
-      actionLabel: 'Open My Roadmap',
-      onTap: (context) => context.go(AppRoutes.myPath),
-    );
-  }
-  _HomeAttentionItem _secondaryTaskItem(
-    AppState app,
-    SmartNextStepDecision decision,
-    String title,
-  ) {
-    final requirement = decision.requirement;
-    return _HomeAttentionItem(
-      id: 'roadmap-secondary:${requirement.id}:$title',
-      priority: 21,
-      title: title,
-      detail:
-          'Another useful suggested step for ${requirement.name}. Do this if the primary step is not practical today.',
-      icon: Icons.checklist_rounded,
-      actionLabel: 'Open My Roadmap',
-      onTap: (context) => AppRouter.openRequirement(
-        context,
-        requirement,
-        goalId: app.roadmap?.goal.id,
+    return _OverviewCard(
+      icon: Icons.apartment_outlined,
+      title: 'Department overview',
+      subtitle: 'Assigned training, evaluations and department needs',
+      action: 'Open Department',
+      onAction: () => context.go(AppRoutes.department),
+      trailing: IconButton(
+        tooltip: 'Refresh department progress',
+        onPressed: _loadingDepartment ? null : () {
+          _refresh();
+          inbox.refresh(silent: true);
+        },
+        icon: const Icon(Icons.refresh_rounded),
       ),
-    );
-  }
-
-  _HomeAttentionItem _maintenanceItem(AppState app) {
-    final goalId = app.roadmap?.goal.id ?? '';
-    final ems = goalId.startsWith('ems_');
-    return _HomeAttentionItem(
-      id: ems ? 'maintenance-ems-protocols' : 'maintenance-fire-sops',
-      priority: 40,
-      title: ems
-          ? 'Review one local EMS protocol'
-          : 'Review one department SOP / SOG',
-      detail: ems
-          ? 'Pick a protocol you use on calls, review the current local version, and note one decision point, medication, or change you want to remember.'
-          : 'Pick an operational SOP/SOG you use on shift, review the current local version, and note one action, limitation, or change you want to remember.',
-      icon: Icons.menu_book_outlined,
-      actionLabel: 'Open resources',
-      onTap: (context) => context.push(AppRoutes.resources),
-    );
-  }
-
-  _HomeAttentionItem _smartDecisionItem(
-    AppState app,
-    SmartNextStepDecision decision,
-  ) {
-    final requirement = decision.requirement;
-    return _HomeAttentionItem(
-      id: 'roadmap-next:${requirement.id}',
-      priority: 20,
-      title: decision.actionTitle,
-      detail: decision.actionDetail,
-      icon: _todayActionIcon(requirement.type),
-      actionLabel: decision.actionLabel,
-      onTap: (context) => AppRouter.openRequirement(
-        context,
-        requirement,
-        goalId: app.roadmap?.goal.id,
-      ),
+      children: [
+        if (!_connected && !_loadingDepartment)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text('Connect to your department to see assigned training and progress.'),
+          )
+        else ...[
+          if (_departmentError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(_departmentError!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            ),
+          if (_loadingDepartment && assignments == null)
+            const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())
+          else if (assignments != null) ...[
+            Row(children: [
+              Expanded(child: _OverviewMetric(
+                value: '${assignments.length}', label: 'Assigned')),
+              Expanded(child: _OverviewMetric(
+                value: '$done', label: '100% progress')),
+              Expanded(child: _OverviewMetric(
+                value: '$waiting', label: 'Awaiting sign-off', alert: waiting > 0)),
+            ]),
+            if (progress != null) ...[
+              const SizedBox(height: 12),
+              Row(children: [
+                const Expanded(child: Text('Required steps completed')),
+                Text('$completedSteps / $requiredSteps',
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              ]),
+              const SizedBox(height: 6),
+              LinearProgressIndicator(value: progress, minHeight: 7),
+            ],
+          ],
+          if (sync == DepartmentSyncState.waitingToUpload ||
+              sync == DepartmentSyncState.failed)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(sync == DepartmentSyncState.waitingToUpload
+                  ? 'Some entries are waiting to sync.'
+                  : 'Department sync needs attention.'),
+            ),
+          const SizedBox(height: 14),
+          Row(children: [
+            Expanded(child: Text('Needs attention',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
+            if (inbox.actionCount > 0)
+              Text('${inbox.actionCount}',
+                style: const TextStyle(fontWeight: FontWeight.w800)),
+          ]),
+          if (urgent.isEmpty && actions.isEmpty && _departmentError == null)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('No overdue, returned or pending department actions.'),
+            )
+          else ...[
+            ...urgent.take(2).map((item) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              leading: const Icon(Icons.assignment_late_outlined),
+              title: Text(item.taskBookTitle, maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+              subtitle: const Text('Overdue or returned assignment'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.go(AppRoutes.department),
+            )),
+            if (urgent.length < 2)
+              ...actions.take(2 - urgent.length).map((item) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: const Icon(Icons.fact_check_outlined),
+                title: Text(item.title, maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+                subtitle: Text(item.subtitle, maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.go(AppRoutes.department),
+              )),
+          ],
+        ],
+      ],
     );
   }
 }
 
-IconData _todayActionIcon(RequirementType type) => switch (type) {
-      RequirementType.certification => Icons.workspace_premium_outlined,
-      RequirementType.trainingCourse || RequirementType.course =>
-        Icons.school_outlined,
-      RequirementType.promotionalTest => Icons.event_available_outlined,
-      RequirementType.practical => Icons.fact_check_outlined,
-      RequirementType.interview => Icons.record_voice_over_outlined,
-      RequirementType.education => Icons.school_outlined,
-      RequirementType.taskBook => Icons.menu_book_outlined,
-      RequirementType.experience => Icons.trending_up_rounded,
-      RequirementType.numericProgress => Icons.add_task_outlined,
-      RequirementType.custom => Icons.route_outlined,
-    };
+class _OverviewCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String action;
+  final VoidCallback onAction;
+  final Widget? trailing;
+  final List<Widget> children;
 
-class _WhatNextCard extends StatelessWidget {
-  final _HomeAttentionItem item;
-  final List<_HomeAttentionItem> alternatives;
-
-  const _WhatNextCard({
-    required this.item,
-    this.alternatives = const [],
+  const _OverviewCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.action,
+    required this.onAction,
+    required this.children,
+    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.bolt_rounded, color: cs.primary),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'YOUR NEXT STEP',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: cs.primary,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.6,
-                            ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'What should I work on next?',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w900),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              item.title,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              item.detail,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-            ),
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              onPressed: () => item.onTap(context),
-              icon: Icon(item.icon),
-              label: Text(item.actionLabel),
-            ),
-            if (alternatives.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                'Also useful today',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w900,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              ...alternatives.take(2).map(
-                    (alternative) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      leading: Icon(alternative.icon, size: 20),
-                      title: Text(
-                        alternative.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        alternative.detail,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () => alternative.onTap(context),
-                    ),
-                  ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NeedsMyAttentionCard extends StatelessWidget {
-  final List<_HomeAttentionItem> items;
-
-  const _NeedsMyAttentionCard({required this.items});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final visible = items.take(5).toList();
-
+    final theme = Theme.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Icon(
-                  visible.isEmpty
-                      ? Icons.check_circle_outline_rounded
-                      : Icons.notifications_active_outlined,
-                  color: visible.isEmpty ? cs.primary : cs.error,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Needs My Attention',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                ),
-                Text(
-                  '${items.length}',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w900),
-                ),
-              ],
+            Row(children: [
+              Icon(icon, color: theme.colorScheme.primary),
+              const SizedBox(width: 10),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900)),
+                  Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant)),
+                ],
+              )),
+              if (trailing != null) trailing!,
+            ]),
+            const SizedBox(height: 12),
+            ...children,
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onAction,
+                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                label: Text(action),
+              ),
             ),
-            if (visible.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  'Nothing needs action right now.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                ),
-              )
-            else
-              ...visible.map(
-                (item) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    width: 36,
-                    height: 36,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(item.icon, size: 19),
-                  ),
-                  title: Text(
-                    item.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    item.detail,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => item.onTap(context),
-                ),
-              ),
-            if (items.length > visible.length)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  '+${items.length - visible.length} more items',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-              ),
           ],
         ),
       ),
@@ -727,24 +511,28 @@ class _NeedsMyAttentionCard extends StatelessWidget {
   }
 }
 
-class _HomeAttentionItem {
-  final String id;
-  final int priority;
-  final String title;
-  final String detail;
-  final IconData icon;
-  final String actionLabel;
-  final void Function(BuildContext context) onTap;
+class _OverviewMetric extends StatelessWidget {
+  final String value;
+  final String label;
+  final bool alert;
+  const _OverviewMetric({required this.value, required this.label, this.alert = false});
 
-  const _HomeAttentionItem({
-    required this.id,
-    required this.priority,
-    required this.title,
-    required this.detail,
-    required this.icon,
-    required this.actionLabel,
-    required this.onTap,
-  });
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: Column(children: [
+        Text(value, style: theme.textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w900,
+          color: alert ? theme.colorScheme.error : theme.colorScheme.onSurface,
+        )),
+        Text(label, textAlign: TextAlign.center,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant)),
+      ]),
+    );
+  }
 }
 
 class _Header extends StatelessWidget {
@@ -795,45 +583,3 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _ChooseGoalCard extends StatelessWidget {
-  final VoidCallback onChooseGoal;
-
-  const _ChooseGoalCard({required this.onChooseGoal});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Choose what you are working toward',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Choose where you are and where you want to go. We’ll create an editable starting roadmap you can build on as you confirm official requirements.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-            ),
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              onPressed: onChooseGoal,
-              icon: const Icon(Icons.route_outlined),
-              label: const Text('Build My Next Steps'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
