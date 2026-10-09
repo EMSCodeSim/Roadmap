@@ -1127,6 +1127,14 @@ class ResponderRoadmapApi {
     return DepartmentTaskBookAssignment.fromJson(_asMap(data));
   }
 
+  Future<List<Map<String, dynamic>>> getTrainingEvidence(String assignmentId) async {
+    final data = _asMap(await _request('GET', 'app/assignments/${Uri.encodeComponent(assignmentId)}/training-evidence'));
+    return (data['items'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
+  }
+
   Future<DepartmentSubmissionResult> submitRequirement({
     required String assignmentId,
     required String requirementId,
@@ -1137,6 +1145,7 @@ class ResponderRoadmapApi {
     String? evaluatorId,
     List<String> checkedStepIds = const [],
     bool memberAttested = false,
+    String? classSkillResultId,
   }) async {
     final requestId = clientRequestId ?? 'submission-${DateTime.now().microsecondsSinceEpoch}';
     final pending = <String, dynamic>{
@@ -1149,6 +1158,7 @@ class ResponderRoadmapApi {
       if (evaluatorId != null) 'evaluatorId': evaluatorId,
       'checkedStepIds': checkedStepIds,
       'memberAttested': memberAttested,
+      if (classSkillResultId != null) 'classSkillResultId': classSkillResultId,
     };
     await _savePendingSubmission(pending);
     dynamic data;
@@ -1164,6 +1174,7 @@ class ResponderRoadmapApi {
           if (evaluatorId != null) 'evaluatorId': evaluatorId,
           'checkedStepIds': checkedStepIds,
           'memberAttested': memberAttested,
+          if (classSkillResultId != null) 'classSkillResultId': classSkillResultId,
         },
       );
     } on ResponderRoadmapApiException catch (error) {
