@@ -269,6 +269,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _studentId;
   String? _error;
   bool _busy = false;
+  String? _groupSkillId;
   @override
   void initState() { super.initState(); _load(); }
   Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
@@ -472,6 +473,44 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     try { final saved=await _api.recordClassSkillDurable(classId: widget.classId, enrollmentId: student.id, requirementId: skill.id, result: result, notes: notes); if(saved.detail!=null)_setDetail(saved.detail!); if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — skill result saved safely on this device.')));} } catch (e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); }
   }
 
+  Future<void> _passGroupSkill(DepartmentClassStudent member, DepartmentClassSkill skill) async {
+    final detail = _detail;
+    if (detail == null || _busy || detail.status == 'COMPLETE') return;
+    if (member.attendance != 'PRESENT') {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Confirm attendance before recording a pass.')));
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final saved = await _api.recordClassSkillDurable(
+        classId: detail.id,
+        enrollmentId: member.id,
+        requirementId: skill.id,
+        result: 'PASS',
+      );
+      if (saved.detail != null) _setDetail(saved.detail!);
+      if (saved.queued && mounted) {
+        context.read<DepartmentInboxController>().submissionQueued();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Waiting to Sync — ${member.name} skill result saved on this device.')));
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _closeoutLine(BuildContext context, String label, bool complete, String detail) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(children: [
+      Icon(complete ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+        size: 20, color: complete ? Colors.green : Theme.of(context).colorScheme.outline),
+      const SizedBox(width: 8),
+      Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700))),
+      Flexible(child: Text(detail, textAlign: TextAlign.end, style: Theme.of(context).textTheme.bodySmall)),
+    ]),
+  );
+
   @override
   Widget build(BuildContext context) {
     final detail = _detail; final student = _student;
@@ -510,6 +549,19 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ]),
         ),
       ),
+      Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Instructor Closeout', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          _closeoutLine(context, 'Roster', detail.roster.isNotEmpty, '${detail.roster.length} registered'),
+          _closeoutLine(context, 'Attendance verified', detail.roster.isNotEmpty && detail.roster.every((member) => member.attendance != 'REGISTERED'), '${detail.roster.where((member) => member.attendance != 'REGISTERED').length}/${detail.roster.length} recorded'),
+          _closeoutLine(context, 'Required skill results', detail.roster.where((member) => member.attendance == 'PRESENT').every((member) => _studentComplete(detail, member)), '${detail.roster.where((member) => _studentComplete(detail, member)).length} ready'),
+          _closeoutLine(context, 'Training closed', detail.status == 'COMPLETE', 'Review & Close'),
+          _closeoutLine(context, 'Instructor approval', detail.instructorApprovedAt != null, 'Required before RMS entry'),
+          _closeoutLine(context, 'Department RMS entry', detail.rmsStatus == 'RMS_ENTERED', 'Separate official record step'),
+        ],
+      ))),
       const SizedBox(height: 10),
       if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), FilledButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Close'))]),
       if (detail.status == 'COMPLETE') ...[
@@ -585,6 +637,50 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ),
       ],
       const SizedBox(height: 12),
+      if (detail.status != 'COMPLETE' && detail.roster.isNotEmpty && detail.sections.any((section) => section.skills.isNotEmpty)) ...[
+        const SizedBox(height: 12),
+        Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Quick Skill Grading', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 6),
+            const Text('Select a skill and record each observed result separately. Group grading never approves the entire roster.'),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              key: ValueKey(_groupSkillId),
+              initialValue: detail.sections.expand((section) => section.skills).any((skill) => skill.id == _groupSkillId) ? _groupSkillId : null,
+              decoration: const InputDecoration(labelText: 'Skill being evaluated'),
+              isExpanded: true,
+              items: detail.sections.expand((section) => section.skills).map((skill) =>
+                DropdownMenuItem(value: skill.id, child: Text(skill.title, overflow: TextOverflow.ellipsis))).toList(),
+              onChanged: _busy ? null : (value) => setState(() => _groupSkillId = value),
+            ),
+            if (_groupSkillId != null) ...[
+              const SizedBox(height: 10),
+              for (final member in detail.roster)
+                Builder(builder: (context) {
+                  final skill = detail.sections.expand((section) => section.skills).where((s) => s.id == _groupSkillId).firstOrNull;
+                  if (skill == null) return const SizedBox.shrink();
+                  final result = member.results.where((r) => r.requirementId == skill.id).firstOrNull;
+                  return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(children: [
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(member.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text('${member.attendance} · ${result?.result ?? 'NOT_EVALUATED'}', style: Theme.of(context).textTheme.bodySmall),
+                    ])),
+                    TextButton(
+                      onPressed: _busy ? null : () => setState(() => _studentId = member.id),
+                      child: const Text('Details'),
+                    ),
+                    FilledButton(
+                      onPressed: _busy || member.attendance != 'PRESENT' ? null : () => _passGroupSkill(member, skill),
+                      child: const Text('Pass'),
+                    ),
+                  ]));
+                }),
+            ],
+          ],
+        ))),
+      ],
       Row(children: [
         Expanded(child: Text('Roster', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
         Text('${detail.roster.where((item) => _studentComplete(detail, item)).length}/${detail.roster.length} ready', style: Theme.of(context).textTheme.labelLarge),
