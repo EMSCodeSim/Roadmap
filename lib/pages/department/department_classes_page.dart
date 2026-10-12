@@ -563,7 +563,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           _closeoutLine(context, 'Department RMS entry', detail.rmsStatus == 'RMS_ENTERED', 'Separate official record step'),
         ],
       ))),
-      if (mode.isAdmin || mode.isInstructor) ...[
+      if (mode.isAdmin) ...[
         ClassTaskBookLinkCard(detail: detail, onAssigned: () {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task Book assignments updated. Members can view them under Department Task Books.')));
         }),
