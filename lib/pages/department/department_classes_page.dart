@@ -273,6 +273,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _groupSkillId;
   bool _showGrading = false;
   bool _missingOnly = false;
+  final _memberEditorKey = GlobalKey();
   @override
   void initState() { super.initState(); _load(); }
   Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
@@ -345,6 +346,74 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       if (mounted) setState(() => _error = 'Confirmed $confirmed record(s); remaining attendance requires attention: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _jumpToMember(DepartmentClassStudent member, {required bool grading}) {
+    setState(() {
+      _studentId = member.id;
+      _showGrading = grading;
+      _missingOnly = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _memberEditorKey.currentContext;
+      if (target != null) {
+        Scrollable.ensureVisible(target, duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut, alignment: 0.08);
+      }
+    });
+  }
+
+  Future<void> _reviewAndFinish() async {
+    final detail = _detail;
+    if (detail == null || _busy) return;
+    final issues = detail.roster.where((m) => _missingFor(detail, m).isNotEmpty).toList();
+    final selection = await showModalBottomSheet<DepartmentClassStudent>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(child: FractionallySizedBox(
+        heightFactor: 0.75,
+        child: Column(children: [
+          Padding(padding: const EdgeInsets.all(16), child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Review & Finish', style: Theme.of(sheetContext).textTheme.titleLarge),
+              const SizedBox(height: 6),
+              Text(issues.isEmpty
+                ? 'No member attendance or required-skill gaps detected locally. Server validation is still required.'
+                : '${issues.length} member(s) need attention. Tap a member to fix their record.'),
+            ],
+          )),
+          Expanded(child: ListView(children: issues.isEmpty
+            ? [const ListTile(leading: Icon(Icons.check_circle_outline),
+                title: Text('Member-level checks complete'),
+                subtitle: Text('Check server-required fields and proctors before closing.'))]
+            : issues.map((member) => ListTile(
+                leading: const Icon(Icons.report_problem_outlined),
+                title: Text(member.name),
+                subtitle: Text(_missingFor(detail, member)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pop(sheetContext, member),
+              )).toList())),
+          Padding(padding: const EdgeInsets.all(16), child: SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => Navigator.pop(sheetContext),
+              icon: const Icon(Icons.fact_check_outlined),
+              label: Text(issues.isEmpty ? 'Check server readiness' : 'Back to roster'),
+            ),
+          )),
+        ]),
+      )),
+    );
+    if (!mounted) return;
+    if (selection != null) {
+      _jumpToMember(selection, grading: selection.attendance == 'PRESENT');
+    } else {
+      // The server remains the authority for required fields, proctors,
+      // pending sync, and the actual close decision.
+      await _closeTraining();
     }
   }
 
@@ -638,7 +707,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         const SizedBox(height: 10),
       ],
       const SizedBox(height: 10),
-      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), FilledButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Close'))]),
+      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), FilledButton.icon(onPressed: _busy ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish'))]),
       if (detail.status == 'COMPLETE') ...[
         Card(
           child: Padding(
@@ -845,6 +914,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       if (student != null && (!_missingOnly || _missingFor(detail, student).isNotEmpty)) ...[
         const SizedBox(height: 12),
         Card(
+          key: _memberEditorKey,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(children: [
