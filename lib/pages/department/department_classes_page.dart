@@ -9,6 +9,7 @@ import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
+import 'ems_ce_categories.dart';
 
 class DepartmentClassesPage extends StatefulWidget {
   const DepartmentClassesPage({super.key, this.openCreateTraining = false});
@@ -208,7 +209,33 @@ class _CreateTrainingSheet extends StatefulWidget {
 
 class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
-  bool busy = false, qr = true; String? error; String category = 'COMPANY'; String checklist = '';
+  bool busy = false, qr = true, emsCeMode = false;
+  String? error;
+  String category = 'COMPANY', checklist = '';
+  final objectives = TextEditingController();
+  final Map<String, double> ceCredits = {};
+  final Set<String> selectedMemberIds = {};
+  DateTime startsAt = DateTime.now(), endsAt = DateTime.now().add(const Duration(hours: 1));
+  double get totalCeHours => ceCredits.values.fold<double>(0, (sum, hours) => sum + hours);
+  String displayDateTime(DateTime value) =>
+      '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')} '
+      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+  Future<void> selectDateTime({required bool start}) async {
+    final current = start ? startsAt : endsAt;
+    final date = await showDatePicker(context: context, initialDate: current, firstDate: DateTime(2020), lastDate: DateTime(2100));
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(current));
+    if (time == null || !mounted) return;
+    final chosen = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    setState(() {
+      if (start) {
+        startsAt = chosen;
+        if (!endsAt.isAfter(startsAt)) endsAt = startsAt.add(const Duration(hours: 1));
+      } else {
+        endsAt = chosen;
+      }
+    });
+  }
   @override void initState() {
     super.initState();
     final t=widget.template;
@@ -218,7 +245,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       category=t.trainingCategory; checklist=t.checklistVersionId; qr=t.selfRegistration;
     }
   }
-  @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); super.dispose(); }
+  @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); objectives.dispose(); super.dispose(); }
   bool req(String key) => widget.setup.requiredFields.contains(key);
   Future<void> save() async {
     if(title.text.trim().isEmpty){setState(()=>error='Training title is required.'); return;}
