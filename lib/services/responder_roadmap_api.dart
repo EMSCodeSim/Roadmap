@@ -800,6 +800,7 @@ class DepartmentClassSkillResult {
 
 class DepartmentClassStudent {
   final String id;
+  final String? membershipId;
   final String name;
   final String email;
   final String attendance;
@@ -807,9 +808,9 @@ class DepartmentClassStudent {
   final double? ccfScore;
   final String finalResult;
   final List<DepartmentClassSkillResult> results;
-  const DepartmentClassStudent({required this.id, required this.name, required this.email, required this.attendance, required this.writtenScore, required this.ccfScore, required this.finalResult, required this.results});
+  const DepartmentClassStudent({required this.id, this.membershipId, required this.name, required this.email, required this.attendance, required this.writtenScore, required this.ccfScore, required this.finalResult, required this.results});
   factory DepartmentClassStudent.fromJson(Map<String, dynamic> json) => DepartmentClassStudent(
-        id: (json['id'] as String?) ?? '', name: (json['name'] as String?) ?? 'Student', email: (json['email'] as String?) ?? '', attendance: (json['attendance'] as String?) ?? 'REGISTERED',
+        id: (json['id'] as String?) ?? '', membershipId: json['membershipId'] as String?, name: (json['name'] as String?) ?? 'Student', email: (json['email'] as String?) ?? '', attendance: (json['attendance'] as String?) ?? 'REGISTERED',
         writtenScore: (json['writtenScore'] as num?)?.toDouble(), ccfScore: (json['ccfScore'] as num?)?.toDouble(), finalResult: (json['finalResult'] as String?) ?? 'PENDING',
         results: (json['results'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSkillResult.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
       );
@@ -1473,6 +1474,33 @@ class ResponderRoadmapApi {
       },
     );
     return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  /// Published department Task Books eligible for assignment from a class.
+  Future<List<Map<String, dynamic>>> listPublishedClassTaskBooks() async {
+    final data = await _request('GET', 'task-books');
+    return (data is List ? data : const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .where((item) => item['status'] == 'ACTIVE' && item['templateKind'] != 'TRAINING_TASK')
+        .toList(growable: false);
+  }
+
+  /// A class is a source of evidence, not a blanket competency approval.
+  Future<Map<String, dynamic>> assignTaskBookToClassRoster({
+    required String classId,
+    required String templateId,
+    required List<String> membershipIds,
+  }) async {
+    final data = await _request(
+      'POST',
+      'classes/${Uri.encodeComponent(classId)}/assign-task-book',
+      body: <String, dynamic>{
+        'templateId': templateId,
+        'membershipIds': membershipIds,
+      },
+    );
+    return _asMap(data);
   }
 
   Future<DepartmentClassDetail> getClass(String classId) async {

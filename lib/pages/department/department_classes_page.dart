@@ -9,6 +9,7 @@ import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
+import 'package:firepath/pages/department/class_task_book_link_card.dart';
 
 class DepartmentClassesPage extends StatefulWidget {
   const DepartmentClassesPage({super.key, this.openCreateTraining = false});
@@ -562,6 +563,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           _closeoutLine(context, 'Department RMS entry', detail.rmsStatus == 'RMS_ENTERED', 'Separate official record step'),
         ],
       ))),
+      if (mode.isAdmin) ...[
+        ClassTaskBookLinkCard(detail: detail, onAssigned: () {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task Book assignments updated. Members can view them under Department Task Books.')));
+        }),
+        const SizedBox(height: 10),
+      ],
       const SizedBox(height: 10),
       if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), FilledButton.icon(onPressed: _busy ? null : _closeTraining, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Close'))]),
       if (detail.status == 'COMPLETE') ...[
