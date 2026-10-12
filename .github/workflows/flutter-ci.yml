@@ -33,6 +33,9 @@ jobs:
       - name: Shared competency and evidence tests
         run: flutter test test/competency_evidence_bridge_test.dart
 
+      - name: Connected class-to-Task Book workflow regression tests
+        run: flutter test test/class_training_workflow_test.dart
+
       - name: Department Skill Mastery parsing tests
         run: flutter test test/department_skill_mastery_test.dart
 
@@ -86,14 +89,8 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run full legacy test suite (diagnostic)
-        id: legacy_tests
-        continue-on-error: true
+      - name: Run full Flutter test suite (required)
         run: flutter test --timeout 2m
-
-      - name: Report legacy diagnostic failures
-        if: steps.legacy_tests.outcome == 'failure'
-        run: echo "::warning::One or more legacy diagnostic tests failed or timed out. Required regression tests and platform builds remain authoritative."
 
   ios-release:
     runs-on: macos-latest
