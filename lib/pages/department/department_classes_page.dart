@@ -271,6 +271,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _error;
   bool _busy = false;
   String? _groupSkillId;
+  String _workflowStep = 'roster';
   @override
   void initState() { super.initState(); _load(); }
   Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
@@ -531,6 +532,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ])));
       }),
 
+      const SizedBox(height: 10),
+      SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
+        for (final step in const [('roster', '1 · Roster'), ('record', '2 · Record training'), ('finish', '3 · Finish & assign')])
+          Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(
+            label: Text(step.$2),
+            selected: _workflowStep == step.$1,
+            onSelected: (_) => setState(() => _workflowStep = step.$1),
+          )),
+      ])),
+      const SizedBox(height: 10),
+      if (_workflowStep == 'finish') ...[
       Card(
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -644,6 +656,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ),
       ],
       const SizedBox(height: 12),
+      ],
+      if (_workflowStep == 'record') ...[
       if (detail.status != 'COMPLETE' && detail.roster.isNotEmpty && detail.sections.any((section) => section.skills.isNotEmpty)) ...[
         const SizedBox(height: 12),
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
@@ -688,6 +702,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ],
         ))),
       ],
+      ],
+      if (_workflowStep == 'roster') ...[
       Row(children: [
         Expanded(child: Text('Roster', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
         Text('${detail.roster.where((item) => _studentComplete(detail, item)).length}/${detail.roster.length} ready', style: Theme.of(context).textTheme.labelLarge),
@@ -744,7 +760,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             ),
           ),
         ),
-      if (student != null) ...[
+      ],
+      if (_workflowStep == 'record' && student != null) ...[
         const SizedBox(height: 12),
         Card(
           child: Padding(
