@@ -147,7 +147,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
             ),
           ),
         ],
-        if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) ...[const SizedBox(height: 14), FilledButton.icon(onPressed: _createTraining, icon: const Icon(Icons.add_rounded), label: const Text('Create Training Sheet'))],
+        if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) ...[const SizedBox(height: 14), FilledButton.icon(onPressed: _createTraining, icon: const Icon(Icons.add_rounded), label: const Text('Quick Add Training'))],
         const SizedBox(height: 16),
         if (_classes!.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('No classes are assigned to you yet. Classes you create, teach, or proctor will appear here.'))),
         ..._classes!.map((row) => Card(child: ListTile(
@@ -270,6 +270,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _error;
   bool _busy = false;
   String? _groupSkillId;
+  bool _showUngradedOnly = true;
   @override
   void initState() { super.initState(); _load(); }
   Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
@@ -657,7 +658,20 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             ),
             if (_groupSkillId != null) ...[
               const SizedBox(height: 10),
-              for (final member in detail.roster)
+              Row(children: [
+                Expanded(child: Text(
+                  '${detail.roster.where((member) => member.results.any((r) => r.requirementId == _groupSkillId && r.result != 'NOT_EVALUATED')).length} / ${detail.roster.length} individually recorded',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                )),
+                const Text('Pending only'),
+                Switch(
+                  value: _showUngradedOnly,
+                  onChanged: (value) => setState(() => _showUngradedOnly = value),
+                ),
+              ]),
+              for (final member in detail.roster.where((member) =>
+                !_showUngradedOnly || !member.results.any((r) =>
+                  r.requirementId == _groupSkillId && r.result != 'NOT_EVALUATED')))
                 Builder(builder: (context) {
                   final skill = detail.sections.expand((section) => section.skills).where((s) => s.id == _groupSkillId).firstOrNull;
                   if (skill == null) return const SizedBox.shrink();
