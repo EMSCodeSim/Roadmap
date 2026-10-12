@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
+import 'package:firepath/pages/department/class_workflow_rules.dart';
 
 /// Mobile companion to the website's class -> Task Book workflow.
 /// No competency or qualification is approved by creating assignments.
@@ -20,6 +21,9 @@ class ClassTaskBookLinkCard extends StatefulWidget {
 class _ClassTaskBookLinkCardState extends State<ClassTaskBookLinkCard> {
   final _api = ResponderRoadmapApi();
   List<Map<String, dynamic>>? _books;
+  List<Map<String, dynamic>> _assignments = [];
+  bool _progressLoading = false;
+  bool _verifyBeforeRetry = false;
   String? _selectedBook;
   final Set<String> _selectedMembers = {};
   String? _error;
@@ -30,6 +34,7 @@ class _ClassTaskBookLinkCardState extends State<ClassTaskBookLinkCard> {
   void initState() {
     super.initState();
     _loadBooks();
+    _loadProgress();
   }
 
   Future<void> _loadBooks() async {
@@ -41,16 +46,35 @@ class _ClassTaskBookLinkCardState extends State<ClassTaskBookLinkCard> {
     }
   }
 
+  Future<void> _loadProgress() async {
+    if (!mounted) return;
+    setState(() => _progressLoading = true);
+    try {
+      final assignments = await _api.listDepartmentTaskBookAssignments();
+      if (!mounted) return;
+      setState(() {
+        _assignments = assignments;
+        _progressLoading = false;
+        _verifyBeforeRetry = false;
+      });
+    } catch (error) {
+      if (mounted) setState(() {
+        _progressLoading = false;
+        _error = 'Could not refresh assignment progress: $error';
+      });
+    }
+  }
+
   void _select(Iterable<DepartmentClassStudent> students) {
     setState(() {
       _selectedMembers
         ..clear()
-        ..addAll(students.map((s) => s.membershipId).whereType<String>().where((id) => id.isNotEmpty));
+        ..addAll(eligibleClassMembershipIds(students));
     });
   }
 
   Future<void> _assign() async {
-    if (_saving || _selectedBook == null || _selectedMembers.isEmpty) return;
+    if (_saving || _verifyBeforeRetry || _selectedBook == null || _selectedMembers.isEmpty) return;
     final count = _selectedMembers.length;
     final confirm = await showDialog<bool>(
       context: context,
@@ -77,8 +101,16 @@ class _ClassTaskBookLinkCardState extends State<ClassTaskBookLinkCard> {
         _selectedMembers.clear();
       });
       widget.onAssigned();
+      await _loadProgress();
+    } on ResponderRoadmapApiException catch (error) {
+      if (mounted) setState(() {
+        _verifyBeforeRetry = assignmentResponseMayBeAmbiguous(error);
+        _error = _verifyBeforeRetry
+            ? 'Connection interrupted. The assignment may have been saved. Refresh progress before retrying to avoid duplicate requests.'
+            : error.message;
+      });
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) setState(() { _verifyBeforeRetry = true; _error = 'Could not confirm assignment. Refresh progress before retrying: $error'; });
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -135,9 +167,38 @@ class _ClassTaskBookLinkCardState extends State<ClassTaskBookLinkCard> {
               },
             ),
           ),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: Text('Roster Task Book progress', style: Theme.of(context).textTheme.titleSmall)),
+            IconButton(
+              tooltip: 'Refresh assignment progress',
+              onPressed: _progressLoading || _saving ? null : _loadProgress,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ]),
+          if (_progressLoading) const LinearProgressIndicator(),
+          for (final member in members)
+            Builder(builder: (context) {
+              final linked = classMemberAssignments(_assignments, member.membershipId!);
+              if (linked.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(member.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  for (final assignment in linked)
+                    Text(
+                      '${assignment['taskBookTitle'] ?? 'Task Book'} · ${assignment['progress'] ?? 0}% · ${assignment['pendingApproval'] ?? 0} awaiting approval · ${assignment['status'] ?? 'IN_PROGRESS'}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ]),
+              );
+            }),
+          if (_verifyBeforeRetry) const Text(
+            'Assignment result uncertain. Refresh progress to verify what was saved before trying again.',
+          ),
           const SizedBox(height: 8),
           SizedBox(width: double.infinity, child: FilledButton.icon(
-            onPressed: _saving || _selectedBook == null || _selectedMembers.isEmpty ? null : _assign,
+            onPressed: _saving || _verifyBeforeRetry || _selectedBook == null || _selectedMembers.isEmpty ? null : _assign,
             icon: const Icon(Icons.assignment_add),
             label: Text(_saving ? 'Assigning…' : 'Assign to ${_selectedMembers.length} selected'),
           )),
