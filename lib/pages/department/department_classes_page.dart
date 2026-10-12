@@ -492,25 +492,41 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     try { final saved=await _api.recordClassSkillDurable(classId: widget.classId, enrollmentId: student.id, requirementId: skill.id, result: result, notes: notes); if(saved.detail!=null)_setDetail(saved.detail!); if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — skill result saved safely on this device.')));} } catch (e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); }
   }
 
-  Future<void> _passGroupSkill(DepartmentClassStudent member, DepartmentClassSkill skill) async {
+  Future<void> _gradeRosterMember(DepartmentClassStudent member, DepartmentClassSkill skill, String result) async {
     final detail = _detail;
     if (detail == null || _busy || detail.status == 'COMPLETE') return;
     if (member.attendance != 'PRESENT') {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Confirm attendance before recording a pass.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Confirm attendance before grading this member.')),
+      );
       return;
     }
+    var notes = '';
+    if (result == 'FAIL' || result == 'NEEDS_REMEDIATION') {
+      final entered = await _correctionNotes(result == 'FAIL' ? 'Record failed skill' : 'Remediation required');
+      if (entered == null) return;
+      notes = entered;
+    }
+    if (!mounted) return;
     setState(() => _busy = true);
     try {
       final saved = await _api.recordClassSkillDurable(
         classId: detail.id,
         enrollmentId: member.id,
         requirementId: skill.id,
-        result: 'PASS',
+        result: result,
+        notes: notes,
       );
       if (saved.detail != null) _setDetail(saved.detail!);
       if (saved.queued && mounted) {
         context.read<DepartmentInboxController>().submissionQueued();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Waiting to Sync — ${member.name} skill result saved on this device.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Waiting to Sync — ${member.name} result saved on this device.')),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${member.name}: ${result.replaceAll('_', ' ')} saved.')),
+        );
       }
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -694,20 +710,31 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   final skill = detail.sections.expand((section) => section.skills).where((s) => s.id == _groupSkillId).firstOrNull;
                   if (skill == null) return const SizedBox.shrink();
                   final result = member.results.where((r) => r.requirementId == skill.id).firstOrNull;
-                  return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(member.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text('${member.attendance} · ${result?.result ?? 'NOT_EVALUATED'}', style: Theme.of(context).textTheme.bodySmall),
-                    ])),
-                    TextButton(
-                      onPressed: _busy ? null : () => setState(() => _studentId = member.id),
-                      child: const Text('Details'),
-                    ),
-                    FilledButton(
-                      onPressed: _busy || member.attendance != 'PRESENT' ? null : () => _passGroupSkill(member, skill),
-                      child: const Text('Pass'),
-                    ),
-                  ]));
+                  final canGrade = !_busy && member.attendance == 'PRESENT';
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Row(children: [
+                        Expanded(child: Text(member.name, style: const TextStyle(fontWeight: FontWeight.w700))),
+                        Text(result?.result.replaceAll('_', ' ') ?? 'Not evaluated',
+                          style: Theme.of(context).textTheme.bodySmall),
+                      ]),
+                      const SizedBox(height: 6),
+                      Wrap(spacing: 7, runSpacing: 7, children: [
+                        FilledButton(onPressed: canGrade ? () => _gradeRosterMember(member, skill, 'PASS') : null,
+                          child: const Text('Pass')),
+                        OutlinedButton(onPressed: canGrade ? () => _gradeRosterMember(member, skill, 'FAIL') : null,
+                          child: const Text('Fail')),
+                        OutlinedButton(onPressed: canGrade ? () => _gradeRosterMember(member, skill, 'NEEDS_REMEDIATION') : null,
+                          child: const Text('Remediation')),
+                        TextButton(onPressed: _busy ? null : () => setState(() => _studentId = member.id),
+                          child: const Text('Details')),
+                      ]),
+                      if (member.attendance != 'PRESENT')
+                        const Text('Mark attendance Present to enable grading.'),
+                      const Divider(),
+                    ]),
+                  );
                 }),
             ],
           ],
