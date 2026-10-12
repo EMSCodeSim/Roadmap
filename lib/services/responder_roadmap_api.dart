@@ -1476,6 +1476,16 @@ class ResponderRoadmapApi {
     return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
+  /// Department-scoped assignments, used to show each roster member's progress.
+  Future<List<Map<String, dynamic>>> listDepartmentTaskBookAssignments() async {
+    final data = await _request('GET', 'assignments');
+    return (data is List ? data : const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .where((item) => item['assignmentKind'] != 'TRAINING_TASK')
+        .toList(growable: false);
+  }
+
   /// Published department Task Books eligible for assignment from a class.
   Future<List<Map<String, dynamic>>> listPublishedClassTaskBooks() async {
     final data = await _request('GET', 'task-books');
