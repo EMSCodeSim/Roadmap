@@ -250,8 +250,10 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   Future<void> save() async {
     if(title.text.trim().isEmpty){setState(()=>error='Training title is required.'); return;}
     if(req('LOCATION') && location.text.trim().isEmpty){setState(()=>error='Location is required by your department.'); return;}
-    if(req('DESCRIPTION') && notes.text.trim().isEmpty){setState(()=>error='Description / notes are required by your department.'); return;}
-    final h=double.tryParse(hours.text.trim())??0;
+    if(req('DESCRIPTION') && notes.text.trim().isEmpty && objectives.text.trim().isEmpty){setState(()=>error='Description / notes are required by your department.'); return;}
+    if (!endsAt.isAfter(startsAt)) { setState(() => error = 'Stop time must be after start time.'); return; }
+    final h = emsCeMode ? totalCeHours : (double.tryParse(hours.text.trim()) ?? 0);
+    if (h < 0 || h > 24) { setState(() => error = 'Training credit must be between 0 and 24 hours.'); return; }
     if(req('HOURS') && h<=0){setState(()=>error='Training hours are required by your department.'); return;}
     final mode=context.read<AppModeController>();
     final me=widget.setup.proctors.where((p)=>(p['userId']?.toString()??'')==mode.departmentLink?.userId).toList();
@@ -260,7 +262,24 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
+      await widget.api.createTrainingSheet(
+        title: title.text,
+        startsAt: startsAt.toUtc().toIso8601String(),
+        endsAt: endsAt.toUtc().toIso8601String(),
+        classType: emsCeMode ? 'EMS' : 'GENERAL',
+        trainingCategory: emsCeMode ? 'EMS' : category,
+        checklistVersionId: checklist,
+        creditHours: h,
+        location: location.text,
+        notes: [
+          if (emsCeMode && objectives.text.trim().isNotEmpty) 'OBJECTIVES\n${objectives.text.trim()}',
+          if (emsCeMode && emsCeCreditSummary(ceCredits).isNotEmpty) emsCeCreditSummary(ceCredits),
+          notes.text.trim(),
+        ].where((text) => text.isNotEmpty).join('\n\n'),
+        membershipIds: selectedMemberIds.toList(),
+        proctorUserIds: proctors,
+        selfRegistration: qr,
+      );
       if(mounted) Navigator.pop(context,true);
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
