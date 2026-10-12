@@ -9,6 +9,7 @@ import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
+import 'ems_ce_categories.dart';
 
 class DepartmentClassesPage extends StatefulWidget {
   const DepartmentClassesPage({super.key, this.openCreateTraining = false});
@@ -208,7 +209,33 @@ class _CreateTrainingSheet extends StatefulWidget {
 
 class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
-  bool busy = false, qr = true; String? error; String category = 'COMPANY'; String checklist = '';
+  bool busy = false, qr = true, emsCeMode = false;
+  String? error;
+  String category = 'COMPANY', checklist = '';
+  final objectives = TextEditingController();
+  final Map<String, double> ceCredits = {};
+  final Set<String> selectedMemberIds = {};
+  DateTime startsAt = DateTime.now(), endsAt = DateTime.now().add(const Duration(hours: 1));
+  double get totalCeHours => ceCredits.values.fold<double>(0, (sum, hours) => sum + hours);
+  String displayDateTime(DateTime value) =>
+      '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')} '
+      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+  Future<void> selectDateTime({required bool start}) async {
+    final current = start ? startsAt : endsAt;
+    final date = await showDatePicker(context: context, initialDate: current, firstDate: DateTime(2020), lastDate: DateTime(2100));
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(current));
+    if (time == null || !mounted) return;
+    final chosen = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    setState(() {
+      if (start) {
+        startsAt = chosen;
+        if (!endsAt.isAfter(startsAt)) endsAt = startsAt.add(const Duration(hours: 1));
+      } else {
+        endsAt = chosen;
+      }
+    });
+  }
   @override void initState() {
     super.initState();
     final t=widget.template;
@@ -218,13 +245,15 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       category=t.trainingCategory; checklist=t.checklistVersionId; qr=t.selfRegistration;
     }
   }
-  @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); super.dispose(); }
+  @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); objectives.dispose(); super.dispose(); }
   bool req(String key) => widget.setup.requiredFields.contains(key);
   Future<void> save() async {
     if(title.text.trim().isEmpty){setState(()=>error='Training title is required.'); return;}
     if(req('LOCATION') && location.text.trim().isEmpty){setState(()=>error='Location is required by your department.'); return;}
-    if(req('DESCRIPTION') && notes.text.trim().isEmpty){setState(()=>error='Description / notes are required by your department.'); return;}
-    final h=double.tryParse(hours.text.trim())??0;
+    if(req('DESCRIPTION') && notes.text.trim().isEmpty && objectives.text.trim().isEmpty){setState(()=>error='Description / notes are required by your department.'); return;}
+    if (!endsAt.isAfter(startsAt)) { setState(() => error = 'Stop time must be after start time.'); return; }
+    final h = emsCeMode ? totalCeHours : (double.tryParse(hours.text.trim()) ?? 0);
+    if (h < 0 || h > 24) { setState(() => error = 'Training credit must be between 0 and 24 hours.'); return; }
     if(req('HOURS') && h<=0){setState(()=>error='Training hours are required by your department.'); return;}
     final mode=context.read<AppModeController>();
     final me=widget.setup.proctors.where((p)=>(p['userId']?.toString()??'')==mode.departmentLink?.userId).toList();
@@ -233,7 +262,24 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
+      await widget.api.createTrainingSheet(
+        title: title.text,
+        startsAt: startsAt.toUtc().toIso8601String(),
+        endsAt: endsAt.toUtc().toIso8601String(),
+        classType: emsCeMode ? 'EMS' : 'GENERAL',
+        trainingCategory: emsCeMode ? 'EMS' : category,
+        checklistVersionId: checklist,
+        creditHours: h,
+        location: location.text,
+        notes: [
+          if (emsCeMode && objectives.text.trim().isNotEmpty) 'OBJECTIVES\n${objectives.text.trim()}',
+          if (emsCeMode && emsCeCreditSummary(ceCredits).isNotEmpty) emsCeCreditSummary(ceCredits),
+          notes.text.trim(),
+        ].where((text) => text.isNotEmpty).join('\n\n'),
+        membershipIds: selectedMemberIds.toList(),
+        proctorUserIds: proctors,
+        selfRegistration: qr,
+      );
       if(mounted) Navigator.pop(context,true);
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
@@ -245,11 +291,85 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       const SizedBox(height:6), const Text('Field entry uses your department’s RMS requirements. QR sign-in is on by default.'),
       if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
       const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
+      const SizedBox(height: 12),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('EMS Continuing Education Training Sheet'),
+        subtitle: const Text('Assign credit across EMS topics and record objectives.'),
+        value: emsCeMode,
+        onChanged: (value) => setState(() { emsCeMode = value; if (value) { category = 'EMS'; qr = true; } }),
+      ),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Start time'),
+        subtitle: Text(displayDateTime(startsAt)),
+        trailing: const Icon(Icons.event),
+        onTap: () => selectDateTime(start: true),
+      ),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Stop time'),
+        subtitle: Text(displayDateTime(endsAt)),
+        trailing: const Icon(Icons.event),
+        onTap: () => selectDateTime(start: false),
+      ),
+      if (emsCeMode) ...[
+        TextField(controller: objectives, maxLines: 4,
+          decoration: const InputDecoration(labelText: 'Learning objectives', alignLabelWithHint: true)),
+        const SizedBox(height: 12),
+        Text('EMS credit categories', style: Theme.of(context).textTheme.titleMedium),
+        const Text('Assign credit in 0.25-hour increments. Expand a category to select topics.'),
+        for (final group in emsCeCategories.entries)
+          ExpansionTile(
+            title: Text(group.key),
+            children: [
+              for (final topic in group.value)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                  child: Row(children: [
+                    Expanded(child: Text(topic)),
+                    const SizedBox(width: 10),
+                    SizedBox(width: 88, child: DropdownButtonFormField<double>(
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Hours', isDense: true),
+                      value: ceCredits[topic] ?? 0,
+                      items: List.generate(97, (index) => index * 0.25)
+                        .map((v) => DropdownMenuItem(value: v, child: Text(v.toStringAsFixed(2)))).toList(),
+                      onChanged: (value) => setState(() {
+                        if (value == null || value == 0) { ceCredits.remove(topic); } else { ceCredits[topic] = value; }
+                      }),
+                    )),
+                  ]),
+                ),
+            ],
+          ),
+        Padding(padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text('Total EMS CE credit: ${totalCeHours.toStringAsFixed(2)} hours',
+            style: Theme.of(context).textTheme.titleMedium)),
+      ],
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const ['COMPANY','EMS','FIRE','DRIVER_OPERATOR','HAZMAT','TECHNICAL_RESCUE','WILDLAND','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setState(()=>category=v??'COMPANY')),
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v)=>setState(()=>checklist=v??'')),
       const SizedBox(height:12),TextField(controller:location,decoration:InputDecoration(labelText:'Location${req('LOCATION')?' *':''}')),
-      const SizedBox(height:12),TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:InputDecoration(labelText:'Training hours${req('HOURS')?' *':''}')),
+      if (!emsCeMode) ...[const SizedBox(height:12),TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:InputDecoration(labelText:'Training hours${req('HOURS')?' *':''}'))],
       const SizedBox(height:12),TextField(controller:notes,maxLines:3,decoration:InputDecoration(labelText:'Description / notes${req('DESCRIPTION')?' *':''}')),
+      const SizedBox(height: 12),
+      ExpansionTile(
+        title: Text('Class roster (${selectedMemberIds.length} selected)'),
+        subtitle: const Text('Add members or let them join through QR registration.'),
+        children: [
+          for (final member in widget.setup.members)
+            CheckboxListTile(
+              dense: true,
+              title: Text(member['name']?.toString() ?? 'Member'),
+              value: selectedMemberIds.contains(member['id']?.toString() ?? ''),
+              onChanged: (value) {
+                final id = member['id']?.toString() ?? '';
+                if (id.isEmpty) return;
+                setState(() { if (value == true) { selectedMemberIds.add(id); } else { selectedMemberIds.remove(id); } });
+              },
+            ),
+        ],
+      ),
       const SizedBox(height:8),SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v)=>setState(()=>qr=v),title:const Text('Allow QR self-registration'),subtitle:const Text('Crew can scan in from their phones.')),
       const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Start Training')),
     ])),
