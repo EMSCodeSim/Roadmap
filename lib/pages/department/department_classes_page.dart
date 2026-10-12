@@ -291,10 +291,66 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       const SizedBox(height:6), const Text('Field entry uses your department’s RMS requirements. QR sign-in is on by default.'),
       if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
       const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
+      const SizedBox(height: 12),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('EMS Continuing Education Training Sheet'),
+        subtitle: const Text('Assign credit across EMS topics and record objectives.'),
+        value: emsCeMode,
+        onChanged: (value) => setState(() { emsCeMode = value; if (value) { category = 'EMS'; qr = true; } }),
+      ),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Start time'),
+        subtitle: Text(displayDateTime(startsAt)),
+        trailing: const Icon(Icons.event),
+        onTap: () => selectDateTime(start: true),
+      ),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Stop time'),
+        subtitle: Text(displayDateTime(endsAt)),
+        trailing: const Icon(Icons.event),
+        onTap: () => selectDateTime(start: false),
+      ),
+      if (emsCeMode) ...[
+        TextField(controller: objectives, maxLines: 4,
+          decoration: const InputDecoration(labelText: 'Learning objectives', alignLabelWithHint: true)),
+        const SizedBox(height: 12),
+        Text('EMS credit categories', style: Theme.of(context).textTheme.titleMedium),
+        const Text('Assign credit in 0.25-hour increments. Expand a category to select topics.'),
+        for (final group in emsCeCategories.entries)
+          ExpansionTile(
+            title: Text(group.key),
+            children: [
+              for (final topic in group.value)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                  child: Row(children: [
+                    Expanded(child: Text(topic)),
+                    const SizedBox(width: 10),
+                    SizedBox(width: 88, child: DropdownButtonFormField<double>(
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Hours', isDense: true),
+                      value: ceCredits[topic] ?? 0,
+                      items: List.generate(97, (index) => index * 0.25)
+                        .map((v) => DropdownMenuItem(value: v, child: Text(v.toStringAsFixed(2)))).toList(),
+                      onChanged: (value) => setState(() {
+                        if (value == null || value == 0) { ceCredits.remove(topic); } else { ceCredits[topic] = value; }
+                      }),
+                    )),
+                  ]),
+                ),
+            ],
+          ),
+        Padding(padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text('Total EMS CE credit: ${totalCeHours.toStringAsFixed(2)} hours',
+            style: Theme.of(context).textTheme.titleMedium)),
+      ],
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const ['COMPANY','EMS','FIRE','DRIVER_OPERATOR','HAZMAT','TECHNICAL_RESCUE','WILDLAND','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setState(()=>category=v??'COMPANY')),
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v)=>setState(()=>checklist=v??'')),
       const SizedBox(height:12),TextField(controller:location,decoration:InputDecoration(labelText:'Location${req('LOCATION')?' *':''}')),
-      const SizedBox(height:12),TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:InputDecoration(labelText:'Training hours${req('HOURS')?' *':''}')),
+      if (!emsCeMode) ...[const SizedBox(height:12),TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:InputDecoration(labelText:'Training hours${req('HOURS')?' *':''}'))],
       const SizedBox(height:12),TextField(controller:notes,maxLines:3,decoration:InputDecoration(labelText:'Description / notes${req('DESCRIPTION')?' *':''}')),
       const SizedBox(height:8),SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v)=>setState(()=>qr=v),title:const Text('Allow QR self-registration'),subtitle:const Text('Crew can scan in from their phones.')),
       const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Start Training')),
