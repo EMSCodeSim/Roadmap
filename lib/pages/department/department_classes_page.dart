@@ -45,42 +45,60 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
   Future<void> _createTraining() async {
     final setup = _setup;
     if (setup == null) return;
-    DepartmentTrainingSheetTemplate? selected;
+    // A dismissed picker must never create a blank record accidentally.
+    // Use an explicit sentinel for blank training to avoid a second prompt.
+    const blankChoice = '__blank__';
+    List<DepartmentTrainingSheetTemplate> templates = const [];
     try {
-      final templates = await _api.listTrainingSheetTemplates();
-      if (!mounted) return;
-      selected = await showModalBottomSheet<DepartmentTrainingSheetTemplate?>(
-        context: context, useSafeArea: true,
-        builder: (context) => Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('Create Training Sheet', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 12),
-            FilledButton.icon(onPressed: ()=>Navigator.pop(context), icon: const Icon(Icons.note_add_outlined), label: const Text('Blank Training Sheet')),
-            if (templates.isNotEmpty) ...[
-              const SizedBox(height: 16), const Text('From Template', style: TextStyle(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              ...templates.take(8).map((t)=>ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.copy_all_outlined), title: Text(t.name), subtitle: Text(t.defaultTitle.isEmpty ? t.trainingCategory.replaceAll('_',' ') : t.defaultTitle), onTap: ()=>Navigator.pop(context,t))),
-            ],
-          ]),
-        ),
-      );
+      templates = await _api.listTrainingSheetTemplates();
     } catch (_) {
-      // Template API may not be deployed yet; Blank remains a safe fallback.
+      // Blank capture still works if templates are temporarily unavailable.
     }
     if (!mounted) return;
-    if (selected == null) {
-      final templatesAvailable = await _api.listTrainingSheetTemplates().then((v)=>v.isNotEmpty).catchError((_)=>false);
-      if (templatesAvailable && mounted) {
-        // A null result can mean Blank or the picker was dismissed. Ask explicitly.
-        final blank = await showDialog<bool>(context: context, builder: (context)=>AlertDialog(title:const Text('Blank Training Sheet?'),content:const Text('Start without a saved template?'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Start Blank'))]));
-        if(blank!=true)return;
-      }
-    }
-    final created = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected));
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Quick Add Training', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            const Text('Start a sheet, share its QR code, and record each member’s attendance and skills.'),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(context, blankChoice),
+              icon: const Icon(Icons.note_add_outlined),
+              label: const Text('Blank Training Sheet'),
+            ),
+            if (templates.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Text('Use a saved template', style: TextStyle(fontWeight: FontWeight.w800)),
+              ...templates.take(8).map((t) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.copy_all_outlined),
+                title: Text(t.name),
+                subtitle: Text(t.defaultTitle.isEmpty ? t.trainingCategory.replaceAll('_', ' ') : t.defaultTitle),
+                onTap: () => Navigator.pop(context, t.id),
+              )),
+            ],
+          ],
+        )),
+      )),
+    );
+    if (!mounted || choice == null) return;
+    final selected = choice == blankChoice ? null : templates.where((t) => t.id == choice).firstOrNull;
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected),
+    );
     if (created == true && mounted) await _load();
   }
-
 
   Future<void> _configureAgency() async {
     try {
@@ -147,7 +165,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
             ),
           ),
         ],
-        if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) ...[const SizedBox(height: 14), FilledButton.icon(onPressed: _createTraining, icon: const Icon(Icons.add_rounded), label: const Text('Create Training Sheet'))],
+        if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) ...[const SizedBox(height: 14), FilledButton.icon(onPressed: _createTraining, icon: const Icon(Icons.add_rounded), label: const Text('Quick Add Training'))],
         const SizedBox(height: 16),
         if (_classes!.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('No classes are assigned to you yet. Classes you create, teach, or proctor will appear here.'))),
         ..._classes!.map((row) => Card(child: ListTile(
@@ -270,6 +288,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _error;
   bool _busy = false;
   String? _groupSkillId;
+  bool _showUngradedOnly = true;
   @override
   void initState() { super.initState(); _load(); }
   Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
@@ -473,25 +492,41 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     try { final saved=await _api.recordClassSkillDurable(classId: widget.classId, enrollmentId: student.id, requirementId: skill.id, result: result, notes: notes); if(saved.detail!=null)_setDetail(saved.detail!); if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — skill result saved safely on this device.')));} } catch (e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); }
   }
 
-  Future<void> _passGroupSkill(DepartmentClassStudent member, DepartmentClassSkill skill) async {
+  Future<void> _gradeRosterMember(DepartmentClassStudent member, DepartmentClassSkill skill, String result) async {
     final detail = _detail;
     if (detail == null || _busy || detail.status == 'COMPLETE') return;
     if (member.attendance != 'PRESENT') {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Confirm attendance before recording a pass.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Confirm attendance before grading this member.')),
+      );
       return;
     }
+    var notes = '';
+    if (result == 'FAIL' || result == 'NEEDS_REMEDIATION') {
+      final entered = await _correctionNotes(result == 'FAIL' ? 'Record failed skill' : 'Remediation required');
+      if (entered == null) return;
+      notes = entered;
+    }
+    if (!mounted) return;
     setState(() => _busy = true);
     try {
       final saved = await _api.recordClassSkillDurable(
         classId: detail.id,
         enrollmentId: member.id,
         requirementId: skill.id,
-        result: 'PASS',
+        result: result,
+        notes: notes,
       );
       if (saved.detail != null) _setDetail(saved.detail!);
       if (saved.queued && mounted) {
         context.read<DepartmentInboxController>().submissionQueued();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Waiting to Sync — ${member.name} skill result saved on this device.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Waiting to Sync — ${member.name} result saved on this device.')),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${member.name}: ${result.replaceAll('_', ' ')} saved.')),
+        );
       }
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -657,25 +692,49 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             ),
             if (_groupSkillId != null) ...[
               const SizedBox(height: 10),
-              for (final member in detail.roster)
+              Row(children: [
+                Expanded(child: Text(
+                  '${detail.roster.where((member) => member.results.any((r) => r.requirementId == _groupSkillId && r.result != 'NOT_EVALUATED')).length} / ${detail.roster.length} individually recorded',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                )),
+                const Text('Pending only'),
+                Switch(
+                  value: _showUngradedOnly,
+                  onChanged: (value) => setState(() => _showUngradedOnly = value),
+                ),
+              ]),
+              for (final member in detail.roster.where((member) =>
+                !_showUngradedOnly || !member.results.any((r) =>
+                  r.requirementId == _groupSkillId && r.result != 'NOT_EVALUATED')))
                 Builder(builder: (context) {
                   final skill = detail.sections.expand((section) => section.skills).where((s) => s.id == _groupSkillId).firstOrNull;
                   if (skill == null) return const SizedBox.shrink();
                   final result = member.results.where((r) => r.requirementId == skill.id).firstOrNull;
-                  return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(member.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text('${member.attendance} · ${result?.result ?? 'NOT_EVALUATED'}', style: Theme.of(context).textTheme.bodySmall),
-                    ])),
-                    TextButton(
-                      onPressed: _busy ? null : () => setState(() => _studentId = member.id),
-                      child: const Text('Details'),
-                    ),
-                    FilledButton(
-                      onPressed: _busy || member.attendance != 'PRESENT' ? null : () => _passGroupSkill(member, skill),
-                      child: const Text('Pass'),
-                    ),
-                  ]));
+                  final canGrade = !_busy && member.attendance == 'PRESENT';
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Row(children: [
+                        Expanded(child: Text(member.name, style: const TextStyle(fontWeight: FontWeight.w700))),
+                        Text(result?.result.replaceAll('_', ' ') ?? 'Not evaluated',
+                          style: Theme.of(context).textTheme.bodySmall),
+                      ]),
+                      const SizedBox(height: 6),
+                      Wrap(spacing: 7, runSpacing: 7, children: [
+                        FilledButton(onPressed: canGrade ? () => _gradeRosterMember(member, skill, 'PASS') : null,
+                          child: const Text('Pass')),
+                        OutlinedButton(onPressed: canGrade ? () => _gradeRosterMember(member, skill, 'FAIL') : null,
+                          child: const Text('Fail')),
+                        OutlinedButton(onPressed: canGrade ? () => _gradeRosterMember(member, skill, 'NEEDS_REMEDIATION') : null,
+                          child: const Text('Remediation')),
+                        TextButton(onPressed: _busy ? null : () => setState(() => _studentId = member.id),
+                          child: const Text('Details')),
+                      ]),
+                      if (member.attendance != 'PRESENT')
+                        const Text('Mark attendance Present to enable grading.'),
+                      const Divider(),
+                    ]),
+                  );
                 }),
             ],
           ],
