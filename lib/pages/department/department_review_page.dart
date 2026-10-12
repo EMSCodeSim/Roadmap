@@ -65,13 +65,32 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
   }
 
   Future<void> _open(DepartmentReviewItem item) async {
-    final changed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => _ReviewSheet(item: item, api: _api),
-    );
-    if (changed == true) await _load();
+    // Continue directly to the next authorized, still-pending review.
+    // Refresh after every decision: a sign-off can advance to another stage
+    // or disappear from this evaluator's queue.
+    var nextId = item.id;
+    while (mounted) {
+      final current = _items.where((entry) => entry.id == nextId).firstOrNull;
+      if (current == null) return;
+      final changed = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (_) => _ReviewSheet(
+          item: current,
+          api: _api,
+          remainingCount: _items.length,
+        ),
+      );
+      if (!mounted || changed != true) return;
+      final previousIndex = _items.indexWhere((entry) => entry.id == nextId);
+      await _load();
+      if (!mounted || _error != null || _items.isEmpty) return;
+      // Avoid reopening the same submission if it is still in the queue.
+      final candidates = _items.where((entry) => entry.id != nextId).toList();
+      if (candidates.isEmpty) return;
+      nextId = candidates[previousIndex.clamp(0, candidates.length - 1)].id;
+    }
   }
 
   Future<void> _openClass(DepartmentClassSummary item) async {
@@ -395,8 +414,13 @@ class _SummaryTile extends StatelessWidget {
 class _ReviewSheet extends StatefulWidget {
   final DepartmentReviewItem item;
   final ResponderRoadmapApi api;
+  final int remainingCount;
 
-  const _ReviewSheet({required this.item, required this.api});
+  const _ReviewSheet({
+    required this.item,
+    required this.api,
+    required this.remainingCount,
+  });
 
   @override
   State<_ReviewSheet> createState() => _ReviewSheetState();
@@ -480,6 +504,13 @@ class _ReviewSheetState extends State<_ReviewSheet> {
             const SizedBox(height: 5),
             Text('${item.memberName} · ${item.taskBookTitle}',
                 style: TextStyle(color: cs.onSurfaceVariant, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text(
+              '${widget.remainingCount} waiting · Complete this sign-off to continue to the next.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+            ),
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
@@ -581,7 +612,11 @@ class _ReviewSheetState extends State<_ReviewSheet> {
                 Expanded(
                   child: FilledButton(
                     onPressed: _saving ? null : () => _submit('APPROVED'),
-                    child: Text(_saving ? 'Saving…' : 'Approve'),
+                    child: Text(_saving
+                        ? 'Saving…'
+                        : widget.remainingCount > 1
+                            ? 'Approve & next'
+                            : 'Approve'),
                   ),
                 ),
               ],
