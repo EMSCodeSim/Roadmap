@@ -76,10 +76,13 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
         context: context,
         isScrollControlled: true,
         showDragHandle: true,
-        builder: (_) => _ReviewSheet(
-          item: current,
-          api: _api,
-          remainingCount: _items.length,
+        builder: (_) => FractionallySizedBox(
+          heightFactor: 0.9,
+          child: _ReviewSheet(
+            item: current,
+            api: _api,
+            remainingCount: _items.length,
+          ),
         ),
       );
       if (!mounted || changed != true) return;
@@ -492,13 +495,17 @@ class _ReviewSheetState extends State<_ReviewSheet> {
   Widget build(BuildContext context) {
     final item = widget.item;
     final cs = Theme.of(context).colorScheme;
-    final insets = MediaQuery.viewInsetsOf(context);
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 4, 16, 20 + insets.bottom),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
             Text(item.requirementTitle,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
             const SizedBox(height: 5),
@@ -599,30 +606,40 @@ class _ReviewSheetState extends State<_ReviewSheet> {
               const SizedBox(height: 6),
               Text(_error!, style: TextStyle(color: cs.error, fontWeight: FontWeight.w700)),
             ],
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _saving ? null : () => _submit('RETURNED'),
-                    child: const Text('Return'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _saving ? null : () => _submit('APPROVED'),
-                    child: Text(_saving
-                        ? 'Saving…'
-                        : widget.remainingCount > 1
-                            ? 'Approve & next'
-                            : 'Approve'),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+          // The decision bar stays visible while the skill checklist scrolls.
+          // Approval still runs every existing validation in _submit.
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 10, 0, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _saving ? null : () => _submit('RETURNED'),
+                      child: const Text('Return'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _saving ? null : () => _submit('APPROVED'),
+                      child: Text(_saving
+                          ? 'Saving…'
+                          : widget.remainingCount > 1
+                              ? 'Approve & next'
+                              : 'Approve'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
