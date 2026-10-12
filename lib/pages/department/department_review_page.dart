@@ -89,7 +89,7 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
       // Avoid reopening the same submission if it is still in the queue.
       final candidates = _items.where((entry) => entry.id != nextId).toList();
       if (candidates.isEmpty) return;
-      nextId = candidates[previousIndex.clamp(0, candidates.length - 1)].id;
+      nextId = candidates[previousIndex.clamp(0, candidates.length - 1).toInt()].id;
     }
   }
 
