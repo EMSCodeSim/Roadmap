@@ -271,6 +271,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _error;
   bool _busy = false;
   String? _groupSkillId;
+  bool _showGrading = false;
+  bool _missingOnly = false;
   @override
   void initState() { super.initState(); _load(); }
   Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
@@ -285,6 +287,24 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       if (matches.isEmpty || matches.last.result != 'PASS') return false;
     }
     return true;
+  }
+
+  String _missingFor(DepartmentClassDetail detail, DepartmentClassStudent member) {
+    if (member.attendance == 'REGISTERED') return 'Attendance not confirmed';
+    if (member.attendance != 'PRESENT') return '';
+    final missing = detail.sections.expand((section) => section.skills)
+        .where((skill) => skill.required && !member.results.any(
+          (result) => result.requirementId == skill.id && result.result == 'PASS',
+        )).toList();
+    if (missing.isEmpty) return '';
+    return '${missing.length} required skill(s) need a passing result';
+  }
+
+  void _nextStudent() {
+    final roster = _detail?.roster ?? const <DepartmentClassStudent>[];
+    if (roster.isEmpty) return;
+    final index = roster.indexWhere((item) => item.id == _studentId);
+    setState(() => _studentId = roster[(index + 1) % roster.length].id);
   }
 
   int _requiredSkillCount(DepartmentClassDetail detail) =>
@@ -688,6 +708,29 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ],
         ))),
       ],
+      Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Quick roster recorder', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          const Text('Choose attendance or grading. Select a member, record the result, then move to the next.'),
+          const SizedBox(height: 10),
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('Attendance'), icon: Icon(Icons.people_outline)),
+              ButtonSegment(value: true, label: Text('Grade skills'), icon: Icon(Icons.fact_check_outlined)),
+            ],
+            selected: {_showGrading},
+            onSelectionChanged: (choice) => setState(() => _showGrading = choice.first),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Show only members needing attention'),
+            value: _missingOnly,
+            onChanged: (value) => setState(() => _missingOnly = value ?? false),
+          ),
+        ],
+      ))),
       Row(children: [
         Expanded(child: Text('Roster', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
         Text('${detail.roster.where((item) => _studentComplete(detail, item)).length}/${detail.roster.length} ready', style: Theme.of(context).textTheme.labelLarge),
@@ -702,7 +745,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         Card(
           child: Column(
             children: [
-              for (final item in detail.roster)
+              for (final item in detail.roster.where((item) => !_missingOnly || _missingFor(detail, item).isNotEmpty))
                 Builder(builder: (context) {
                   final selected = item.id == _studentId;
                   final complete = _studentComplete(detail, item);
@@ -715,8 +758,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     ),
                     title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w700)),
                     subtitle: Text(
-                      '${item.attendance.replaceAll('_', ' ')} · ${item.finalResult.replaceAll('_', ' ')}'
-                      ' · ${_passedRequiredCount(detail, item)}/${_requiredSkillCount(detail)} required skills passed',
+                      '${item.attendance.replaceAll('_', ' ')} · ${_passedRequiredCount(detail, item)}/${_requiredSkillCount(detail)} required skills passed'
+                      '${_missingFor(detail, item).isEmpty ? '' : '\\nNeeds: ${_missingFor(detail, item)}'}',
                     ),
                     trailing: Icon(selected ? Icons.keyboard_arrow_down_rounded : Icons.chevron_right_rounded),
                     onTap: () => setState(() => _studentId = item.id),
@@ -744,7 +787,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             ),
           ),
         ),
-      if (student != null) ...[
+      if (student != null && (!_missingOnly || _missingFor(detail, student).isNotEmpty)) ...[
         const SizedBox(height: 12),
         Card(
           child: Padding(
@@ -757,11 +800,13 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 const SizedBox(height: 3),
                 Text('${student.attendance.replaceAll('_', ' ')} · ${_passedRequiredCount(detail, student)}/${_requiredSkillCount(detail)} required skills passed'),
               ])),
-              Icon(_studentComplete(detail, student) ? Icons.check_circle_rounded : Icons.pending_actions_rounded),
+              IconButton(tooltip: 'Next member', onPressed: _nextStudent, icon: const Icon(Icons.arrow_forward_rounded)),
             ]),
           ),
         ),
-        const SizedBox(height: 10), DropdownButtonFormField<String>(initialValue: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null)_setDetail(saved.detail!); if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } finally { if (mounted) setState(() => _busy = false); } }),
+        if (!_showGrading) ...[
+        const SizedBox(height: 10), DropdownButtonFormField<String>(key: ValueKey(student.id), initialValue: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null)_setDetail(saved.detail!); if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } catch(e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); } }),
+        ] else ...[
         const SizedBox(height: 18),
         ...detail.sections.map((section) => Card(margin: const EdgeInsets.only(bottom: 14), clipBehavior: Clip.antiAlias, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(width: double.infinity, padding: const EdgeInsets.all(14), color: Theme.of(context).colorScheme.surfaceContainerHighest, child: Text(section.title, style: const TextStyle(fontWeight: FontWeight.w900))),
@@ -771,6 +816,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             const SizedBox(height: 8), Wrap(spacing: 7, runSpacing: 7, children: [FilledButton(onPressed: _busy || detail.status == 'COMPLETE' ? null : () => _record(skill, 'PASS'), child: const Text('Pass')), OutlinedButton(onPressed: _busy || detail.status == 'COMPLETE' ? null : () => _record(skill, 'NEEDS_REMEDIATION'), child: const Text('Remediation')), OutlinedButton(onPressed: _busy || detail.status == 'COMPLETE' ? null : () => _record(skill, 'FAIL'), child: const Text('Fail')), TextButton(onPressed: _busy || detail.status == 'COMPLETE' ? null : () => _record(skill, 'NOT_APPLICABLE'), child: const Text('N/A'))]),
           ])); }),
         ]))),
+        ],
       ],
     ]));
   }
