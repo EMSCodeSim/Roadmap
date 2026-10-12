@@ -13,5 +13,5 @@ const Map<String, List<String>> emsCeCategories = {
 String emsCeCreditSummary(Map<String, double> credits) {
   final entries = credits.entries.where((entry) => entry.value > 0).toList();
   if (entries.isEmpty) return '';
-  return 'EMS CE CREDIT BREAKDOWN\\n${entries.map((entry) => '${entry.key}: ${entry.value.toStringAsFixed(2)} hours').join('\\n')}';
+  return 'EMS CE CREDIT BREAKDOWN\n${entries.map((entry) => '${entry.key}: ${entry.value.toStringAsFixed(2)} hours').join('\n')}';
 }
