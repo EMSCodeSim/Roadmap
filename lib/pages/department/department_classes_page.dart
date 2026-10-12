@@ -410,7 +410,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     if (!mounted) return;
     if (selection != null) {
       _jumpToMember(selection, grading: selection.attendance == 'PRESENT');
-    } else {
+    } else if (issues.isEmpty) {
       // The server remains the authority for required fields, proctors,
       // pending sync, and the actual close decision.
       await _closeTraining();
