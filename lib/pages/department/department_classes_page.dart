@@ -352,6 +352,24 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       const SizedBox(height:12),TextField(controller:location,decoration:InputDecoration(labelText:'Location${req('LOCATION')?' *':''}')),
       if (!emsCeMode) ...[const SizedBox(height:12),TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:InputDecoration(labelText:'Training hours${req('HOURS')?' *':''}'))],
       const SizedBox(height:12),TextField(controller:notes,maxLines:3,decoration:InputDecoration(labelText:'Description / notes${req('DESCRIPTION')?' *':''}')),
+      const SizedBox(height: 12),
+      ExpansionTile(
+        title: Text('Class roster (${selectedMemberIds.length} selected)'),
+        subtitle: const Text('Add members or let them join through QR registration.'),
+        children: [
+          for (final member in widget.setup.members)
+            CheckboxListTile(
+              dense: true,
+              title: Text(member['name']?.toString() ?? 'Member'),
+              value: selectedMemberIds.contains(member['id']?.toString() ?? ''),
+              onChanged: (value) {
+                final id = member['id']?.toString() ?? '';
+                if (id.isEmpty) return;
+                setState(() { if (value == true) { selectedMemberIds.add(id); } else { selectedMemberIds.remove(id); } });
+              },
+            ),
+        ],
+      ),
       const SizedBox(height:8),SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v)=>setState(()=>qr=v),title:const Text('Allow QR self-registration'),subtitle:const Text('Crew can scan in from their phones.')),
       const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Start Training')),
     ])),
