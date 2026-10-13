@@ -240,7 +240,7 @@ class _CreateTrainingSheet extends StatefulWidget {
 
 class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
-  bool busy = false, qr = true; String? error; String category = 'COMPANY'; String checklist = '';
+  bool busy = false, qr = true, advanced = false; String? error; DateTime? endTime; String category = 'COMPANY'; String checklist = '';
   @override void initState() {
     super.initState();
     final t=widget.template;
@@ -256,6 +256,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(title.text.trim().isEmpty){setState(()=>error='Training title is required.'); return;}
     if(req('LOCATION') && location.text.trim().isEmpty){setState(()=>error='Location is required by your department.'); return;}
     if(req('DESCRIPTION') && notes.text.trim().isEmpty){setState(()=>error='Description / notes are required by your department.'); return;}
+    if(req('END_TIME') && endTime == null){setState(()=>error='Set the end time required by your department.');return;}
     final h=double.tryParse(hours.text.trim())??0;
     if(req('HOURS') && h<=0){setState(()=>error='Training hours are required by your department.'); return;}
     final mode=context.read<AppModeController>();
@@ -265,7 +266,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
+      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', endsAt:endTime?.toUtc().toIso8601String(), creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
       if(mounted) Navigator.pop(context,created.id);
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
@@ -274,14 +275,27 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     padding: EdgeInsets.fromLTRB(20,16,20,MediaQuery.viewInsetsOf(context).bottom+24),
     child: SingleChildScrollView(child: Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
       Text(widget.template==null?'Blank Training Sheet':'From Template · ${widget.template!.name}',style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
-      const SizedBox(height:6), const Text('Field entry uses your department’s RMS requirements. QR sign-in is on by default.'),
+      const SizedBox(height:6), const Text('Create the class quickly, then collect student results and finish RMS documentation after training.'),
       if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
       const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const ['COMPANY','EMS','FIRE','DRIVER_OPERATOR','HAZMAT','TECHNICAL_RESCUE','WILDLAND','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setState(()=>category=v??'COMPANY')),
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v)=>setState(()=>checklist=v??'')),
-      const SizedBox(height:12),TextField(controller:location,decoration:InputDecoration(labelText:'Location${req('LOCATION')?' *':''}')),
-      const SizedBox(height:12),TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:InputDecoration(labelText:'Training hours${req('HOURS')?' *':''}')),
-      const SizedBox(height:12),TextField(controller:notes,maxLines:3,decoration:InputDecoration(labelText:'Description / notes${req('DESCRIPTION')?' *':''}')),
+      const SizedBox(height:12),
+      if(req('END_TIME')) OutlinedButton.icon(
+        onPressed: () async {
+          final now = DateTime.now();
+          final day = await showDatePicker(context:context,initialDate:endTime??now,firstDate:now.subtract(const Duration(days:365)),lastDate:now.add(const Duration(days:730)));
+          if(day==null || !mounted)return;
+          final time = await showTimePicker(context:context,initialTime:TimeOfDay.fromDateTime(endTime??now));
+          if(time!=null && mounted)setState(()=>endTime=DateTime(day.year,day.month,day.day,time.hour,time.minute));
+        },
+        icon:const Icon(Icons.schedule),
+        label:Text(endTime==null?'Set required end time': 'End: ${endTime!.toLocal()}'),
+      ),
+      TextButton(onPressed:()=>setState(()=>advanced=!advanced),child:Text(advanced?'Hide optional details':'Show optional details')),
+      if(advanced || req('LOCATION')) TextField(controller:location,decoration:InputDecoration(labelText:'Location${req('LOCATION')?' *':''}')),
+      const SizedBox(height:12),if(advanced || req('HOURS')) TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:InputDecoration(labelText:'Training hours${req('HOURS')?' *':''}')),
+      const SizedBox(height:12),if(advanced || req('DESCRIPTION')) TextField(controller:notes,maxLines:3,decoration:InputDecoration(labelText:'Description / notes${req('DESCRIPTION')?' *':''}')),
       const SizedBox(height:8),SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v)=>setState(()=>qr=v),title:const Text('Allow QR self-registration'),subtitle:const Text('Crew can scan in from their phones.')),
       const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Start Training')),
     ])),
