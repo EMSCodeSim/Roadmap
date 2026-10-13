@@ -741,6 +741,32 @@ class DepartmentClassSetup {
       );
 }
 
+class InstructorTrainingAttention {
+  final String id;
+  final String title;
+  final String status;
+  final String rmsStatus;
+  final DateTime? instructorApprovedAt;
+  const InstructorTrainingAttention({
+    required this.id, required this.title, required this.status,
+    required this.rmsStatus, required this.instructorApprovedAt,
+  });
+  factory InstructorTrainingAttention.fromJson(Map<String, dynamic> json) =>
+      InstructorTrainingAttention(
+        id: (json['id'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Training Sheet',
+        status: (json['status'] as String?) ?? 'DRAFT',
+        rmsStatus: (json['rmsStatus'] as String?) ?? 'NOT_READY',
+        instructorApprovedAt: DateTime.tryParse((json['instructorApprovedAt'] as String?) ?? ''),
+      );
+
+  String get nextStep {
+    if (status != 'COMPLETE') return 'Complete roster, grading and close training';
+    if (instructorApprovedAt == null) return 'Instructor approval needed';
+    return 'Awaiting department RMS entry';
+  }
+}
+
 class DepartmentClassSummary {
   final String id;
   final String title;
@@ -1448,6 +1474,14 @@ class ResponderRoadmapApi {
       body: const <String, dynamic>{},
     );
     return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<List<InstructorTrainingAttention>> listInstructorTrainingAttention() async {
+    final data = await _request('GET', 'app/training-sheets/my-attention');
+    return (data is List ? data : const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => InstructorTrainingAttention.fromJson(Map<String, dynamic>.from(item)))
+        .toList(growable: false);
   }
 
   Future<List<DepartmentClassDetail>> listRmsActionTrainingSheets() async {
