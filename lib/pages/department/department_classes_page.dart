@@ -79,7 +79,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
               ),
               const SizedBox(height: 12),
               Text('2. Choose department template', style: Theme.of(sheetContext).textTheme.titleMedium),
-              Flexible(child: ListView(shrinkWrap: true, children: [
+              SizedBox(height: 300, child: ListView(children: [
                 ListTile(leading: const Icon(Icons.note_add_outlined), title: const Text('Blank Training Sheet'), onTap: () => Navigator.pop(sheetContext)),
                 ...templates.where((t) => category.isEmpty || t.trainingCategory == category).map((t) =>
                   ListTile(leading: const Icon(Icons.copy_all_outlined), title: Text(t.name),
