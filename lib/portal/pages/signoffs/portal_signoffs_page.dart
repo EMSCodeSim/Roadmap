@@ -17,6 +17,8 @@ class PortalSignoffsPage extends StatefulWidget {
 
 class _PortalSignoffsPageState extends State<PortalSignoffsPage> {
   String? _selectedCompletionId;
+  final Map<String, bool> _batchDecisions = {};
+  bool _batchBusy = false;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +38,9 @@ class _PortalSignoffsPageState extends State<PortalSignoffsPage> {
         .cast<RequirementCompletion?>()
         .firstWhere((c) => c?.id == _selectedCompletionId, orElse: () => queue.isEmpty ? null : queue.first);
 
+    // Remove selections that are no longer in the pending queue.
+    _batchDecisions.removeWhere((id, _) => !queue.any((c) => c.id == id));
+
     return PortalPageScaffold(
       title: 'Requirement Sign-Offs',
       subtitle: 'Approve or return submitted requirements. All actions are recorded in an audit trail.',
@@ -51,24 +56,97 @@ class _PortalSignoffsPageState extends State<PortalSignoffsPage> {
           if (!split) {
             return ListView(
               children: [
+                _buildBatchPanel(context, portal, queue),
+                const SizedBox(height: AppSpacing.md),
                 list,
                 const SizedBox(height: AppSpacing.md),
                 detail,
               ],
             );
           }
-          return Row(
+          return Column(children: [
+            _buildBatchPanel(context, portal, queue),
+            const SizedBox(height: AppSpacing.md),
+            Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(width: 420, child: list),
               const SizedBox(width: AppSpacing.md),
               Expanded(child: detail),
             ],
-          );
+          )]);
         },
       ),
     );
   }
+
+  Widget _buildBatchPanel(BuildContext context, PortalController portal,
+      List<RequirementCompletion> queue) {
+    final authorized = portal.hasRole(PortalRole.evaluator) &&
+        portal.sessionUserId != null;
+    return Card(child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Group skill sign-offs',
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Text('Select Pass or Return for each skill. Unselected skills stay pending.'),
+        const SizedBox(height: 8),
+        for (final c in queue)
+          Padding(padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(children: [
+              Expanded(child: Text(
+                '${portal.db.users.where((u) => u.id == c.memberId).firstOrNull?.name ?? "Member"} — '
+                '${portal.db.taskBookRequirements.where((r) => r.id == c.requirementId).firstOrNull?.title ?? "Skill"}',
+              )),
+              DropdownButton<String>(
+                value: _batchDecisions.containsKey(c.id)
+                    ? (_batchDecisions[c.id]! ? 'pass' : 'return') : 'skip',
+                items: const [
+                  DropdownMenuItem(value: 'skip', child: Text('Not selected')),
+                  DropdownMenuItem(value: 'pass', child: Text('Pass')),
+                  DropdownMenuItem(value: 'return', child: Text('Return')),
+                ],
+                onChanged: !authorized || _batchBusy ? null : (value) {
+                  setState(() {
+                    if (value == 'skip') {
+                      _batchDecisions.remove(c.id);
+                    } else {
+                      _batchDecisions[c.id] = value == 'pass';
+                    }
+                  });
+                },
+              ),
+            ])),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          onPressed: !authorized || _batchBusy || _batchDecisions.isEmpty
+              ? null : () async {
+                  setState(() => _batchBusy = true);
+                  try {
+                    await portal.reviewCompletionsBatch(
+                      decisions: Map.of(_batchDecisions),
+                      evaluatorId: portal.sessionUserId!,
+                    );
+                    if (!mounted) return;
+                    setState(() => _batchDecisions.clear());
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Skill evaluations saved')));
+                  } catch (error) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Could not save: $error')));
+                  } finally {
+                    if (mounted) setState(() => _batchBusy = false);
+                  }
+                },
+          icon: const Icon(Icons.fact_check),
+          label: Text('Submit ${_batchDecisions.length} results'),
+        ),
+      ]),
+    ));
+  }
+
 }
 
 class _QueueList extends StatelessWidget {
