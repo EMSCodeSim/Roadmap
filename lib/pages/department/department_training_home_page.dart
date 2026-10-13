@@ -156,6 +156,13 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     if (mounted) await _refresh(silent: true);
   }
 
+  Future<void> _openClasses() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => const DepartmentClassesPage(openCreateTraining: true),
+    ));
+    if (mounted) await _refresh(silent: true);
+  }
+
   Future<void> _openClass(String id) async {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => DepartmentClassDetailPage(classId: id),
@@ -199,6 +206,10 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     final assignedTaskBooks = active.where((a) => !a.isSingleTask).toList();
     final returned = active.where((a) => _status(a).startsWith('Returned')).toList();
     final overdue = active.where((a) => _status(a) == 'Overdue').toList();
+    final dueSoon = active.where((a) => a.dueDate != null &&
+        !a.dueDate!.isBefore(DateTime.now()) &&
+        a.dueDate!.isBefore(DateTime.now().add(const Duration(days: 14))) &&
+        _status(a) != 'Overdue' && !returned.contains(a)).toList();
     return Scaffold(
       appBar: AppBar(
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -233,11 +244,11 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                   _dashboardBox(
                     id: 'attention', title: 'Needs Attention',
                     icon: Icons.notification_important_outlined,
-                    count: returned.length + overdue.length + _reviews.length +
+                    count: returned.length + overdue.length + dueSoon.length + _reviews.length +
                         _instructorTraining.length +
                         _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).length,
                     child: _NeedsAttention(
-                      returned: returned, overdue: overdue, reviews: _reviews,
+                      returned: returned, overdue: overdue, dueSoon: dueSoon, reviews: _reviews,
                       rmsActions: _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).toList(),
                       instructorTraining: _instructorTraining,
                       onAssignment: _open,
@@ -266,6 +277,11 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     count: _instructorTraining.length +
                         _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).length,
                     child: Column(children: [
+                      Align(alignment: Alignment.centerLeft, child: FilledButton.icon(
+                        onPressed: _openClasses,
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text('Create Training Sheet'),
+                      )),
                       for (final item in _instructorTraining)
                         ListTile(title: Text(item.title), subtitle: Text(item.nextStep),
                           trailing: const Icon(Icons.chevron_right_rounded),
@@ -484,6 +500,7 @@ class _DepartmentStatusPill extends StatelessWidget {
 class _NeedsAttention extends StatelessWidget {
   final List<DepartmentTaskBookAssignment> returned;
   final List<DepartmentTaskBookAssignment> overdue;
+  final List<DepartmentTaskBookAssignment> dueSoon;
   final List<DepartmentReviewItem> reviews;
   final List<DepartmentClassDetail> rmsActions;
   final List<InstructorTrainingAttention> instructorTraining;
@@ -495,6 +512,7 @@ class _NeedsAttention extends StatelessWidget {
   const _NeedsAttention({
     required this.returned,
     required this.overdue,
+    required this.dueSoon,
     required this.reviews,
     required this.rmsActions,
     required this.instructorTraining,
@@ -506,7 +524,7 @@ class _NeedsAttention extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final count = returned.length + overdue.length + reviews.length + rmsActions.length + instructorTraining.length;
+    final count = returned.length + overdue.length + dueSoon.length + reviews.length + rmsActions.length + instructorTraining.length;
     if (count == 0) {
       return Card(
         child: Padding(
@@ -522,7 +540,7 @@ class _NeedsAttention extends StatelessWidget {
     }
 
     final tiles = <Widget>[];
-    for (final item in returned.take(2)) {
+    for (final item in returned) {
       tiles.add(ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.assignment_return_outlined),
@@ -532,7 +550,7 @@ class _NeedsAttention extends StatelessWidget {
         onTap: () => onAssignment(item),
       ));
     }
-    for (final item in overdue.take(2)) {
+    for (final item in overdue) {
       tiles.add(ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.schedule_rounded),
@@ -542,7 +560,17 @@ class _NeedsAttention extends StatelessWidget {
         onTap: () => onAssignment(item),
       ));
     }
-    for (final item in reviews.take(2)) {
+    for (final item in dueSoon) {
+      tiles.add(ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.event_upcoming_outlined),
+        title: Text(item.taskBookTitle),
+        subtitle: const Text('Due within 14 days'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => onAssignment(item),
+      ));
+    }
+    for (final item in reviews) {
       tiles.add(ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.fact_check_outlined),
@@ -562,7 +590,7 @@ class _NeedsAttention extends StatelessWidget {
         onTap: () => onInstructorTraining(item),
       ));
     }
-    for (final item in rmsActions.take(2)) {
+    for (final item in rmsActions) {
       tiles.add(ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.assignment_late_outlined),
