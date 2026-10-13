@@ -901,6 +901,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('Live class progress', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Text('${detail.roster.where((member) => member.attendance != 'REGISTERED').length}/${detail.roster.length} attendance recorded'),
+          const SizedBox(height: 6),
+          Text('${detail.roster.where((member) => _studentComplete(detail, member)).length}/${detail.roster.where((member) => member.attendance == 'PRESENT').length} present students ready'),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(value: detail.roster.isEmpty ? 0 : detail.roster.where((member) => _missingFor(detail, member).isEmpty).length / detail.roster.length),
+          const SizedBox(height: 14),
           Text('Instructor Closeout', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           _closeoutLine(context, 'Roster', detail.roster.isNotEmpty, '${detail.roster.length} registered'),
