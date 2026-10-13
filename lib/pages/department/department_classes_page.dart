@@ -408,6 +408,115 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
   }
 
+  Future<void> _groupGrade() async {
+    final detail = _detail;
+    if (detail == null || _busy || detail.status == 'COMPLETE') return;
+    final skills = detail.sections.expand((section) => section.skills).toList();
+    final members = detail.roster.where((member) => member.attendance == 'PRESENT').toList();
+    if (skills.isEmpty || members.isEmpty) {
+      setState(() => _error = 'Confirm attendance and choose a skills checklist first.');
+      return;
+    }
+    String? skillId;
+    String result = 'PASS';
+    final selected = <String>{};
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, update) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('Group skill results', style: Theme.of(sheetContext).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: skillId,
+                decoration: const InputDecoration(labelText: 'Skill'),
+                items: skills.map((skill) => DropdownMenuItem<String>(
+                  value: skill.id, child: Text(skill.title),
+                )).toList(),
+                onChanged: (value) => update(() => skillId = value),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: result,
+                decoration: const InputDecoration(labelText: 'Evaluation'),
+                items: const [
+                  DropdownMenuItem(value: 'PASS', child: Text('Pass')),
+                  DropdownMenuItem(value: 'FAIL', child: Text('Fail')),
+                ],
+                onChanged: (value) => update(() => result = value ?? 'PASS'),
+              ),
+              TextButton(
+                onPressed: () => update(() {
+                  if (selected.length == members.length) {
+                    selected.clear();
+                  } else {
+                    selected.addAll(members.map((member) => member.id));
+                  }
+                }),
+                child: Text(selected.length == members.length ? 'Clear selection' : 'Select all present'),
+              ),
+              SizedBox(
+                height: 240,
+                child: ListView(children: members.map((member) => CheckboxListTile(
+                  title: Text(member.name),
+                  value: selected.contains(member.id),
+                  onChanged: (checked) => update(() {
+                    if (checked == true) {
+                      selected.add(member.id);
+                    } else {
+                      selected.remove(member.id);
+                    }
+                  }),
+                )).toList()),
+              ),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: skillId == null || selected.isEmpty
+                    ? null : () => Navigator.pop(sheetContext, true),
+                child: Text('Submit ${selected.length} evaluations'),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+    if (confirmed != true || skillId == null || !mounted) return;
+    setState(() { _busy = true; _error = null; });
+    var savedCount = 0;
+    try {
+      for (final member in members.where((member) => selected.contains(member.id))) {
+        final saved = await _api.recordClassSkillDurable(
+          classId: detail.id,
+          enrollmentId: member.id,
+          requirementId: skillId!,
+          result: result,
+          notes: 'Group evaluation',
+        );
+        savedCount++;
+        if (saved.detail != null) _setDetail(saved.detail!);
+        if (saved.queued) {
+          if (mounted) {
+            context.read<DepartmentInboxController>().submissionQueued();
+            setState(() => _error = 'Evaluations waiting to sync. Check sync status before closing.');
+          }
+          break;
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$savedCount evaluation(s) submitted')),
+        );
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = '$savedCount submitted; remaining evaluations not saved: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _editCustomResults(DepartmentClassDetail detail, DepartmentClassStudent student) async {
     final fields = detail.customFields;
     if (fields.isEmpty) return;
