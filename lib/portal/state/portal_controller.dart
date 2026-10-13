@@ -464,6 +464,62 @@ class PortalController extends ChangeNotifier {
     return assignment.id;
   }
 
+  /// Review several submitted requirements in one persisted, auditable session.
+  /// Every result remains an individual sign-off record.
+  Future<void> reviewCompletionsBatch({
+    required Map<String, bool> decisions,
+    required String evaluatorId,
+    String notes = '',
+  }) async {
+    if (decisions.isEmpty) throw StateError('Select at least one skill');
+    if (_sessionUserId == null || evaluatorId != _sessionUserId ||
+        !hasRole(PortalRole.evaluator)) {
+      throw StateError('Evaluator authorization required');
+    }
+    final deptId = _activeDepartmentId;
+    if (deptId == null) throw StateError('No active department');
+    final assignmentIds = _db.assignments
+        .where((a) => a.departmentId == deptId).map((a) => a.id).toSet();
+    final pending = <String, RequirementCompletion>{};
+    for (final c in _db.completions) {
+      if (decisions.containsKey(c.id) &&
+          assignmentIds.contains(c.assignmentId) &&
+          c.status == CompletionStatus.submitted) {
+        pending[c.id] = c;
+      }
+    }
+    if (pending.length != decisions.length) {
+      throw StateError('One or more sign-offs are no longer pending');
+    }
+    final now = DateTime.now();
+    final updated = _db.completions.map((c) {
+      final approved = decisions[c.id];
+      if (approved == null) return c;
+      return c.copyWith(
+        status: approved ? CompletionStatus.approved : CompletionStatus.returned,
+        completedAt: approved ? now : c.completedAt,
+        updatedAt: now,
+      );
+    }).toList();
+    final records = decisions.entries.map((entry) => SignOff(
+      id: _id('so'),
+      completionId: entry.key,
+      evaluatorId: evaluatorId,
+      result: entry.value ? SignOffResult.approved : SignOffResult.returned,
+      notes: notes,
+      signedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    )).toList();
+    _db = _db.copyWith(
+      completions: updated,
+      signOffs: [..._db.signOffs, ...records],
+      updatedAt: now,
+    );
+    await _store.saveDb(_db);
+    notifyListeners();
+  }
+
   Future<void> approveCompletion(String completionId, {required String evaluatorId, String notes = ''}) async {
     final now = DateTime.now();
     final completion = _db.completions.firstWhere((c) => c.id == completionId);
