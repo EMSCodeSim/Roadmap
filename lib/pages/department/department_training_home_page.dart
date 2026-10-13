@@ -30,7 +30,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   List<DepartmentReviewItem> _reviews = const [];
   List<DepartmentClassDetail> _rmsActions = const [];
   List<InstructorTrainingAttention> _instructorTraining = const [];
-  String? _expandedSection = 'attention';
+  String? _expandedSection;
   bool _loading = true;
   bool _refreshing = false;
   String? _error;
