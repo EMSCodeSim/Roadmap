@@ -81,8 +81,15 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
         if(blank!=true)return;
       }
     }
-    final created = await showModalBottomSheet<bool>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected));
-    if (created == true && mounted) await _load();
+    final created = await showModalBottomSheet<String>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected));
+    if (created != null && mounted) {
+      await _load();
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => DepartmentClassDetailPage(classId: created, showQrOnOpen: true),
+      ));
+      if (mounted) await _load();
+    }
   }
 
 
@@ -237,8 +244,8 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
-      if(mounted) Navigator.pop(context,true);
+      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
+      if(mounted) Navigator.pop(context,created.id);
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
   }
@@ -262,7 +269,8 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
 
 class DepartmentClassDetailPage extends StatefulWidget {
   final String classId;
-  const DepartmentClassDetailPage({super.key, required this.classId});
+  const DepartmentClassDetailPage({super.key, required this.classId, this.showQrOnOpen = false});
+  final bool showQrOnOpen;
   @override
   State<DepartmentClassDetailPage> createState() => _DepartmentClassDetailPageState();
 }
