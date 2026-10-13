@@ -35,6 +35,7 @@ class AppModeController extends ChangeNotifier {
   bool get isEvaluator => role == 'EVALUATOR';
   bool get isAdmin => const {'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role);
   bool get canReview => const {
+        'INSTRUCTOR',
         'EVALUATOR',
         'TRAINING_OFFICER',
         'DEPARTMENT_ADMINISTRATOR',
