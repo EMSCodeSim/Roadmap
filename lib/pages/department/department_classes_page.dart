@@ -4,6 +4,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
@@ -595,11 +598,66 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     finally{if(mounted)setState(()=>_busy=false);}
   }
 
+  Future<void> _printQr() async {
+    final d = _detail;
+    if (d == null || d.status == 'COMPLETE' || _busy) return;
+    if (!d.registrationEnabled || d.registrationToken.isEmpty) {
+      await _registration('OPEN');
+    }
+    if (!mounted || _registrationUrl.isEmpty) {
+      if (mounted) setState(() => _error = 'Unable to open QR registration. Try again.');
+      return;
+    }
+    final current = _detail!;
+    final registrationUrl = _registrationUrl;
+    try {
+      final document = pw.Document();
+      document.addPage(pw.Page(
+        pageFormat: PdfPageFormat.letter,
+        margin: const pw.EdgeInsets.all(36),
+        build: (_) => pw.Center(child: pw.Column(
+          mainAxisSize: pw.MainAxisSize.min,
+          children: [
+            pw.Text('Responder Roadmap', style: pw.TextStyle(
+              fontSize: 16, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 18),
+            pw.Text(current.title, textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(fontSize: 23, fontWeight: pw.FontWeight.bold)),
+            if (current.location.trim().isNotEmpty) ...[
+              pw.SizedBox(height: 8),
+              pw.Text(current.location, textAlign: pw.TextAlign.center),
+            ],
+            pw.SizedBox(height: 24),
+            pw.BarcodeWidget(
+              barcode: pw.Barcode.qrCode(),
+              data: registrationUrl,
+              width: 250,
+              height: 250,
+              drawText: false,
+            ),
+            pw.SizedBox(height: 20),
+            pw.Text('Scan to sign in to this training',
+              style: pw.TextStyle(fontSize: 17, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 12),
+            pw.Text(registrationUrl, textAlign: pw.TextAlign.center,
+              style: const pw.TextStyle(fontSize: 9)),
+          ],
+        )),
+      ));
+      await Printing.layoutPdf(
+        onLayout: (_) async => document.save(),
+        name: 'Training QR - ${current.title}',
+      );
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Could not prepare printable QR: $e');
+    }
+  }
+
   Future<void> _showQr() async {
     final d=_detail; if(d==null)return;
     if(!d.registrationEnabled || d.registrationToken.isEmpty) await _registration('OPEN');
     if(!mounted||_registrationUrl.isEmpty)return;
-    await showDialog<void>(context:context,builder:(context)=>AlertDialog(title:const Text('Crew QR Sign-in'),content:Column(mainAxisSize:MainAxisSize.min,children:[QrImageView(data:_registrationUrl,size:240),const SizedBox(height:12),const Text('Have attendees scan this code to join the live roster.',textAlign:TextAlign.center)]),actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Done'))]));
+    await showDialog<void>(context:context,builder:(context)=>AlertDialog(title:const Text('Crew QR Sign-in'),content:Column(mainAxisSize:MainAxisSize.min,children:[QrImageView(data:_registrationUrl,size:240),const SizedBox(height:12),const Text('Have attendees scan this code to join the live roster.',textAlign:TextAlign.center)]),actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Done')),FilledButton.icon(onPressed: () { Navigator.pop(context); _printQr(); },icon:const Icon(Icons.print_outlined),label:const Text('Print QR'))]));
     await _load();
   }
 
@@ -780,7 +838,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         const SizedBox(height: 10),
       ],
       const SizedBox(height: 10),
-      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), FilledButton.icon(onPressed: _busy ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish'))]),
+      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _printQr, icon: const Icon(Icons.print_outlined), label: const Text('Print QR')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), FilledButton.icon(onPressed: _busy ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish'))]),
       if (detail.status == 'COMPLETE') ...[
         Card(
           child: Padding(
