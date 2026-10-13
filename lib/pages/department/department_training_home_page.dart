@@ -30,6 +30,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   List<DepartmentReviewItem> _reviews = const [];
   List<DepartmentClassDetail> _rmsActions = const [];
   List<InstructorTrainingAttention> _instructorTraining = const [];
+  String? _expandedSection = 'attention';
   bool _loading = true;
   bool _refreshing = false;
   String? _error;
@@ -155,6 +156,40 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     if (mounted) await _refresh(silent: true);
   }
 
+  Future<void> _openClass(String id) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => DepartmentClassDetailPage(classId: id),
+    ));
+    if (mounted) await _refresh(silent: true);
+  }
+
+  Widget _dashboardBox({
+    required String id, required String title, required IconData icon,
+    required int count, required Widget child,
+  }) {
+    final expanded = _expandedSection == id;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        ListTile(
+          leading: Icon(icon),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('$count', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(width: 12),
+            Icon(expanded ? Icons.expand_less : Icons.expand_more),
+          ]),
+          onTap: () => setState(() => _expandedSection = expanded ? null : id),
+        ),
+        if (expanded) ...[
+          const Divider(height: 1),
+          Padding(padding: const EdgeInsets.all(12), child: child),
+        ],
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final mode = context.watch<AppModeController>();
@@ -196,64 +231,62 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                   )),
                   _SyncLine(inbox: inbox),
                   const SizedBox(height: 12),
-                  _NeedsAttention(
-                    returned: returned,
-                    overdue: overdue,
-                    reviews: _reviews,
-                    rmsActions: _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).toList(),
-                    instructorTraining: _instructorTraining,
-                    onAssignment: _open,
-                    onReview: (item) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentReviewPage(initialReviewId: item.id))),
-                    onInstructorTraining: (item) => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => DepartmentClassDetailPage(classId: item.id),
-                    )).then((_) => _refresh(silent: true)),
-                    onRmsAction: (item) => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => DepartmentClassDetailPage(classId: item.id),
-                      ),
-                    ).then((_) => _refresh(silent: true)),
-                  ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: Column(
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.verified_user_outlined),
-                          title: const Text(
-                            'Check Member Eligibility',
-                            style: TextStyle(fontWeight: FontWeight.w900),
-                          ),
-                          subtitle: const Text(
-                            'Who is cleared to drive, act as officer, or perform another department-approved role?',
-                          ),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const DepartmentQualificationsPage(
-                                focusLookup: true,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                  _dashboardBox(
+                    id: 'attention', title: 'Needs Attention',
+                    icon: Icons.notification_important_outlined,
+                    count: returned.length + overdue.length + _reviews.length +
+                        _instructorTraining.length +
+                        _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).length,
+                    child: _NeedsAttention(
+                      returned: returned, overdue: overdue, reviews: _reviews,
+                      rmsActions: _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).toList(),
+                      instructorTraining: _instructorTraining,
+                      onAssignment: _open,
+                      onReview: (item) => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => DepartmentReviewPage(initialReviewId: item.id),
+                      )).then((_) => _refresh(silent: true)),
+                      onInstructorTraining: (item) => _openClass(item.id),
+                      onRmsAction: (item) => _openClass(item.id),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  if (next != null) _NextCard(item: next, status: _status(next), onTap: () => _open(next))
-                  else if (waiting.isNotEmpty)
-                    const Card(child: Padding(padding: EdgeInsets.all(18), child: Text('Your submitted training is waiting for department review.')))
-                  else
-                    const Card(child: Padding(padding: EdgeInsets.all(18), child: Text('You are caught up. New department training will appear here automatically.'))),
-                  const SizedBox(height: 18),
-                  _Section(title: 'Assigned by my department', items: active, status: _status, onTap: _open),
-                  if (waiting.isNotEmpty) ...[
-                    const SizedBox(height: 18),
-                    _Section(title: 'Waiting for Evaluator', items: waiting, status: _status, onTap: _open),
-                  ],
-                  if (completed.isNotEmpty) ...[
-                    const SizedBox(height: 18),
-                    _Section(title: 'Recently Completed', items: completed, status: _status, onTap: _open),
-                  ],
+                  _dashboardBox(
+                    id: 'assignments', title: 'Assignments',
+                    icon: Icons.assignment_outlined, count: active.length,
+                    child: _Section(title: 'Assigned to you', items: active,
+                      status: _status, onTap: _open),
+                  ),
+                  _dashboardBox(
+                    id: 'taskbooks', title: 'Task Books',
+                    icon: Icons.menu_book_outlined, count: active.length,
+                    child: _Section(title: 'Your department task books',
+                      items: active, status: _status, onTap: _open),
+                  ),
+                  _dashboardBox(
+                    id: 'instructors', title: 'Instructors',
+                    icon: Icons.school_outlined,
+                    count: _instructorTraining.length +
+                        _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).length,
+                    child: Column(children: [
+                      for (final item in _instructorTraining)
+                        ListTile(title: Text(item.title), subtitle: Text(item.nextStep),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => _openClass(item.id)),
+                      for (final item in _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)))
+                        ListTile(title: Text(item.title), subtitle: const Text('Not yet entered into RMS'),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => _openClass(item.id)),
+                      if (_instructorTraining.isEmpty && _rmsActions.isEmpty)
+                        const ListTile(title: Text('No classes awaiting action')),
+                    ]),
+                  ),
+                  _dashboardBox(
+                    id: 'complete', title: 'Complete',
+                    icon: Icons.check_circle_outline_rounded,
+                    count: _assignments.where((a) => _status(a) == 'Complete').length,
+                    child: _Section(title: 'Completed items',
+                      items: _assignments.where((a) => _status(a) == 'Complete').toList(),
+                      status: _status, onTap: _open),
+                  ),
                 ],
               ),
       ),
