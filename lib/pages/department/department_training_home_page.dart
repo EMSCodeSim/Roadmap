@@ -506,7 +506,7 @@ class _NeedsAttention extends StatelessWidget {
         onTap: () => onReview(item),
       ));
     }
-    for (final item in instructorTraining.take(5)) {
+    for (final item in instructorTraining) {
       tiles.add(ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.assignment_outlined),
