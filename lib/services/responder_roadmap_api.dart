@@ -1537,6 +1537,18 @@ class ResponderRoadmapApi {
     return _asMap(data);
   }
 
+  Future<void> addClassRosterMembers(String classId, List<String> membershipIds) async {
+    await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/import',
+      body: {'membershipIds': membershipIds});
+  }
+
+  Future<void> addManualClassStudent(String classId, {
+    required String name, required String email, String organization = '',
+  }) async {
+    await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/manual',
+      body: {'name': name.trim(), 'email': email.trim(), 'organization': organization.trim()});
+  }
+
   Future<DepartmentClassDetail> getClass(String classId) async {
     final data = await _request('GET', 'classes/${Uri.encodeComponent(classId)}');
     return DepartmentClassDetail.fromJson(_asMap(data));
