@@ -24,7 +24,9 @@ class _DepartmentInboxPageState extends State<DepartmentInboxPage> {
   }
 
   Future<void> _openAction(DepartmentActionItem item) async {
-    if (item.kind == 'EVALUATOR_REVIEW') {
+    if (item.kind == 'EVALUATOR_REVIEW' ||
+        item.kind == 'SUPERVISOR_REVIEW' ||
+        item.kind == 'EVALUATION_FOLLOW_UP') {
       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DepartmentReviewPage()));
     } else {
       final assignmentId = item.actionPath?.split('/').last ?? '';
