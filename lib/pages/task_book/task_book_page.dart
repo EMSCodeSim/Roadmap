@@ -84,19 +84,10 @@ class TaskBookPage extends StatelessWidget {
             ),
         ],
       ),
-      body: activeCustom != null
-          ? _CustomTaskBookBody(book: activeCustom)
-          : (roadmap == null
-              ? Padding(
-                  padding: AppSpacing.paddingLg,
-                  child: _NoGoalEmpty(
-                    onChooseGoal: () => context.go(AppRoutes.goalSetup),
-                    onCreateCustom: () =>
-                        context.push(AppRoutes.customTaskBookCreate),
-                    customBooks: state.customTaskBooks,
-                  ),
-                )
-              : _TaskBookBody(roadmapGoalId: roadmap.goal.id)),
+      body: _PersonalTaskBookExperience(
+        activeCustom: activeCustom,
+        roadmapGoalId: roadmap?.goal.id,
+      ),
     );
   }
 
@@ -346,6 +337,99 @@ class _SwitchTile extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Separates everyday progress from construction without duplicating book data.
+class _PersonalTaskBookExperience extends StatefulWidget {
+  final CustomTaskBook? activeCustom;
+  final String? roadmapGoalId;
+  const _PersonalTaskBookExperience({required this.activeCustom, required this.roadmapGoalId});
+
+  @override
+  State<_PersonalTaskBookExperience> createState() => _PersonalTaskBookExperienceState();
+}
+
+class _PersonalTaskBookExperienceState extends State<_PersonalTaskBookExperience> {
+  bool _editing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final book = widget.activeCustom;
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+        child: SizedBox(width: double.infinity, child: SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment<bool>(value: false, label: Text('View My Progress'),
+              icon: Icon(Icons.checklist_rounded)),
+            ButtonSegment<bool>(value: true, label: Text('Build / Edit My Book'),
+              icon: Icon(Icons.edit_note_rounded)),
+          ],
+          selected: {_editing},
+          onSelectionChanged: (values) => setState(() => _editing = values.first),
+        )),
+      ),
+      Expanded(child: !_editing
+        ? (book != null
+          ? _CustomTaskBookBody(book: book)
+          : (widget.roadmapGoalId == null
+            ? Padding(padding: AppSpacing.paddingLg, child: _NoGoalEmpty(
+                onChooseGoal: () => context.go(AppRoutes.goalSetup),
+                onCreateCustom: () => context.push(AppRoutes.customTaskBookCreate),
+                customBooks: state.customTaskBooks,
+              ))
+            : _TaskBookBody(roadmapGoalId: widget.roadmapGoalId!)))
+        : ListView(padding: AppSpacing.paddingLg, children: [
+            Text('Build your Task Book', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            const Text('Edit the structure here. Your progress and completed evidence stay in your existing book.'),
+            const SizedBox(height: 18),
+            if (book != null)
+              Card(child: ListTile(
+                leading: const Icon(Icons.construction_outlined),
+                title: Text('Edit ${book.name}'),
+                subtitle: const Text('Add, edit, reorder and organize requirements'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(AppRoutes.customTaskBookBuilder,
+                  extra: {'taskBookId': book.id}),
+              ))
+            else
+              Card(child: ListTile(
+                leading: const Icon(Icons.tune_rounded),
+                title: const Text('Customize Career Road Task Book'),
+                subtitle: const Text('Review and adjust your personal roadmap'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(AppRoutes.myPathLegacy),
+              )),
+            Card(child: ListTile(
+              leading: const Icon(Icons.add_circle_outline),
+              title: const Text('Create another Task Book'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.customTaskBookCreate),
+            )),
+            Card(child: ListTile(
+              leading: const Icon(Icons.swap_horiz),
+              title: const Text('Switch Task Book'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => TaskBookPage._showSwitcher(context),
+            )),
+            if (book == null && widget.roadmapGoalId != null)
+              Card(child: ListTile(
+                leading: const Icon(Icons.rule_folder_outlined),
+                title: const Text('Review generated requirements'),
+                subtitle: const Text('Inspect suggested career requirements before accepting changes'),
+                onTap: () => context.push(AppRoutes.taskBookReview),
+              )),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => setState(() => _editing = false),
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Return to My Progress'),
+            ),
+          ])),
+    ]);
   }
 }
 
