@@ -15,6 +15,40 @@ class NeedsAttentionPage extends StatefulWidget {
 
   @override
   State<NeedsAttentionPage> createState() => _NeedsAttentionPageState();
+
+  static void openItem(BuildContext context, AppState app, NeedsAttentionItem item) {
+    switch (item.kind) {
+      case NeedsAttentionKind.certificationExpired:
+      case NeedsAttentionKind.certificationExpiring:
+      case NeedsAttentionKind.certificationMissingExpiration:
+        final id = item.certificationId;
+        if (id != null) {
+          context.push(
+            '${AppRoutes.certificationDetail}/$id',
+            extra: const {'focus': 'renewal'},
+          );
+        }
+        return;
+      case NeedsAttentionKind.certificationMatch:
+        context.go(AppRoutes.certifications);
+        return;
+      case NeedsAttentionKind.missingRequiredCertification:
+        final requirementId = item.requirementId;
+        if (requirementId == null) return;
+        final roadmap = app.roadmap;
+        if (roadmap == null) return;
+        for (final rr in roadmap.all) {
+          if (rr.requirement.id == requirementId) {
+            AppRouter.openRequirement(context, rr.requirement);
+            return;
+          }
+        }
+        return;
+      case NeedsAttentionKind.stalledTaskBook:
+        context.go(AppRoutes.myPath);
+        return;
+    }
+  }
 }
 
 class _NeedsAttentionPageState extends State<NeedsAttentionPage> {
@@ -110,7 +144,7 @@ class _NeedsAttentionPageState extends State<NeedsAttentionPage> {
                             const SizedBox(height: 8),
                             ...group.map((item) => _AttentionTile(
                                   item: item,
-                                  onTap: () => _openItem(context, app, item),
+                                  onTap: () => NeedsAttentionPage.openItem(context, app, item),
                                 )),
                             const SizedBox(height: 14),
                           ];
@@ -121,39 +155,7 @@ class _NeedsAttentionPageState extends State<NeedsAttentionPage> {
     );
   }
 
-  void _openItem(BuildContext context, AppState app, NeedsAttentionItem item) {
-    switch (item.kind) {
-      case NeedsAttentionKind.certificationExpired:
-      case NeedsAttentionKind.certificationExpiring:
-      case NeedsAttentionKind.certificationMissingExpiration:
-        final id = item.certificationId;
-        if (id != null) {
-          context.push(
-            '${AppRoutes.certificationDetail}/$id',
-            extra: const {'focus': 'renewal'},
-          );
-        }
-        return;
-      case NeedsAttentionKind.certificationMatch:
-        context.go(AppRoutes.certifications);
-        return;
-      case NeedsAttentionKind.missingRequiredCertification:
-        final requirementId = item.requirementId;
-        if (requirementId == null) return;
-        final roadmap = app.roadmap;
-        if (roadmap == null) return;
-        for (final rr in roadmap.all) {
-          if (rr.requirement.id == requirementId) {
-            AppRouter.openRequirement(context, rr.requirement);
-            return;
-          }
-        }
-        return;
-      case NeedsAttentionKind.stalledTaskBook:
-        context.go(AppRoutes.myPath);
-        return;
-    }
-  }
+
 }
 
 class _AttentionTile extends StatelessWidget {

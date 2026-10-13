@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/pages/career/needs_attention_page.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/needs_attention_engine.dart';
@@ -328,9 +329,7 @@ class _HomeOverviewState extends State<_HomeOverview>
             title: Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis),
             subtitle: Text(item.detail, maxLines: 2, overflow: TextOverflow.ellipsis),
             trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.go(item.certificationId != null ||
-                    item.kind == NeedsAttentionKind.certificationMatch
-                ? AppRoutes.certifications : AppRoutes.myPath),
+            onTap: () => NeedsAttentionPage.openItem(context, app, item),
           )),
         if (needs.length > 2)
           Align(
