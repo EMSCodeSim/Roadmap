@@ -65,13 +65,35 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
   }
 
   Future<void> _open(DepartmentReviewItem item) async {
-    final changed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => _ReviewSheet(item: item, api: _api),
-    );
-    if (changed == true) await _load();
+    // Continue directly to the next authorized, still-pending review.
+    // Refresh after every decision: a sign-off can advance to another stage
+    // or disappear from this evaluator's queue.
+    var nextId = item.id;
+    while (mounted) {
+      final current = _items.where((entry) => entry.id == nextId).firstOrNull;
+      if (current == null) return;
+      final changed = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (_) => FractionallySizedBox(
+          heightFactor: 0.9,
+          child: _ReviewSheet(
+            item: current,
+            api: _api,
+            remainingCount: _items.length,
+          ),
+        ),
+      );
+      if (!mounted || changed != true) return;
+      final previousIndex = _items.indexWhere((entry) => entry.id == nextId);
+      await _load();
+      if (!mounted || _error != null || _items.isEmpty) return;
+      // Avoid reopening the same submission if it is still in the queue.
+      final candidates = _items.where((entry) => entry.id != nextId).toList();
+      if (candidates.isEmpty) return;
+      nextId = candidates[previousIndex.clamp(0, candidates.length - 1).toInt()].id;
+    }
   }
 
   Future<void> _openClass(DepartmentClassSummary item) async {
@@ -395,8 +417,13 @@ class _SummaryTile extends StatelessWidget {
 class _ReviewSheet extends StatefulWidget {
   final DepartmentReviewItem item;
   final ResponderRoadmapApi api;
+  final int remainingCount;
 
-  const _ReviewSheet({required this.item, required this.api});
+  const _ReviewSheet({
+    required this.item,
+    required this.api,
+    required this.remainingCount,
+  });
 
   @override
   State<_ReviewSheet> createState() => _ReviewSheetState();
@@ -468,18 +495,29 @@ class _ReviewSheetState extends State<_ReviewSheet> {
   Widget build(BuildContext context) {
     final item = widget.item;
     final cs = Theme.of(context).colorScheme;
-    final insets = MediaQuery.viewInsetsOf(context);
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 4, 16, 20 + insets.bottom),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
             Text(item.requirementTitle,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
             const SizedBox(height: 5),
             Text('${item.memberName} · ${item.taskBookTitle}',
                 style: TextStyle(color: cs.onSurfaceVariant, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text(
+              '${widget.remainingCount} waiting · Complete this sign-off to continue to the next.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+            ),
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
@@ -568,26 +606,40 @@ class _ReviewSheetState extends State<_ReviewSheet> {
               const SizedBox(height: 6),
               Text(_error!, style: TextStyle(color: cs.error, fontWeight: FontWeight.w700)),
             ],
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _saving ? null : () => _submit('RETURNED'),
-                    child: const Text('Return'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _saving ? null : () => _submit('APPROVED'),
-                    child: Text(_saving ? 'Saving…' : 'Approve'),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+          // The decision bar stays visible while the skill checklist scrolls.
+          // Approval still runs every existing validation in _submit.
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 10, 0, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _saving ? null : () => _submit('RETURNED'),
+                      child: const Text('Return'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _saving ? null : () => _submit('APPROVED'),
+                      child: Text(_saving
+                          ? 'Saving…'
+                          : widget.remainingCount > 1
+                              ? 'Approve & next'
+                              : 'Approve'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
