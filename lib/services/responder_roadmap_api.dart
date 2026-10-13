@@ -663,6 +663,7 @@ class DepartmentServerCredential {
 }
 
 class DepartmentTrainingSheetTemplate {
+  final List<Map<String, dynamic>> customFields;
   final String id;
   final String name;
   final String defaultTitle;
@@ -678,6 +679,7 @@ class DepartmentTrainingSheetTemplate {
   final bool archived;
 
   const DepartmentTrainingSheetTemplate({
+    required this.customFields,
     required this.id, required this.name, required this.defaultTitle,
     required this.classType, required this.trainingCategory, required this.creditHours,
     required this.checklistVersionId, required this.location, required this.notes,
@@ -687,6 +689,7 @@ class DepartmentTrainingSheetTemplate {
 
   factory DepartmentTrainingSheetTemplate.fromJson(Map<String, dynamic> json) =>
       DepartmentTrainingSheetTemplate(
+        customFields: (json['customFields'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
         id: (json['id'] as String?) ?? '',
         name: (json['name'] as String?) ?? 'Template',
         defaultTitle: (json['defaultTitle'] as String?) ?? '',
@@ -825,6 +828,7 @@ class DepartmentClassSkillResult {
 }
 
 class DepartmentClassStudent {
+  final Map<String, dynamic> customValues;
   final String id;
   final String? membershipId;
   final String name;
@@ -834,10 +838,11 @@ class DepartmentClassStudent {
   final double? ccfScore;
   final String finalResult;
   final List<DepartmentClassSkillResult> results;
-  const DepartmentClassStudent({required this.id, this.membershipId, required this.name, required this.email, required this.attendance, required this.writtenScore, required this.ccfScore, required this.finalResult, required this.results});
+  const DepartmentClassStudent({required this.id, this.membershipId, required this.name, required this.email, required this.attendance, required this.writtenScore, required this.ccfScore, required this.customValues, required this.finalResult, required this.results});
   factory DepartmentClassStudent.fromJson(Map<String, dynamic> json) => DepartmentClassStudent(
         id: (json['id'] as String?) ?? '', membershipId: json['membershipId'] as String?, name: (json['name'] as String?) ?? 'Student', email: (json['email'] as String?) ?? '', attendance: (json['attendance'] as String?) ?? 'REGISTERED',
         writtenScore: (json['writtenScore'] as num?)?.toDouble(), ccfScore: (json['ccfScore'] as num?)?.toDouble(), finalResult: (json['finalResult'] as String?) ?? 'PENDING',
+        customValues: json['customValues'] is Map ? Map<String, dynamic>.from(json['customValues'] as Map) : {},
         results: (json['results'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSkillResult.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
       );
 }
@@ -857,6 +862,7 @@ class DepartmentCloseValidation {
 }
 
 class DepartmentClassDetail {
+  final List<Map<String, dynamic>> customFields;
   final String id;
   final String title;
   final String classType;
@@ -880,6 +886,7 @@ class DepartmentClassDetail {
   final List<DepartmentClassStudent> roster;
 
   const DepartmentClassDetail({
+    required this.customFields,
     required this.id,
     required this.title,
     required this.classType,
@@ -904,6 +911,7 @@ class DepartmentClassDetail {
   });
 
   factory DepartmentClassDetail.fromJson(Map<String, dynamic> json) => DepartmentClassDetail(
+        customFields: (json['customFields'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
         id: (json['id'] as String?) ?? '',
         title: (json['title'] as String?) ?? 'Class',
         classType: (json['classType'] as String?) ?? 'GENERAL',
@@ -1402,6 +1410,7 @@ class ResponderRoadmapApi {
     List<String> membershipIds = const [],
     List<String> proctorUserIds = const [],
     bool selfRegistration = true,
+    String trainingSheetTemplateId = '',
   }) async {
     final data = await _request('POST', 'classes', body: {
       'title': title.trim(),
@@ -1416,6 +1425,7 @@ class ResponderRoadmapApi {
       'membershipIds': membershipIds,
       'proctorUserIds': proctorUserIds,
       'selfRegistration': selfRegistration,
+      if (trainingSheetTemplateId.isNotEmpty) 'trainingSheetTemplateId': trainingSheetTemplateId,
     });
     final map = _asMap(data);
     // Creation returns the canonical class id; fetch the scoped server summary
@@ -1611,8 +1621,8 @@ class ResponderRoadmapApi {
     return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
-  Future<DepartmentClassDetail> updateClassStudent({required String classId, required String enrollmentId, required String attendance}) async {
-    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}', body: {'attendance': attendance});
+  Future<DepartmentClassDetail> updateClassStudent({required String classId, required String enrollmentId, required String attendance, Map<String, dynamic>? customValues}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}', body: {'attendance': attendance, if (customValues != null) 'customValues': customValues});
     return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
