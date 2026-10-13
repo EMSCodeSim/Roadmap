@@ -195,9 +195,8 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     final mode = context.watch<AppModeController>();
     final inbox = context.watch<DepartmentInboxController>();
     final active = _assignments.where((a) => _status(a) != 'Complete').toList();
-    final waiting = _assignments.where((a) => _status(a) == 'Waiting for evaluator').toList();
-    final completed = _assignments.where((a) => _status(a) == 'Complete').take(5).toList();
-    final next = active.where((a) => _status(a) != 'Waiting for evaluator').firstOrNull;
+    final oneOffAssignments = active.where((a) => a.isSingleTask).toList();
+    final assignedTaskBooks = active.where((a) => !a.isSingleTask).toList();
     final returned = active.where((a) => _status(a).startsWith('Returned')).toList();
     final overdue = active.where((a) => _status(a) == 'Overdue').toList();
     return Scaffold(
@@ -251,15 +250,15 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                   ),
                   _dashboardBox(
                     id: 'assignments', title: 'Assignments',
-                    icon: Icons.assignment_outlined, count: active.length,
-                    child: _Section(title: 'Assigned to you', items: active,
+                    icon: Icons.assignment_outlined, count: oneOffAssignments.length,
+                    child: _Section(title: 'Assigned to you', items: oneOffAssignments,
                       status: _status, onTap: _open),
                   ),
                   _dashboardBox(
                     id: 'taskbooks', title: 'Task Books',
-                    icon: Icons.menu_book_outlined, count: active.length,
+                    icon: Icons.menu_book_outlined, count: assignedTaskBooks.length,
                     child: _Section(title: 'Your department task books',
-                      items: active, status: _status, onTap: _open),
+                      items: assignedTaskBooks, status: _status, onTap: _open),
                   ),
                   _dashboardBox(
                     id: 'instructors', title: 'Instructors',
