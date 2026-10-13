@@ -563,7 +563,9 @@ class _NeedsAttention extends StatelessWidget {
     for (final item in dueSoon) {
       tiles.add(ListTile(
         contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.event_upcoming_outlined),
+        // Material does not include `event_upcoming_outlined`; use the closest
+        // semantic match that exists across stable Flutter versions.
+        leading: const Icon(Icons.event_available_outlined),
         title: Text(item.taskBookTitle),
         subtitle: const Text('Due within 14 days'),
         trailing: const Icon(Icons.chevron_right_rounded),

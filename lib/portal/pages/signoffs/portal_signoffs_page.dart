@@ -1,3 +1,4 @@
+import 'package:firepath/portal/models/portal_user.dart' as portal_user;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -82,7 +83,7 @@ class _PortalSignoffsPageState extends State<PortalSignoffsPage> {
 
   Widget _buildBatchPanel(BuildContext context, PortalController portal,
       List<RequirementCompletion> queue) {
-    final authorized = portal.hasRole(PortalRole.evaluator) &&
+    final authorized = portal.hasRole(portal_user.PortalRole.evaluator) &&
         portal.sessionUserId != null;
     return Card(child: Padding(
       padding: const EdgeInsets.all(AppSpacing.md),
