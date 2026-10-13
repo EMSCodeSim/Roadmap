@@ -292,7 +292,15 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
 
   @override
   void initState() { super.initState(); _load(); }
-  Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId)); } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
+  bool _initialQrShown = false;
+  Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId));
+    if (widget.showQrOnOpen && !_initialQrShown && mounted) {
+      _initialQrShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showQr();
+      });
+    }
+  } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
   void _setDetail(DepartmentClassDetail detail) { if (!mounted) return; setState(() { _detail = detail; _studentId = detail.roster.any((item) => item.id == _studentId) ? _studentId : (detail.roster.isEmpty ? null : detail.roster.first.id); _error = null; }); }
   DepartmentClassStudent? get _student { for (final item in _detail?.roster ?? const <DepartmentClassStudent>[]) { if (item.id == _studentId) return item; } return null; }
 
