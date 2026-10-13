@@ -445,6 +445,79 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     finally{if(mounted)setState(()=>_busy=false);}
   }
 
+  Future<void> _addStudent() async {
+    if (_busy || _detail == null || _detail!.status == 'COMPLETE') return;
+    final setup = await _api.getClassSetup();
+    if (!mounted) return;
+    final name = TextEditingController();
+    final email = TextEditingController();
+    final organization = TextEditingController();
+    final selected = <String>{};
+    var filter = '';
+    var guest = false;
+    final choice = await showModalBottomSheet<bool>(
+      context: context, isScrollControlled: true, showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(builder: (sheetContext, update) {
+        final existingIds = _detail!.roster.map((m) => m.membershipId).toSet();
+        final members = setup.members.where((m) =>
+          !existingIds.contains(m['id']) &&
+          (m['name'] ?? '').toString().toLowerCase().contains(filter.toLowerCase())).toList();
+        return SafeArea(child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.viewInsetsOf(sheetContext).bottom + 16),
+          child: SizedBox(height: MediaQuery.sizeOf(sheetContext).height * 0.65, child: Column(children: [
+            Text('Add students', style: Theme.of(sheetContext).textTheme.titleLarge),
+            SegmentedButton<bool>(segments: const [
+              ButtonSegment(value: false, label: Text('Department roster')),
+              ButtonSegment(value: true, label: Text('Manual / guest')),
+            ], selected: {guest}, onSelectionChanged: (values) => update(() => guest = values.first)),
+            Expanded(child: guest ? ListView(children: [
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Student name')),
+              TextField(controller: email, keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email address')),
+              TextField(controller: organization, decoration: const InputDecoration(labelText: 'Organization (optional)')),
+              const SizedBox(height: 8),
+              const Text('Guest students are training roster entries, not verified department members.'),
+            ]) : Column(children: [
+              TextField(decoration: const InputDecoration(labelText: 'Search department roster'),
+                onChanged: (v) => update(() => filter = v)),
+              Expanded(child: ListView(children: members.map((m) {
+                final id = (m['id'] ?? '').toString();
+                return CheckboxListTile(title: Text((m['name'] ?? '').toString()),
+                  value: selected.contains(id),
+                  onChanged: (value) => update(() => value == true ? selected.add(id) : selected.remove(id)));
+              }).toList())),
+            ])),
+            FilledButton(onPressed: () async {
+              if (guest && (name.text.trim().length < 2 || !email.text.contains('@'))) return;
+              if (!guest && selected.isEmpty) return;
+              Navigator.pop(sheetContext, true);
+            }, child: Text(guest ? 'Add guest student' : 'Add ${selected.length} member(s)')),
+          ])),
+        ));
+      }),
+    );
+    if (!mounted) return;
+    if (choice == true) {
+      setState(() => _busy = true);
+      try {
+        if (guest) {
+          await _api.addManualClassStudent(widget.classId, name: name.text, email: email.text,
+            organization: organization.text);
+        } else {
+          await _api.addClassRosterMembers(widget.classId, selected.toList());
+        }
+        await _load();
+      } catch (e) {
+        if (mounted) setState(() => _error = e.toString());
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+    }
+    name.dispose();
+    email.dispose();
+    organization.dispose();
+  }
+
   Future<void> _closeTraining() async {
     final d=_detail; if(d==null||_busy)return;
     setState(()=>_busy=true);
@@ -780,7 +853,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         const SizedBox(height: 10),
       ],
       const SizedBox(height: 10),
-      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), FilledButton.icon(onPressed: _busy ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish'))]),
+      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [OutlinedButton.icon(onPressed: _busy ? null : _addStudent, icon: const Icon(Icons.person_add_alt_1), label: const Text('Add students')), FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), FilledButton.icon(onPressed: _busy ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish'))]),
       if (detail.status == 'COMPLETE') ...[
         Card(
           child: Padding(
