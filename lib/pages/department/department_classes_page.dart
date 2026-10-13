@@ -210,7 +210,7 @@ class _TrainingSheetTemplatesPageState extends State<_TrainingSheetTemplatesPage
       title:const Text('New Training Sheet Template'),scrollable:true,content:Column(mainAxisSize:MainAxisSize.min,children:[
         TextField(controller:name,decoration:const InputDecoration(labelText:'Template name *')),
         const SizedBox(height:10),TextField(controller:title,decoration:const InputDecoration(labelText:'Default training title')),
-        const SizedBox(height:10),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Category'),items:const ['COMPANY','EMS','FIRE','DRIVER_OPERATOR','HAZMAT','TECHNICAL_RESCUE','WILDLAND','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setLocal(()=>category=v??'COMPANY')),
+        const SizedBox(height:10),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Category'),items:const ['COMPANY','EMS','FACILITY','DRIVER','HAZMAT','OFFICER','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setLocal(()=>category=v??'COMPANY')),
         const SizedBox(height:10),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Checklist'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v)=>setLocal(()=>checklist=v??'')),
         const SizedBox(height:10),TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Default hours')),
         const SizedBox(height:10),TextField(controller:location,decoration:const InputDecoration(labelText:'Default location')),
@@ -266,7 +266,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', endsAt:endTime?.toUtc().toIso8601String(), creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
+      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', endsAt:endTime?.toUtc().toIso8601String(), creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
       if(mounted) Navigator.pop(context,created.id);
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
