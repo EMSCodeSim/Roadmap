@@ -53,20 +53,41 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
     try {
       final templates = await _api.listTrainingSheetTemplates();
       if (!mounted) return;
+      String category = '';
       selected = await showModalBottomSheet<DepartmentTrainingSheetTemplate?>(
-        context: context, useSafeArea: true,
-        builder: (context) => Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('Create Training Sheet', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 12),
-            FilledButton.icon(onPressed: ()=>Navigator.pop(context), icon: const Icon(Icons.note_add_outlined), label: const Text('Blank Training Sheet')),
-            if (templates.isNotEmpty) ...[
-              const SizedBox(height: 16), const Text('From Template', style: TextStyle(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              ...templates.take(8).map((t)=>ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.copy_all_outlined), title: Text(t.name), subtitle: Text(t.defaultTitle.isEmpty ? t.trainingCategory.replaceAll('_',' ') : t.defaultTitle), onTap: ()=>Navigator.pop(context,t))),
-            ],
-          ]),
+        context: context, useSafeArea: true, isScrollControlled: true,
+        builder: (sheetContext) => StatefulBuilder(builder: (sheetContext, update) =>
+          SafeArea(child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text('1. Choose training category', style: Theme.of(sheetContext).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: category,
+                decoration: const InputDecoration(labelText: 'Category'),
+                items: const [
+                  DropdownMenuItem(value: '', child: Text('All categories')),
+                  DropdownMenuItem(value: 'EMS', child: Text('EMS')),
+                  DropdownMenuItem(value: 'COMPANY', child: Text('Fire / Company')),
+                  DropdownMenuItem(value: 'HAZMAT', child: Text('HazMat')),
+                  DropdownMenuItem(value: 'DRIVER', child: Text('Driver Operator')),
+                  DropdownMenuItem(value: 'FACILITY', child: Text('Facility')),
+                  DropdownMenuItem(value: 'OFFICER', child: Text('Officer')),
+                  DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+                ],
+                onChanged: (value) => update(() => category = value ?? ''),
+              ),
+              const SizedBox(height: 12),
+              Text('2. Choose department template', style: Theme.of(sheetContext).textTheme.titleMedium),
+              Flexible(child: ListView(shrinkWrap: true, children: [
+                ListTile(leading: const Icon(Icons.note_add_outlined), title: const Text('Blank Training Sheet'), onTap: () => Navigator.pop(sheetContext)),
+                ...templates.where((t) => category.isEmpty || t.trainingCategory == category).map((t) =>
+                  ListTile(leading: const Icon(Icons.copy_all_outlined), title: Text(t.name),
+                    subtitle: Text(t.defaultTitle.isEmpty ? t.trainingCategory.replaceAll('_', ' ') : t.defaultTitle),
+                    onTap: () => Navigator.pop(sheetContext, t))),
+              ])),
+            ]),
+          )),
         ),
       );
     } catch (_) {
@@ -244,7 +265,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
+      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
       if(mounted) Navigator.pop(context,created.id);
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
