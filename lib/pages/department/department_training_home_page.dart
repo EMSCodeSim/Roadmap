@@ -279,6 +279,20 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     ]),
                   ),
                   _dashboardBox(
+                    id: 'eligibility', title: 'Check Member Eligibility',
+                    icon: Icons.verified_user_outlined, count: 0,
+                    child: ListTile(
+                      title: const Text('Look up member qualifications'),
+                      subtitle: const Text('Check who is approved to drive, act as officer, or perform another department role.'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const DepartmentQualificationsPage(focusLookup: true),
+                        ),
+                      ),
+                    ),
+                  ),
+                  _dashboardBox(
                     id: 'complete', title: 'Complete',
                     icon: Icons.check_circle_outline_rounded,
                     count: _assignments.where((a) => _status(a) == 'Complete').length,
