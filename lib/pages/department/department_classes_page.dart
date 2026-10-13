@@ -4,6 +4,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
@@ -595,11 +598,34 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     finally{if(mounted)setState(()=>_busy=false);}
   }
 
+  Future<void> _printQr(String url, String title) async {
+    final document = pw.Document();
+    document.addPage(pw.Page(
+      pageFormat: PdfPageFormat.letter,
+      build: (context) => pw.Center(child: pw.Column(
+        mainAxisSize: pw.MainAxisSize.min,
+        children: [
+          pw.Text(title, style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 20),
+          pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: url, width: 250, height: 250),
+          pw.SizedBox(height: 16),
+          pw.Text('Scan to sign in to this training class'),
+          pw.SizedBox(height: 8),
+          pw.Text(url, style: const pw.TextStyle(fontSize: 9)),
+        ],
+      )),
+    ));
+    await Printing.layoutPdf(
+      onLayout: (format) async => document.save(),
+      name: '${title.replaceAll(RegExp(r'[^a-zA-Z0-9 _-]'), '')} QR Sign-in',
+    );
+  }
+
   Future<void> _showQr() async {
     final d=_detail; if(d==null)return;
     if(!d.registrationEnabled || d.registrationToken.isEmpty) await _registration('OPEN');
     if(!mounted||_registrationUrl.isEmpty)return;
-    await showDialog<void>(context:context,builder:(context)=>AlertDialog(title:const Text('Crew QR Sign-in'),content:Column(mainAxisSize:MainAxisSize.min,children:[QrImageView(data:_registrationUrl,size:240),const SizedBox(height:12),const Text('Have attendees scan this code to join the live roster.',textAlign:TextAlign.center)]),actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Done'))]));
+    await showDialog<void>(context:context,builder:(context)=>AlertDialog(title:const Text('Crew QR Sign-in'),content:Column(mainAxisSize:MainAxisSize.min,children:[QrImageView(data:_registrationUrl,size:240),const SizedBox(height:12),const Text('Have attendees scan this code to join the live roster.',textAlign:TextAlign.center)]),actions:[TextButton.icon(onPressed:()=>_printQr(_registrationUrl,d.title),icon:const Icon(Icons.print_outlined),label:const Text('Print QR Code')),TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Done'))]));
     await _load();
   }
 
