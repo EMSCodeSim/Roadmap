@@ -62,7 +62,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       List<DepartmentClassDetail> rmsActions = const [];
       List<InstructorTrainingAttention> instructorTraining = const [];
       final role = (session.role ?? '').toUpperCase();
-      if (const {'EVALUATOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
+      if (const {'INSTRUCTOR', 'EVALUATOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
         try { reviews = await _api.listReviewQueue(); } catch (_) {}
       }
       if (const {'INSTRUCTOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
@@ -203,7 +203,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     rmsActions: _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).toList(),
                     instructorTraining: _instructorTraining,
                     onAssignment: _open,
-                    onReview: (item) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentReviewPage(initialReviewId: item.id))),
+                    onReview: (item) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentReviewPage(initialReviewId: item.id))).then((_) => _refresh(silent: true)),
                     onInstructorTraining: (item) => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => DepartmentClassDetailPage(classId: item.id),
                     )).then((_) => _refresh(silent: true)),
@@ -496,7 +496,7 @@ class _NeedsAttention extends StatelessWidget {
         onTap: () => onAssignment(item),
       ));
     }
-    for (final item in reviews.take(2)) {
+    for (final item in reviews) {
       tiles.add(ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.fact_check_outlined),
