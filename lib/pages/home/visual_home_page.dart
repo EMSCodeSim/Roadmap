@@ -198,6 +198,7 @@ class _HomeOverviewState extends State<_HomeOverview>
   List<CareerRecord> _records = const [];
   List<DepartmentTaskBookAssignment>? _assignments;
   bool _loadingPersonal = true;
+  bool _showAllPersonalNeeds = false;
   bool _personalRecordsAvailable = false;
   bool _loadingDepartment = true;
   bool _connected = false;
@@ -319,7 +320,7 @@ class _HomeOverviewState extends State<_HomeOverview>
             child: Text('No urgent personal items right now.'),
           )
         else
-          ...needs.take(2).map((item) => ListTile(
+          ...(_showAllPersonalNeeds ? needs : needs.take(2)).map((item) => ListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
             leading: Icon(item.certificationId != null
@@ -332,9 +333,16 @@ class _HomeOverviewState extends State<_HomeOverview>
                 ? AppRoutes.certifications : AppRoutes.myPath),
           )),
         if (needs.length > 2)
-          TextButton(
-            onPressed: () => context.go(AppRoutes.myPath),
-            child: Text('${needs.length - 2} more personal items'),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => setState(() => _showAllPersonalNeeds = !_showAllPersonalNeeds),
+              icon: Icon(_showAllPersonalNeeds
+                  ? Icons.expand_less_rounded : Icons.expand_more_rounded),
+              label: Text(_showAllPersonalNeeds
+                  ? 'Show fewer personal items'
+                  : 'View all ${needs.length} needs attention items'),
+            ),
           ),
       ],
     );
