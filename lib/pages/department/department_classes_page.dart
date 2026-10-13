@@ -408,6 +408,67 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
   }
 
+  Future<void> _editCustomResults(DepartmentClassDetail detail, DepartmentClassStudent student) async {
+    final fields = detail.customFields;
+    if (fields.isEmpty) return;
+    final controllers = <String, TextEditingController>{};
+    final values = Map<String, dynamic>.from(student.customValues);
+    for (final field in fields) {
+      final id = field['id']?.toString() ?? '';
+      controllers[id] = TextEditingController(text: values[id]?.toString() ?? '');
+    }
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(builder: (dialogContext, update) => AlertDialog(
+        title: Text('${student.name} — Student results'),
+        scrollable: true,
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          for (final field in fields) ...[
+            const SizedBox(height: 10),
+            if (field['type'] == 'CHECKBOX')
+              CheckboxListTile(title: Text(field['label']?.toString() ?? 'Check'),
+                value: values[field['id']] == true,
+                onChanged: (value) => update(() => values[field['id'].toString()] = value == true))
+            else if (field['type'] == 'PASS_FAIL')
+              DropdownButtonFormField<String>(
+                value: ['PASS','FAIL'].contains(values[field['id']]) ? values[field['id']].toString() : '',
+                decoration: InputDecoration(labelText: field['label']?.toString() ?? 'Result'),
+                items: const [DropdownMenuItem(value:'',child:Text('Not recorded')),DropdownMenuItem(value:'PASS',child:Text('Pass')),DropdownMenuItem(value:'FAIL',child:Text('Fail'))],
+                onChanged: (value) => update(() => values[field['id'].toString()] = value ?? ''),
+              )
+            else TextField(
+              controller: controllers[field['id']?.toString() ?? ''],
+              keyboardType: field['type'] == 'PERCENT' || field['type'] == 'NUMBER' ? const TextInputType.numberWithOptions(decimal:true) : TextInputType.text,
+              decoration: InputDecoration(labelText: '${field['label']}${field['required']==true?' *':''}'),
+            ),
+          ],
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext,false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext,true), child: const Text('Save results')),
+        ],
+      )),
+    );
+    if (save == true) {
+      for (final field in fields) {
+        final id = field['id']?.toString() ?? '';
+        if (field['type'] == 'CHECKBOX' || field['type'] == 'PASS_FAIL') continue;
+        final raw = controllers[id]?.text.trim() ?? '';
+        values[id] = raw.isEmpty ? null : (field['type'] == 'NUMBER' || field['type'] == 'PERCENT') ? (double.tryParse(raw) ?? raw) : raw;
+      }
+      setState(() => _busy = true);
+      try {
+        final updated = await _api.updateClassStudent(classId: detail.id, enrollmentId: student.id, attendance: student.attendance, customValues: values);
+        _setDetail(updated);
+      } catch (error) {
+        if (mounted) setState(() => _error = error.toString());
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+    }
+    for (final controller in controllers.values) { controller.dispose(); }
+  }
+
   void _jumpToMember(DepartmentClassStudent member, {required bool grading}) {
     setState(() {
       _studentId = member.id;
@@ -1079,6 +1140,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             ]),
           ),
         ),
+        if (detail.customFields.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: _busy || detail.status == 'COMPLETE' ? null : () => _editCustomResults(detail, student),
+            icon: const Icon(Icons.fact_check_outlined),
+            label: const Text('Template-specific student results'),
+          ),
+        ],
         if (!_showGrading) ...[
         const SizedBox(height: 10), DropdownButtonFormField<String>(key: ValueKey(student.id), initialValue: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null){_setDetail(saved.detail!); _nextStudent();} if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } catch(e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); } }),
         ] else ...[
