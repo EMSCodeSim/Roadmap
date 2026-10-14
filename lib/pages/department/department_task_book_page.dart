@@ -248,9 +248,11 @@ class _DepartmentTaskBookPageState extends State<DepartmentTaskBookPage> {
               );
             }),
             if (_assignment.sections.isEmpty)
-              const _Notice(
+              _Notice(
                 icon: Icons.info_outline_rounded,
-                text: 'This assigned Task Book does not contain any requirements yet.',
+                text: _assignment.isSingleTask
+                    ? 'This Assignment does not contain any requirements yet.'
+                    : 'This assigned Task Book does not contain any requirements yet.',
               ),
           ],
         ),
