@@ -121,6 +121,12 @@ class AppState extends ChangeNotifier {
   Roadmap? get roadmap {
     final goal = selectedGoal;
     if (goal == null) return null;
+    return roadmapForGoal(goal);
+  }
+
+  /// Read-only career goal preview using existing records and matching rules.
+  /// Does not change the selected goal or any department data.
+  Roadmap roadmapForGoal(CareerGoal goal) {
 
     // Certification completion should consider expired credentials as NOT complete.
     final certStatusByDefId = <String, CertificationStatus>{};
