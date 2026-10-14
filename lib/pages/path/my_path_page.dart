@@ -343,8 +343,11 @@ class _PathTab extends StatelessWidget {
     final percentReady = (roadmap.percentComplete * 100).round();
     final targetDate = state.profile.careerPlan.targetDate;
 
+    // Career guidance prioritizes personal milestones; department-owned work
+    // remains accessible in the Department area.
     final nextActions = _buildNextActions(roadmap);
     final stillNeeded = roadmap.missing
+        .where((e) => e.requirement.requirementSource != RequirementSource.departmentRequirement)
         .where((e) => nextActions.indexWhere((n) => n.requirement.id == e.requirement.id) == -1)
         .toList()
       ..sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
@@ -417,7 +420,7 @@ class _PathTab extends StatelessWidget {
             _SpecialtyPathsSection(state: state),
           ],
           const SizedBox(height: AppSpacing.lg),
-          _SectionTitle(label: 'NEXT'),
+          _SectionTitle(label: 'YOUR NEXT BEST STEPS'),
           const SizedBox(height: AppSpacing.sm),
           if (nextActions.isEmpty)
             Text(
@@ -441,6 +444,16 @@ class _PathTab extends StatelessWidget {
                 ),
               );
             }),
+          const SizedBox(height: AppSpacing.md),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.auto_awesome_outlined),
+              title: const Text('How your plan adapts'),
+              subtitle: const Text('Your next steps are recalculated from unfinished personal milestones. Completed work stays in your history; department requirements are managed separately.'),
+              onTap: () => context.push(AppRoutes.careerIntelligence),
+              trailing: const Icon(Icons.chevron_right),
+            ),
+          ),
           const SizedBox(height: AppSpacing.xl),
           _SectionTitle(label: 'YOUR LONG-TERM PLAN'),
           const SizedBox(height: AppSpacing.sm),
@@ -497,13 +510,19 @@ class _PathTab extends StatelessWidget {
   }
 
   static List<RoadmapRequirement> _buildNextActions(Roadmap roadmap) {
-    final next = roadmap.nextStep;
-    if (next == null) return const <RoadmapRequirement>[];
-    final others = roadmap.missing
-        .where((e) => e.requirement.id != next.requirement.id)
-        .toList()
-      ..sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
-    return [next, ...others.take(2)];
+    final personal = roadmap.missing.where((item) =>
+        item.requirement.requirementSource != RequirementSource.departmentRequirement).toList();
+    if (personal.isEmpty) return const <RoadmapRequirement>[];
+    // Preserve the roadmap engine's next-step recommendation when it is a
+    // personal milestone, then suggest the next two milestones in plan order.
+    final recommended = roadmap.nextStep;
+    personal.sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
+    if (recommended != null &&
+        recommended.requirement.requirementSource != RequirementSource.departmentRequirement) {
+      personal.removeWhere((item) => item.requirement.id == recommended.requirement.id);
+      return [recommended, ...personal.take(2)];
+    }
+    return personal.take(3).toList();
   }
 
   static String _primaryLabel(Requirement r) {
