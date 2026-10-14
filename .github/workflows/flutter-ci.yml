@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   validate:
@@ -35,8 +36,8 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Analyze
-        run: flutter analyze --no-fatal-warnings --no-fatal-infos
+      - name: Analyze (warnings fail CI)
+        run: flutter analyze --no-fatal-infos
 
       - name: Core career loop regression tests
         run: flutter test test/core_career_loop_regression_test.dart
@@ -58,6 +59,15 @@ jobs:
 
       - name: Task Book focus preference tests
         run: flutter test test/task_book_focus_store_test.dart
+
+      - name: Verify personal qualification task book navigation
+        run: |
+          grep -q "1. Find a class" lib/pages/task_book/qualification_task_book_page.dart
+          grep -q "2. Books and chapters" lib/pages/task_book/qualification_task_book_page.dart
+          grep -q "3. Skills and JPRs" lib/pages/task_book/qualification_task_book_page.dart
+          grep -q "4. Written test" lib/pages/task_book/qualification_task_book_page.dart
+          grep -q "5. Skills test" lib/pages/task_book/qualification_task_book_page.dart
+          grep -q "authority.sourceUrl" lib/pages/task_book/qualification_task_book_page.dart
 
   platform-builds:
     needs: validate
