@@ -485,33 +485,29 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     );
     if (confirmed != true || skillId == null || !mounted) return;
     setState(() { _busy = true; _error = null; });
-    var savedCount = 0;
     try {
-      for (final member in members.where((member) => selected.contains(member.id))) {
-        final saved = await _api.recordClassSkillDurable(
-          classId: detail.id,
-          enrollmentId: member.id,
-          requirementId: skillId!,
-          result: result,
-          notes: 'Group evaluation',
-        );
-        savedCount++;
-        if (saved.detail != null) _setDetail(saved.detail!);
-        if (saved.queued) {
-          if (mounted) {
-            context.read<DepartmentInboxController>().submissionQueued();
-            setState(() => _error = 'Evaluations waiting to sync. Check sync status before closing.');
-          }
-          break;
-        }
+      final batch = members.where((member) => selected.contains(member.id)).map((member) => <String, String>{
+        'enrollmentId': member.id,
+        'result': result,
+        'notes': 'Group evaluation',
+      }).toList(growable: false);
+      final saved = await _api.recordClassSkillBatchDurable(
+        classId: detail.id,
+        requirementId: skillId!,
+        results: batch,
+      );
+      if (saved.detail != null) _setDetail(saved.detail!);
+      if (saved.queued && mounted) {
+        context.read<DepartmentInboxController>().submissionQueued();
+        setState(() => _error = 'Evaluations waiting to sync. Check sync status before closing.');
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$savedCount evaluation(s) submitted')),
+          SnackBar(content: Text(saved.queued ? '${batch.length} evaluation(s) saved and waiting to sync' : '${batch.length} individual evaluation(s) submitted together')),
         );
       }
     } catch (error) {
-      if (mounted) setState(() => _error = '$savedCount submitted; remaining evaluations not saved: $error');
+      if (mounted) setState(() => _error = 'Unable to submit these group evaluations: $error');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -887,45 +883,37 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       return;
     }
     setState(() { _busy = true; _error = null; });
-    var confirmed = 0;
     try {
-      for (final entry in pending.entries) {
-        // The existing durable API preserves permissions, audit history and
-        // offline queuing. It currently sends each item individually.
-        final saved = await _api.recordClassSkillDurable(
-          classId: detail.id,
-          enrollmentId: member.id,
-          requirementId: entry.key,
-          result: entry.value,
-          notes: notes[entry.key] ?? '',
-        );
-        if (saved.queued) {
-          if (mounted) {
-            context.read<DepartmentInboxController>().submissionQueued();
-            setState(() {
-              _draftSkillResults[member.id]?.remove(entry.key);
-              _draftSkillNotes[member.id]?.remove(entry.key);
-              _error = 'Some results are Waiting to Sync. Remaining selections are still drafts. Review sync before closing.';
-            });
+      final batch = pending.entries.map((entry) => <String, String>{
+        'enrollmentId': member.id,
+        'requirementId': entry.key,
+        'result': entry.value,
+        'notes': notes[entry.key] ?? '',
+      }).toList(growable: false);
+      final saved = await _api.recordClassSkillBatchDurable(
+        classId: detail.id,
+        results: batch,
+      );
+      if (saved.detail != null) _setDetail(saved.detail!);
+      if (saved.queued && mounted) {
+        context.read<DepartmentInboxController>().submissionQueued();
+      }
+      if (mounted) {
+        setState(() {
+          for (final key in pending.keys) {
+            _draftSkillResults[member.id]?.remove(key);
+            _draftSkillNotes[member.id]?.remove(key);
           }
-          break;
-        }
-        if (saved.detail != null) _setDetail(saved.detail!);
-        if (mounted) {
-          setState(() {
-            _draftSkillResults[member.id]?.remove(entry.key);
-            _draftSkillNotes[member.id]?.remove(entry.key);
-          });
-        }
-        confirmed++;
+          if (saved.queued) _error = 'Skill results are saved on this device and waiting to sync. Review sync before closing.';
+        });
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('$confirmed skill result(s) confirmed. Remaining drafts: ${_draftSkillResults[member.id]?.length ?? 0}.'),
+          content: Text(saved.queued ? '${pending.length} skill result(s) saved and waiting to sync.' : '${pending.length} individual skill result(s) submitted together.'),
         ));
       }
     } catch (e) {
-      if (mounted) setState(() => _error = '$confirmed skill result(s) saved; remaining drafts need attention: $e');
+      if (mounted) setState(() => _error = 'No staged results were cleared. Review the connection and submit again: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
