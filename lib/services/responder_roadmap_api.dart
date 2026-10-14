@@ -1213,7 +1213,7 @@ class ResponderRoadmapApi {
         },
       );
     } on ResponderRoadmapApiException catch (error) {
-      if (error.statusCode != null && error.statusCode! >= 400 && error.statusCode! < 500 && error.statusCode != 408) {
+      if (_isNonRetryableRequestFailure(error)) {
         await _removePendingSubmission(requestId);
       }
       rethrow;
@@ -1559,7 +1559,8 @@ class ResponderRoadmapApi {
       final detail=await recordClassSkill(classId:classId,enrollmentId:enrollmentId,requirementId:requirementId,result:result,notes:notes);
       await _removePendingClassMutation(key);
       return DepartmentClassMutationResult(detail:detail,queued:false);
-    } on ResponderRoadmapApiException {
+    } on ResponderRoadmapApiException catch (error) {
+      if (_isNonRetryableRequestFailure(error)) rethrow;
       await _savePendingClassMutation(row);
       return const DepartmentClassMutationResult(detail:null,queued:true);
     }
@@ -1572,7 +1573,8 @@ class ResponderRoadmapApi {
       final detail=await updateClassStudent(classId:classId,enrollmentId:enrollmentId,attendance:attendance);
       await _removePendingClassMutation(key);
       return DepartmentClassMutationResult(detail:detail,queued:false);
-    } on ResponderRoadmapApiException {
+    } on ResponderRoadmapApiException catch (error) {
+      if (_isNonRetryableRequestFailure(error)) rethrow;
       await _savePendingClassMutation(row);
       return const DepartmentClassMutationResult(detail:null,queued:true);
     }
@@ -1615,6 +1617,12 @@ class ResponderRoadmapApi {
     rows.removeWhere((item)=>item['key']==key);
     await _secureStorage.write(key:_pendingClassMutationsKey,value:jsonEncode(rows));
   }
+
+  bool _isNonRetryableRequestFailure(ResponderRoadmapApiException error) =>
+      error.statusCode != null &&
+      error.statusCode! >= 400 &&
+      error.statusCode! < 500 &&
+      error.statusCode != 408;
 
   Future<DepartmentClassDetail> recordClassSkill({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
     final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}/skills/${Uri.encodeComponent(requirementId)}', body: {'result': result, 'notes': notes.trim()});
