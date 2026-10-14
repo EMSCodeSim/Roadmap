@@ -182,7 +182,9 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                   if (_selectedGoalId != null) ...[
                     const SizedBox(height: AppSpacing.lg),
                     _CareerGoalPlanPreview(
-                      roadmap: _selectedGoalId == state.profile.primaryGoalId ? state.roadmap : null,
+                      roadmap: state.availableGoals.where((goal) => goal.id == _selectedGoalId).isNotEmpty
+                          ? state.roadmapForGoal(state.availableGoals.firstWhere((goal) => goal.id == _selectedGoalId))
+                          : (_selectedGoalId == state.profile.primaryGoalId ? state.roadmap : null),
                       title: _selectedGoalId!.startsWith('custom:')
                           ? (_customGoalTitle ?? 'My career goal')
                           : state.availableGoals
@@ -580,7 +582,7 @@ class _CareerGoalPlanPreview extends StatelessWidget {
             Text(title, style: Theme.of(context).textTheme.titleSmall),
             if (roadmap != null) ...[
               const SizedBox(height: 12),
-              Text('Your actual progress', style: Theme.of(context).textTheme.titleSmall),
+              Text('Your records against this goal', style: Theme.of(context).textTheme.titleSmall),
               Text('${roadmap.completed.length} completed • ${roadmap.missing.length} remaining'),
               const SizedBox(height: 8),
               if (roadmap.completed.isNotEmpty)
@@ -610,7 +612,7 @@ class _CareerGoalPlanPreview extends StatelessWidget {
                 ),
             ] else ...[
               const SizedBox(height: 8),
-              Text('Save this goal to compare it with your existing records and see what may transfer.'),
+              Text('Custom goals can be evaluated after their requirements are added. Existing career records will be preserved.'),
             ],
             const SizedBox(height: 12),
             _PlanStage(number: '1', title: 'Build your foundation',
