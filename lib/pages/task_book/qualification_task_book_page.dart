@@ -67,16 +67,17 @@ class QualificationTaskBookPage extends StatelessWidget {
     for (final t in tasks) {
       (grouped[t.section] ??= <TaskBookTaskDefinition>[]).add(t);
     }
+    // Put hands-on JPRs first; planning guidance is supporting material.
     const sectionOrder = [
-      'PLAN THE CERTIFICATION',
-      'GETTING STARTED',
-      'TRAINING',
       'PRACTICAL / JPR PREPARATION',
-      'TESTING',
-      'CERTIFICATION',
       'KNOWLEDGE',
       'APPARATUS OPERATIONS',
       'PERFORMANCE',
+      'TRAINING',
+      'TESTING',
+      'CERTIFICATION',
+      'GETTING STARTED',
+      'PLAN THE CERTIFICATION',
     ];
     final orderedSections = grouped.keys.toList()
       ..sort((a, b) {
@@ -130,14 +131,45 @@ class QualificationTaskBookPage extends StatelessWidget {
         child: ListView(
           padding: AppSpacing.paddingLg,
           children: [
-            if (guide != null) ...[
-              _CertificationGuideCard(guide: guide),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            if (guide != null && authority != null) ...[
-              _OfficialSourceCard(authority: authority),
-              const SizedBox(height: AppSpacing.md),
-            ],
+            Card(
+              child: Padding(
+                padding: AppSpacing.paddingMd,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Your qualification in five steps',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    const ListTile(dense: true, leading: Icon(Icons.place_outlined),
+                        title: Text('1. Find a class'),
+                        subtitle: Text('Check local academies, colleges, and your state training authority.')),
+                    const ListTile(dense: true, leading: Icon(Icons.menu_book_outlined),
+                        title: Text('2. Books and chapters'),
+                        subtitle: Text('Use your course syllabus for the assigned textbook and chapters.')),
+                    ListTile(dense: true, leading: const Icon(Icons.checklist),
+                        title: const Text('3. Skills and JPRs'),
+                        subtitle: Text('${tasks.where((t) => t.section.contains('JPR') || t.section == 'PERFORMANCE').length} practical items in this book')),
+                    const ListTile(dense: true, leading: Icon(Icons.quiz_outlined),
+                        title: Text('4. Written test'),
+                        subtitle: Text('Prepare for and record the required knowledge examination.')),
+                    const ListTile(dense: true, leading: Icon(Icons.workspace_premium_outlined),
+                        title: Text('5. Skills test'),
+                        subtitle: Text('Complete the practical evaluation with an authorized evaluator.')),
+                  ],
+                ),
+              ),
+            ),
+            if (guide != null || authority != null)
+              ExpansionTile(
+                initiallyExpanded: false,
+                title: const Text('Course details and official guidance'),
+                subtitle: const Text('Optional details, sources, and pathway instructions'),
+                children: [
+                  if (guide != null) _CertificationGuideCard(guide: guide),
+                  if (guide != null && authority != null)
+                    _OfficialSourceCard(authority: authority),
+                ],
+              ),
             _BuildTaskBookCard(
               requirement: req,
               goalId: goalId,
