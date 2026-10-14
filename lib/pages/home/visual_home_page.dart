@@ -333,7 +333,33 @@ class _HomeOverviewState extends State<_HomeOverview>
           )),
         if (needs.length > 2)
           TextButton(
-            onPressed: () => context.go(AppRoutes.myPath),
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              builder: (sheetContext) => SafeArea(
+                child: SizedBox(
+                  height: MediaQuery.sizeOf(sheetContext).height * 0.75,
+                  child: Column(children: [
+                    Padding(padding: const EdgeInsets.all(16), child: Text('Personal needs (${needs.length})')),
+                    Expanded(child: ListView.builder(
+                      itemCount: needs.length,
+                      itemBuilder: (_, index) {
+                        final item = needs[index];
+                        return ListTile(
+                          title: Text(item.title),
+                          subtitle: Text(item.detail),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            context.go(item.certificationId != null || item.kind == NeedsAttentionKind.certificationMatch ? AppRoutes.certifications : AppRoutes.myPath);
+                          },
+                        );
+                      },
+                    )),
+                  ]),
+                ),
+              ),
+            ),
             child: Text('${needs.length - 2} more personal items'),
           ),
       ],
