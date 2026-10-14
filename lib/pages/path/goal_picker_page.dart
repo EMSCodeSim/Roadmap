@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_goal.dart';
+import 'package:firepath/models/requirement.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/task_book_setup_store.dart';
 import 'package:firepath/state/app_state.dart';
@@ -181,6 +182,7 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                   if (_selectedGoalId != null) ...[
                     const SizedBox(height: AppSpacing.lg),
                     _CareerGoalPlanPreview(
+                      roadmap: _selectedGoalId == state.profile.primaryGoalId ? state.roadmap : null,
                       title: _selectedGoalId!.startsWith('custom:')
                           ? (_customGoalTitle ?? 'My career goal')
                           : state.availableGoals
@@ -544,7 +546,8 @@ class _NoGoalResults extends StatelessWidget {
 /// roadmap engine after saving the goal, not invented by this preview.
 class _CareerGoalPlanPreview extends StatelessWidget {
   final String title;
-  const _CareerGoalPlanPreview({required this.title});
+  final Roadmap? roadmap;
+  const _CareerGoalPlanPreview({required this.title, this.roadmap});
 
   @override
   Widget build(BuildContext context) {
@@ -575,6 +578,40 @@ class _CareerGoalPlanPreview extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(title, style: Theme.of(context).textTheme.titleSmall),
+            if (roadmap != null) ...[
+              const SizedBox(height: 12),
+              Text('Your actual progress', style: Theme.of(context).textTheme.titleSmall),
+              Text('${roadmap.completed.length} completed • ${roadmap.missing.length} remaining'),
+              const SizedBox(height: 8),
+              if (roadmap.completed.isNotEmpty)
+                ExpansionTile(
+                  title: const Text('Already achieved'),
+                  children: roadmap.completed.take(8).map((item) =>
+                    ListTile(
+                      leading: const Icon(Icons.check_circle_outline),
+                      title: Text(item.requirement.name),
+                    )).toList(),
+                ),
+              if (roadmap.missing.isNotEmpty)
+                ExpansionTile(
+                  title: const Text('Still to develop'),
+                  children: roadmap.missing
+                      .where((item) => item.requirement.requirementSource != RequirementSource.departmentRequirement)
+                      .take(8).map((item) => ListTile(
+                        leading: const Icon(Icons.radio_button_unchecked),
+                        title: Text(item.requirement.name),
+                      )).toList(),
+                ),
+              if (roadmap.nextStep != null)
+                ListTile(
+                  leading: const Icon(Icons.lightbulb_outline),
+                  title: const Text('Suggested next milestone'),
+                  subtitle: Text(roadmap.nextStep!.requirement.name),
+                ),
+            ] else ...[
+              const SizedBox(height: 8),
+              Text('Save this goal to compare it with your existing records and see what may transfer.'),
+            ],
             const SizedBox(height: 12),
             _PlanStage(number: '1', title: 'Build your foundation',
                 detail: 'Review existing credentials, experience, and transferable skills.'),
