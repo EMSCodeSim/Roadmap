@@ -570,6 +570,8 @@ class _CareerGoalPlanPreview extends StatelessWidget {
                     ? 'Clinical education, supervised experience, and patient care proficiency'
                     : 'Relevant education, practical experience, and demonstrated competency';
 
+    final rm = roadmap;
+
     return Card(
       child: Padding(
         padding: AppSpacing.paddingMd,
@@ -580,35 +582,35 @@ class _CareerGoalPlanPreview extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(title, style: Theme.of(context).textTheme.titleSmall),
-            if (roadmap != null) ...[
+            if (rm != null) ...[
               const SizedBox(height: 12),
               Text('Your records against this goal', style: Theme.of(context).textTheme.titleSmall),
-              Text('${roadmap.completed.length} completed • ${roadmap.missing.length} remaining'),
+              Text('${rm.completed.length} completed • ${rm.missing.length} remaining'),
               const SizedBox(height: 8),
-              if (roadmap.completed.isNotEmpty)
+              if (rm.completed.isNotEmpty)
                 ExpansionTile(
                   title: const Text('Already achieved'),
-                  children: roadmap.completed.take(8).map((item) =>
+                  children: rm.completed.take(8).map((item) =>
                     ListTile(
                       leading: const Icon(Icons.check_circle_outline),
                       title: Text(item.requirement.name),
                     )).toList(),
                 ),
-              if (roadmap.missing.isNotEmpty)
+              if (rm.missing.isNotEmpty)
                 ExpansionTile(
                   title: const Text('Still to develop'),
-                  children: roadmap.missing
+                  children: rm.missing
                       .where((item) => item.requirement.requirementSource != RequirementSource.departmentRequirement)
                       .take(8).map((item) => ListTile(
                         leading: const Icon(Icons.radio_button_unchecked),
                         title: Text(item.requirement.name),
                       )).toList(),
                 ),
-              if (roadmap.nextStep != null)
+              if (rm.nextStep != null)
                 ListTile(
                   leading: const Icon(Icons.lightbulb_outline),
                   title: const Text('Suggested next milestone'),
-                  subtitle: Text(roadmap.nextStep!.requirement.name),
+                  subtitle: Text(rm.nextStep!.requirement.name),
                 ),
             ] else ...[
               const SizedBox(height: 8),
