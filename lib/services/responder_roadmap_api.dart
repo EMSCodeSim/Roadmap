@@ -1609,6 +1609,48 @@ class ResponderRoadmapApi {
     }
   }
 
+  Future<DepartmentClassMutationResult> recordClassSkillBatchDurable({
+    required String classId,
+    String requirementId = '',
+    required List<Map<String, String>> results,
+  }) async {
+    if (results.isEmpty) {
+      throw const ResponderRoadmapApiException('Select at least one student result.');
+    }
+    try {
+      final data = await _request(
+        'POST',
+        'app/training-sheets/${Uri.encodeComponent(classId)}/skills/batch',
+        body: <String, dynamic>{
+          'requirementId': requirementId,
+          'results': results,
+        },
+      );
+      return DepartmentClassMutationResult(
+        detail: DepartmentClassDetail.fromJson(_asMap(data)),
+        queued: false,
+      );
+    } on ResponderRoadmapApiException catch (error) {
+      if (_isNonRetryableRequestFailure(error)) rethrow;
+      for (final result in results) {
+        final enrollmentId = result['enrollmentId'] ?? '';
+        final resultRequirementId = result['requirementId'] ?? requirementId;
+        final key = 'skill:$classId:$enrollmentId:$resultRequirementId';
+        await _savePendingClassMutation(<String, dynamic>{
+          'key': key,
+          'kind': 'skill',
+          'classId': classId,
+          'enrollmentId': enrollmentId,
+          'requirementId': resultRequirementId,
+          'result': result['result'] ?? 'NOT_EVALUATED',
+          'notes': (result['notes'] ?? '').trim(),
+          'queuedAt': DateTime.now().toUtc().toIso8601String(),
+        });
+      }
+      return const DepartmentClassMutationResult(detail: null, queued: true);
+    }
+  }
+
   Future<DepartmentClassMutationResult> updateClassStudentDurable({required String classId, required String enrollmentId, required String attendance}) async {
     final key='attendance:$classId:$enrollmentId';
     final row={'key':key,'kind':'attendance','classId':classId,'enrollmentId':enrollmentId,'attendance':attendance,'queuedAt':DateTime.now().toUtc().toIso8601String()};
