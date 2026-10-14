@@ -493,7 +493,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       }).toList(growable: false);
       final saved = await _api.recordClassSkillBatchDurable(
         classId: detail.id,
-        requirementId: skillId,
+        requirementId: skillId!,
         results: batch,
       );
       if (saved.detail != null) _setDetail(saved.detail!);
@@ -507,7 +507,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         );
       }
     } catch (error) {
-      if (mounted) setState(() => _error = '$savedCount submitted; remaining evaluations not saved: $error');
+      if (mounted) setState(() => _error = 'Unable to submit these group evaluations: $error');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
