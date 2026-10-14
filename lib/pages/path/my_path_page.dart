@@ -23,7 +23,7 @@ class MyPathPage extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Personal Roadmap'),
+          title: const Text('My Career Journey'),
           centerTitle: false,
           bottom: roadmap == null
               ? null
@@ -402,26 +402,12 @@ class _PathTab extends StatelessWidget {
           ],
           const SizedBox(height: AppSpacing.md),
           Card(
-            child: Padding(
-              padding: AppSpacing.paddingMd,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  const Icon(Icons.edit_road_outlined),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(child: Text('Your roadmap is editable', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
-                ]),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Open any item for its detailed plan, steps, notes and resources. Use Customize to add or remove personal items. Suggested items are guidance; official-source items should be checked against the current authority.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Wrap(spacing: 8, runSpacing: 8, children: const [
-                  Chip(label: Text('Suggested')),
-                  Chip(label: Text('Official Source · Verify')),
-                  Chip(label: Text('User Added')),
-                ]),
-              ]),
+            child: ListTile(
+              leading: const Icon(Icons.flag_outlined),
+              title: const Text('Your career, your direction'),
+              subtitle: const Text('Focus on your next milestone. Customize your personal plan whenever your goals change. Department assignments remain in Department.'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.goalSetup),
             ),
           ),
           if (state.profile.effectiveCareerPath != CareerPath.ems) ...[
@@ -456,28 +442,25 @@ class _PathTab extends StatelessWidget {
               );
             }),
           const SizedBox(height: AppSpacing.xl),
-          _SectionTitle(label: 'STILL NEEDED'),
+          _SectionTitle(label: 'YOUR LONG-TERM PLAN'),
           const SizedBox(height: AppSpacing.sm),
           if (orderedGroups.isEmpty)
-            Text('Nothing remaining.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant))
+            const Text('No remaining milestones. Explore another career goal.')
           else
-            ...orderedGroups.expand((group) {
+            ...orderedGroups.map((group) {
               final items = grouped[group]!;
-              return [
-                _GroupHeading(title: group, count: items.length),
-                const SizedBox(height: AppSpacing.sm),
-                ...items.map((r) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: _ReqTile(
-                        requirement: r.requirement,
-                        statusIcon: Icons.circle_outlined,
-                        statusColor: cs.onSurfaceVariant,
-                        onTap: () => AppRouter.openRequirement(context, r.requirement, goalId: state.roadmap?.goal.id),
-                        compactBadges: true,
-                      ),
-                    )),
-                const SizedBox(height: AppSpacing.md),
-              ];
+              return ExpansionTile(
+                initiallyExpanded: false,
+                title: Text(group),
+                subtitle: Text('${items.length} milestones to explore'),
+                children: items.map((r) => _ReqTile(
+                  requirement: r.requirement,
+                  statusIcon: Icons.circle_outlined,
+                  statusColor: cs.onSurfaceVariant,
+                  onTap: () => AppRouter.openRequirement(context, r.requirement, goalId: state.roadmap?.goal.id),
+                  compactBadges: true,
+                )).toList(),
+              );
             }),
           const SizedBox(height: AppSpacing.xl),
           ExpansionTile(
