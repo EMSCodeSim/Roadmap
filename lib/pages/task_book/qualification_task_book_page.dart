@@ -139,6 +139,19 @@ class QualificationTaskBookPage extends StatelessWidget {
               title: const Text('1. Find a class'),
               subtitle: const Text('Training providers and enrollment'),
               children: [
+                if (authority != null)
+                  ListTile(
+                    leading: const Icon(Icons.open_in_new),
+                    title: Text('Official ${authority.stateCode} certification requirements'),
+                    subtitle: Text(authority.sourceTitle),
+                    onTap: () => launchUrl(Uri.parse(authority.sourceUrl),
+                        mode: LaunchMode.externalApplication),
+                  )
+                else
+                  const ListTile(
+                    title: Text('Select your state in your profile'),
+                    subtitle: Text('Your state determines which official certification authority is linked here.'),
+                  ),
                 const ListTile(
                   title: Text('Where to look'),
                   subtitle: Text('Contact your department training officer, nearby fire academies, community colleges, and your state fire training authority. Verify availability and prerequisites directly.'),
@@ -229,6 +242,23 @@ class QualificationTaskBookPage extends StatelessWidget {
               initiallyExpanded: false,
               title: const Text('Customize and manage this task book'),
               children: [
+                const ListTile(
+                  title: Text('Personal requirements are editable'),
+                  subtitle: Text('Add or adjust your preparation checklist here. Official state requirements must be verified with the issuing authority; your edits do not change those rules.'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.add_task_outlined),
+                  title: const Text('Add or edit my requirements'),
+                  subtitle: const Text('Create personal prerequisites, reading, JPRs, and testing steps'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _addPresetTask(
+                    context, goalId: goalId, req: req,
+                    section: 'PLAN THE CERTIFICATION',
+                    titlePrompt: 'Add personal requirement',
+                    titleHint: 'Example: Complete academy prerequisite',
+                    objective: 'Personal planning item; confirm official requirements with your state authority.',
+                  ),
+                ),
             _BuildTaskBookCard(
               requirement: req,
               goalId: goalId,
