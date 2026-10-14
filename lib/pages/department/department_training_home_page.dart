@@ -30,6 +30,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   List<DepartmentReviewItem> _reviews = const [];
   List<DepartmentClassDetail> _rmsActions = const [];
   List<InstructorTrainingAttention> _instructorTraining = const [];
+  List<DepartmentWorkQueueItem> _workQueue = const [];
   String? _expandedSection;
   bool _loading = true;
   bool _refreshing = false;
@@ -59,6 +60,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     try {
       final session = await _api.currentSession();
       final items = await _api.listAssignments();
+      final workQueue = await _api.getWorkQueue();
       List<DepartmentReviewItem> reviews = const [];
       List<DepartmentClassDetail> rmsActions = const [];
       List<InstructorTrainingAttention> instructorTraining = const [];
@@ -115,7 +117,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       }
 
       items.sort(_priorityCompare);
-      setState(() { _assignments = items; _reviews = reviews; _rmsActions = rmsActions; _instructorTraining = instructorTraining; _error = null; _loading = false; });
+      setState(() { _assignments = items; _workQueue = workQueue.items; _reviews = reviews; _rmsActions = rmsActions; _instructorTraining = instructorTraining; _error = null; _loading = false; });
     } on ResponderRoadmapApiException catch (e) {
       if (!mounted) return;
       setState(() { _error = e.message; _loading = false; });
@@ -170,6 +172,24 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     if (mounted) await _refresh(silent: true);
   }
 
+  Future<void> _openWorkItem(DepartmentWorkQueueItem item) async {
+    if (item.kind == 'ASSIGNMENT') {
+      final matches = _assignments.where((row) => row.id == item.targetId);
+      if (matches.isNotEmpty) await _open(matches.first);
+      return;
+    }
+    if (item.kind == 'EVALUATION') {
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => DepartmentReviewPage(initialReviewId: item.targetId),
+      ));
+      if (mounted) await _refresh(silent: true);
+      return;
+    }
+    if (item.kind == 'TRAINING_SHEET' || item.kind == 'RMS_ENTRY') {
+      await _openClass(item.targetId);
+    }
+  }
+
   Widget _dashboardBox({
     required String id, required String title, required IconData icon,
     required int count, required Widget child,
@@ -204,12 +224,6 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     final active = _assignments.where((a) => _status(a) != 'Complete').toList();
     final oneOffAssignments = active.where((a) => a.isSingleTask).toList();
     final assignedTaskBooks = active.where((a) => !a.isSingleTask).toList();
-    final returned = active.where((a) => _status(a).startsWith('Returned')).toList();
-    final overdue = active.where((a) => _status(a) == 'Overdue').toList();
-    final dueSoon = active.where((a) => a.dueDate != null &&
-        !a.dueDate!.isBefore(DateTime.now()) &&
-        a.dueDate!.isBefore(DateTime.now().add(const Duration(days: 14))) &&
-        _status(a) != 'Overdue' && !returned.contains(a)).toList();
     return Scaffold(
       appBar: AppBar(
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -244,20 +258,8 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                   _dashboardBox(
                     id: 'attention', title: 'Needs Attention',
                     icon: Icons.notification_important_outlined,
-                    count: returned.length + overdue.length + dueSoon.length + _reviews.length +
-                        _instructorTraining.length +
-                        _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).length,
-                    child: _NeedsAttention(
-                      returned: returned, overdue: overdue, dueSoon: dueSoon, reviews: _reviews,
-                      rmsActions: _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).toList(),
-                      instructorTraining: _instructorTraining,
-                      onAssignment: _open,
-                      onReview: (item) => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => DepartmentReviewPage(initialReviewId: item.id),
-                      )).then((_) => _refresh(silent: true)),
-                      onInstructorTraining: (item) => _openClass(item.id),
-                      onRmsAction: (item) => _openClass(item.id),
-                    ),
+                    count: _workQueue.length,
+                    child: _CanonicalWorkQueue(items: _workQueue, onTap: _openWorkItem),
                   ),
                   _dashboardBox(
                     id: 'assignments', title: 'Assignments',
@@ -497,125 +499,41 @@ class _DepartmentStatusPill extends StatelessWidget {
   }
 }
 
-class _NeedsAttention extends StatelessWidget {
-  final List<DepartmentTaskBookAssignment> returned;
-  final List<DepartmentTaskBookAssignment> overdue;
-  final List<DepartmentTaskBookAssignment> dueSoon;
-  final List<DepartmentReviewItem> reviews;
-  final List<DepartmentClassDetail> rmsActions;
-  final List<InstructorTrainingAttention> instructorTraining;
-  final Future<void> Function(DepartmentTaskBookAssignment) onAssignment;
-  final void Function(DepartmentReviewItem) onReview;
-  final void Function(DepartmentClassDetail) onRmsAction;
-  final void Function(InstructorTrainingAttention) onInstructorTraining;
-
-  const _NeedsAttention({
-    required this.returned,
-    required this.overdue,
-    required this.dueSoon,
-    required this.reviews,
-    required this.rmsActions,
-    required this.instructorTraining,
-    required this.onInstructorTraining,
-    required this.onAssignment,
-    required this.onReview,
-    required this.onRmsAction,
-  });
+class _CanonicalWorkQueue extends StatelessWidget {
+  final List<DepartmentWorkQueueItem> items;
+  final Future<void> Function(DepartmentWorkQueueItem) onTap;
+  const _CanonicalWorkQueue({required this.items, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final count = returned.length + overdue.length + dueSoon.length + reviews.length + rmsActions.length + instructorTraining.length;
-    if (count == 0) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(children: [
-            const Icon(Icons.check_circle_outline_rounded),
-            const SizedBox(width: 10),
-            Expanded(child: Text('Needs Attention', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
-            const Text('Nothing urgent'),
-          ]),
-        ),
+    if (items.isEmpty) {
+      return const ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(Icons.check_circle_outline_rounded),
+        title: Text("You’re caught up"),
+        subtitle: Text("No department actions need your attention."),
       );
     }
-
-    final tiles = <Widget>[];
-    for (final item in returned) {
-      tiles.add(ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.assignment_return_outlined),
-        title: Text(item.taskBookTitle),
-        subtitle: const Text('Returned — correction needed'),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => onAssignment(item),
-      ));
-    }
-    for (final item in overdue) {
-      tiles.add(ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.schedule_rounded),
-        title: Text(item.taskBookTitle),
-        subtitle: const Text('Overdue training'),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => onAssignment(item),
-      ));
-    }
-    for (final item in dueSoon) {
-      tiles.add(ListTile(
-        contentPadding: EdgeInsets.zero,
-        // Material does not include `event_upcoming_outlined`; use the closest
-        // semantic match that exists across stable Flutter versions.
-        leading: const Icon(Icons.event_available_outlined),
-        title: Text(item.taskBookTitle),
-        subtitle: const Text('Due within 14 days'),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => onAssignment(item),
-      ));
-    }
-    for (final item in reviews) {
-      tiles.add(ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.fact_check_outlined),
-        title: Text(item.requirementTitle),
-        subtitle: Text('${item.memberName} · evaluation waiting'),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => onReview(item),
-      ));
-    }
-    for (final item in instructorTraining) {
-      tiles.add(ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.assignment_outlined),
-        title: Text(item.title),
-        subtitle: Text(item.nextStep),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => onInstructorTraining(item),
-      ));
-    }
-    for (final item in rmsActions) {
-      tiles.add(ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.assignment_late_outlined),
-        title: Text(item.title),
-        subtitle: const Text('RMS Actions Needed'),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => onRmsAction(item),
-      ));
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(child: Text('Needs Attention', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
-            Text('$count', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-          ]),
-          const SizedBox(height: 4),
-          Text('Open the item that needs action now.', style: Theme.of(context).textTheme.bodySmall),
-          ...tiles,
-        ]),
-      ),
+    return Column(
+      children: [
+        for (final item in items)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(switch (item.kind) {
+              "EVALUATION" => Icons.fact_check_outlined,
+              "TRAINING_SHEET" => Icons.school_outlined,
+              "RMS_ENTRY" => Icons.assignment_late_outlined,
+              _ => item.priority == "URGENT"
+                  ? Icons.notification_important_outlined
+                  : Icons.assignment_outlined,
+            }),
+            title: Text(item.title),
+            subtitle: Text('${item.reason}\nNext: ${item.actionLabel} · Owner: ${item.owner}'),
+            isThreeLine: true,
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => onTap(item),
+          ),
+      ],
     );
   }
 }

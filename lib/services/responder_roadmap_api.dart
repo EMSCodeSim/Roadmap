@@ -379,6 +379,46 @@ class DepartmentActionItem {
       );
 }
 
+class DepartmentWorkQueueItem {
+  final String id;
+  final String kind;
+  final String priority;
+  final String title;
+  final String reason;
+  final String owner;
+  final String actionLabel;
+  final String href;
+  final String targetId;
+  final DateTime? dueAt;
+
+  const DepartmentWorkQueueItem({required this.id, required this.kind, required this.priority, required this.title, required this.reason, required this.owner, required this.actionLabel, required this.href, required this.targetId, required this.dueAt});
+
+  factory DepartmentWorkQueueItem.fromJson(Map<String, dynamic> json) => DepartmentWorkQueueItem(
+    id: (json['id'] as String?) ?? '',
+    kind: (json['kind'] as String?) ?? 'ASSIGNMENT',
+    priority: (json['priority'] as String?) ?? 'NORMAL',
+    title: (json['title'] as String?) ?? 'Department action',
+    reason: (json['reason'] as String?) ?? '',
+    owner: (json['owner'] as String?) ?? 'You',
+    actionLabel: (json['actionLabel'] as String?) ?? 'Open',
+    href: (json['href'] as String?) ?? '',
+    targetId: (json['targetId'] as String?) ?? '',
+    dueAt: DateTime.tryParse((json['dueAt'] as String?) ?? ''),
+  );
+}
+
+class DepartmentWorkQueue {
+  final List<DepartmentWorkQueueItem> items;
+  final int count;
+  final DateTime? serverTime;
+  const DepartmentWorkQueue({required this.items, required this.count, required this.serverTime});
+  factory DepartmentWorkQueue.fromJson(Map<String, dynamic> json) => DepartmentWorkQueue(
+    items: (json['items'] as List? ?? const <dynamic>[]).whereType<Map>().map((item) => DepartmentWorkQueueItem.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+    count: _asInt(json['count']),
+    serverTime: DateTime.tryParse((json['serverTime'] as String?) ?? ''),
+  );
+}
+
 class DepartmentInbox {
   final int unreadCount;
   final DateTime? serverTime;
@@ -1148,6 +1188,9 @@ class ResponderRoadmapApi {
             ))
         .toList(growable: false);
   }
+
+  Future<DepartmentWorkQueue> getWorkQueue() async =>
+      DepartmentWorkQueue.fromJson(_asMap(await _request('GET', 'app/work-queue')));
 
   Future<DepartmentSkillMastery> getMySkillMastery() async {
     final data = await _request('GET', 'app/skill-mastery');

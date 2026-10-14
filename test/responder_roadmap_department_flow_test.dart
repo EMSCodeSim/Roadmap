@@ -188,6 +188,33 @@ void main() {
       expect(inbox.serverTime, isNotNull);
     });
 
+    test('parses the canonical department work queue', () {
+      final queue = DepartmentWorkQueue.fromJson({
+        'count': 1,
+        'serverTime': '2026-10-14T01:00:00.000Z',
+        'items': [
+          {
+            'id': 'evaluation:review-1',
+            'kind': 'EVALUATION',
+            'priority': 'HIGH',
+            'title': 'Adult CPR',
+            'reason': 'Taylor Member · Evaluator review required',
+            'owner': 'Jordan Evaluator',
+            'actionLabel': 'Review evaluation',
+            'href': '/evaluate?focus=review-1',
+            'targetId': 'review-1',
+            'dueAt': '2026-10-13T18:00:00.000Z',
+          }
+        ],
+      });
+
+      expect(queue.count, 1);
+      expect(queue.items.single.kind, 'EVALUATION');
+      expect(queue.items.single.targetId, 'review-1');
+      expect(queue.items.single.dueAt, isNotNull);
+      expect(queue.serverTime, isNotNull);
+    });
+
     test('parses the server-recorded submission receipt', () {
       final receipt = DepartmentSubmissionReceipt.fromJson({
         'receiptId': 'completion-1',
