@@ -131,45 +131,104 @@ class QualificationTaskBookPage extends StatelessWidget {
         child: ListView(
           padding: AppSpacing.paddingLg,
           children: [
-            Card(
-              child: Padding(
-                padding: AppSpacing.paddingMd,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Your qualification in five steps',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 8),
-                    const ListTile(dense: true, leading: Icon(Icons.place_outlined),
-                        title: Text('1. Find a class'),
-                        subtitle: Text('Check local academies, colleges, and your state training authority.')),
-                    const ListTile(dense: true, leading: Icon(Icons.menu_book_outlined),
-                        title: Text('2. Books and chapters'),
-                        subtitle: Text('Use your course syllabus for the assigned textbook and chapters.')),
-                    ListTile(dense: true, leading: const Icon(Icons.checklist),
-                        title: const Text('3. Skills and JPRs'),
-                        subtitle: Text('${tasks.where((t) => t.section.contains('JPR') || t.section == 'PERFORMANCE').length} practical items in this book')),
-                    const ListTile(dense: true, leading: Icon(Icons.quiz_outlined),
-                        title: Text('4. Written test'),
-                        subtitle: Text('Prepare for and record the required knowledge examination.')),
-                    const ListTile(dense: true, leading: Icon(Icons.workspace_premium_outlined),
-                        title: Text('5. Skills test'),
-                        subtitle: Text('Complete the practical evaluation with an authorized evaluator.')),
-                  ],
+            Text('Your qualification in five steps',
+                style: Theme.of(context).textTheme.titleMedium),
+            ExpansionTile(
+              initiallyExpanded: false,
+              leading: const Icon(Icons.place_outlined),
+              title: const Text('1. Find a class'),
+              subtitle: const Text('Training providers and enrollment'),
+              children: [
+                const ListTile(
+                  title: Text('Where to look'),
+                  subtitle: Text('Contact your department training officer, nearby fire academies, community colleges, and your state fire training authority. Verify availability and prerequisites directly.'),
                 ),
-              ),
+                if (authority != null) _OfficialSourceCard(authority: authority),
+              ],
             ),
-            if (guide != null || authority != null)
+            ExpansionTile(
+              initiallyExpanded: false,
+              leading: const Icon(Icons.menu_book_outlined),
+              title: const Text('2. Books and chapters'),
+              subtitle: const Text('Assigned reading and study resources'),
+              children: [
+                const ListTile(
+                  title: Text('Follow your course syllabus'),
+                  subtitle: Text('Textbook editions and chapter assignments differ by academy. Record the exact chapters your course assigns; do not assume a universal chapter list.'),
+                ),
+                ...tasks.where((t) => t.section == 'TRAINING' ||
+                    t.section == 'KNOWLEDGE').map((t) => _TaskTile(
+                  goalId: goalId,
+                  requirementId: req.id,
+                  qualificationName: req.name,
+                  task: t,
+                )),
+              ],
+            ),
+            ExpansionTile(
+              initiallyExpanded: true,
+              leading: const Icon(Icons.checklist_rounded),
+              title: const Text('3. Skills and JPRs'),
+              subtitle: Text('${tasks.where((t) => t.section.contains('JPR') ||
+                  t.section == 'PERFORMANCE' ||
+                  t.section == 'APPARATUS OPERATIONS').length} practical items'),
+              children: [
+                ...tasks.where((t) => t.section.contains('JPR') ||
+                    t.section == 'PERFORMANCE' ||
+                    t.section == 'APPARATUS OPERATIONS').map((t) => _TaskTile(
+                  goalId: goalId,
+                  requirementId: req.id,
+                  qualificationName: req.name,
+                  task: t,
+                )),
+              ],
+            ),
+            ExpansionTile(
+              initiallyExpanded: false,
+              leading: const Icon(Icons.quiz_outlined),
+              title: const Text('4. Written test'),
+              subtitle: const Text('Knowledge examination preparation'),
+              children: [
+                const ListTile(subtitle: Text('Confirm exam format, passing criteria, and scheduling with the testing authority.')),
+                ...tasks.where((t) => t.section == 'TESTING' &&
+                    !t.title.toLowerCase().contains('skill') &&
+                    !t.title.toLowerCase().contains('practical')).map((t) => _TaskTile(
+                  goalId: goalId, requirementId: req.id,
+                  qualificationName: req.name, task: t,
+                )),
+              ],
+            ),
+            ExpansionTile(
+              initiallyExpanded: false,
+              leading: const Icon(Icons.workspace_premium_outlined),
+              title: const Text('5. Skills test'),
+              subtitle: const Text('Practical examination and qualification'),
+              children: [
+                const ListTile(subtitle: Text('An authorized evaluator or testing authority must verify official completion. Personal checklist progress is not certification.')),
+                ...tasks.where((t) => t.section == 'CERTIFICATION' ||
+                    (t.section == 'TESTING' &&
+                    (t.title.toLowerCase().contains('skill') ||
+                     t.title.toLowerCase().contains('practical')))).map((t) => _TaskTile(
+                  goalId: goalId, requirementId: req.id,
+                  qualificationName: req.name, task: t,
+                )),
+                if (NationalTaskBookBaseline.standardFor(req) != null)
+                  _NationalBaselineSection(goalId: goalId, requirement: req, state: state),
+              ],
+            ),
+            if (guide != null)
               ExpansionTile(
                 initiallyExpanded: false,
-                title: const Text('Course details and official guidance'),
-                subtitle: const Text('Optional details, sources, and pathway instructions'),
+                title: const Text('Detailed certification guidance'),
                 children: [
-                  if (guide != null) _CertificationGuideCard(guide: guide),
-                  if (guide != null && authority != null)
-                    _OfficialSourceCard(authority: authority),
+                  _CertificationGuideCard(guide: guide),
+                  if (authority != null) _OfficialSourceCard(authority: authority),
                 ],
               ),
+            ExpansionTile(
+              initiallyExpanded: false,
+              title: const Text('Customize and manage this task book'),
+              children: [
             _BuildTaskBookCard(
               requirement: req,
               goalId: goalId,
@@ -236,6 +295,8 @@ class QualificationTaskBookPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
+              ],
+            ),
             if (orderedSections.isNotEmpty) ...[
               _CertificationPhaseRail(
                 sections: orderedSections,
@@ -312,58 +373,21 @@ class QualificationTaskBookPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            ...orderedSections.expand((section) {
-              final items = grouped[section]!;
-              final sectionComplete = items
-                  .where((task) =>
-                      statusFor(task) == TaskBookTaskStatus.complete)
-                  .length;
-              return [
-                if (section == 'TESTING' &&
-                    NationalTaskBookBaseline.standardFor(req) != null) ...[
-                  _NationalBaselineSection(
-                    goalId: goalId,
-                    requirement: req,
-                    state: state,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                ],
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        section,
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                      ),
-                    ),
-                    Text(
-                      '$sectionComplete/${items.length}',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                ...items.map(
-                  (t) => _TaskTile(
-                    goalId: goalId,
-                    requirementId: req.id,
-                    qualificationName: req.name,
-                    task: t,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-              ];
-            }),
+            ExpansionTile(
+              initiallyExpanded: false,
+              title: const Text('Other preparation and administrative tasks'),
+              subtitle: const Text('Additional tasks not shown in the five steps'),
+              children: [
+                ...orderedSections.where((section) =>
+                    !['TRAINING', 'KNOWLEDGE', 'PRACTICAL / JPR PREPARATION',
+                      'PERFORMANCE', 'APPARATUS OPERATIONS', 'TESTING',
+                      'CERTIFICATION'].contains(section)).expand((section) =>
+                    grouped[section]!.map((t) => _TaskTile(
+                      goalId: goalId, requirementId: req.id,
+                      qualificationName: req.name, task: t,
+                    ))),
+              ],
+            ),
             if (guide != null) ...[
               Container(
                 padding: AppSpacing.paddingMd,
