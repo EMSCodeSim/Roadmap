@@ -1632,6 +1632,12 @@ class ResponderRoadmapApi {
       );
     } on ResponderRoadmapApiException catch (error) {
       if (_isNonRetryableRequestFailure(error)) rethrow;
+      // Do not replay an offline batch as unconditional single-result upserts.
+      // The server currently has no revision precondition, so replay could
+      // overwrite a newer evaluator decision. Keep the original batch pending
+      // for explicit reconciliation instead of silently changing official records.
+      rethrow;
+      // ignore: dead_code
       for (final result in results) {
         final enrollmentId = result['enrollmentId'] ?? '';
         final resultRequirementId = result['requirementId'] ?? requirementId;
