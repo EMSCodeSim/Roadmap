@@ -1632,22 +1632,10 @@ class ResponderRoadmapApi {
       );
     } on ResponderRoadmapApiException catch (error) {
       if (_isNonRetryableRequestFailure(error)) rethrow;
-      for (final result in results) {
-        final enrollmentId = result['enrollmentId'] ?? '';
-        final resultRequirementId = result['requirementId'] ?? requirementId;
-        final key = 'skill:$classId:$enrollmentId:$resultRequirementId';
-        await _savePendingClassMutation(<String, dynamic>{
-          'key': key,
-          'kind': 'skill',
-          'classId': classId,
-          'enrollmentId': enrollmentId,
-          'requirementId': resultRequirementId,
-          'result': result['result'] ?? 'NOT_EVALUATED',
-          'notes': (result['notes'] ?? '').trim(),
-          'queuedAt': DateTime.now().toUtc().toIso8601String(),
-        });
-      }
-      return const DepartmentClassMutationResult(detail: null, queued: true);
+      // No server-side revision precondition exists for skill-result upserts.
+      // Never convert a failed batch into unconditional offline single-result
+      // retries: those could overwrite a newer evaluator's result.
+      rethrow;
     }
   }
 
