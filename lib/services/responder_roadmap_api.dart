@@ -1632,28 +1632,10 @@ class ResponderRoadmapApi {
       );
     } on ResponderRoadmapApiException catch (error) {
       if (_isNonRetryableRequestFailure(error)) rethrow;
-      // Do not replay an offline batch as unconditional single-result upserts.
-      // The server currently has no revision precondition, so replay could
-      // overwrite a newer evaluator decision. Keep the original batch pending
-      // for explicit reconciliation instead of silently changing official records.
+      // No server-side revision precondition exists for skill-result upserts.
+      // Never convert a failed batch into unconditional offline single-result
+      // retries: those could overwrite a newer evaluator's result.
       rethrow;
-      // ignore: dead_code
-      for (final result in results) {
-        final enrollmentId = result['enrollmentId'] ?? '';
-        final resultRequirementId = result['requirementId'] ?? requirementId;
-        final key = 'skill:$classId:$enrollmentId:$resultRequirementId';
-        await _savePendingClassMutation(<String, dynamic>{
-          'key': key,
-          'kind': 'skill',
-          'classId': classId,
-          'enrollmentId': enrollmentId,
-          'requirementId': resultRequirementId,
-          'result': result['result'] ?? 'NOT_EVALUATED',
-          'notes': (result['notes'] ?? '').trim(),
-          'queuedAt': DateTime.now().toUtc().toIso8601String(),
-        });
-      }
-      return const DepartmentClassMutationResult(detail: null, queued: true);
     }
   }
 
