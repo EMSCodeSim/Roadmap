@@ -6,6 +6,7 @@ import 'package:firepath/pages/department/department_review_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/pages/department/department_qualifications_page.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
+import 'package:firepath/services/department_link_store.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/competency_evidence_bridge.dart';
 import 'package:firepath/services/theme.dart';
@@ -151,6 +152,62 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     return 'Ready to do';
   }
 
+  Future<void> _logOutOfDepartment() async {
+    if (_refreshing) return;
+    final pending = await _api.pendingSubmissionCount() +
+        await _api.pendingClassMutationCount();
+    if (!mounted) return;
+    if (pending > 0) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Sync required before logging out'),
+          content: Text(
+            '$pending field submission(s) are still stored on this device. '
+            'Log out is blocked until they are uploaded so another account '
+            'cannot accidentally submit your records. Connect to the internet and retry sync.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('OK')),
+          ],
+        ),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Log out of Department?'),
+        content: const Text(
+          'This signs out of your department on this device. '
+          'Your personal roadmap and official department records will not be deleted. '
+          'You can sign back in whenever needed.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Log out')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    // Clear the stored credential and link before navigating away. Never
+    // interpret switching to Personal mode alone as a sign-out.
+    await _api.disconnect();
+    await DepartmentLinkStore().clear();
+    if (!mounted) return;
+    await context.read<AppModeController>().setDepartmentLink(null);
+    await context.read<DepartmentInboxController>().refresh(silent: true);
+    if (!mounted) return;
+    setState(() {
+      _assignments = const [];
+      _reviews = const [];
+      _rmsActions = const [];
+    });
+  }
+
   Future<void> _open(DepartmentTaskBookAssignment item) async {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => DepartmentTaskBookPage(assignment: item),
@@ -232,6 +289,22 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
             Text(mode.departmentLink!.departmentName, style: Theme.of(context).textTheme.bodySmall),
         ]),
         actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Department account',
+            onSelected: (value) {
+              if (value == 'logout') _logOutOfDepartment();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem<String>(
+                value: 'logout',
+                child: Row(children: [
+                  Icon(Icons.logout_rounded),
+                  SizedBox(width: 10),
+                  Text('Log out of Department'),
+                ]),
+              ),
+            ],
+          ),
           IconButton(
             tooltip: 'Refresh',
             onPressed: _refreshing ? null : () => _refresh(),
