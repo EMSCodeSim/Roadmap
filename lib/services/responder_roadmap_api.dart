@@ -1603,9 +1603,9 @@ class ResponderRoadmapApi {
       await _removePendingClassMutation(key);
       return DepartmentClassMutationResult(detail:detail,queued:false);
     } on ResponderRoadmapApiException catch (error) {
-      if (_isNonRetryableRequestFailure(error)) rethrow;
-      await _savePendingClassMutation(row);
-      return const DepartmentClassMutationResult(detail:null,queued:true);
+      // Without a server revision precondition, an offline skill write could
+      // overwrite an evaluation entered by another authorized evaluator.
+      rethrow;
     }
   }
 
@@ -1631,23 +1631,8 @@ class ResponderRoadmapApi {
         queued: false,
       );
     } on ResponderRoadmapApiException catch (error) {
-      if (_isNonRetryableRequestFailure(error)) rethrow;
-      for (final result in results) {
-        final enrollmentId = result['enrollmentId'] ?? '';
-        final resultRequirementId = result['requirementId'] ?? requirementId;
-        final key = 'skill:$classId:$enrollmentId:$resultRequirementId';
-        await _savePendingClassMutation(<String, dynamic>{
-          'key': key,
-          'kind': 'skill',
-          'classId': classId,
-          'enrollmentId': enrollmentId,
-          'requirementId': resultRequirementId,
-          'result': result['result'] ?? 'NOT_EVALUATED',
-          'notes': (result['notes'] ?? '').trim(),
-          'queuedAt': DateTime.now().toUtc().toIso8601String(),
-        });
-      }
-      return const DepartmentClassMutationResult(detail: null, queued: true);
+      // Never split a failed batch into unconditional offline skill writes.
+      rethrow;
     }
   }
 
@@ -1679,7 +1664,9 @@ class ResponderRoadmapApi {
         if(row['kind']=='attendance'){
           await updateClassStudent(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',attendance:(row['attendance'] as String?)??'REGISTERED');
         }else if(row['kind']=='skill'){
-          await recordClassSkill(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',requirementId:(row['requirementId'] as String?)??'',result:(row['result'] as String?)??'NOT_EVALUATED',notes:(row['notes'] as String?)??'');
+          // Preserve historical queued skill results for manual reconciliation.
+          // Automatic replay can overwrite a newer official evaluation.
+          continue;
         }else{continue;}
         await _removePendingClassMutation(key); completed++;
       }on ResponderRoadmapApiException{/* keep durable mutation for Retry */}
