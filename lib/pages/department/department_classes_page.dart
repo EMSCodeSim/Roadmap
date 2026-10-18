@@ -486,10 +486,15 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     if (confirmed != true || skillId == null || !mounted) return;
     setState(() { _busy = true; _error = null; });
     try {
-      final batch = members.where((member) => selected.contains(member.id)).map((member) => <String, String>{
-        'enrollmentId': member.id,
-        'result': result,
-        'notes': 'Group evaluation',
+      final batch = members.where((member) => selected.contains(member.id)).map((member) {
+        final previous = member.results.where((item) => item.requirementId == skillId).firstOrNull;
+        return <String, dynamic>{
+          'enrollmentId': member.id,
+          'result': result,
+          'notes': 'Group evaluation',
+          // null means no prior result was observed; the server checks this.
+          'expectedUpdatedAt': previous?.updatedAt,
+        };
       }).toList(growable: false);
       final saved = await _api.recordClassSkillBatchDurable(
         classId: detail.id,
