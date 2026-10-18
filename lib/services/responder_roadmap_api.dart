@@ -863,8 +863,9 @@ class DepartmentClassSkillResult {
   final String notes;
   final String evaluatorName;
   final DateTime? evaluatedAt;
-  const DepartmentClassSkillResult({required this.requirementId, required this.result, required this.notes, required this.evaluatorName, required this.evaluatedAt});
-  factory DepartmentClassSkillResult.fromJson(Map<String, dynamic> json) => DepartmentClassSkillResult(requirementId: (json['requirementId'] as String?) ?? '', result: (json['result'] as String?) ?? 'NOT_EVALUATED', notes: (json['notes'] as String?) ?? '', evaluatorName: (json['evaluatorName'] as String?) ?? '', evaluatedAt: DateTime.tryParse((json['evaluatedAt'] as String?) ?? ''));
+  final String? updatedAt;
+  const DepartmentClassSkillResult({required this.requirementId, required this.result, required this.notes, required this.evaluatorName, required this.evaluatedAt, this.updatedAt});
+  factory DepartmentClassSkillResult.fromJson(Map<String, dynamic> json) => DepartmentClassSkillResult(requirementId: (json['requirementId'] as String?) ?? '', result: (json['result'] as String?) ?? 'NOT_EVALUATED', notes: (json['notes'] as String?) ?? '', evaluatorName: (json['evaluatorName'] as String?) ?? '', evaluatedAt: DateTime.tryParse((json['evaluatedAt'] as String?) ?? ''), updatedAt: json['updatedAt'] as String?);
 }
 
 class DepartmentClassStudent {
@@ -1612,7 +1613,7 @@ class ResponderRoadmapApi {
   Future<DepartmentClassMutationResult> recordClassSkillBatchDurable({
     required String classId,
     String requirementId = '',
-    required List<Map<String, String>> results,
+    required List<Map<String, dynamic>> results,
   }) async {
     if (results.isEmpty) {
       throw const ResponderRoadmapApiException('Select at least one student result.');
