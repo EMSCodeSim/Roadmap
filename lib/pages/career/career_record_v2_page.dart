@@ -21,7 +21,6 @@ enum _CareerFilter {
   skills,
   training,
   driving,
-  taskBook,
   exposures,
   leadership,
   achievements,
@@ -34,7 +33,6 @@ extension _CareerFilterX on _CareerFilter {
         _CareerFilter.skills => 'SKILLS',
         _CareerFilter.training => 'TRAINING',
         _CareerFilter.driving => 'DRIVING',
-        _CareerFilter.taskBook => 'TASK BOOK',
         _CareerFilter.exposures => 'EXPOSURES',
         _CareerFilter.leadership => 'LEADERSHIP',
         _CareerFilter.achievements => 'ACHIEVEMENTS',
@@ -147,9 +145,18 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
     });
   }
 
-  List<CareerRecord> get _periodRecords => _career
-      ? _records
-      : _records.where((record) => record.date.year == _year).toList();
+  // The Record tab is a personal Quick Add log, not a Task Book activity feed.
+  // Keep Task Book evidence stored for its original workflows and exports.
+  bool _isTaskBookHistory(CareerRecord record) =>
+      record.type == CareerRecordType.taskBookEvidence ||
+      record.tags.contains('task-book');
+
+  List<CareerRecord> get _periodRecords {
+    final personalLogs = _records.where((record) => !_isTaskBookHistory(record));
+    return _career
+        ? personalLogs.toList()
+        : personalLogs.where((record) => record.date.year == _year).toList();
+  }
 
   List<CareerRecord> get _visibleRecords {
     final query = _search.text.trim().toLowerCase();
@@ -178,9 +185,6 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
               !CareerStats.isDrivingRecord(record),
         _CareerFilter.training => record.type == CareerRecordType.training,
         _CareerFilter.driving => CareerStats.isDrivingRecord(record),
-        _CareerFilter.taskBook =>
-          record.type == CareerRecordType.taskBookEvidence ||
-              record.tags.contains('task-book'),
         _CareerFilter.exposures => CareerStats.isExposureRecord(record),
         _CareerFilter.leadership =>
           record.type == CareerRecordType.leadership ||
