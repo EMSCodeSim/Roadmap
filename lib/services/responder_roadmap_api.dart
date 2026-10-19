@@ -1598,14 +1598,12 @@ class ResponderRoadmapApi {
 
   Future<DepartmentClassMutationResult> recordClassSkillDurable({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
     final key='skill:$classId:$enrollmentId:$requirementId';
-    final row={'key':key,'kind':'skill','classId':classId,'enrollmentId':enrollmentId,'requirementId':requirementId,'result':result,'notes':notes.trim(),'queuedAt':DateTime.now().toUtc().toIso8601String()};
     try {
       final detail=await recordClassSkill(classId:classId,enrollmentId:enrollmentId,requirementId:requirementId,result:result,notes:notes);
       await _removePendingClassMutation(key);
       return DepartmentClassMutationResult(detail:detail,queued:false);
-    } on ResponderRoadmapApiException catch (error) {
-      // Without a server revision precondition, an offline skill write could
-      // overwrite an evaluation entered by another authorized evaluator.
+    } on ResponderRoadmapApiException {
+      // Never queue an unversioned skill write for automatic replay.
       rethrow;
     }
   }
@@ -1631,7 +1629,7 @@ class ResponderRoadmapApi {
         detail: DepartmentClassDetail.fromJson(_asMap(data)),
         queued: false,
       );
-    } on ResponderRoadmapApiException catch (error) {
+    } on ResponderRoadmapApiException {
       // Never split a failed batch into unconditional offline skill writes.
       rethrow;
     }
