@@ -29,7 +29,6 @@ class GetStartedPage extends StatelessWidget {
     final state = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
     final roadmap = state.roadmap;
-    final items = roadmap?.all ?? const <RoadmapRequirement>[];
 
     bool hasCertId(String certId) => state.certifications.any(
       (c) =>
