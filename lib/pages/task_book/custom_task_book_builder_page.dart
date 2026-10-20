@@ -752,7 +752,7 @@ class _RequirementEditorSheetState extends State<_RequirementEditorSheet> {
     final p = widget.prefill;
     _nameCtrl = TextEditingController(text: r?.name ?? p?.name ?? '');
     _categoryCtrl = TextEditingController(text: r?.category ?? p?.category ?? '');
-    _descCtrl = TextEditingController(text: r?.description ?? p?.description ?? '');
+    _descCtrl = TextEditingController(text: r?.description ?? '');
     _type = r?.type ?? p?.type ?? RequirementType.custom;
     _requiredFlag = r == null
         ? true
@@ -763,7 +763,7 @@ class _RequirementEditorSheetState extends State<_RequirementEditorSheet> {
     }
 
     _progressRequiredCtrl = TextEditingController(
-      text: (r?.progressRequired ?? p?.progressRequired)?.toStringAsFixed(0) ?? '',
+      text: r?.progressRequired?.toStringAsFixed(0) ?? '',
     );
     _progressUnitCtrl = TextEditingController(text: r?.progressUnit ?? p?.unit ?? '');
     _prereq
@@ -962,16 +962,12 @@ class _RequirementDraft {
   final RequirementType? type;
   final String? category;
   final bool? requiredFlag;
-  final String? description;
-  final double? progressRequired;
   final String? unit;
   const _RequirementDraft({
     this.name,
     this.type,
     this.category,
     this.requiredFlag,
-    this.description,
-    this.progressRequired,
     this.unit,
   });
 }

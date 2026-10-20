@@ -102,6 +102,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
         if(blank!=true)return;
       }
     }
+    if (!mounted) return;
     final created = await showModalBottomSheet<String>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected));
     if (created != null && mounted) {
       await _load();
@@ -285,7 +286,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         onPressed: () async {
           final now = DateTime.now();
           final day = await showDatePicker(context:context,initialDate:endTime??now,firstDate:now.subtract(const Duration(days:365)),lastDate:now.add(const Duration(days:730)));
-          if(day==null || !mounted)return;
+          if(day==null || !context.mounted)return;
           final time = await showTimePicker(context:context,initialTime:TimeOfDay.fromDateTime(endTime??now));
           if(time!=null && mounted)setState(()=>endTime=DateTime(day.year,day.month,day.day,time.hour,time.minute));
         },
@@ -594,7 +595,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 onChanged: (value) => update(() => values[field['id'].toString()] = value == true))
             else if (field['type'] == 'PASS_FAIL')
               DropdownButtonFormField<String>(
-                value: ['PASS','FAIL'].contains(values[field['id']]) ? values[field['id']].toString() : '',
+                initialValue: ['PASS','FAIL'].contains(values[field['id']]) ? values[field['id']].toString() : '',
                 decoration: InputDecoration(labelText: field['label']?.toString() ?? 'Result'),
                 items: const [DropdownMenuItem(value:'',child:Text('Not recorded')),DropdownMenuItem(value:'PASS',child:Text('Pass')),DropdownMenuItem(value:'FAIL',child:Text('Fail'))],
                 onChanged: (value) => update(() => values[field['id'].toString()] = value ?? ''),
@@ -969,11 +970,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
     setState(() { _busy = true; _error = null; });
     try {
-      final batch = pending.entries.map((entry) => <String, String>{
-        'enrollmentId': member.id,
-        'requirementId': entry.key,
-        'result': entry.value,
-        'notes': notes[entry.key] ?? '',
+      final batch = pending.entries.map((entry) {
+        final previous = member.results
+            .where((item) => item.requirementId == entry.key)
+            .firstOrNull;
+        return <String, dynamic>{
+          'enrollmentId': member.id,
+          'requirementId': entry.key,
+          'result': entry.value,
+          'notes': notes[entry.key] ?? '',
+          'expectedUpdatedAt': previous?.updatedAt,
+        };
       }).toList(growable: false);
       final saved = await _api.recordClassSkillBatchDurable(
         classId: detail.id,
@@ -1013,11 +1020,20 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
     setState(() => _busy = true);
     try {
-      final saved = await _api.recordClassSkillDurable(
+      final previous = member.results
+          .where((item) => item.requirementId == skill.id)
+          .firstOrNull;
+      final saved = await _api.recordClassSkillBatchDurable(
         classId: detail.id,
-        enrollmentId: member.id,
         requirementId: skill.id,
-        result: 'PASS',
+        results: [
+          <String, dynamic>{
+            'enrollmentId': member.id,
+            'result': 'PASS',
+            'notes': '',
+            'expectedUpdatedAt': previous?.updatedAt,
+          },
+        ],
       );
       if (saved.detail != null) _setDetail(saved.detail!);
       if (saved.queued && mounted) {
@@ -1477,7 +1493,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 onSelected: _busy ? null : (_) => _setRosterAttendance(student, status),
               ),
           ]),
-        const SizedBox(height: 10), DropdownButtonFormField<String>(key: ValueKey(student.id), initialValue: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null){_setDetail(saved.detail!); _nextStudent();} if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } catch(e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); } }),
+        const SizedBox(height: 10), DropdownButtonFormField<String>(key: ValueKey(student.id), initialValue: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null){_setDetail(saved.detail!); _nextStudent();} if(saved.queued&&context.mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } catch(e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); } }),
         ] else ...[
         const SizedBox(height: 10),
         Text('Select all observed skill results first, then submit once. Results remain individual records.', style: Theme.of(context).textTheme.bodySmall),

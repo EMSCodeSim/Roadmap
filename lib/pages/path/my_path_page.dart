@@ -1083,23 +1083,6 @@ class _RoadmapHeader extends StatelessWidget {
   }
 }
 
-class _GroupHeading extends StatelessWidget {
-  final String title;
-  final int count;
-  const _GroupHeading({required this.title, required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Expanded(child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900))),
-        Text('$count', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w900)),
-      ],
-    );
-  }
-}
-
 class _NextActionCard extends StatelessWidget {
   final Requirement requirement;
   final bool emphasized;
@@ -1169,45 +1152,6 @@ class _EmptyPath extends StatelessWidget {
             height: 52,
             width: double.infinity,
             child: FilledButton(onPressed: onBuild, child: const Text('Start Setup')),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NextStepPanel extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final VoidCallback? onTap;
-  const _NextStepPanel({required this.title, required this.subtitle, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: AppSpacing.paddingLg,
-      decoration: BoxDecoration(
-        color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.18)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-          if (subtitle != null) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.5)),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            height: 52,
-            child: FilledButton(
-              onPressed: onTap,
-              style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
-              child: const Text('Get Started'),
-            ),
           ),
         ],
       ),
@@ -1299,73 +1243,6 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900, color: cs.onSurfaceVariant));
-  }
-}
-
-class _SafetyNotice extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: AppSpacing.paddingMd,
-      decoration: BoxDecoration(color: cs.surfaceContainerHighest.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(AppRadius.lg)),
-      child: Text(
-        'Requirements vary by state and department. Use this for planning—verify official requirements locally.',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
-      ),
-    );
-  }
-}
-
-class _PathHeader extends StatelessWidget {
-  final Roadmap roadmap;
-  final List<String> currentRoles;
-  const _PathHeader({required this.roadmap, required this.currentRoles});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final from = currentRoles.isEmpty ? 'Current role' : currentRoles.first;
-    return Container(
-      padding: AppSpacing.paddingLg,
-      decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(AppRadius.xl), border: Border.all(color: cs.outline.withValues(alpha: 0.14))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('${roadmap.goal.category.toUpperCase()} GOAL', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w900)),
-          const SizedBox(height: AppSpacing.xs),
-          Text(roadmap.goal.title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
-          const SizedBox(height: AppSpacing.xs),
-          Text('$from → ${roadmap.goal.title}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-          const SizedBox(height: AppSpacing.sm),
-          OutlinedButton.icon(
-            onPressed: () => context.push(AppRoutes.goalSetup),
-            icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-            label: const Text('Change end path'),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Changing your end path keeps your credentials, career history, Quick Add records, and completed work. Only the future roadmap is rebuilt for the new goal.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.4,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text('${roadmap.completedCount} of ${roadmap.totalCount} complete', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
-          const SizedBox(height: AppSpacing.xs),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: roadmap.percentComplete.clamp(0, 1),
-              backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-              valueColor: AlwaysStoppedAnimation(cs.primary),
-              minHeight: 10,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

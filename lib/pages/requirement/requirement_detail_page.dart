@@ -931,12 +931,3 @@ List<String> _stepsForRequirement(
       ],
   };
 }
-
-String _sourceSubtitle(Requirement r) {
-  final parts = <String>[];
-  if ((r.sourceStateCode ?? '').trim().isNotEmpty) parts.add(r.sourceStateCode!);
-  if (r.sourceVerifiedDate != null) {
-    parts.add('Verified ${r.sourceVerifiedDate!.year}-${r.sourceVerifiedDate!.month.toString().padLeft(2, '0')}-${r.sourceVerifiedDate!.day.toString().padLeft(2, '0')}');
-  }
-  return parts.isEmpty ? 'Tap to view' : parts.join(' • ');
-}

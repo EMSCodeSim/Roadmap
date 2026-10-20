@@ -592,23 +592,28 @@ class _RequirementSheetState extends State<_RequirementSheet> {
               if (_loadingEvidence) const LinearProgressIndicator(),
               if (_evidenceLoadError != null) Text(_evidenceLoadError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
               if (!_loadingEvidence && _matchingEvidence.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('No matching finalized Training Sheet results found.')),
-              if (_matchingEvidence.isNotEmpty) ...[
-                RadioListTile<String?>(
-                  value: null,
+              if (_matchingEvidence.isNotEmpty)
+                RadioGroup<String?>(
                   groupValue: _selectedClassSkillResultId,
-                  title: const Text('Do not attach a Training Sheet result'),
-                  onChanged: _submitting ? null : (_) => setState(() => _selectedClassSkillResultId = null),
+                  onChanged: _submitting
+                      ? null
+                      : (value) => setState(() => _selectedClassSkillResultId = value),
+                  child: Column(
+                    children: [
+                      RadioListTile<String?>(
+                        value: null,
+                        title: const Text('Do not attach a Training Sheet result'),
+                      ),
+                      ..._matchingEvidence.map((item) => RadioListTile<String?>(
+                        value: item['id']?.toString(),
+                        title: Text(item['classTitle']?.toString() ?? 'Training Sheet'),
+                        subtitle: Text(item['matchType'] == 'APPROVED_EQUIVALENCY'
+                            ? 'Department-approved equivalent skill · PASS'
+                            : 'Exact skill match · PASS'),
+                      )),
+                    ],
+                  ),
                 ),
-                ..._matchingEvidence.map((item) => RadioListTile<String?>(
-                  value: item['id']?.toString(),
-                  groupValue: _selectedClassSkillResultId,
-                  title: Text(item['classTitle']?.toString() ?? 'Training Sheet'),
-                  subtitle: Text(item['matchType'] == 'APPROVED_EQUIVALENCY'
-                      ? 'Department-approved equivalent skill · PASS'
-                      : 'Exact skill match · PASS'),
-                  onChanged: _submitting ? null : (value) => setState(() => _selectedClassSkillResultId = value),
-                )),
-              ],
               if (requirement.evaluatorSignOffRequired) ...[
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
