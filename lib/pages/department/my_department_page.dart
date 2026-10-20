@@ -142,8 +142,19 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
       final link = DepartmentLink.fromSession(session);
       await _store.save(link);
       await context.read<AppModeController>().setDepartmentLink(link);
-      final assignments = await _api.listAssignments();
-      await context.read<DepartmentInboxController>().refresh(silent: true);
+      // Authentication must succeed even when a secondary dashboard request fails.
+      // A transient assignments outage must not strand a valid department login.
+      List<DepartmentTaskBookAssignment> assignments = const [];
+      try {
+        assignments = await _api.listAssignments();
+      } on ResponderRoadmapApiException catch (error) {
+        if (error.statusCode == 401 || error.statusCode == 403) rethrow;
+      }
+      try {
+        await context.read<DepartmentInboxController>().refresh(silent: true);
+      } catch (_) {
+        // Inbox refresh is nonessential to connecting the department account.
+      }
       if (!mounted) return;
       setState(() {
         _link = link;
