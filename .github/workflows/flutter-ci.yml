@@ -39,6 +39,21 @@ jobs:
       - name: Analyze (warnings fail CI)
         run: flutter analyze --no-fatal-infos
 
+  regression-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
       - name: Core career loop regression tests
         run: flutter test test/core_career_loop_regression_test.dart
 
@@ -70,7 +85,7 @@ jobs:
           grep -q "authority.sourceUrl" lib/pages/task_book/qualification_task_book_page.dart
 
   platform-builds:
-    needs: validate
+    needs: [validate, regression-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
