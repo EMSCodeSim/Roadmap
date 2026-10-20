@@ -595,17 +595,21 @@ class _RequirementSheetState extends State<_RequirementSheet> {
               if (_matchingEvidence.isNotEmpty)
                 RadioGroup<String?>(
                   groupValue: _selectedClassSkillResultId,
-                  onChanged: _submitting
-                      ? null
-                      : (value) => setState(() => _selectedClassSkillResultId = value),
+                  onChanged: (value) {
+                    if (!_submitting) {
+                      setState(() => _selectedClassSkillResultId = value);
+                    }
+                  },
                   child: Column(
                     children: [
                       RadioListTile<String?>(
                         value: null,
+                        enabled: !_submitting,
                         title: const Text('Do not attach a Training Sheet result'),
                       ),
                       ..._matchingEvidence.map((item) => RadioListTile<String?>(
                         value: item['id']?.toString(),
+                        enabled: !_submitting,
                         title: Text(item['classTitle']?.toString() ?? 'Training Sheet'),
                         subtitle: Text(item['matchType'] == 'APPROVED_EQUIVALENCY'
                             ? 'Department-approved equivalent skill · PASS'
