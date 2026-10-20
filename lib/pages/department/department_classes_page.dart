@@ -981,6 +981,50 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ])));
       }),
 
+      if (detail.status != 'COMPLETE')
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Next step', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Text(
+                detail.roster.isEmpty
+                    ? 'Add students to begin this Training Sheet.'
+                    : detail.roster.any((member) => member.attendance == 'REGISTERED')
+                        ? 'Record attendance for every student.'
+                        : detail.roster.any((member) => member.attendance == 'PRESENT' && !_studentComplete(detail, member))
+                            ? 'Grade required skills for present students.'
+                            : 'Review the completed roster and close training.',
+              ),
+              const SizedBox(height: 10),
+              if (detail.roster.isEmpty)
+                FilledButton.icon(
+                  onPressed: _busy ? null : _showQr,
+                  icon: const Icon(Icons.qr_code_2_rounded),
+                  label: const Text('Show QR / Add Students'),
+                )
+              else if (detail.roster.any((member) => member.attendance == 'REGISTERED'))
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _load,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Refresh Roster'),
+                )
+              else if (detail.roster.any((member) => member.attendance == 'PRESENT' && !_studentComplete(detail, member)))
+                FilledButton.icon(
+                  onPressed: _busy ? null : _groupGrade,
+                  icon: const Icon(Icons.fact_check_outlined),
+                  label: const Text('Grade Skills'),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: _busy ? null : _reviewAndFinish,
+                  icon: const Icon(Icons.rate_review_outlined),
+                  label: const Text('Review & Finish'),
+                ),
+            ]),
+          ),
+        ),
       Card(
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -1015,19 +1059,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           const SizedBox(height: 8),
           _closeoutLine(context, 'Roster', detail.roster.isNotEmpty, '${detail.roster.length} registered'),
           _closeoutLine(context, 'Attendance verified', detail.roster.isNotEmpty && detail.roster.every((member) => member.attendance != 'REGISTERED'), '${detail.roster.where((member) => member.attendance != 'REGISTERED').length}/${detail.roster.length} recorded'),
-          _closeoutLine(context, 'Required skill results', detail.roster.where((member) => member.attendance == 'PRESENT').every((member) => _studentComplete(detail, member)), '${detail.roster.where((member) => _studentComplete(detail, member)).length} ready'),
+          _closeoutLine(context, 'Required skill results', detail.roster.isNotEmpty && detail.roster.every((member) => member.attendance != 'REGISTERED') && detail.roster.where((member) => member.attendance == 'PRESENT').every((member) => _studentComplete(detail, member)), '${detail.roster.where((member) => _studentComplete(detail, member)).length} ready'),
           _closeoutLine(context, 'Training closed', detail.status == 'COMPLETE', 'Review & Close'),
           _closeoutLine(context, 'Instructor approval', detail.instructorApprovedAt != null, 'Required before RMS entry'),
           _closeoutLine(context, 'Department RMS entry', detail.rmsStatus == 'RMS_ENTERED', 'Separate official record step'),
         ],
       ))),
-      if (mode.isAdmin) ...[
-        ClassTaskBookLinkCard(detail: detail, onAssigned: () {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task Book assignments updated. Members can view them under Department Task Books.')));
-        }),
-        const SizedBox(height: 10),
-      ],
       const SizedBox(height: 10),
+      // Task Book linking is optional and should not interrupt roster work.
       if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Group grade')), FilledButton.icon(onPressed: _busy ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish'))]),
       if (detail.status == 'COMPLETE') ...[
         Card(
@@ -1146,6 +1185,16 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ],
         ))),
       ],
+      if (mode.isAdmin)
+        ExpansionTile(
+          title: const Text('Optional: Connect to Task Book'),
+          initiallyExpanded: false,
+          children: [
+            ClassTaskBookLinkCard(detail: detail, onAssigned: () {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task Book assignments updated.')));
+            }),
+          ],
+        ),
       Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
