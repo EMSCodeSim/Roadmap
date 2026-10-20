@@ -32,7 +32,6 @@ class TaskBookPage extends StatelessWidget {
     final state = context.watch<AppState>();
     final roadmap = state.roadmap;
     final activeCustom = state.activeCustomTaskBook;
-    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: FirefighterRoadmapAppBar(

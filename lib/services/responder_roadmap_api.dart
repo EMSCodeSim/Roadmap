@@ -863,8 +863,9 @@ class DepartmentClassSkillResult {
   final String notes;
   final String evaluatorName;
   final DateTime? evaluatedAt;
-  const DepartmentClassSkillResult({required this.requirementId, required this.result, required this.notes, required this.evaluatorName, required this.evaluatedAt});
-  factory DepartmentClassSkillResult.fromJson(Map<String, dynamic> json) => DepartmentClassSkillResult(requirementId: (json['requirementId'] as String?) ?? '', result: (json['result'] as String?) ?? 'NOT_EVALUATED', notes: (json['notes'] as String?) ?? '', evaluatorName: (json['evaluatorName'] as String?) ?? '', evaluatedAt: DateTime.tryParse((json['evaluatedAt'] as String?) ?? ''));
+  final String? updatedAt;
+  const DepartmentClassSkillResult({required this.requirementId, required this.result, required this.notes, required this.evaluatorName, required this.evaluatedAt, this.updatedAt});
+  factory DepartmentClassSkillResult.fromJson(Map<String, dynamic> json) => DepartmentClassSkillResult(requirementId: (json['requirementId'] as String?) ?? '', result: (json['result'] as String?) ?? 'NOT_EVALUATED', notes: (json['notes'] as String?) ?? '', evaluatorName: (json['evaluatorName'] as String?) ?? '', evaluatedAt: DateTime.tryParse((json['evaluatedAt'] as String?) ?? ''), updatedAt: json['updatedAt'] as String?);
 }
 
 class DepartmentClassStudent {
@@ -1597,14 +1598,12 @@ class ResponderRoadmapApi {
 
   Future<DepartmentClassMutationResult> recordClassSkillDurable({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
     final key='skill:$classId:$enrollmentId:$requirementId';
-    final row={'key':key,'kind':'skill','classId':classId,'enrollmentId':enrollmentId,'requirementId':requirementId,'result':result,'notes':notes.trim(),'queuedAt':DateTime.now().toUtc().toIso8601String()};
     try {
       final detail=await recordClassSkill(classId:classId,enrollmentId:enrollmentId,requirementId:requirementId,result:result,notes:notes);
       await _removePendingClassMutation(key);
       return DepartmentClassMutationResult(detail:detail,queued:false);
-    } on ResponderRoadmapApiException catch (error) {
-      // Without a server revision precondition, an offline skill write could
-      // overwrite an evaluation entered by another authorized evaluator.
+    } on ResponderRoadmapApiException {
+      // Never queue an unversioned skill write for automatic replay.
       rethrow;
     }
   }
@@ -1612,7 +1611,7 @@ class ResponderRoadmapApi {
   Future<DepartmentClassMutationResult> recordClassSkillBatchDurable({
     required String classId,
     String requirementId = '',
-    required List<Map<String, String>> results,
+    required List<Map<String, dynamic>> results,
   }) async {
     if (results.isEmpty) {
       throw const ResponderRoadmapApiException('Select at least one student result.');
@@ -1630,7 +1629,7 @@ class ResponderRoadmapApi {
         detail: DepartmentClassDetail.fromJson(_asMap(data)),
         queued: false,
       );
-    } on ResponderRoadmapApiException catch (error) {
+    } on ResponderRoadmapApiException {
       // Never split a failed batch into unconditional offline skill writes.
       rethrow;
     }

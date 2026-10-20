@@ -98,7 +98,7 @@ class _ClassTaskBookLinkCardState extends State<ClassTaskBookLinkCard> {
           if (_books == null) const LinearProgressIndicator()
           else if (_books!.isEmpty) const Text('No published Task Books are available for assignment.')
           else DropdownButtonFormField<String>(
-            value: _selectedBook,
+            initialValue: _selectedBook,
             isExpanded: true,
             decoration: const InputDecoration(labelText: 'Published Task Book', border: OutlineInputBorder()),
             items: _books!.map((book) => DropdownMenuItem<String>(

@@ -27,7 +27,6 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   final _api = ResponderRoadmapApi();
   final _careerRecordStore = CareerRecordStore();
   List<DepartmentTaskBookAssignment> _assignments = const [];
-  List<DepartmentReviewItem> _reviews = const [];
   List<DepartmentClassDetail> _rmsActions = const [];
   List<InstructorTrainingAttention> _instructorTraining = const [];
   List<DepartmentWorkQueueItem> _workQueue = const [];
@@ -61,13 +60,9 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       final session = await _api.currentSession();
       final items = await _api.listAssignments();
       final workQueue = await _api.getWorkQueue();
-      List<DepartmentReviewItem> reviews = const [];
       List<DepartmentClassDetail> rmsActions = const [];
       List<InstructorTrainingAttention> instructorTraining = const [];
       final role = (session.role ?? '').toUpperCase();
-      if (const {'EVALUATOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
-        try { reviews = await _api.listReviewQueue(); } catch (_) {}
-      }
       if (const {'INSTRUCTOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
         try { rmsActions = await _api.listRmsActionTrainingSheets(); } catch (_) {}
         try { instructorTraining = await _api.listInstructorTrainingAttention(); } catch (_) {}
@@ -117,7 +112,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       }
 
       items.sort(_priorityCompare);
-      setState(() { _assignments = items; _workQueue = workQueue.items; _reviews = reviews; _rmsActions = rmsActions; _instructorTraining = instructorTraining; _error = null; _loading = false; });
+      setState(() { _assignments = items; _workQueue = workQueue.items; _rmsActions = rmsActions; _instructorTraining = instructorTraining; _error = null; _loading = false; });
     } on ResponderRoadmapApiException catch (e) {
       if (!mounted) return;
       setState(() { _error = e.message; _loading = false; });
@@ -383,39 +378,6 @@ class _SyncLine extends StatelessWidget {
       ],
     ]);
   }
-}
-
-class _NextCard extends StatelessWidget {
-  final DepartmentTaskBookAssignment item;
-  final String status;
-  final VoidCallback onTap;
-  const _NextCard({required this.item, required this.status, required this.onTap});
-  @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(18),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(
-          'DEPARTMENT PRIORITY',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.6,
-              ),
-        ),
-        const SizedBox(height: 3),
-        Text('Do this next', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-        const SizedBox(height: 10),
-        Text(item.taskBookTitle, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-        const SizedBox(height: 6),
-        _DepartmentStatusPill(label: status),
-        const SizedBox(height: 12),
-        LinearProgressIndicator(value: (item.progress.clamp(0, 100)) / 100),
-        const SizedBox(height: 12),
-        FilledButton.icon(onPressed: onTap, icon: const Icon(Icons.play_arrow_rounded), label: const Text('Continue Training')),
-      ]),
-    ),
-  );
 }
 
 class _Section extends StatelessWidget {

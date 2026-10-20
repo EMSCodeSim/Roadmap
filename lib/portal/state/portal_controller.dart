@@ -340,7 +340,6 @@ class PortalController extends ChangeNotifier {
 
   Future<void> publishTemplate(String templateId) async {
     final now = DateTime.now();
-    final template = _db.taskBookTemplates.firstWhere((t) => t.id == templateId);
     final versions = _db.taskBookVersions.where((v) => v.templateId == templateId).toList();
     if (versions.isEmpty) throw StateError('No versions for template');
     final latest = versions..sort((a, b) => _compareSemver(b.version, a.version));
