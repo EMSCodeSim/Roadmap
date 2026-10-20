@@ -319,6 +319,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _groupSkillId;
   bool _showGrading = false;
   bool _missingOnly = false;
+  bool _selectAttendance = false;
+  final Set<String> _selectedAttendanceIds = <String>{};
   final _memberEditorKey = GlobalKey();
   // Drafts are kept per enrollment so switching roster members does not discard
   // unsent evaluations. Only explicit Submit sends results to the server.
@@ -358,6 +360,57 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         )).toList();
     if (missing.isEmpty) return '';
     return '${missing.length} required skill(s) need a passing result';
+  }
+
+  Future<void> _confirmSelectedAttendance() async {
+    final detail = _detail;
+    if (detail == null || _busy || detail.status == 'COMPLETE') return;
+    final selected = detail.roster.where((member) =>
+      _selectedAttendanceIds.contains(member.id) && member.attendance == 'REGISTERED').toList();
+    if (selected.isEmpty) return;
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm selected attendance?'),
+        content: Text('Mark ${selected.length} selected registered members PRESENT? Confirm each person physically attended. No skill results will be awarded.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Confirm')),
+        ],
+      ),
+    ) ?? false;
+    if (!approved || !mounted) return;
+    setState(() { _busy = true; _error = null; });
+    var confirmed = 0;
+    try {
+      for (final member in selected) {
+        final saved = await _api.updateClassStudentDurable(
+          classId: detail.id, enrollmentId: member.id, attendance: 'PRESENT',
+        );
+        if (saved.queued) {
+          if (mounted) {
+            context.read<DepartmentInboxController>().submissionQueued();
+            setState(() => _error = 'Sync pending for ${member.name}. Remaining selections were not submitted.');
+          }
+          break;
+        }
+        if (saved.detail != null) _setDetail(saved.detail!);
+        confirmed++;
+        _selectedAttendanceIds.remove(member.id);
+      }
+      if (mounted) {
+        setState(() {
+          if (_selectedAttendanceIds.isEmpty) _selectAttendance = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$confirmed of ${selected.length} attendance records confirmed on server.'),
+        ));
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = '$confirmed confirmed; remaining selections retained: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _confirmRosterAttendance() async {
@@ -1290,6 +1343,34 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         Text('${detail.roster.where((item) => _studentComplete(detail, item)).length}/${detail.roster.length} ready', style: Theme.of(context).textTheme.labelLarge),
       ]),
       const SizedBox(height: 8),
+      if (detail.status != 'COMPLETE' && detail.roster.isNotEmpty)
+        Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          OutlinedButton.icon(
+            onPressed: _busy ? null : () => setState(() {
+              _selectAttendance = !_selectAttendance;
+              if (!_selectAttendance) _selectedAttendanceIds.clear();
+            }),
+            icon: Icon(_selectAttendance ? Icons.close : Icons.checklist_rounded),
+            label: Text(_selectAttendance ? 'Cancel selection' : 'Select attendance'),
+          ),
+          if (_selectAttendance) ...[
+            TextButton(
+              onPressed: _busy ? null : () => setState(() {
+                final pending = detail.roster.where((member) => member.attendance == 'REGISTERED');
+                if (_selectedAttendanceIds.length == pending.length) {
+                  _selectedAttendanceIds.clear();
+                } else {
+                  _selectedAttendanceIds.addAll(pending.map((member) => member.id));
+                }
+              }),
+              child: const Text('Select pending'),
+            ),
+            FilledButton(
+              onPressed: _busy || _selectedAttendanceIds.isEmpty ? null : _confirmSelectedAttendance,
+              child: Text('Confirm ${_selectedAttendanceIds.length} present'),
+            ),
+          ],
+        ]),
       if (detail.roster.isEmpty)
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 16),
@@ -1306,17 +1387,34 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   return ListTile(
                     selected: selected,
                     selectedTileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.45),
-                    leading: Icon(
-                      complete ? Icons.check_circle_rounded : Icons.person_outline_rounded,
-                      color: complete ? Colors.green : null,
-                    ),
+                    leading: _selectAttendance && item.attendance == 'REGISTERED'
+                        ? Checkbox(
+                            value: _selectedAttendanceIds.contains(item.id),
+                            onChanged: _busy ? null : (checked) => setState(() {
+                              if (checked == true) {
+                                _selectedAttendanceIds.add(item.id);
+                              } else {
+                                _selectedAttendanceIds.remove(item.id);
+                              }
+                            }),
+                          )
+                        : Icon(
+                            complete ? Icons.check_circle_rounded : Icons.person_outline_rounded,
+                            color: complete ? Colors.green : null,
+                          ),
                     title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w700)),
                     subtitle: Text(
                       '${item.attendance.replaceAll('_', ' ')} · ${_passedRequiredCount(detail, item)}/${_requiredSkillCount(detail)} required skills passed'
                       '${_missingFor(detail, item).isEmpty ? '' : '\\nNeeds: ${_missingFor(detail, item)}'}',
                     ),
                     trailing: Icon(selected ? Icons.keyboard_arrow_down_rounded : Icons.chevron_right_rounded),
-                    onTap: () => setState(() => _studentId = item.id),
+                    onTap: () => setState(() {
+                      if (_selectAttendance && item.attendance == 'REGISTERED') {
+                        if (!_selectedAttendanceIds.add(item.id)) _selectedAttendanceIds.remove(item.id);
+                      } else {
+                        _studentId = item.id;
+                      }
+                    }),
                     // Attendance stays individually attributable; no implicit passes.
                     isThreeLine: false,
                   );
