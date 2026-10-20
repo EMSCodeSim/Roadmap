@@ -1066,8 +1066,20 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ],
       ))),
       const SizedBox(height: 10),
-      // Task Book linking is optional and should not interrupt roster work.
-      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Group grade')), FilledButton.icon(onPressed: _busy ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish'))]),
+      // Keep secondary class tools accessible without competing with Next step.
+      if (detail.status != 'COMPLETE')
+        ExpansionTile(
+          title: const Text('More class actions'),
+          initiallyExpanded: false,
+          children: [
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              OutlinedButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: const Text('QR sign-in')),
+              OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh roster')),
+              OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Group grade')),
+              OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish')),
+            ]),
+          ],
+        ),
       if (detail.status == 'COMPLETE') ...[
         Card(
           child: Padding(
@@ -1195,7 +1207,11 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             }),
           ],
         ),
-      Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
+      ExpansionTile(
+        title: const Text('Roster tools'),
+        initiallyExpanded: false,
+        children: [
+          Padding(padding: const EdgeInsets.all(12), child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Quick roster recorder', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
@@ -1224,7 +1240,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             onChanged: (value) => setState(() => _missingOnly = value ?? false),
           ),
         ],
-      ))),
+          )),
+        ],
+      ),
       Row(children: [
         Expanded(child: Text('Roster', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
         Text('${detail.roster.where((item) => _studentComplete(detail, item)).length}/${detail.roster.length} ready', style: Theme.of(context).textTheme.labelLarge),
