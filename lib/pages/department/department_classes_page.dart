@@ -647,10 +647,44 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
   }
 
+  Future<void> _setRosterAttendance(DepartmentClassStudent member, String attendance) async {
+    final detail = _detail;
+    if (detail == null || _busy || detail.status == 'COMPLETE' ||
+        member.attendance == attendance) return;
+    setState(() { _busy = true; _error = null; });
+    try {
+      final saved = await _api.updateClassStudentDurable(
+        classId: detail.id, enrollmentId: member.id, attendance: attendance,
+      );
+      if (saved.detail != null) {
+        _setDetail(saved.detail!);
+        _nextStudent();
+      }
+      if (saved.queued && mounted) {
+        context.read<DepartmentInboxController>().submissionQueued();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Attendance saved on device; waiting to sync.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Attendance was not confirmed: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _nextStudent() {
     final roster = _detail?.roster ?? const <DepartmentClassStudent>[];
     if (roster.isEmpty) return;
     final index = roster.indexWhere((item) => item.id == _studentId);
+    // Prefer the next member who still needs attendance or a required skill.
+    for (var offset = 1; offset <= roster.length; offset++) {
+      final candidate = roster[(index + offset) % roster.length];
+      if (_missingFor(_detail!, candidate).isNotEmpty) {
+        setState(() => _studentId = candidate.id);
+        return;
+      }
+    }
     setState(() => _studentId = roster[(index + 1) % roster.length].id);
   }
 
@@ -1243,6 +1277,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           )),
         ],
       ),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          '${detail.roster.where((m) => m.attendance != 'REGISTERED').length} of ${detail.roster.length} attendance recorded · '
+          '${detail.roster.where((m) => _studentComplete(detail, m)).length} of ${detail.roster.length} ready',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ),
       Row(children: [
         Expanded(child: Text('Roster', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
         Text('${detail.roster.where((item) => _studentComplete(detail, item)).length}/${detail.roster.length} ready', style: Theme.of(context).textTheme.labelLarge),
@@ -1275,10 +1317,18 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     ),
                     trailing: Icon(selected ? Icons.keyboard_arrow_down_rounded : Icons.chevron_right_rounded),
                     onTap: () => setState(() => _studentId = item.id),
+                    // Attendance stays individually attributable; no implicit passes.
+                    isThreeLine: false,
                   );
                 }),
             ],
           ),
+        ),
+      if (detail.status != 'COMPLETE' && detail.roster.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 8),
+          child: Text('Tap a member to edit. Attendance can also be recorded below.',
+              style: Theme.of(context).textTheme.bodySmall),
         ),
       const SizedBox(height: 10),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
@@ -1326,6 +1376,16 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ),
         ],
         if (!_showGrading) ...[
+        const SizedBox(height: 10),
+        if (detail.status != 'COMPLETE')
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final status in const ['PRESENT', 'ABSENT', 'EXCUSED'])
+              ChoiceChip(
+                label: Text(status == 'PRESENT' ? 'Present' : status == 'ABSENT' ? 'Absent' : 'Excused'),
+                selected: student.attendance == status,
+                onSelected: _busy ? null : (_) => _setRosterAttendance(student, status),
+              ),
+          ]),
         const SizedBox(height: 10), DropdownButtonFormField<String>(key: ValueKey(student.id), initialValue: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null){_setDetail(saved.detail!); _nextStudent();} if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } catch(e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); } }),
         ] else ...[
         const SizedBox(height: 10),
