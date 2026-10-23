@@ -28,7 +28,6 @@ class GetStartedPage extends StatelessWidget {
 
     final state = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
-    final roadmap = state.roadmap;
 
     bool hasCertId(String certId) => state.certifications.any(
       (c) =>
