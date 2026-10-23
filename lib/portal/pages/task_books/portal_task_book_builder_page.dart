@@ -1,4 +1,3 @@
-import 'package:firepath/portal/models/portal_user.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -23,7 +22,6 @@ class _PortalTaskBookBuilderPageState extends State<PortalTaskBookBuilderPage> {
   @override
   Widget build(BuildContext context) {
     final portal = context.watch<PortalController>();
-    final cs = Theme.of(context).colorScheme;
     final template = portal.db.taskBookTemplates.cast<TaskBookTemplate?>().firstWhere((t) => t?.id == widget.templateId, orElse: () => null);
     if (template == null) {
       return const Scaffold(body: Center(child: Text('Task Book not found')));

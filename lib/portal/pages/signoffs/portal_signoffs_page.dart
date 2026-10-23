@@ -24,7 +24,6 @@ class _PortalSignoffsPageState extends State<PortalSignoffsPage> {
   @override
   Widget build(BuildContext context) {
     final portal = context.watch<PortalController>();
-    final cs = Theme.of(context).colorScheme;
     final deptId = portal.activeDepartmentId;
     final assignmentIds = deptId == null
         ? const <String>{}
