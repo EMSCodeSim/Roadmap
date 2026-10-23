@@ -241,7 +241,8 @@ class _CreateTrainingSheet extends StatefulWidget {
 
 class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
-  bool busy = false, qr = true, advanced = false; String? error; DateTime? endTime; String category = 'COMPANY'; String checklist = '';
+  bool busy = false, qr = true, advanced = false; String? error; DateTime? endTime; DateTime trainingDate = DateTime.now(); String category = 'COMPANY'; String checklist = '';
+  final Set<String> membershipIds = <String>{};
   @override void initState() {
     super.initState();
     final t=widget.template;
@@ -255,11 +256,12 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   bool req(String key) => widget.setup.requiredFields.contains(key);
   Future<void> save() async {
     if(title.text.trim().isEmpty){setState(()=>error='Training title is required.'); return;}
+    if(membershipIds.isEmpty && !qr){setState(()=>error='Select at least one department member or enable QR self-registration.'); return;}
     if(req('LOCATION') && location.text.trim().isEmpty){setState(()=>error='Location is required by your department.'); return;}
     if(req('DESCRIPTION') && notes.text.trim().isEmpty){setState(()=>error='Description / notes are required by your department.'); return;}
     if(req('END_TIME') && endTime == null){setState(()=>error='Set the end time required by your department.');return;}
     final h=double.tryParse(hours.text.trim())??0;
-    if(req('HOURS') && h<=0){setState(()=>error='Training hours are required by your department.'); return;}
+    if(req('HOURS') && h<=0 && endTime==null){setState(()=>error='Enter training hours or set an end time required to calculate them.'); return;}
     final mode=context.read<AppModeController>();
     final me=widget.setup.proctors.where((p)=>(p['userId']?.toString()??'')==mode.departmentLink?.userId).toList();
     final defaults=widget.template?.proctorUserIds.where((id)=>widget.setup.proctors.any((p)=>p['userId']?.toString()==id)).toList() ?? const <String>[];
@@ -267,7 +269,9 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', endsAt:endTime?.toUtc().toIso8601String(), creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
+      final now = DateTime.now();
+      final startsAt = DateTime(trainingDate.year, trainingDate.month, trainingDate.day, now.hour, now.minute);
+      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:startsAt.toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', endsAt:endTime?.toUtc().toIso8601String(), creditHours:h, location:location.text, notes:notes.text, membershipIds:membershipIds.toList(growable:false), proctorUserIds:proctors, selfRegistration:qr);
       if(mounted) Navigator.pop(context,created.id);
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
@@ -279,13 +283,23 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       const SizedBox(height:6), const Text('Create the class quickly, then collect student results and finish RMS documentation after training.'),
       if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
       const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
-      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const ['COMPANY','EMS','FIRE','DRIVER_OPERATOR','HAZMAT','TECHNICAL_RESCUE','WILDLAND','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setState(()=>category=v??'COMPANY')),
+      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const ['COMPANY','EMS','HAZMAT','DRIVER','FACILITY','OFFICER','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v=='COMPANY'?'Fire / Company':v=='DRIVER'?'Driver Operator':v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setState(()=>category=v??'COMPANY')),
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v)=>setState(()=>checklist=v??'')),
       const SizedBox(height:12),
-      if(req('END_TIME')) OutlinedButton.icon(
+      OutlinedButton.icon(
         onPressed: () async {
           final now = DateTime.now();
-          final day = await showDatePicker(context:context,initialDate:endTime??now,firstDate:now.subtract(const Duration(days:365)),lastDate:now.add(const Duration(days:730)));
+          final selected = await showDatePicker(context:context,initialDate:trainingDate,firstDate:DateTime(now.year-5),lastDate:DateTime(now.year+5));
+          if(selected!=null && mounted)setState(()=>trainingDate=selected);
+        },
+        icon:const Icon(Icons.calendar_today_outlined),
+        label:Text('Training date · ${MaterialLocalizations.of(context).formatMediumDate(trainingDate)}'),
+      ),
+      const SizedBox(height:8),
+      if(req('END_TIME') || (req('HOURS') && (double.tryParse(hours.text.trim()) ?? 0) <= 0)) OutlinedButton.icon(
+        onPressed: () async {
+          final now = DateTime.now();
+          final day = await showDatePicker(context:context,initialDate:endTime??trainingDate,firstDate:trainingDate.subtract(const Duration(days:365)),lastDate:trainingDate.add(const Duration(days:730)));
           if(day==null || !context.mounted)return;
           final time = await showTimePicker(context:context,initialTime:TimeOfDay.fromDateTime(endTime??now));
           if(time!=null && mounted)setState(()=>endTime=DateTime(day.year,day.month,day.day,time.hour,time.minute));
@@ -298,6 +312,33 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       const SizedBox(height:12),if(advanced || req('HOURS')) TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:InputDecoration(labelText:'Training hours${req('HOURS')?' *':''}')),
       const SizedBox(height:12),if(advanced || req('DESCRIPTION')) TextField(controller:notes,maxLines:3,decoration:InputDecoration(labelText:'Description / notes${req('DESCRIPTION')?' *':''}')),
       const SizedBox(height:8),SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v)=>setState(()=>qr=v),title:const Text('Allow QR self-registration'),subtitle:const Text('Crew can scan in from their phones.')),
+      const SizedBox(height:8),
+      Text('Department roster (${membershipIds.length} selected)',style:Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight:FontWeight.w800)),
+      if(widget.setup.members.isEmpty) const Padding(padding:EdgeInsets.symmetric(vertical:8),child:Text('No active department members are available. Enable QR registration to add attendees after creating the sheet.')),
+      if(widget.setup.members.isNotEmpty) ...[
+        const SizedBox(height:4),
+        Container(
+          constraints:const BoxConstraints(maxHeight:220),
+          decoration:BoxDecoration(border:Border.all(color:Theme.of(context).dividerColor),borderRadius:BorderRadius.circular(10)),
+          child:ListView.builder(
+            shrinkWrap:true,
+            itemCount:widget.setup.members.length,
+            itemBuilder:(context,index){
+              final member=widget.setup.members[index];
+              final id=member['id']?.toString()??'';
+              if(id.isEmpty)return const SizedBox.shrink();
+              final name=member['name']?.toString()??'Member';
+              final rank=member['rank']?.toString()??'';
+              return CheckboxListTile(
+                dense:true,
+                value:membershipIds.contains(id),
+                title:Text(rank.isEmpty?name:'$name · $rank'),
+                onChanged:(selected)=>setState(()=>selected==true?membershipIds.add(id):membershipIds.remove(id)),
+              );
+            },
+          ),
+        ),
+      ],
       const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Start Training')),
     ])),
   );
@@ -1005,7 +1046,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ));
       }
     } catch (e) {
-      if (mounted) setState(() => _error = 'No staged results were cleared. Review the connection and submit again: $e');
+      if (mounted && e is ResponderRoadmapApiException && e.statusCode == 409) {
+        await _load();
+        if (mounted) setState(() => _error = 'Conflict detected. The latest server results are loaded, and your staged choices are still here. Compare each result, then submit again only if you intend to replace the newer record.');
+      } else if (mounted) {
+        setState(() => _error = 'No staged results were cleared. Review the connection and submit again: $e');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
