@@ -103,7 +103,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
       }
     }
     if (!mounted) return;
-    final created = await showModalBottomSheet<String>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected));
+    final created = await showModalBottomSheet<String>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected, selectedCategory: category));
     if (created != null && mounted) {
       await _load();
       if (!mounted) return;
@@ -232,10 +232,11 @@ class _TrainingSheetTemplatesPageState extends State<_TrainingSheetTemplatesPage
 }
 
 class _CreateTrainingSheet extends StatefulWidget {
-  const _CreateTrainingSheet({required this.api, required this.setup, this.template});
+  const _CreateTrainingSheet({required this.api, required this.setup, this.template, this.selectedCategory});
   final ResponderRoadmapApi api;
   final DepartmentClassSetup setup;
   final DepartmentTrainingSheetTemplate? template;
+  final String? selectedCategory;
   @override State<_CreateTrainingSheet> createState() => _CreateTrainingSheetState();
 }
 
@@ -246,10 +247,11 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   @override void initState() {
     super.initState();
     final t=widget.template;
+    category=t?.trainingCategory ?? (widget.selectedCategory?.isNotEmpty==true ? widget.selectedCategory! : 'COMPANY');
     if(t!=null){
       title.text=t.defaultTitle; location.text=t.location; notes.text=t.notes;
       hours.text=t.creditHours > 0 ? t.creditHours.toString() : '';
-      category=t.trainingCategory; checklist=t.checklistVersionId; qr=t.selfRegistration;
+      checklist=t.checklistVersionId; qr=t.selfRegistration;
     }
   }
   @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); super.dispose(); }
