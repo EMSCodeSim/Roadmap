@@ -79,7 +79,6 @@ class CertificationUrgency {
 
   static CertificationRenewalGuidance renewalGuidance(Certification cert) {
     final def = _definitionFor(cert);
-    final displayName = def?.displayName ?? cert.name;
     final isExpired = cert.status == CertificationStatus.expired;
 
     final ceNotes = def?.continuingEducationNotes?.trim();

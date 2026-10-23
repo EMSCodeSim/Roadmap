@@ -399,14 +399,6 @@ class SmartNextStepEngine {
     return out;
   }
 
-  static int _workRank(
-    AppState state,
-    String goalId,
-    Requirement requirement,
-    DateTime now,
-  ) =>
-      _careerActionScore(state, goalId, requirement, now);
-
   static int _careerActionScore(
     AppState state,
     String goalId,

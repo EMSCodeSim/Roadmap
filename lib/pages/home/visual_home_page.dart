@@ -140,12 +140,9 @@ class _MyStatusCard extends StatelessWidget {
 class _StatusLine extends StatelessWidget {
   final String label;
   final String value;
-  final bool alert;
-
   const _StatusLine({
     required this.label,
     required this.value,
-    this.alert = false,
   });
 
   @override
@@ -170,7 +167,7 @@ class _StatusLine extends StatelessWidget {
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: alert ? cs.error : cs.onSurface,
+                    color: cs.onSurface,
                   ),
             ),
           ),

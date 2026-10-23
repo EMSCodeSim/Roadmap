@@ -59,6 +59,16 @@ class _DepartmentTaskBookPageState extends State<DepartmentTaskBookPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    DepartmentRequirement? nextRequirement;
+    for (final section in _assignment.sections) {
+      for (final requirement in section.requirements) {
+        if (requirement.canSubmit) {
+          nextRequirement = requirement;
+          break;
+        }
+      }
+      if (nextRequirement != null) break;
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(_assignment.taskBookTitle),
@@ -182,6 +192,47 @@ class _DepartmentTaskBookPageState extends State<DepartmentTaskBookPage> {
               ),
             ),
             const SizedBox(height: 18),
+            if (nextRequirement != null) ...[
+              Card(
+                color: cs.secondaryContainer.withValues(alpha: .35),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Next step',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        nextRequirement.title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                      if (nextRequirement.correctionNotes.trim().isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Review the evaluator’s correction notes and submit updated evidence.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: () => _openRequirement(nextRequirement!),
+                        icon: const Icon(Icons.arrow_forward_rounded),
+                        label: const Text('Open requirement'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (_assignment.pendingApproval > 0)
               _Notice(
                 icon: Icons.hourglass_top_rounded,

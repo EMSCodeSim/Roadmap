@@ -1594,42 +1594,6 @@ class _AggregateCard extends StatelessWidget {
   }
 }
 
-class _MetricChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  const _MetricChip({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18),
-          const SizedBox(width: 7),
-          Text('$label: ', style: Theme.of(context).textTheme.bodySmall),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w900),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _RecentRecord extends StatelessWidget {
   final CareerRecord record;
@@ -1723,26 +1687,4 @@ class _ActionCard extends StatelessWidget {
       trailing: const Icon(Icons.chevron_right),
     ),
   );
-}
-
-class _EmptyLogCard extends StatelessWidget {
-  const _EmptyLogCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        'Nothing logged for this view yet. Use Quick Log above, or add a past/custom activity.',
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-      ),
-    );
-  }
 }
