@@ -50,10 +50,10 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
     final setup = _setup;
     if (setup == null) return;
     DepartmentTrainingSheetTemplate? selected;
+    String category = '';
     try {
       final templates = await _api.listTrainingSheetTemplates();
       if (!mounted) return;
-      String category = '';
       selected = await showModalBottomSheet<DepartmentTrainingSheetTemplate?>(
         context: context, useSafeArea: true, isScrollControlled: true,
         builder: (sheetContext) => StatefulBuilder(builder: (sheetContext, update) =>
