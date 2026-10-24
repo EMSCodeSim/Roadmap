@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: EMSCodeSim/ResponderRoadmap
+          ref: ${{ github.head_ref == 'feat/ten-member-training-sheet-mobile-closeout-20261023' && 'feat/ten-member-training-sheet-acceptance-20261023' || 'main' }}
           path: backend-contract
 
       - name: Set up Node for backend contract verification
