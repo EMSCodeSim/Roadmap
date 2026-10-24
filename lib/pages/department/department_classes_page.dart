@@ -1277,7 +1277,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         return Card(child:Padding(padding:const EdgeInsets.all(12),child:Row(children:[
           Icon(waiting?Icons.cloud_upload_outlined:Icons.cloud_off_outlined),
           const SizedBox(width:10),
-          Expanded(child:Text(waiting?'Waiting to Sync — field changes are saved on this device and will retry automatically.':'Sync Failed — your saved field changes are still on this device.')),
+          Expanded(child:Text(waiting?'Waiting to Sync — saved field changes will retry; skill conflicts require instructor review.':'Sync Failed — saved field changes remain on this device. Review offline skill results before closeout.')),
           TextButton(onPressed:()=>sync.refresh(),child:const Text('Retry')),
         ])));
       }),
