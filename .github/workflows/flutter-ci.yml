@@ -1,5 +1,9 @@
 name: Flutter validation
 
+concurrency:
+  group: flutter-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
   push:
@@ -116,6 +120,7 @@ jobs:
 
       - name: Run full legacy test suite (diagnostic)
         id: legacy_tests
+        timeout-minutes: 15
         continue-on-error: true
         run: flutter test --timeout 2m
 
