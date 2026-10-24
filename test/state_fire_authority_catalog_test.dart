@@ -38,7 +38,7 @@ void main() {
     final ky = StateFireAuthorityCatalog.forState('KY')!;
     final ny = StateFireAuthorityCatalog.forState('NY')!;
 
-    expect(co.guidance.toLowerCase(), contains('voluntary'));
+    expect(co.guidance.toLowerCase(), contains('dfpc professional qualifications'));
     expect(tx.sourceTitle, contains('Texas Commission on Fire Protection'));
     expect(tx.guidance.toLowerCase(), contains('requires'));
     expect(ky.guidance, contains('Basic 1'));

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -863,8 +864,9 @@ class DepartmentClassSkillResult {
   final String notes;
   final String evaluatorName;
   final DateTime? evaluatedAt;
-  const DepartmentClassSkillResult({required this.requirementId, required this.result, required this.notes, required this.evaluatorName, required this.evaluatedAt});
-  factory DepartmentClassSkillResult.fromJson(Map<String, dynamic> json) => DepartmentClassSkillResult(requirementId: (json['requirementId'] as String?) ?? '', result: (json['result'] as String?) ?? 'NOT_EVALUATED', notes: (json['notes'] as String?) ?? '', evaluatorName: (json['evaluatorName'] as String?) ?? '', evaluatedAt: DateTime.tryParse((json['evaluatedAt'] as String?) ?? ''));
+  final String? updatedAt;
+  const DepartmentClassSkillResult({required this.requirementId, required this.result, required this.notes, required this.evaluatorName, required this.evaluatedAt, this.updatedAt});
+  factory DepartmentClassSkillResult.fromJson(Map<String, dynamic> json) => DepartmentClassSkillResult(requirementId: (json['requirementId'] as String?) ?? '', result: (json['result'] as String?) ?? 'NOT_EVALUATED', notes: (json['notes'] as String?) ?? '', evaluatorName: (json['evaluatorName'] as String?) ?? '', evaluatedAt: DateTime.tryParse((json['evaluatedAt'] as String?) ?? ''), updatedAt: json['updatedAt'] as String?);
 }
 
 class DepartmentClassStudent {
@@ -911,6 +913,7 @@ class DepartmentClassDetail {
   final String trainingCategory;
   final double creditHours;
   final DateTime? startsAt;
+  final DateTime? endsAt;
   final String location;
   final String notes;
   final List<String> proctorUserIds;
@@ -935,6 +938,7 @@ class DepartmentClassDetail {
     required this.trainingCategory,
     required this.creditHours,
     required this.startsAt,
+    required this.endsAt,
     required this.location,
     required this.notes,
     required this.proctorUserIds,
@@ -960,6 +964,7 @@ class DepartmentClassDetail {
         trainingCategory: (json['trainingCategory'] as String?) ?? 'COMPANY',
         creditHours: (json['creditHours'] as num?)?.toDouble() ?? 0,
         startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        endsAt: DateTime.tryParse((json['endsAt'] as String?) ?? ''),
         location: (json['location'] as String?) ?? '',
         notes: (json['notes'] as String?) ?? '',
         proctorUserIds: (json['proctors'] as List? ?? const [])
@@ -1075,7 +1080,12 @@ class ResponderRoadmapApi {
   })  : _client = client ?? http.Client(),
         _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
-  static const String baseUrl = 'https://responderroadmap.com/api/v1';
+  // Compile-time override for isolated device acceptance against the matching
+  // backend preview. Production builds retain the official endpoint by default.
+  static const String baseUrl = String.fromEnvironment(
+    'ROADMAP_API_BASE_URL',
+    defaultValue: 'https://responderroadmap.com/api/v1',
+  );
   static const String dashboardUrl = 'https://responderroadmap.com/';
   static const String _tokenKey = 'fireops.responderRoadmap.token.v1';
   static const String _pendingSubmissionsKey = 'fireops.responderRoadmap.pendingSubmissions.v1';
@@ -1520,6 +1530,28 @@ class ResponderRoadmapApi {
     return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
+  Future<DepartmentClassDetail> updateTrainingSheetDocumentation(
+    String classId, {
+    required DateTime startsAt,
+    DateTime? endsAt,
+    required String notes,
+    required String location,
+    required double creditHours,
+  }) async {
+    final data = await _request(
+      'PATCH',
+      'app/training-sheets/${Uri.encodeComponent(classId)}/documentation',
+      body: <String, dynamic>{
+        'startsAt': startsAt.toUtc().toIso8601String(),
+        'endsAt': endsAt?.toUtc().toIso8601String(),
+        'notes': notes.trim(),
+        'location': location.trim(),
+        'creditHours': creditHours,
+      },
+    );
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
   Future<DepartmentClassDetail> approveTrainingSheet(String classId) async {
     final data = await _request(
       'POST',
@@ -1597,34 +1629,45 @@ class ResponderRoadmapApi {
 
   Future<DepartmentClassMutationResult> recordClassSkillDurable({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
     final key='skill:$classId:$enrollmentId:$requirementId';
-    final row={'key':key,'kind':'skill','classId':classId,'enrollmentId':enrollmentId,'requirementId':requirementId,'result':result,'notes':notes.trim(),'queuedAt':DateTime.now().toUtc().toIso8601String()};
     try {
       final detail=await recordClassSkill(classId:classId,enrollmentId:enrollmentId,requirementId:requirementId,result:result,notes:notes);
       await _removePendingClassMutation(key);
       return DepartmentClassMutationResult(detail:detail,queued:false);
-    } on ResponderRoadmapApiException catch (error) {
-      if (_isNonRetryableRequestFailure(error)) rethrow;
-      await _savePendingClassMutation(row);
-      return const DepartmentClassMutationResult(detail:null,queued:true);
+    } on ResponderRoadmapApiException {
+      // Never queue an unversioned skill write for automatic replay.
+      rethrow;
     }
   }
 
+  /// Queue only versioned, atomic skill batches. Never retry a stale result as
+  /// an unconditional write: the server compares expectedUpdatedAt for every
+  /// enrollment and rejects the entire batch when any result has changed.
   Future<DepartmentClassMutationResult> recordClassSkillBatchDurable({
     required String classId,
     String requirementId = '',
-    required List<Map<String, String>> results,
+    required List<Map<String, dynamic>> results,
   }) async {
     if (results.isEmpty) {
       throw const ResponderRoadmapApiException('Select at least one student result.');
     }
+    if (results.any((result) =>
+        !result.containsKey('expectedUpdatedAt') ||
+        (result['expectedUpdatedAt'] != null &&
+            result['expectedUpdatedAt'] is! String))) {
+      throw const ResponderRoadmapApiException(
+        'Refresh the Training Sheet before saving skill results without a revision.',
+        statusCode: 400,
+      );
+    }
+    final body = <String, dynamic>{
+      'requirementId': requirementId,
+      'results': results,
+    };
     try {
       final data = await _request(
         'POST',
         'app/training-sheets/${Uri.encodeComponent(classId)}/skills/batch',
-        body: <String, dynamic>{
-          'requirementId': requirementId,
-          'results': results,
-        },
+        body: body,
       );
       return DepartmentClassMutationResult(
         detail: DepartmentClassDetail.fromJson(_asMap(data)),
@@ -1632,23 +1675,50 @@ class ResponderRoadmapApi {
       );
     } on ResponderRoadmapApiException catch (error) {
       if (_isNonRetryableRequestFailure(error)) rethrow;
-      for (final result in results) {
-        final enrollmentId = result['enrollmentId'] ?? '';
-        final resultRequirementId = result['requirementId'] ?? requirementId;
-        final key = 'skill:$classId:$enrollmentId:$resultRequirementId';
-        await _savePendingClassMutation(<String, dynamic>{
-          'key': key,
-          'kind': 'skill',
-          'classId': classId,
-          'enrollmentId': enrollmentId,
-          'requirementId': resultRequirementId,
-          'result': result['result'] ?? 'NOT_EVALUATED',
-          'notes': (result['notes'] ?? '').trim(),
-          'queuedAt': DateTime.now().toUtc().toIso8601String(),
-        });
-      }
+      final nonce = Random.secure().nextInt(1 << 32);
+      final key = 'skill_batch:$classId:${DateTime.now().microsecondsSinceEpoch}:$nonce';
+      await _savePendingClassMutation(<String, dynamic>{
+        'key': key,
+        'kind': 'skill_batch',
+        'classId': classId,
+        'requirementId': requirementId,
+        'results': results,
+        'queuedAt': DateTime.now().toUtc().toIso8601String(),
+        'syncStatus': 'PENDING',
+      });
       return const DepartmentClassMutationResult(detail: null, queued: true);
     }
+  }
+
+  Future<int> pendingSkillMutationCountForClass(String classId) async {
+    final rows = await _pendingClassMutations();
+    return rows.where((row) =>
+        row['classId'] == classId &&
+        (row['kind'] == 'skill_batch' || row['kind'] == 'skill')).length;
+  }
+
+  Future<int> pendingSkillConflictCountForClass(String classId) async {
+    final rows = await _pendingClassMutations();
+    return rows.where((row) =>
+        row['classId'] == classId && row['syncStatus'] == 'CONFLICT').length;
+  }
+
+  Future<List<Map<String,dynamic>>> pendingSkillMutationsForClass(String classId) async {
+    final rows = await _pendingClassMutations();
+    return rows.where((row) =>
+        row['classId'] == classId &&
+        (row['kind'] == 'skill_batch' || row['kind'] == 'skill'))
+        .map((row)=>Map<String,dynamic>.from(row)).toList(growable:false);
+  }
+
+  /// Only call after an instructor has compared the queued observations with
+  /// the official server record and explicitly chooses to discard this copy.
+  Future<void> discardReviewedSkillMutation(String classId, String key) async {
+    final rows = await pendingSkillMutationsForClass(classId);
+    if(!rows.any((row)=>row['key']==key)) {
+      throw const ResponderRoadmapApiException('The selected pending batch is unavailable.');
+    }
+    await _removePendingClassMutation(key);
   }
 
   Future<DepartmentClassMutationResult> updateClassStudentDurable({required String classId, required String enrollmentId, required String attendance}) async {
@@ -1678,11 +1748,37 @@ class ResponderRoadmapApi {
       try{
         if(row['kind']=='attendance'){
           await updateClassStudent(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',attendance:(row['attendance'] as String?)??'REGISTERED');
+        }else if(row['kind']=='skill_batch'){
+          // Conflicted revisions require instructor review. Do not auto-overwrite.
+          if(row['syncStatus']=='CONFLICT') continue;
+          final classId=(row['classId'] as String?)??'';
+          final requirementId=(row['requirementId'] as String?)??'';
+          final rawResults=row['results'];
+          if(classId.isEmpty || rawResults is! List) continue;
+          final results=rawResults.whereType<Map>()
+              .map((item)=>Map<String,dynamic>.from(item)).toList(growable:false);
+          if(results.isEmpty || results.any((item)=>!item.containsKey('expectedUpdatedAt'))) {
+            continue;
+          }
+          await _request(
+            'POST',
+            'app/training-sheets/${Uri.encodeComponent(classId)}/skills/batch',
+            body:<String,dynamic>{'requirementId':requirementId,'results':results},
+          );
         }else if(row['kind']=='skill'){
-          await recordClassSkill(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',requirementId:(row['requirementId'] as String?)??'',result:(row['result'] as String?)??'NOT_EVALUATED',notes:(row['notes'] as String?)??'');
+          // Historical unversioned skill records are never automatically replayed.
+          continue;
         }else{continue;}
         await _removePendingClassMutation(key); completed++;
-      }on ResponderRoadmapApiException{/* keep durable mutation for Retry */}
+      }on ResponderRoadmapApiException catch(error){
+        if(error.statusCode==409 && row['kind']=='skill_batch'){
+          // Preserve the original evaluation and make the conflict visible.
+          await _savePendingClassMutation(<String,dynamic>{
+            ...row,'syncStatus':'CONFLICT',
+          });
+        }
+        // Offline or denied requests stay durable until manually resolved.
+      }
     }
     return completed;
   }
@@ -1800,6 +1896,13 @@ class ResponderRoadmapApi {
           break;
         case 'POST':
           response = await _client.post(
+            uri,
+            headers: headers,
+            body: jsonEncode(body ?? const <String, dynamic>{}),
+          );
+          break;
+        case 'PATCH':
+          response = await _client.patch(
             uri,
             headers: headers,
             body: jsonEncode(body ?? const <String, dynamic>{}),

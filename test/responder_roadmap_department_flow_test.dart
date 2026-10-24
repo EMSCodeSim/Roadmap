@@ -239,6 +239,67 @@ void main() {
       expect(sharing.serverTime, isNotNull);
     });
 
+    test('ten-member Training Sheet preserves per-member outcomes and revisions across RMS stages', () {
+      Map<String, dynamic> makeSheet(String rmsStatus) => <String, dynamic>{
+        'id': 'qa-ten-member-class',
+        'title': 'EMS Ten Member Training',
+        'trainingCategory': 'EMS',
+        'classType': 'GENERAL',
+        'status': 'COMPLETE',
+        'rmsStatus': rmsStatus,
+        'startsAt': '2026-10-23T14:00:00.000Z',
+        'endsAt': '2026-10-23T15:30:00.000Z',
+        'creditHours': 1.5,
+        'notes': 'Training narrative, RMS EMS-TRAIN',
+        'instructorApprovedAt': '2026-10-23T16:00:00.000Z',
+        'rmsEnteredAt': rmsStatus == 'RMS_ENTERED' ? '2026-10-23T16:30:00.000Z' : null,
+        'sections': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'id': 'section-1',
+            'title': 'Patient assessment',
+            'skills': <Map<String, dynamic>>[
+              <String, dynamic>{'id': 'skill-1', 'title': 'Primary assessment', 'required': true},
+            ],
+          },
+        ],
+        'roster': List<Map<String, dynamic>>.generate(10, (index) => <String, dynamic>{
+          'id': 'enrollment-${index + 1}',
+          'name': 'QA Member ${index + 1}',
+          'attendance': 'PRESENT',
+          'finalResult': index < 8 ? 'PASS' : (index == 8 ? 'FAIL' : 'NEEDS_REMEDIATION'),
+          'results': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'requirementId': 'skill-1',
+              'result': index < 8 ? 'PASS' : (index == 8 ? 'FAIL' : 'NEEDS_REMEDIATION'),
+              'notes': index >= 8 ? 'Individual remediation' : '',
+              'updatedAt': '2026-10-23T15:15:00.000Z',
+            },
+          ],
+        }),
+      };
+
+      final awaiting = DepartmentClassDetail.fromJson(makeSheet('AWAITING_ENTRY'));
+      expect(awaiting.roster.length, 10);
+      expect(awaiting.roster.map((member) => member.id).toSet().length, 10);
+      expect(awaiting.roster.every((member) => member.attendance == 'PRESENT'), isTrue);
+      expect(awaiting.roster.where((member) => member.results.single.result == 'PASS').length, 8);
+      expect(awaiting.roster.where((member) => member.results.single.result == 'FAIL').length, 1);
+      expect(awaiting.roster.where((member) => member.results.single.result == 'NEEDS_REMEDIATION').length, 1);
+      expect(awaiting.roster.every((member) => member.results.single.updatedAt != null), isTrue);
+      expect(awaiting.startsAt, isNotNull);
+      expect(awaiting.endsAt, isNotNull);
+      expect(awaiting.creditHours, 1.5);
+      expect(awaiting.rmsStatus, 'AWAITING_ENTRY');
+      expect(awaiting.rmsEnteredAt, isNull);
+      expect(awaiting.instructorApprovedAt, isNotNull);
+
+      final entered = DepartmentClassDetail.fromJson(makeSheet('RMS_ENTERED'));
+      expect(entered.rmsStatus, 'RMS_ENTERED');
+      expect(entered.rmsEnteredAt, isNotNull);
+      expect(entered.roster.map((member) => member.results.single.result).toList(),
+          awaiting.roster.map((member) => member.results.single.result).toList());
+    });
+
     test('parses a proctor class roster and recorded skill result', () {
       final detail = DepartmentClassDetail.fromJson({
         'id': 'class-1', 'title': 'CPR Skills Day', 'classType': 'CPR', 'checklistTitle': 'BLS Provider', 'status': 'ACTIVE',

@@ -102,6 +102,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
         if(blank!=true)return;
       }
     }
+    if (!mounted) return;
     final created = await showModalBottomSheet<String>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected));
     if (created != null && mounted) {
       await _load();
@@ -240,7 +241,7 @@ class _CreateTrainingSheet extends StatefulWidget {
 
 class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
-  bool busy = false, qr = true, advanced = false; String? error; DateTime? endTime; String category = 'COMPANY'; String checklist = '';
+  bool busy = false, qr = true, advanced = false; String? error; DateTime? endTime; DateTime startTime = DateTime.now(); String category = 'COMPANY'; String checklist = ''; final Set<String> selectedMembers = <String>{};
   @override void initState() {
     super.initState();
     final t=widget.template;
@@ -251,14 +252,10 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     }
   }
   @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); super.dispose(); }
-  bool req(String key) => widget.setup.requiredFields.contains(key);
   Future<void> save() async {
     if(title.text.trim().isEmpty){setState(()=>error='Training title is required.'); return;}
-    if(req('LOCATION') && location.text.trim().isEmpty){setState(()=>error='Location is required by your department.'); return;}
-    if(req('DESCRIPTION') && notes.text.trim().isEmpty){setState(()=>error='Description / notes are required by your department.'); return;}
-    if(req('END_TIME') && endTime == null){setState(()=>error='Set the end time required by your department.');return;}
+    if(!qr && selectedMembers.isEmpty){setState(()=>error='Choose roster members or enable QR sign-in.');return;}
     final h=double.tryParse(hours.text.trim())??0;
-    if(req('HOURS') && h<=0){setState(()=>error='Training hours are required by your department.'); return;}
     final mode=context.read<AppModeController>();
     final me=widget.setup.proctors.where((p)=>(p['userId']?.toString()??'')==mode.departmentLink?.userId).toList();
     final defaults=widget.template?.proctorUserIds.where((id)=>widget.setup.proctors.any((p)=>p['userId']?.toString()==id)).toList() ?? const <String>[];
@@ -266,7 +263,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:DateTime.now().toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', endsAt:endTime?.toUtc().toIso8601String(), creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, selfRegistration:qr);
+      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:startTime.toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', endsAt:endTime?.toUtc().toIso8601String(), creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, membershipIds:selectedMembers.toList(), selfRegistration:qr);
       if(mounted) Navigator.pop(context,created.id);
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
@@ -278,14 +275,33 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       const SizedBox(height:6), const Text('Create the class quickly, then collect student results and finish RMS documentation after training.'),
       if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
       const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
-      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const ['COMPANY','EMS','FIRE','DRIVER_OPERATOR','HAZMAT','TECHNICAL_RESCUE','WILDLAND','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setState(()=>category=v??'COMPANY')),
+      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const [
+        DropdownMenuItem(value:'COMPANY',child:Text('Fire / Company')),
+        DropdownMenuItem(value:'EMS',child:Text('EMS')),
+        DropdownMenuItem(value:'HAZMAT',child:Text('HazMat')),
+        DropdownMenuItem(value:'DRIVER',child:Text('Driver Operator')),
+        DropdownMenuItem(value:'FACILITY',child:Text('Facility')),
+        DropdownMenuItem(value:'OFFICER',child:Text('Officer')),
+        DropdownMenuItem(value:'OTHER',child:Text('Other / Rescue')),
+      ],onChanged:(v)=>setState(()=>category=v??'COMPANY')),
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v)=>setState(()=>checklist=v??'')),
       const SizedBox(height:12),
-      if(req('END_TIME')) OutlinedButton.icon(
+      OutlinedButton.icon(
+        onPressed: () async {
+          final day = await showDatePicker(context:context,initialDate:startTime,firstDate:DateTime(2020),lastDate:DateTime.now().add(const Duration(days:730)));
+          if(day==null || !mounted)return;
+          final time = await showTimePicker(context:context,initialTime:TimeOfDay.fromDateTime(startTime));
+          if(time!=null && mounted)setState(()=>startTime=DateTime(day.year,day.month,day.day,time.hour,time.minute));
+        },
+        icon:const Icon(Icons.calendar_today_outlined),
+        label:Text('Training date / start: ${startTime.toLocal()}'),
+      ),
+      const SizedBox(height:12),
+      if(advanced) OutlinedButton.icon(
         onPressed: () async {
           final now = DateTime.now();
           final day = await showDatePicker(context:context,initialDate:endTime??now,firstDate:now.subtract(const Duration(days:365)),lastDate:now.add(const Duration(days:730)));
-          if(day==null || !mounted)return;
+          if(day==null || !context.mounted)return;
           final time = await showTimePicker(context:context,initialTime:TimeOfDay.fromDateTime(endTime??now));
           if(time!=null && mounted)setState(()=>endTime=DateTime(day.year,day.month,day.day,time.hour,time.minute));
         },
@@ -293,10 +309,24 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         label:Text(endTime==null?'Set required end time': 'End: ${endTime!.toLocal()}'),
       ),
       TextButton(onPressed:()=>setState(()=>advanced=!advanced),child:Text(advanced?'Hide optional details':'Show optional details')),
-      if(advanced || req('LOCATION')) TextField(controller:location,decoration:InputDecoration(labelText:'Location${req('LOCATION')?' *':''}')),
-      const SizedBox(height:12),if(advanced || req('HOURS')) TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:InputDecoration(labelText:'Training hours${req('HOURS')?' *':''}')),
-      const SizedBox(height:12),if(advanced || req('DESCRIPTION')) TextField(controller:notes,maxLines:3,decoration:InputDecoration(labelText:'Description / notes${req('DESCRIPTION')?' *':''}')),
+      if(advanced) TextField(controller:location,decoration:const InputDecoration(labelText:'Location (closeout optional)')),
+      const SizedBox(height:12),if(advanced) TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Training hours (finish after teaching)')),
+      const SizedBox(height:12),if(advanced) TextField(controller:notes,maxLines:3,decoration:const InputDecoration(labelText:'Optional preparation notes')),
       const SizedBox(height:8),SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v)=>setState(()=>qr=v),title:const Text('Allow QR self-registration'),subtitle:const Text('Crew can scan in from their phones.')),
+      const SizedBox(height:8),
+      ExpansionTile(title:Text('Select department roster (${selectedMembers.length})'),children:[
+        SizedBox(height:220,child:ListView(children:widget.setup.members.map((member){
+          final id=member['id']?.toString()??'';
+          return CheckboxListTile(
+            dense:true,
+            title:Text(member['name']?.toString()??'Member'),
+            value:selectedMembers.contains(id),
+            onChanged:id.isEmpty?null:(selected)=>setState((){
+              if(selected==true){selectedMembers.add(id);}else{selectedMembers.remove(id);}
+            }),
+          );
+        }).toList())),
+      ]),
       const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Start Training')),
     ])),
   );
@@ -319,6 +349,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _groupSkillId;
   bool _showGrading = false;
   bool _missingOnly = false;
+  bool _selectAttendance = false;
+  final Set<String> _selectedAttendanceIds = <String>{};
   final _memberEditorKey = GlobalKey();
   // Drafts are kept per enrollment so switching roster members does not discard
   // unsent evaluations. Only explicit Submit sends results to the server.
@@ -358,6 +390,57 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         )).toList();
     if (missing.isEmpty) return '';
     return '${missing.length} required skill(s) need a passing result';
+  }
+
+  Future<void> _confirmSelectedAttendance() async {
+    final detail = _detail;
+    if (detail == null || _busy || detail.status == 'COMPLETE') return;
+    final selected = detail.roster.where((member) =>
+      _selectedAttendanceIds.contains(member.id) && member.attendance == 'REGISTERED').toList();
+    if (selected.isEmpty) return;
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm selected attendance?'),
+        content: Text('Mark ${selected.length} selected registered members PRESENT? Confirm each person physically attended. No skill results will be awarded.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Confirm')),
+        ],
+      ),
+    ) ?? false;
+    if (!approved || !mounted) return;
+    setState(() { _busy = true; _error = null; });
+    var confirmed = 0;
+    try {
+      for (final member in selected) {
+        final saved = await _api.updateClassStudentDurable(
+          classId: detail.id, enrollmentId: member.id, attendance: 'PRESENT',
+        );
+        if (saved.queued) {
+          if (mounted) {
+            context.read<DepartmentInboxController>().submissionQueued();
+            setState(() => _error = 'Sync pending for ${member.name}. Remaining selections were not submitted.');
+          }
+          break;
+        }
+        if (saved.detail != null) _setDetail(saved.detail!);
+        confirmed++;
+        _selectedAttendanceIds.remove(member.id);
+      }
+      if (mounted) {
+        setState(() {
+          if (_selectedAttendanceIds.isEmpty) _selectAttendance = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$confirmed of ${selected.length} attendance records confirmed on server.'),
+        ));
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = '$confirmed confirmed; remaining selections retained: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _confirmRosterAttendance() async {
@@ -486,10 +569,15 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     if (confirmed != true || skillId == null || !mounted) return;
     setState(() { _busy = true; _error = null; });
     try {
-      final batch = members.where((member) => selected.contains(member.id)).map((member) => <String, String>{
-        'enrollmentId': member.id,
-        'result': result,
-        'notes': 'Group evaluation',
+      final batch = members.where((member) => selected.contains(member.id)).map((member) {
+        final previous = member.results.where((item) => item.requirementId == skillId).firstOrNull;
+        return <String, dynamic>{
+          'enrollmentId': member.id,
+          'result': result,
+          'notes': 'Group evaluation',
+          // null means no prior result was observed; the server checks this.
+          'expectedUpdatedAt': previous?.updatedAt,
+        };
       }).toList(growable: false);
       final saved = await _api.recordClassSkillBatchDurable(
         classId: detail.id,
@@ -536,7 +624,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 onChanged: (value) => update(() => values[field['id'].toString()] = value == true))
             else if (field['type'] == 'PASS_FAIL')
               DropdownButtonFormField<String>(
-                value: ['PASS','FAIL'].contains(values[field['id']]) ? values[field['id']].toString() : '',
+                initialValue: ['PASS','FAIL'].contains(values[field['id']]) ? values[field['id']].toString() : '',
                 decoration: InputDecoration(labelText: field['label']?.toString() ?? 'Result'),
                 items: const [DropdownMenuItem(value:'',child:Text('Not recorded')),DropdownMenuItem(value:'PASS',child:Text('Pass')),DropdownMenuItem(value:'FAIL',child:Text('Fail'))],
                 onChanged: (value) => update(() => values[field['id'].toString()] = value ?? ''),
@@ -638,7 +726,33 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     } else if (issues.isEmpty) {
       // The server remains the authority for required fields, proctors,
       // pending sync, and the actual close decision.
-      await _closeTraining();
+      if (await _editTrainingDocumentation()) await _closeTraining();
+    }
+  }
+
+  Future<void> _setRosterAttendance(DepartmentClassStudent member, String attendance) async {
+    final detail = _detail;
+    if (detail == null || _busy || detail.status == 'COMPLETE' ||
+        member.attendance == attendance) return;
+    setState(() { _busy = true; _error = null; });
+    try {
+      final saved = await _api.updateClassStudentDurable(
+        classId: detail.id, enrollmentId: member.id, attendance: attendance,
+      );
+      if (saved.detail != null) {
+        _setDetail(saved.detail!);
+        _nextStudent();
+      }
+      if (saved.queued && mounted) {
+        context.read<DepartmentInboxController>().submissionQueued();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Attendance saved on device; waiting to sync.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Attendance was not confirmed: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -646,6 +760,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final roster = _detail?.roster ?? const <DepartmentClassStudent>[];
     if (roster.isEmpty) return;
     final index = roster.indexWhere((item) => item.id == _studentId);
+    // Prefer the next member who still needs attendance or a required skill.
+    for (var offset = 1; offset <= roster.length; offset++) {
+      final candidate = roster[(index + offset) % roster.length];
+      if (_missingFor(_detail!, candidate).isNotEmpty) {
+        setState(() => _studentId = candidate.id);
+        return;
+      }
+    }
     setState(() => _studentId = roster[(index + 1) % roster.length].id);
   }
 
@@ -665,8 +787,184 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     finally{if(mounted)setState(()=>_busy=false);}
   }
 
+  Future<bool> _editTrainingDocumentation() async {
+    final d = _detail;
+    if (d == null || _busy || d.status == 'COMPLETE') return false;
+    DateTime start = d.startsAt?.toLocal() ?? DateTime.now();
+    DateTime? end = d.endsAt?.toLocal();
+    final narrative = TextEditingController(text:d.notes);
+    final location = TextEditingController(text:d.location);
+    final hours = TextEditingController(text:d.creditHours > 0 ? d.creditHours.toString() : '');
+    Future<DateTime?> chooseTime(BuildContext dialogContext, DateTime initial) async {
+      final day = await showDatePicker(
+        context:dialogContext, initialDate:initial,
+        firstDate:DateTime(2020), lastDate:DateTime.now().add(const Duration(days:730)),
+      );
+      if (day == null || !dialogContext.mounted) return null;
+      final time = await showTimePicker(context:dialogContext,initialTime:TimeOfDay.fromDateTime(initial));
+      if (time == null) return null;
+      return DateTime(day.year,day.month,day.day,time.hour,time.minute);
+    }
+    final result = await showDialog<Map<String, dynamic>>(
+      context:context,
+      builder:(dialogContext)=>StatefulBuilder(
+        builder:(dialogContext,update)=>AlertDialog(
+          title:const Text('Finish Training Documentation'),
+          content:SizedBox(width:440,child:SingleChildScrollView(child:Column(
+            mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+              const Text('Complete times, narrative and department RMS codes after teaching. Saving does not mark the record entered into RMS.'),
+              const SizedBox(height:12),
+              OutlinedButton.icon(
+                onPressed:() async { final chosen=await chooseTime(dialogContext,start); if(chosen!=null)update(()=>start=chosen); },
+                icon:const Icon(Icons.schedule),label:Text('Start: $start'),
+              ),
+              const SizedBox(height:8),
+              OutlinedButton.icon(
+                onPressed:() async { final chosen=await chooseTime(dialogContext,end??start); if(chosen!=null)update(()=>end=chosen); },
+                icon:const Icon(Icons.schedule),label:Text(end==null?'Set actual end time':'End: $end'),
+              ),
+              const SizedBox(height:8),
+              TextField(controller:location,decoration:const InputDecoration(labelText:'Training location')),
+              const SizedBox(height:8),
+              TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),
+                decoration:const InputDecoration(labelText:'Credit hours (optional if times provided)')),
+              const SizedBox(height:8),
+              TextField(controller:narrative,maxLines:5,decoration:const InputDecoration(
+                labelText:'Training narrative / RMS codes',hintText:'Include department template RMS codes as needed')),
+            ],
+          ))),
+          actions:[
+            TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Cancel')),
+            FilledButton(onPressed:()=>Navigator.pop(dialogContext,<String,dynamic>{
+              'start':start,'end':end,'notes':narrative.text,'location':location.text,'hours':double.tryParse(hours.text.trim())??0.0,
+            }),child:const Text('Save Documentation')),
+          ],
+        ),
+      ),
+    );
+    narrative.dispose(); location.dispose(); hours.dispose();
+    if (result == null || !mounted) return false;
+    final savedStart = result['start'] as DateTime;
+    final savedEnd = result['end'] as DateTime?;
+    if (savedEnd == null || savedEnd.isBefore(savedStart)) {
+      setState(()=>_error='Enter an actual end time after the start time before closing.');
+      return false;
+    }
+    setState(() { _busy=true; _error=null; });
+    try {
+      _setDetail(await _api.updateTrainingSheetDocumentation(
+        d.id, startsAt:savedStart, endsAt:savedEnd,
+        notes:result['notes'] as String, location:result['location'] as String,
+        creditHours:result['hours'] as double,
+      ));
+      return true;
+    } catch (error) {
+      if(mounted)setState(()=>_error='Unable to save training documentation: $error');
+      return false;
+    } finally { if(mounted)setState(()=>_busy=false); }
+  }
+
+  Future<void> _reviewPendingSkillSync() async {
+    final d = _detail;
+    if (d == null || _busy) return;
+    try {
+      final pending = await _api.pendingSkillMutationsForClass(d.id);
+      if (!mounted) return;
+      if (pending.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All skill evaluations on this device are synchronized.')),
+        );
+        return;
+      }
+      final server = await _api.getClass(d.id);
+      if (!mounted) return;
+      final batch = pending.first;
+      final raw = batch['results'];
+      final results = raw is List ? raw.whereType<Map>().toList() : <Map>[];
+      final conflict = batch['syncStatus'] == 'CONFLICT';
+      final action = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(conflict ? 'Skill results need reconciliation' : 'Skill results waiting to sync'),
+          content: SizedBox(width: 460, height: 340, child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${pending.length} saved batch(es) on this device. '
+                  'Compare local observations with the official server record before discarding anything.'),
+              const SizedBox(height: 8),
+              Expanded(child: ListView(
+                children: results.map((entry) {
+                  final id = entry['enrollmentId']?.toString() ?? '';
+                  final requirement = entry['requirementId']?.toString() ??
+                      batch['requirementId']?.toString() ?? '';
+                  final matches = server.roster.where((person) => person.id == id);
+                  final member = matches.isEmpty ? null : matches.first;
+                  final serverResults = member?.results.where((result) =>
+                      result.requirementId == requirement);
+                  final serverResult = serverResults == null || serverResults.isEmpty
+                      ? 'Not recorded' : serverResults.first.result;
+                  return ListTile(
+                    dense: true,
+                    title: Text(member?.name ?? id),
+                    subtitle: Text('Device: ${entry['result']} · Server: $serverResult'),
+                  );
+                }).toList(),
+              )),
+            ],
+          )),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Keep saved')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'retry'),
+                child: const Text('Retry sync')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'discard'),
+                child: const Text('Review & discard local copy')),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (action == 'retry') {
+        final completed = await _api.retryPendingClassMutations();
+        if (!mounted) return;
+        await _load();
+        if (mounted) setState(() => _error = completed > 0
+            ? '$completed queued record(s) synchronized. Reopen sync review for remaining batches.'
+            : 'No queued records synchronized. Check connection or review conflicts.');
+      } else if (action == 'discard') {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Discard this device copy?'),
+            content: const Text('Only discard after verifying the official web record. '
+                'This removes the saved local observations without changing server results. '
+                'Any missing or incorrect evaluations must be corrected separately by an authorized instructor.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Keep saved')),
+              FilledButton(onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('I verified — discard copy')),
+            ],
+          ),
+        ) ?? false;
+        if (confirmed) {
+          await _api.discardReviewedSkillMutation(d.id, batch['key']?.toString() ?? '');
+          if (mounted) setState(() => _error =
+              'Reviewed local copy discarded. Recheck the official Training Sheet before closing.');
+        }
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Unable to review pending skill results: $error');
+    }
+  }
+
   Future<void> _closeTraining() async {
     final d=_detail; if(d==null||_busy)return;
+    final pending = await _api.pendingSkillMutationCountForClass(d.id);
+    if (pending > 0) {
+      if (mounted) setState(() => _error =
+          '$pending skill batch(es) are still saved on this device. '
+          'Review or sync them before closing; server approval must not ignore field evaluations.');
+      await _reviewPendingSkillSync();
+      return;
+    }
     setState(()=>_busy=true);
     try{
       final validation=await _api.validateClassClosure(widget.classId);
@@ -852,7 +1150,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     return showDialog<String>(context: context, builder: (context) => AlertDialog(title: Text(title), content: TextField(controller: controller, maxLines: 4, autofocus: true, decoration: const InputDecoration(labelText: 'What must the student correct?')), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')), FilledButton(onPressed: () { if (controller.text.trim().isNotEmpty) Navigator.pop(context, controller.text.trim()); }, child: const Text('Save result'))]));
   }
 
-
   Future<void> _stageSkill(DepartmentClassStudent member, DepartmentClassSkill skill, String result) async {
     if (_busy || _detail?.status == 'COMPLETE' || member.attendance != 'PRESENT') return;
     var notes = '';
@@ -878,11 +1175,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
     setState(() { _busy = true; _error = null; });
     try {
-      final batch = pending.entries.map((entry) => <String, String>{
-        'enrollmentId': member.id,
-        'requirementId': entry.key,
-        'result': entry.value,
-        'notes': notes[entry.key] ?? '',
+      final batch = pending.entries.map((entry) {
+        final previous = member.results
+            .where((item) => item.requirementId == entry.key)
+            .firstOrNull;
+        return <String, dynamic>{
+          'enrollmentId': member.id,
+          'requirementId': entry.key,
+          'result': entry.value,
+          'notes': notes[entry.key] ?? '',
+          'expectedUpdatedAt': previous?.updatedAt,
+        };
       }).toList(growable: false);
       final saved = await _api.recordClassSkillBatchDurable(
         classId: detail.id,
@@ -922,11 +1225,20 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
     setState(() => _busy = true);
     try {
-      final saved = await _api.recordClassSkillDurable(
+      final previous = member.results
+          .where((item) => item.requirementId == skill.id)
+          .firstOrNull;
+      final saved = await _api.recordClassSkillBatchDurable(
         classId: detail.id,
-        enrollmentId: member.id,
         requirementId: skill.id,
-        result: 'PASS',
+        results: [
+          <String, dynamic>{
+            'enrollmentId': member.id,
+            'result': 'PASS',
+            'notes': '',
+            'expectedUpdatedAt': previous?.updatedAt,
+          },
+        ],
       );
       if (saved.detail != null) _setDetail(saved.detail!);
       if (saved.queued && mounted) {
@@ -965,11 +1277,55 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         return Card(child:Padding(padding:const EdgeInsets.all(12),child:Row(children:[
           Icon(waiting?Icons.cloud_upload_outlined:Icons.cloud_off_outlined),
           const SizedBox(width:10),
-          Expanded(child:Text(waiting?'Waiting to Sync — field changes are saved on this device and will retry automatically.':'Sync Failed — your saved field changes are still on this device.')),
+          Expanded(child:Text(waiting?'Waiting to Sync — saved field changes will retry; skill conflicts require instructor review.':'Sync Failed — saved field changes remain on this device. Review offline skill results before closeout.')),
           TextButton(onPressed:()=>sync.refresh(),child:const Text('Retry')),
         ])));
       }),
 
+      if (detail.status != 'COMPLETE')
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Next step', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Text(
+                detail.roster.isEmpty
+                    ? 'Add students to begin this Training Sheet.'
+                    : detail.roster.any((member) => member.attendance == 'REGISTERED')
+                        ? 'Record attendance for every student.'
+                        : detail.roster.any((member) => member.attendance == 'PRESENT' && !_studentComplete(detail, member))
+                            ? 'Grade required skills for present students.'
+                            : 'Review the completed roster and close training.',
+              ),
+              const SizedBox(height: 10),
+              if (detail.roster.isEmpty)
+                FilledButton.icon(
+                  onPressed: _busy ? null : _showQr,
+                  icon: const Icon(Icons.qr_code_2_rounded),
+                  label: const Text('Show QR / Add Students'),
+                )
+              else if (detail.roster.any((member) => member.attendance == 'REGISTERED'))
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _load,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Refresh Roster'),
+                )
+              else if (detail.roster.any((member) => member.attendance == 'PRESENT' && !_studentComplete(detail, member)))
+                FilledButton.icon(
+                  onPressed: _busy ? null : _groupGrade,
+                  icon: const Icon(Icons.fact_check_outlined),
+                  label: const Text('Grade Skills'),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: _busy ? null : _reviewAndFinish,
+                  icon: const Icon(Icons.rate_review_outlined),
+                  label: const Text('Review & Finish'),
+                ),
+            ]),
+          ),
+        ),
       Card(
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -1004,20 +1360,30 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           const SizedBox(height: 8),
           _closeoutLine(context, 'Roster', detail.roster.isNotEmpty, '${detail.roster.length} registered'),
           _closeoutLine(context, 'Attendance verified', detail.roster.isNotEmpty && detail.roster.every((member) => member.attendance != 'REGISTERED'), '${detail.roster.where((member) => member.attendance != 'REGISTERED').length}/${detail.roster.length} recorded'),
-          _closeoutLine(context, 'Required skill results', detail.roster.where((member) => member.attendance == 'PRESENT').every((member) => _studentComplete(detail, member)), '${detail.roster.where((member) => _studentComplete(detail, member)).length} ready'),
+          _closeoutLine(context, 'Required skill results', detail.roster.isNotEmpty && detail.roster.every((member) => member.attendance != 'REGISTERED') && detail.roster.where((member) => member.attendance == 'PRESENT').every((member) => _studentComplete(detail, member)), '${detail.roster.where((member) => _studentComplete(detail, member)).length} ready'),
           _closeoutLine(context, 'Training closed', detail.status == 'COMPLETE', 'Review & Close'),
           _closeoutLine(context, 'Instructor approval', detail.instructorApprovedAt != null, 'Required before RMS entry'),
           _closeoutLine(context, 'Department RMS entry', detail.rmsStatus == 'RMS_ENTERED', 'Separate official record step'),
         ],
       ))),
-      if (mode.isAdmin) ...[
-        ClassTaskBookLinkCard(detail: detail, onAssigned: () {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task Book assignments updated. Members can view them under Department Task Books.')));
-        }),
-        const SizedBox(height: 10),
-      ],
       const SizedBox(height: 10),
-      if (detail.status != 'COMPLETE') Wrap(spacing: 8, runSpacing: 8, children: [FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: Text(detail.registrationEnabled ? 'Show QR' : 'Open QR Sign-in')), OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh Roster')), OutlinedButton.icon(onPressed: _busy ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Group grade')), FilledButton.icon(onPressed: _busy ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish'))]),
+      // Keep secondary class tools accessible without competing with Next step.
+      if (detail.status != 'COMPLETE')
+        ExpansionTile(
+          title: const Text('More class actions'),
+          initiallyExpanded: false,
+          children: [
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              OutlinedButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: const Text('QR sign-in')),
+              OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh roster')),
+              OutlinedButton.icon(onPressed: _busy ? null : _reviewPendingSkillSync,
+                  icon: const Icon(Icons.sync_problem_outlined),
+                  label: const Text('Review offline skill results')),
+              OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Group grade')),
+              OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish')),
+            ]),
+          ],
+        ),
       if (detail.status == 'COMPLETE') ...[
         Card(
           child: Padding(
@@ -1135,7 +1501,21 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ],
         ))),
       ],
-      Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(
+      if (mode.isAdmin)
+        ExpansionTile(
+          title: const Text('Optional: Connect to Task Book'),
+          initiallyExpanded: false,
+          children: [
+            ClassTaskBookLinkCard(detail: detail, onAssigned: () {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task Book assignments updated.')));
+            }),
+          ],
+        ),
+      ExpansionTile(
+        title: const Text('Roster tools'),
+        initiallyExpanded: false,
+        children: [
+          Padding(padding: const EdgeInsets.all(12), child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Quick roster recorder', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
@@ -1164,12 +1544,50 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             onChanged: (value) => setState(() => _missingOnly = value ?? false),
           ),
         ],
-      ))),
+          )),
+        ],
+      ),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          '${detail.roster.where((m) => m.attendance != 'REGISTERED').length} of ${detail.roster.length} attendance recorded · '
+          '${detail.roster.where((m) => _studentComplete(detail, m)).length} of ${detail.roster.length} ready',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ),
       Row(children: [
         Expanded(child: Text('Roster', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
         Text('${detail.roster.where((item) => _studentComplete(detail, item)).length}/${detail.roster.length} ready', style: Theme.of(context).textTheme.labelLarge),
       ]),
       const SizedBox(height: 8),
+      if (detail.status != 'COMPLETE' && detail.roster.isNotEmpty)
+        Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          OutlinedButton.icon(
+            onPressed: _busy ? null : () => setState(() {
+              _selectAttendance = !_selectAttendance;
+              if (!_selectAttendance) _selectedAttendanceIds.clear();
+            }),
+            icon: Icon(_selectAttendance ? Icons.close : Icons.checklist_rounded),
+            label: Text(_selectAttendance ? 'Cancel selection' : 'Select attendance'),
+          ),
+          if (_selectAttendance) ...[
+            TextButton(
+              onPressed: _busy ? null : () => setState(() {
+                final pending = detail.roster.where((member) => member.attendance == 'REGISTERED');
+                if (_selectedAttendanceIds.length == pending.length) {
+                  _selectedAttendanceIds.clear();
+                } else {
+                  _selectedAttendanceIds.addAll(pending.map((member) => member.id));
+                }
+              }),
+              child: const Text('Select pending'),
+            ),
+            FilledButton(
+              onPressed: _busy || _selectedAttendanceIds.isEmpty ? null : _confirmSelectedAttendance,
+              child: Text('Confirm ${_selectedAttendanceIds.length} present'),
+            ),
+          ],
+        ]),
       if (detail.roster.isEmpty)
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 16),
@@ -1186,21 +1604,46 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   return ListTile(
                     selected: selected,
                     selectedTileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.45),
-                    leading: Icon(
-                      complete ? Icons.check_circle_rounded : Icons.person_outline_rounded,
-                      color: complete ? Colors.green : null,
-                    ),
+                    leading: _selectAttendance && item.attendance == 'REGISTERED'
+                        ? Checkbox(
+                            value: _selectedAttendanceIds.contains(item.id),
+                            onChanged: _busy ? null : (checked) => setState(() {
+                              if (checked == true) {
+                                _selectedAttendanceIds.add(item.id);
+                              } else {
+                                _selectedAttendanceIds.remove(item.id);
+                              }
+                            }),
+                          )
+                        : Icon(
+                            complete ? Icons.check_circle_rounded : Icons.person_outline_rounded,
+                            color: complete ? Colors.green : null,
+                          ),
                     title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w700)),
                     subtitle: Text(
                       '${item.attendance.replaceAll('_', ' ')} · ${_passedRequiredCount(detail, item)}/${_requiredSkillCount(detail)} required skills passed'
                       '${_missingFor(detail, item).isEmpty ? '' : '\\nNeeds: ${_missingFor(detail, item)}'}',
                     ),
                     trailing: Icon(selected ? Icons.keyboard_arrow_down_rounded : Icons.chevron_right_rounded),
-                    onTap: () => setState(() => _studentId = item.id),
+                    onTap: () => setState(() {
+                      if (_selectAttendance && item.attendance == 'REGISTERED') {
+                        if (!_selectedAttendanceIds.add(item.id)) _selectedAttendanceIds.remove(item.id);
+                      } else {
+                        _studentId = item.id;
+                      }
+                    }),
+                    // Attendance stays individually attributable; no implicit passes.
+                    isThreeLine: false,
                   );
                 }),
             ],
           ),
+        ),
+      if (detail.status != 'COMPLETE' && detail.roster.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 8),
+          child: Text('Tap a member to edit. Attendance can also be recorded below.',
+              style: Theme.of(context).textTheme.bodySmall),
         ),
       const SizedBox(height: 10),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
@@ -1248,7 +1691,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ),
         ],
         if (!_showGrading) ...[
-        const SizedBox(height: 10), DropdownButtonFormField<String>(key: ValueKey(student.id), initialValue: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null){_setDetail(saved.detail!); _nextStudent();} if(saved.queued&&mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } catch(e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); } }),
+        const SizedBox(height: 10),
+        if (detail.status != 'COMPLETE')
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final status in const ['PRESENT', 'ABSENT', 'EXCUSED'])
+              ChoiceChip(
+                label: Text(status == 'PRESENT' ? 'Present' : status == 'ABSENT' ? 'Absent' : 'Excused'),
+                selected: student.attendance == status,
+                onSelected: _busy ? null : (_) => _setRosterAttendance(student, status),
+              ),
+          ]),
+        const SizedBox(height: 10), DropdownButtonFormField<String>(key: ValueKey(student.id), initialValue: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null){_setDetail(saved.detail!); _nextStudent();} if(saved.queued&&context.mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } catch(e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); } }),
         ] else ...[
         const SizedBox(height: 10),
         Text('Select all observed skill results first, then submit once. Results remain individual records.', style: Theme.of(context).textTheme.bodySmall),
