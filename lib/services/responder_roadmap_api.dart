@@ -1698,6 +1698,24 @@ class ResponderRoadmapApi {
         row['classId'] == classId && row['syncStatus'] == 'CONFLICT').length;
   }
 
+  Future<List<Map<String,dynamic>>> pendingSkillMutationsForClass(String classId) async {
+    final rows = await _pendingClassMutations();
+    return rows.where((row) =>
+        row['classId'] == classId &&
+        (row['kind'] == 'skill_batch' || row['kind'] == 'skill'))
+        .map((row)=>Map<String,dynamic>.from(row)).toList(growable:false);
+  }
+
+  /// Only call after an instructor has compared the queued observations with
+  /// the official server record and explicitly chooses to discard this copy.
+  Future<void> discardReviewedSkillMutation(String classId, String key) async {
+    final rows = await pendingSkillMutationsForClass(classId);
+    if(!rows.any((row)=>row['key']==key)) {
+      throw const ResponderRoadmapApiException('The selected pending batch is unavailable.');
+    }
+    await _removePendingClassMutation(key);
+  }
+
   Future<DepartmentClassMutationResult> updateClassStudentDurable({required String classId, required String enrollmentId, required String attendance}) async {
     final key='attendance:$classId:$enrollmentId';
     final row={'key':key,'kind':'attendance','classId':classId,'enrollmentId':enrollmentId,'attendance':attendance,'queuedAt':DateTime.now().toUtc().toIso8601String()};
