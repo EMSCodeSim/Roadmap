@@ -46,6 +46,9 @@ jobs:
       - name: ResponderRoadmap department flow tests
         run: flutter test test/responder_roadmap_department_flow_test.dart
 
+      - name: Ten-member offline Training Sheet synchronization tests
+        run: flutter test test/training_sheet_offline_sync_test.dart
+
       - name: Shared competency and evidence tests
         run: flutter test test/competency_evidence_bridge_test.dart
 
