@@ -830,7 +830,6 @@ class DepartmentClassSummary {
         checklistTitle: (json['checklistTitle'] as String?) ?? 'Checklist',
         status: (json['status'] as String?) ?? 'DRAFT',
         startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
-        endsAt: DateTime.tryParse((json['endsAt'] as String?) ?? ''),
         location: (json['location'] as String?) ?? '',
         rosterCount: _asInt(json['rosterCount']),
         completeCount: _asInt(json['completeCount']),
@@ -964,6 +963,7 @@ class DepartmentClassDetail {
         trainingCategory: (json['trainingCategory'] as String?) ?? 'COMPANY',
         creditHours: (json['creditHours'] as num?)?.toDouble() ?? 0,
         startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        endsAt: DateTime.tryParse((json['endsAt'] as String?) ?? ''),
         location: (json['location'] as String?) ?? '',
         notes: (json['notes'] as String?) ?? '',
         proctorUserIds: (json['proctors'] as List? ?? const [])
