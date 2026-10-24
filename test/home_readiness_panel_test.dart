@@ -7,6 +7,7 @@ import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/pages/home/visual_home_page.dart';
 import 'package:firepath/state/app_state.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
 
 void main() {
   setUp(() {
@@ -47,7 +48,7 @@ void main() {
     );
   }
 
-  testWidgets('home keeps Quick Log immediately accessible with an active goal', (tester) async {
+  testWidgets('home keeps personal career goal visible and separates department progress', (tester) async {
     final app = AppState();
     await app.bootstrap();
     await app.completeOnboarding(
@@ -57,51 +58,50 @@ void main() {
     await app.setPrimaryGoal('ops_engineer');
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: app,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppState>.value(value: app),
+          ChangeNotifierProvider<DepartmentInboxController>(
+            create: (_) => DepartmentInboxController(),
+          ),
+        ],
         child: const MaterialApp(home: VisualHomePage()),
       ),
     );
-    await tester.pumpAndSettle();
+    // Bounded pumps: live progress indicators must not stall widget tests.
+    await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Quick Log'), findsOneWidget);
-    expect(find.text('Department'), findsOneWidget);
-
-    final quickLogTop = tester.getTopLeft(find.text('Quick Log')).dy;
-    expect(
-      quickLogTop,
-      lessThan(180),
-      reason: 'Quick Log should be reachable from Home without scrolling.',
-    );
-
+    expect(find.text('My Roadmap'), findsOneWidget);
+    expect(find.text('MY GOAL · MY PROGRESS'), findsOneWidget);
+    expect(find.text('Career goal'), findsOneWidget);
     expect(find.textContaining('Driver/Operator'), findsWidgets);
-    expect(find.text('CAREER READINESS'), findsOneWidget);
-    expect(find.text('MAJOR GAPS'), findsOneWidget);
+    expect(find.text('Personal overview'), findsOneWidget);
 
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.text("Start Today's Focus"),
-      300,
-      scrollable: scrollable,
-    );
-    expect(find.text("Start Today's Focus"), findsOneWidget);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Department overview'), findsOneWidget);
+    expect(find.text('Open Department'), findsOneWidget);
   });
 
-  testWidgets('home prompts for a Task Book when no goal is set', (tester) async {
+  testWidgets('home prompts to choose a roadmap when no goal is set', (tester) async {
     final app = AppState();
     await app.bootstrap();
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: app,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppState>.value(value: app),
+          ChangeNotifierProvider<DepartmentInboxController>(
+            create: (_) => DepartmentInboxController(),
+          ),
+        ],
         child: const MaterialApp(home: VisualHomePage()),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Quick Log'), findsOneWidget);
-    expect(find.text('Department'), findsOneWidget);
-    expect(find.text('Build My Task Book'), findsOneWidget);
-    expect(find.text('CAREER READINESS'), findsNothing);
+    expect(find.text('My Roadmap'), findsOneWidget);
+    expect(find.text('Choose a roadmap'), findsOneWidget);
+    expect(find.text('Personal overview'), findsOneWidget);
   });
 }
