@@ -830,6 +830,7 @@ class DepartmentClassSummary {
         checklistTitle: (json['checklistTitle'] as String?) ?? 'Checklist',
         status: (json['status'] as String?) ?? 'DRAFT',
         startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        endsAt: DateTime.tryParse((json['endsAt'] as String?) ?? ''),
         location: (json['location'] as String?) ?? '',
         rosterCount: _asInt(json['rosterCount']),
         completeCount: _asInt(json['completeCount']),
@@ -863,8 +864,9 @@ class DepartmentClassSkillResult {
   final String notes;
   final String evaluatorName;
   final DateTime? evaluatedAt;
-  const DepartmentClassSkillResult({required this.requirementId, required this.result, required this.notes, required this.evaluatorName, required this.evaluatedAt});
-  factory DepartmentClassSkillResult.fromJson(Map<String, dynamic> json) => DepartmentClassSkillResult(requirementId: (json['requirementId'] as String?) ?? '', result: (json['result'] as String?) ?? 'NOT_EVALUATED', notes: (json['notes'] as String?) ?? '', evaluatorName: (json['evaluatorName'] as String?) ?? '', evaluatedAt: DateTime.tryParse((json['evaluatedAt'] as String?) ?? ''));
+  final String? updatedAt;
+  const DepartmentClassSkillResult({required this.requirementId, required this.result, required this.notes, required this.evaluatorName, required this.evaluatedAt, this.updatedAt});
+  factory DepartmentClassSkillResult.fromJson(Map<String, dynamic> json) => DepartmentClassSkillResult(requirementId: (json['requirementId'] as String?) ?? '', result: (json['result'] as String?) ?? 'NOT_EVALUATED', notes: (json['notes'] as String?) ?? '', evaluatorName: (json['evaluatorName'] as String?) ?? '', evaluatedAt: DateTime.tryParse((json['evaluatedAt'] as String?) ?? ''), updatedAt: json['updatedAt'] as String?);
 }
 
 class DepartmentClassStudent {
@@ -911,6 +913,7 @@ class DepartmentClassDetail {
   final String trainingCategory;
   final double creditHours;
   final DateTime? startsAt;
+  final DateTime? endsAt;
   final String location;
   final String notes;
   final List<String> proctorUserIds;
@@ -935,6 +938,7 @@ class DepartmentClassDetail {
     required this.trainingCategory,
     required this.creditHours,
     required this.startsAt,
+    required this.endsAt,
     required this.location,
     required this.notes,
     required this.proctorUserIds,
@@ -1520,6 +1524,28 @@ class ResponderRoadmapApi {
     return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
+  Future<DepartmentClassDetail> updateTrainingSheetDocumentation(
+    String classId, {
+    required DateTime startsAt,
+    DateTime? endsAt,
+    required String notes,
+    required String location,
+    required double creditHours,
+  }) async {
+    final data = await _request(
+      'PATCH',
+      'app/training-sheets/${Uri.encodeComponent(classId)}/documentation',
+      body: <String, dynamic>{
+        'startsAt': startsAt.toUtc().toIso8601String(),
+        'endsAt': endsAt?.toUtc().toIso8601String(),
+        'notes': notes.trim(),
+        'location': location.trim(),
+        'creditHours': creditHours,
+      },
+    );
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
   Future<DepartmentClassDetail> approveTrainingSheet(String classId) async {
     final data = await _request(
       'POST',
@@ -1597,22 +1623,20 @@ class ResponderRoadmapApi {
 
   Future<DepartmentClassMutationResult> recordClassSkillDurable({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
     final key='skill:$classId:$enrollmentId:$requirementId';
-    final row={'key':key,'kind':'skill','classId':classId,'enrollmentId':enrollmentId,'requirementId':requirementId,'result':result,'notes':notes.trim(),'queuedAt':DateTime.now().toUtc().toIso8601String()};
     try {
       final detail=await recordClassSkill(classId:classId,enrollmentId:enrollmentId,requirementId:requirementId,result:result,notes:notes);
       await _removePendingClassMutation(key);
       return DepartmentClassMutationResult(detail:detail,queued:false);
-    } on ResponderRoadmapApiException catch (error) {
-      if (_isNonRetryableRequestFailure(error)) rethrow;
-      await _savePendingClassMutation(row);
-      return const DepartmentClassMutationResult(detail:null,queued:true);
+    } on ResponderRoadmapApiException {
+      // Never queue an unversioned skill write for automatic replay.
+      rethrow;
     }
   }
 
   Future<DepartmentClassMutationResult> recordClassSkillBatchDurable({
     required String classId,
     String requirementId = '',
-    required List<Map<String, String>> results,
+    required List<Map<String, dynamic>> results,
   }) async {
     if (results.isEmpty) {
       throw const ResponderRoadmapApiException('Select at least one student result.');
@@ -1630,24 +1654,9 @@ class ResponderRoadmapApi {
         detail: DepartmentClassDetail.fromJson(_asMap(data)),
         queued: false,
       );
-    } on ResponderRoadmapApiException catch (error) {
-      if (_isNonRetryableRequestFailure(error)) rethrow;
-      for (final result in results) {
-        final enrollmentId = result['enrollmentId'] ?? '';
-        final resultRequirementId = result['requirementId'] ?? requirementId;
-        final key = 'skill:$classId:$enrollmentId:$resultRequirementId';
-        await _savePendingClassMutation(<String, dynamic>{
-          'key': key,
-          'kind': 'skill',
-          'classId': classId,
-          'enrollmentId': enrollmentId,
-          'requirementId': resultRequirementId,
-          'result': result['result'] ?? 'NOT_EVALUATED',
-          'notes': (result['notes'] ?? '').trim(),
-          'queuedAt': DateTime.now().toUtc().toIso8601String(),
-        });
-      }
-      return const DepartmentClassMutationResult(detail: null, queued: true);
+    } on ResponderRoadmapApiException {
+      // Never split a failed batch into unconditional offline skill writes.
+      rethrow;
     }
   }
 
@@ -1679,7 +1688,9 @@ class ResponderRoadmapApi {
         if(row['kind']=='attendance'){
           await updateClassStudent(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',attendance:(row['attendance'] as String?)??'REGISTERED');
         }else if(row['kind']=='skill'){
-          await recordClassSkill(classId:(row['classId'] as String?)??'',enrollmentId:(row['enrollmentId'] as String?)??'',requirementId:(row['requirementId'] as String?)??'',result:(row['result'] as String?)??'NOT_EVALUATED',notes:(row['notes'] as String?)??'');
+          // Preserve historical queued skill results for manual reconciliation.
+          // Automatic replay can overwrite a newer official evaluation.
+          continue;
         }else{continue;}
         await _removePendingClassMutation(key); completed++;
       }on ResponderRoadmapApiException{/* keep durable mutation for Retry */}
