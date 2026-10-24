@@ -1080,7 +1080,12 @@ class ResponderRoadmapApi {
   })  : _client = client ?? http.Client(),
         _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
-  static const String baseUrl = 'https://responderroadmap.com/api/v1';
+  // Compile-time override for isolated device acceptance against the matching
+  // backend preview. Production builds retain the official endpoint by default.
+  static const String baseUrl = String.fromEnvironment(
+    'ROADMAP_API_BASE_URL',
+    defaultValue: 'https://responderroadmap.com/api/v1',
+  );
   static const String dashboardUrl = 'https://responderroadmap.com/';
   static const String _tokenKey = 'fireops.responderRoadmap.token.v1';
   static const String _pendingSubmissionsKey = 'fireops.responderRoadmap.pendingSubmissions.v1';
