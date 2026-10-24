@@ -864,8 +864,107 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     } finally { if(mounted)setState(()=>_busy=false); }
   }
 
+  Future<void> _reviewPendingSkillSync() async {
+    final d = _detail;
+    if (d == null || _busy) return;
+    try {
+      final pending = await _api.pendingSkillMutationsForClass(d.id);
+      if (!mounted) return;
+      if (pending.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All skill evaluations on this device are synchronized.')),
+        );
+        return;
+      }
+      final server = await _api.getClass(d.id);
+      if (!mounted) return;
+      final batch = pending.first;
+      final raw = batch['results'];
+      final results = raw is List ? raw.whereType<Map>().toList() : <Map>[];
+      final conflict = batch['syncStatus'] == 'CONFLICT';
+      final action = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(conflict ? 'Skill results need reconciliation' : 'Skill results waiting to sync'),
+          content: SizedBox(width: 460, height: 340, child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${pending.length} saved batch(es) on this device. '
+                  'Compare local observations with the official server record before discarding anything.'),
+              const SizedBox(height: 8),
+              Expanded(child: ListView(
+                children: results.map((entry) {
+                  final id = entry['enrollmentId']?.toString() ?? '';
+                  final requirement = entry['requirementId']?.toString() ??
+                      batch['requirementId']?.toString() ?? '';
+                  final matches = server.roster.where((person) => person.id == id);
+                  final member = matches.isEmpty ? null : matches.first;
+                  final serverResults = member?.results.where((result) =>
+                      result.requirementId == requirement);
+                  final serverResult = serverResults == null || serverResults.isEmpty
+                      ? 'Not recorded' : serverResults.first.result;
+                  return ListTile(
+                    dense: true,
+                    title: Text(member?.name ?? id),
+                    subtitle: Text('Device: ${entry['result']} · Server: $serverResult'),
+                  );
+                }).toList(),
+              )),
+            ],
+          )),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Keep saved')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'retry'),
+                child: const Text('Retry sync')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'discard'),
+                child: const Text('Review & discard local copy')),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (action == 'retry') {
+        final completed = await _api.retryPendingClassMutations();
+        if (!mounted) return;
+        await _load();
+        if (mounted) setState(() => _error = completed > 0
+            ? '$completed queued record(s) synchronized. Reopen sync review for remaining batches.'
+            : 'No queued records synchronized. Check connection or review conflicts.');
+      } else if (action == 'discard') {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Discard this device copy?'),
+            content: const Text('Only discard after verifying the official web record. '
+                'This removes the saved local observations without changing server results. '
+                'Any missing or incorrect evaluations must be corrected separately by an authorized instructor.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Keep saved')),
+              FilledButton(onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('I verified — discard copy')),
+            ],
+          ),
+        ) ?? false;
+        if (confirmed) {
+          await _api.discardReviewedSkillMutation(d.id, batch['key']?.toString() ?? '');
+          if (mounted) setState(() => _error =
+              'Reviewed local copy discarded. Recheck the official Training Sheet before closing.');
+        }
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Unable to review pending skill results: $error');
+    }
+  }
+
   Future<void> _closeTraining() async {
     final d=_detail; if(d==null||_busy)return;
+    final pending = await _api.pendingSkillMutationCountForClass(d.id);
+    if (pending > 0) {
+      if (mounted) setState(() => _error =
+          '$pending skill batch(es) are still saved on this device. '
+          'Review or sync them before closing; server approval must not ignore field evaluations.');
+      await _reviewPendingSkillSync();
+      return;
+    }
     setState(()=>_busy=true);
     try{
       final validation=await _api.validateClassClosure(widget.classId);
@@ -1277,6 +1376,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             Wrap(spacing: 8, runSpacing: 8, children: [
               OutlinedButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: const Text('QR sign-in')),
               OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh roster')),
+              OutlinedButton.icon(onPressed: _busy ? null : _reviewPendingSkillSync,
+                  icon: const Icon(Icons.sync_problem_outlined),
+                  label: const Text('Review offline skill results')),
               OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Group grade')),
               OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish')),
             ]),
