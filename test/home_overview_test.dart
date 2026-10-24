@@ -24,17 +24,15 @@ void main() {
         child: const MaterialApp(home: VisualHomePage()),
       ),
     );
-    await tester.pumpAndSettle();
+    // Avoid waiting indefinitely for progress indicators and asynchronous sync.
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('My Roadmap'), findsOneWidget);
     expect(find.text('Personal overview'), findsOneWidget);
     expect(find.text('What should I work on next?'), findsNothing);
 
-    await tester.scrollUntilVisible(
-      find.text('Department overview'),
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Department overview'), findsOneWidget);
     expect(find.textContaining('Connect to your department'), findsOneWidget);
     expect(find.text('Open Department'), findsOneWidget);
