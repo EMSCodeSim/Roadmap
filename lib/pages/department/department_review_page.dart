@@ -9,7 +9,8 @@ import 'package:firepath/widgets/app_mode_switcher.dart';
 
 class DepartmentReviewPage extends StatefulWidget {
   final String? initialReviewId;
-  const DepartmentReviewPage({super.key, this.initialReviewId});
+  final List<DepartmentReviewItem>? initialReviews;
+  const DepartmentReviewPage({super.key, this.initialReviewId, this.initialReviews});
 
   @override
   State<DepartmentReviewPage> createState() => _DepartmentReviewPageState();
@@ -26,10 +27,12 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _load(useInitialReviews: widget.initialReviews != null),
+    );
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool useInitialReviews = false}) async {
     final mode = context.read<AppModeController>();
     if (!mode.canReview) {
       if (mounted) setState(() => _loading = false);
@@ -40,7 +43,9 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
       _error = null;
     });
     try {
-      final items = await _api.listReviewQueue();
+      final items = useInitialReviews
+          ? widget.initialReviews!
+          : await _api.listReviewQueue();
       final classes = await _api.listClasses();
       if (!mounted) return;
       setState(() {
