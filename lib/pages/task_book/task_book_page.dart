@@ -929,6 +929,8 @@ class _NextTaskCard extends StatelessWidget {
   }
 }
 
+// Kept for the staged task-book layout that is enabled by department rollout flags.
+// ignore: unused_element
 class _TaskBookStageSectionCard<T> extends StatelessWidget {
   final TaskBookStageSection<T> section;
   final String goalId;
