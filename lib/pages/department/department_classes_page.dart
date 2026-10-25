@@ -1395,6 +1395,18 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             ]),
           ),
         ),
+      if (detail.ceCredits.isNotEmpty || detail.gradingConfig.isNotEmpty)
+        Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Template requirements', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+          if (detail.ceCredits.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('EMS CE: ${detail.ceCredits.map((item) => '${item['hours']} hr ${item['category']}').join(' · ')}')),
+          if (detail.gradingConfig.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Required scores: ${[
+            if (detail.gradingConfig['writtenTestEnabled'] == true) 'Written test${detail.gradingConfig['writtenTestPassPercent'] != null ? ' ≥${detail.gradingConfig['writtenTestPassPercent']}%' : ''}',
+            if (detail.gradingConfig['ccfEnabled'] == true) 'CCF${detail.gradingConfig['ccfPassPercent'] != null ? ' ≥${detail.gradingConfig['ccfPassPercent']}%' : ''}',
+          ].join(' · ').isEmpty ? 'None' : [
+            if (detail.gradingConfig['writtenTestEnabled'] == true) 'Written test${detail.gradingConfig['writtenTestPassPercent'] != null ? ' ≥${detail.gradingConfig['writtenTestPassPercent']}%' : ''}',
+            if (detail.gradingConfig['ccfEnabled'] == true) 'CCF${detail.gradingConfig['ccfPassPercent'] != null ? ' ≥${detail.gradingConfig['ccfPassPercent']}%' : ''}',
+          ].join(' · ')}')),
+        ]))),
       Card(
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -1751,12 +1763,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             ]),
           ),
         ),
-        if (detail.customFields.isNotEmpty) ...[
+        if (detail.customFields.isNotEmpty || detail.gradingConfig.isNotEmpty) ...[
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: _busy || detail.status == 'COMPLETE' ? null : () => _editCustomResults(detail, student),
             icon: const Icon(Icons.fact_check_outlined),
-            label: const Text('Template-specific student results'),
+            label: Text(detail.gradingConfig.isNotEmpty && detail.customFields.isEmpty ? 'Record required scores' : 'Template-specific student results'),
           ),
         ],
         if (!_showGrading) ...[
