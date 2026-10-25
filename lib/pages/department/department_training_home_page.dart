@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_review_page.dart';
-import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/pages/department/department_qualifications_page.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/career_record_store.dart';
