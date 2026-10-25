@@ -16,6 +16,7 @@ class LocalStore {
   static const String _kCustomRequirements = 'fireops.customRequirements';
   static const String _kPathOverrides = 'fireops.pathOverrides';
   static const String _kCertMatchConfirmations = 'fireops.certMatchConfirmations';
+  static const String _kCertificationRemovalAudit = 'fireops.certRemovalAudit.v1';
   static const String _kTaskBookTaskProgress = 'fireops.taskBook.taskProgress';
   static const String _kTaskBookCustomTasks = 'fireops.taskBook.customTasks';
   static const String _kTaskBookCustomBooks = 'fireops.taskBook.customBooks.v1';
@@ -170,6 +171,12 @@ class LocalStore {
       (await loadJsonMap(_kCertMatchConfirmations)) ?? <String, dynamic>{};
   Future<void> saveCertificationMatchConfirmations(Map<String, dynamic> json) =>
       saveJson(_kCertMatchConfirmations, json);
+
+  Future<List<Map<String, dynamic>>> loadCertificationRemovalAudit() =>
+      loadJsonList(_kCertificationRemovalAudit);
+
+  Future<void> saveCertificationRemovalAudit(List<Map<String, dynamic>> json) =>
+      saveJson(_kCertificationRemovalAudit, json);
 
   Future<Map<String, dynamic>> loadTaskBookTaskProgress() async =>
       (await loadJsonMap(_kTaskBookTaskProgress)) ?? <String, dynamic>{};

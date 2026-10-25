@@ -15,6 +15,7 @@ class CertificationRenewalTile extends StatelessWidget {
   final String? renewalSummary;
   final VoidCallback onOpen;
   final VoidCallback? onRenew;
+  final Widget? trailing;
 
   const CertificationRenewalTile({
     super.key,
@@ -26,6 +27,7 @@ class CertificationRenewalTile extends StatelessWidget {
     required this.renewalSummary,
     required this.onOpen,
     required this.onRenew,
+    this.trailing,
   });
 
   factory CertificationRenewalTile.fromCert({
@@ -34,6 +36,7 @@ class CertificationRenewalTile extends StatelessWidget {
     required String displayName,
     required VoidCallback onOpen,
     required VoidCallback? onRenew,
+    Widget? trailing,
   }) {
     final guidance = CertificationUrgency.renewalGuidance(cert);
     final status = cert.status;
@@ -64,6 +67,7 @@ class CertificationRenewalTile extends StatelessWidget {
       renewalSummary: guidance.summary,
       onOpen: onOpen,
       onRenew: onRenew,
+      trailing: trailing,
     );
   }
 
@@ -134,6 +138,10 @@ class CertificationRenewalTile extends StatelessWidget {
                             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
                           ),
                         ),
+                        if (trailing != null) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          trailing!,
+                        ],
                         const SizedBox(width: AppSpacing.sm),
                         StatusPill(
                           text: label,

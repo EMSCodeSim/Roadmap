@@ -28,6 +28,8 @@ class OnboardingHero extends StatelessWidget {
     required this.progressValue,
     this.progressLabel,
     this.icon = Icons.route,
+    this.currentStep,
+    this.totalSteps,
   });
 
   final String headline;
@@ -35,11 +37,16 @@ class OnboardingHero extends StatelessWidget {
   final double progressValue;
   final String? progressLabel;
   final IconData icon;
+  final int? currentStep;
+  final int? totalSteps;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final stepText = (currentStep != null && totalSteps != null)
+        ? 'Step ${currentStep!.clamp(1, totalSteps!)} of $totalSteps'
+        : null;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
@@ -72,12 +79,27 @@ class OnboardingHero extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  headline,
-                  style: t.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    height: 1.12,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (stepText != null) ...[
+                      Text(
+                        stepText,
+                        style: t.labelLarge?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                    ],
+                    Text(
+                      headline,
+                      style: t.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        height: 1.12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -468,6 +490,8 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
               supporting:
                   'Responder Roadmap helps you plan your Fire and EMS career, record experience, manage credentials, and keep official department work clearly separate.',
               progressValue: 0,
+              currentStep: 1,
+              totalSteps: _setupSteps,
               progressLabel:
                   'Four quick setup steps · You can change everything later',
             ),
@@ -545,6 +569,8 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           supporting:
               'Pick Fire, EMS, or both. This filters roles, certifications, and goals for your personal roadmap — not department mode.',
           progressValue: 1 / _setupSteps,
+          currentStep: 2,
+          totalSteps: _setupSteps,
           progressLabel: 'Required · You can change this later in Profile',
         ),
         const SizedBox(height: 14),
@@ -696,6 +722,8 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           supporting:
               'This sets the right starting point, state resources, and what counts as “next up.”',
           progressValue: 2 / _setupSteps,
+          currentStep: 3,
+          totalSteps: _setupSteps,
           progressLabel: 'Required: current role and state · Everything else is optional',
         ),
         const SizedBox(height: 14),
@@ -1170,6 +1198,8 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           renewalHistory: const [],
           createdAt: now,
           updatedAt: now,
+          deletedAt: null,
+          deletedBy: null,
         );
       }).toList();
 

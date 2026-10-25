@@ -83,6 +83,14 @@ class _NeedsAttentionPreviewState extends State<NeedsAttentionPreview> {
               ),
             ],
           ),
+          const SizedBox(height: 4),
+          Text(
+            'Fix these items to keep your roadmap, certifications, and Task Book progress accurate.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.25,
+                ),
+          ),
           if (nowCount > 0) ...[
             const SizedBox(height: 3),
             Text(
@@ -128,7 +136,7 @@ class _NeedsAttentionPreviewState extends State<NeedsAttentionPreview> {
             child: OutlinedButton.icon(
               onPressed: () => context.push(AppRoutes.needsAttention),
               icon: const Icon(Icons.rule_outlined),
-              label: const Text('Review items'),
+              label: const Text('Review & fix'),
             ),
           ),
         ],

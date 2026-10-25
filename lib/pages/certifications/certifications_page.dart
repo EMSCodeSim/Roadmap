@@ -10,8 +10,11 @@ import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 import 'package:firepath/widgets/certification_renewal_tile.dart';
 import 'package:firepath/widgets/calm_empty_state.dart';
+import 'package:firepath/widgets/remove_certification_sheet.dart';
 
 enum _CertFilter { all, current, expiring, expired }
+
+enum _CertMenuAction { open, remove }
 
 class CertificationsPage extends StatefulWidget {
   const CertificationsPage({super.key});
@@ -236,6 +239,25 @@ class _CertMatchBanner extends StatelessWidget {
 class _CertificationsPageState extends State<CertificationsPage> {
   _CertFilter _filter = _CertFilter.all;
 
+  Future<void> _confirmAndRemove(AppState state, Certification cert) async {
+    final displayName = state.certificationDisplayName(cert);
+    final confirm = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => RemoveCertificationSheet(
+        certificationName: displayName,
+        memberLabel: 'You',
+        affectsDepartment: false,
+      ),
+    );
+    if (confirm != true) return;
+    await state.deleteCertification(cert.id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Removed $displayName.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
@@ -409,6 +431,27 @@ class _CertificationsPageState extends State<CertificationsPage> {
                                             'focus': 'renewal',
                                           },
                                         ),
+                                        trailing: PopupMenuButton<_CertMenuAction>(
+                                          tooltip: 'Actions',
+                                          onSelected: (action) async {
+                                            switch (action) {
+                                              case _CertMenuAction.open:
+                                                context.push('${AppRoutes.certificationDetail}/${cert.id}');
+                                              case _CertMenuAction.remove:
+                                                await _confirmAndRemove(state, cert);
+                                            }
+                                          },
+                                          itemBuilder: (context) => const [
+                                            PopupMenuItem(
+                                              value: _CertMenuAction.open,
+                                              child: Text('Open'),
+                                            ),
+                                            PopupMenuItem(
+                                              value: _CertMenuAction.remove,
+                                              child: Text('Remove'),
+                                            ),
+                                          ],
+                                        ),
                                       )
                                     : InkWell(
                                         onTap: () => context.push(
@@ -469,10 +512,28 @@ class _CertificationsPageState extends State<CertificationsPage> {
                                                   ],
                                                 ),
                                               ),
-                                              const SizedBox(
-                                                  width: AppSpacing.sm),
-                                              Icon(Icons.chevron_right,
-                                                  color: cs.onSurfaceVariant),
+                                              const SizedBox(width: AppSpacing.sm),
+                                              PopupMenuButton<_CertMenuAction>(
+                                                tooltip: 'Actions',
+                                                onSelected: (action) async {
+                                                  switch (action) {
+                                                    case _CertMenuAction.open:
+                                                      context.push('${AppRoutes.certificationDetail}/${cert.id}');
+                                                    case _CertMenuAction.remove:
+                                                      await _confirmAndRemove(state, cert);
+                                                  }
+                                                },
+                                                itemBuilder: (context) => const [
+                                                  PopupMenuItem(
+                                                    value: _CertMenuAction.open,
+                                                    child: Text('Open'),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    value: _CertMenuAction.remove,
+                                                    child: Text('Remove'),
+                                                  ),
+                                                ],
+                                              ),
                                             ],
                                           ),
                                         ),

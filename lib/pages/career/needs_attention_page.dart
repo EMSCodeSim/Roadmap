@@ -9,6 +9,7 @@ import 'package:firepath/services/needs_attention_engine.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
+import 'package:firepath/widgets/calm_empty_state.dart';
 
 class NeedsAttentionPage extends StatefulWidget {
   const NeedsAttentionPage({super.key});
@@ -55,28 +56,22 @@ class _NeedsAttentionPageState extends State<NeedsAttentionPage> {
                   ? ListView(
                       padding: AppSpacing.paddingLg,
                       children: [
-                        const SizedBox(height: 80),
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 58,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Nothing needs attention',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          'Career Road will surface expiring credentials, unresolved cert matches, missing required certifications, and stalled Task Book progress here.',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                height: 1.45,
-                              ),
+                        const SizedBox(height: 40),
+                        CalmEmptyState(
+                          icon: Icons.check_circle_outline,
+                          title: 'You’re all caught up',
+                          message:
+                              'This screen flags items that could block progress: expiring credentials, missing expiration dates, certifications that need matching, and Task Book progress that has stalled.',
+                          primaryAction: FilledButton.icon(
+                            onPressed: () => context.go(AppRoutes.myPath),
+                            icon: const Icon(Icons.route_outlined),
+                            label: const Text('Open Career Road'),
+                          ),
+                          secondaryAction: OutlinedButton.icon(
+                            onPressed: () => context.go(AppRoutes.certifications),
+                            icon: const Icon(Icons.workspace_premium_outlined),
+                            label: const Text('Open Certifications'),
+                          ),
                         ),
                       ],
                     )
@@ -84,7 +79,7 @@ class _NeedsAttentionPageState extends State<NeedsAttentionPage> {
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 36),
                       children: [
                         Text(
-                          'Only items that may affect your current Career Road are shown here.',
+                          'Needs Attention means there’s something to review or fix that may affect your current Career Road.',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),

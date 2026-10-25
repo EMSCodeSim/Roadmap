@@ -15,7 +15,12 @@ class CertificationController extends ChangeNotifier {
   final List<PendingCertMatch> _pendingCertMatches = <PendingCertMatch>[];
   final Map<String, Certification> _certsById = <String, Certification>{};
 
-  List<Certification> get certifications => _certsById.values.toList()
+  List<Certification> get certifications => _certsById.values
+      .where((c) => !c.isDeleted)
+      .toList()
+    ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+  List<Certification> get certificationsIncludingDeleted => _certsById.values.toList()
     ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
   List<PendingCertMatch> get pendingCertMatches => List.unmodifiable(_pendingCertMatches);
@@ -65,8 +70,15 @@ class CertificationController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> delete(String id) async {
-    _certsById.remove(id);
+  Future<void> softDelete({required String id, required String deletedBy}) async {
+    final existing = _certsById[id];
+    if (existing == null) return;
+    final now = DateTime.now();
+    _certsById[id] = existing.copyWith(
+      updatedAt: now,
+      deletedAt: now,
+      deletedBy: deletedBy,
+    );
     await _persist();
     notifyListeners();
   }

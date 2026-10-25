@@ -487,7 +487,34 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> deleteCertification(String id) async {
-    await certificationController.delete(id);
+    final cert = certificationController.getById(id);
+    if (cert == null) return;
+
+    // Local-only mode: we can only reliably attribute the actor as "self".
+    final removedBy = 'self';
+    final now = DateTime.now();
+
+    await certificationController.softDelete(id: id, deletedBy: removedBy);
+
+    try {
+      // Best-effort audit trail: keep local history even though the record is
+      // hidden. This preserves intent + timing for department policy reviews.
+      final auditRaw = await _store.loadCertificationRemovalAudit();
+      final entry = {
+        'id': 'cert_remove_${now.microsecondsSinceEpoch}',
+        'certificationId': cert.id,
+        'certificationName': cert.name,
+        'affectedMemberLabel': 'You',
+        'removedBy': removedBy,
+        'removedAt': now.toIso8601String(),
+        'note': null,
+      };
+      final next = [...auditRaw, entry];
+      await _store.saveCertificationRemovalAudit(next);
+    } catch (e) {
+      debugPrint('AppState.deleteCertification audit write failed: $e');
+    }
+
     await _persistAll();
   }
 

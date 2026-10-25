@@ -17,6 +17,11 @@ class Certification {
   final List<CertificationRenewal> renewalHistory;
   final DateTime createdAt;
   final DateTime updatedAt;
+  /// Soft-delete timestamp. When set, the certification is hidden from normal UI
+  /// but preserved for local audit/history.
+  final DateTime? deletedAt;
+  /// Actor identifier that initiated deletion (local-only app: typically "self").
+  final String? deletedBy;
 
   const Certification({
     required this.id,
@@ -31,6 +36,8 @@ class Certification {
     this.renewalHistory = const [],
     required this.createdAt,
     required this.updatedAt,
+    this.deletedAt,
+    this.deletedBy,
   });
 
   factory Certification.empty({required String id}) {
@@ -48,6 +55,8 @@ class Certification {
       renewalHistory: const [],
       createdAt: now,
       updatedAt: now,
+      deletedAt: null,
+      deletedBy: null,
     );
   }
 
@@ -62,6 +71,8 @@ class Certification {
     String? notes,
     List<CertificationRenewal>? renewalHistory,
     DateTime? updatedAt,
+    DateTime? deletedAt,
+    String? deletedBy,
     bool clearExpirationDate = false,
     bool clearIssueDate = false,
   }) {
@@ -78,8 +89,12 @@ class Certification {
       renewalHistory: renewalHistory ?? this.renewalHistory,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      deletedBy: deletedBy ?? this.deletedBy,
     );
   }
+
+  bool get isDeleted => deletedAt != null;
 
   CertificationStatus get status {
     if (doesNotExpire || expirationDate == null) return CertificationStatus.current;
@@ -109,6 +124,8 @@ class Certification {
     'renewalHistory': renewalHistory.map((e) => e.toJson()).toList(),
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
+    'deletedAt': deletedAt?.toIso8601String(),
+    'deletedBy': deletedBy,
   };
 
   factory Certification.fromJson(Map<String, dynamic> json) {
@@ -139,6 +156,8 @@ class Certification {
       renewalHistory: history,
       createdAt: created,
       updatedAt: updated,
+      deletedAt: dt(json['deletedAt']),
+      deletedBy: json['deletedBy'] as String?,
     );
   }
 }

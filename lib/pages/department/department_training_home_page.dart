@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/nav.dart';
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_review_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
@@ -314,6 +316,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   Widget _dashboardBox({
     required String id, required String title, required IconData icon,
     required int count, required Widget child,
+    String? subtitle,
   }) {
     final expanded = _expandedSection == id;
     return Card(
@@ -323,6 +326,12 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
         ListTile(
           leading: Icon(icon),
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          subtitle: (subtitle ?? '').trim().isEmpty
+              ? null
+              : Text(
+                  subtitle!.trim(),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
             Text('$count', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(width: 12),
@@ -353,6 +362,11 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
             Text(mode.departmentLink!.departmentName, style: Theme.of(context).textTheme.bodySmall),
         ]),
         actions: [
+          TextButton.icon(
+            onPressed: () => context.push(AppRoutes.departmentSettings),
+            icon: const Icon(Icons.settings_outlined),
+            label: const Text('Settings'),
+          ),
           IconButton(
             tooltip: 'Refresh',
             onPressed: _refreshing ? null : () => _refresh(),
@@ -379,17 +393,20 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     id: 'attention', title: 'Needs Attention',
                     icon: Icons.notification_important_outlined,
                     count: _workQueue.length,
+                    subtitle: 'Items that need a next step to keep department work moving.',
                     child: _CanonicalWorkQueue(items: _workQueue, onTap: _openWorkItem),
                   ),
                   _dashboardBox(
                     id: 'assignments', title: 'Assignments',
                     icon: Icons.assignment_outlined, count: oneOffAssignments.length,
+                    subtitle: 'One-off items assigned to you (not a full Task Book).',
                     child: _Section(title: 'Assigned to you', items: oneOffAssignments,
                       status: _status, onTap: _open),
                   ),
                   _dashboardBox(
                     id: 'taskbooks', title: 'Task Books',
                     icon: Icons.menu_book_outlined, count: assignedTaskBooks.length,
+                    subtitle: 'Department Task Books assigned to you for completion and sign-off.',
                     child: _Section(title: 'Your department task books',
                       items: assignedTaskBooks, status: _status, onTap: _open),
                   ),
@@ -398,6 +415,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     icon: Icons.school_outlined,
                     count: _instructorTraining.length +
                         _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).length,
+                    subtitle: 'Create and manage Training Sheets. Approvals happen here; RMS entry is separate.',
                     child: Column(children: [
                       Align(alignment: Alignment.centerLeft, child: FilledButton.icon(
                         onPressed: _openClasses,
@@ -434,6 +452,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     id: 'complete', title: 'Complete',
                     icon: Icons.check_circle_outline_rounded,
                     count: _assignments.where((a) => _status(a) == 'Complete').length,
+                    subtitle: 'Finished items (kept for reference).',
                     child: _Section(title: 'Completed items',
                       items: _assignments.where((a) => _status(a) == 'Complete').toList(),
                       status: _status, onTap: _open),
@@ -556,6 +575,21 @@ class _DepartmentStatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lower = label.toLowerCase();
+    final hint = () {
+      if (lower.contains('return')) {
+        return 'Returned means corrections are needed. Open it, fix issues, then resubmit.';
+      }
+      if (lower.contains('in progress')) {
+        return 'In Progress means work has started but isn’t submitted yet. Open it to continue.';
+      }
+      if (lower.contains('waiting')) {
+        return 'Waiting means it’s pending someone else’s action (review or RMS entry).';
+      }
+      if (lower.contains('complete')) {
+        return 'Complete means it’s finished. You can open it to review details.';
+      }
+      return null;
+    }();
     final color = lower.contains('return') || lower.contains('overdue')
         ? FireOpsSemanticColors.red
         : lower.contains('waiting')
@@ -564,7 +598,7 @@ class _DepartmentStatusPill extends StatelessWidget {
                 ? FireOpsSemanticColors.green
                 : FireOpsSemanticColors.amber;
 
-    return Container(
+    final pill = Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 7 : 9,
         vertical: compact ? 3 : 4,
@@ -584,6 +618,9 @@ class _DepartmentStatusPill extends StatelessWidget {
             ),
       ),
     );
+
+    if ((hint ?? '').trim().isEmpty) return pill;
+    return Tooltip(message: hint!, child: Semantics(label: '$label. $hint', child: pill));
   }
 }
 

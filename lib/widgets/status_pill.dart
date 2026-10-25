@@ -9,6 +9,7 @@ class StatusPill extends StatelessWidget {
   final Color? foregroundColor;
   final double maxWidth;
   final IconData? icon;
+  final String? tooltip;
 
   const StatusPill({
     super.key,
@@ -17,18 +18,17 @@ class StatusPill extends StatelessWidget {
     this.foregroundColor,
     this.maxWidth = 155,
     this.icon,
+    this.tooltip,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final fg = foregroundColor ?? cs.onSurfaceVariant;
-    return Container(
+
+    final pill = Container(
       constraints: BoxConstraints(maxWidth: maxWidth),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
       decoration: BoxDecoration(
         color: backgroundColor ?? cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(999),
@@ -46,14 +46,14 @@ class StatusPill extends StatelessWidget {
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: fg, fontWeight: FontWeight.w800),
             ),
           ),
         ],
       ),
     );
+
+    if ((tooltip ?? '').trim().isEmpty) return pill;
+    return Tooltip(message: tooltip!.trim(), child: Semantics(label: '${text.trim()}. ${tooltip!.trim()}', child: pill));
   }
 }

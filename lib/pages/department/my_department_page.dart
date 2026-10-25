@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firepath/nav.dart';
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_inbox_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
@@ -546,6 +548,12 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
           widget.taskBooksOnly ? 'Task Books' : 'Department',
         ),
         actions: [
+          if (_link != null)
+            TextButton.icon(
+              onPressed: () => context.push(AppRoutes.departmentSettings),
+              icon: const Icon(Icons.settings_outlined),
+              label: const Text('Settings'),
+            ),
           if (_link != null)
             IconButton(
               tooltip: 'Sync department records',

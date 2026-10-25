@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/widgets/app_back_button.dart';
+import 'package:firepath/widgets/remove_certification_sheet.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/models/requirement.dart';
@@ -678,41 +679,18 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
   }
 
   Future<void> _delete() async {
+    final displayName = context.read<AppState>().certificationDisplayName(_cert);
+    final affectsDepartment =
+        _departmentConnected && _sharedCertificationIds.contains(_cert.id);
+
     final confirm = await showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,
-      builder: (context) {
-        return Padding(
-          padding: AppSpacing.paddingLg,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Delete certification?',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'This cannot be undone.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              FilledButton(
-                onPressed: () => context.pop(true),
-                child: const Text('Delete'),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              OutlinedButton(
-                onPressed: () => context.pop(false),
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-        );
-      },
+      builder: (context) => RemoveCertificationSheet(
+        certificationName: displayName,
+        memberLabel: 'You',
+        affectsDepartment: affectsDepartment,
+      ),
     );
     if (confirm != true) return;
     if (_departmentConnected &&
@@ -746,6 +724,9 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
     }
     await context.read<AppState>().deleteCertification(_cert.id);
     if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Removed $displayName.')),
+    );
     context.pop();
   }
 
@@ -789,7 +770,7 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
         actions: [
           if (widget.certId != 'new')
             IconButton(
-              tooltip: 'Delete',
+              tooltip: 'Remove',
               onPressed: _delete,
               icon: const Icon(Icons.delete_outline),
             ),

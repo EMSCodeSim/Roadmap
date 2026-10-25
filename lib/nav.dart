@@ -25,6 +25,7 @@ import 'package:firepath/pages/career/career_inbox_page.dart';
 import 'package:firepath/pages/career/promotion_portfolio_review_page.dart';
 import 'package:firepath/pages/career/department_transfer_page.dart';
 import 'package:firepath/pages/department/department_tab_page.dart';
+import 'package:firepath/pages/department/department_settings_page.dart';
 import 'package:firepath/pages/department/department_class_qr_scanner_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/competency_map_page.dart';
@@ -294,6 +295,13 @@ class AppRouter {
         name: 'settings',
         pageBuilder: (context, state) =>
             const MaterialPage(child: SettingsPage()),
+      ),
+
+      GoRoute(
+        path: AppRoutes.departmentSettings,
+        name: 'department_settings',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: DepartmentSettingsPage()),
       ),
 
       GoRoute(
@@ -570,6 +578,7 @@ class AppRoutes {
 
   static const String department = '/department';
   static const String departmentQrScan = '/department/scan';
+  static const String departmentSettings = '/department/settings';
 
   static const String career = growth;
   static const String careerVault = personalLog;
