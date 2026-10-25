@@ -192,10 +192,27 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       return;
     }
     if (item.kind == 'EVALUATION') {
-      await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => DepartmentReviewPage(initialReviewId: item.targetId),
-      ));
-      if (mounted) await _refresh(silent: true);
+      // Work queue evaluation IDs may refer to a requirement or assignment,
+      // rather than a pending-review ID. Resolve the owning record first.
+      var matches = _assignments.where((row) => row.id == item.targetId);
+      if (matches.isEmpty) {
+        try {
+          final latest = await _api.listAssignments();
+          if (!mounted) return;
+          setState(() => _assignments = latest);
+          matches = latest.where((row) => row.id == item.targetId);
+        } catch (_) {
+          // The review queue remains available as a fallback.
+        }
+      }
+      if (matches.isNotEmpty) {
+        await _open(matches.first);
+      } else {
+        await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => DepartmentReviewPage(initialReviewId: item.targetId),
+        ));
+        if (mounted) await _refresh(silent: true);
+      }
       return;
     }
     if (item.kind == 'TRAINING_SHEET' || item.kind == 'RMS_ENTRY') {
