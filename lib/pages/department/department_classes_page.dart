@@ -241,7 +241,7 @@ class _CreateTrainingSheet extends StatefulWidget {
 
 class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
-  bool busy = false, qr = true, advanced = false; String? error; DateTime? endTime; DateTime startTime = DateTime.now(); String category = 'COMPANY'; String checklist = ''; final Set<String> selectedMembers = <String>{};
+  bool busy = false, qr = true, advanced = false; String? error; DateTime startTime = DateTime.now(); String category = 'COMPANY'; String checklist = ''; final Set<String> selectedMembers = <String>{};
   @override void initState() {
     super.initState();
     final t=widget.template;
@@ -263,7 +263,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:startTime.toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', endsAt:endTime?.toUtc().toIso8601String(), creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, membershipIds:selectedMembers.toList(), selfRegistration:qr);
+      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:startTime.toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, membershipIds:selectedMembers.toList(), selfRegistration:qr);
       if(mounted) Navigator.pop(context,created.id);
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
@@ -297,17 +297,6 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         label:Text('Training date / start: ${startTime.toLocal()}'),
       ),
       const SizedBox(height:12),
-      if(advanced) OutlinedButton.icon(
-        onPressed: () async {
-          final now = DateTime.now();
-          final day = await showDatePicker(context:context,initialDate:endTime??now,firstDate:now.subtract(const Duration(days:365)),lastDate:now.add(const Duration(days:730)));
-          if(day==null || !context.mounted)return;
-          final time = await showTimePicker(context:context,initialTime:TimeOfDay.fromDateTime(endTime??now));
-          if(time!=null && mounted)setState(()=>endTime=DateTime(day.year,day.month,day.day,time.hour,time.minute));
-        },
-        icon:const Icon(Icons.schedule),
-        label:Text(endTime==null?'Set required end time': 'End: ${endTime!.toLocal()}'),
-      ),
       TextButton(onPressed:()=>setState(()=>advanced=!advanced),child:Text(advanced?'Hide optional details':'Show optional details')),
       if(advanced) TextField(controller:location,decoration:const InputDecoration(labelText:'Location (closeout optional)')),
       const SizedBox(height:12),if(advanced) TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Training hours (finish after teaching)')),
@@ -327,7 +316,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
           );
         }).toList())),
       ]),
-      const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Start Training')),
+      const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Create Training Sheet')),
     ])),
   );
 }
