@@ -293,7 +293,10 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
           return;
         }
         await Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => DepartmentReviewPage(initialReviewId: item.targetId),
+          builder: (_) => DepartmentReviewPage(
+            initialReviewId: item.targetId,
+            initialReviews: reviews,
+          ),
         ));
         if (mounted) await _refresh(silent: true);
       } on ResponderRoadmapApiException catch (error) {
