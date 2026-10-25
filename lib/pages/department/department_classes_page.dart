@@ -661,8 +661,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
 
   Future<void> _editCustomResults(DepartmentClassDetail detail, DepartmentClassStudent student) async {
     final fields = detail.customFields;
-    if (fields.isEmpty) return;
+    final config = detail.gradingConfig;
+    final configured = config.isNotEmpty;
+    final showWritten = configured ? config['writtenTestEnabled'] == true : true;
+    final showCcf = configured ? config['ccfEnabled'] == true : true;
+    if (fields.isEmpty && !showWritten && !showCcf) return;
     final controllers = <String, TextEditingController>{};
+    final writtenController = TextEditingController(text: student.writtenScore?.toString() ?? '');
+    final ccfController = TextEditingController(text: student.ccfScore?.toString() ?? '');
     final values = Map<String, dynamic>.from(student.customValues);
     for (final field in fields) {
       final id = field['id']?.toString() ?? '';
@@ -674,6 +680,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         title: Text('${student.name} — Student results'),
         scrollable: true,
         content: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (showWritten) TextField(controller: writtenController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: 'Written test score (%)${config['writtenTestPassPercent'] != null ? ' · pass ≥${config['writtenTestPassPercent']}%' : ''}')),
+          if (showCcf) TextField(controller: ccfController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: 'CCF score (%)${config['ccfPassPercent'] != null ? ' · pass ≥${config['ccfPassPercent']}%' : ''}')),
           for (final field in fields) ...[
             const SizedBox(height: 10),
             if (field['type'] == 'CHECKBOX')
@@ -709,7 +717,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       }
       setState(() => _busy = true);
       try {
-        final updated = await _api.updateClassStudent(classId: detail.id, enrollmentId: student.id, attendance: student.attendance, customValues: values);
+        final updated = await _api.updateClassStudent(classId: detail.id, enrollmentId: student.id, attendance: student.attendance, customValues: fields.isEmpty ? null : values, writtenScore: showWritten ? double.tryParse(writtenController.text.trim()) : null, ccfScore: showCcf ? double.tryParse(ccfController.text.trim()) : null);
         _setDetail(updated);
       } catch (error) {
         if (mounted) setState(() => _error = error.toString());
@@ -786,6 +794,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       // pending sync, and the actual close decision.
       if (await _editTrainingDocumentation()) await _closeTraining();
     }
+    for (final controller in controllers.values) { controller.dispose(); }
+    writtenController.dispose();
+    ccfController.dispose();
   }
 
   Future<void> _setRosterAttendance(DepartmentClassStudent member, String attendance) async {
