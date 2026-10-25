@@ -168,9 +168,27 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   }
 
   Future<void> _openWorkItem(DepartmentWorkQueueItem item) async {
-    if (item.kind == 'ASSIGNMENT') {
-      final matches = _assignments.where((row) => row.id == item.targetId);
-      if (matches.isNotEmpty) await _open(matches.first);
+    if (item.kind == 'ASSIGNMENT' || item.kind == 'TASK_BOOK') {
+      var matches = _assignments.where((row) => row.id == item.targetId);
+      if (matches.isEmpty) {
+        // The work queue can refresh before the assignment list. Resolve the
+        // selected record again instead of navigating to an unrelated queue.
+        try {
+          final latest = await _api.listAssignments();
+          if (!mounted) return;
+          setState(() => _assignments = latest);
+          matches = latest.where((row) => row.id == item.targetId);
+        } catch (_) {
+          // Display a specific navigation error below.
+        }
+      }
+      if (matches.isNotEmpty) {
+        await _open(matches.first);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('This Task Book or Assignment is no longer available. Refresh and try again.'),
+        ));
+      }
       return;
     }
     if (item.kind == 'EVALUATION') {
