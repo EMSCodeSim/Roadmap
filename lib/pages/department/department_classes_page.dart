@@ -63,17 +63,19 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
             padding: const EdgeInsets.all(20),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(children: [
-                Expanded(child: Text('1. Choose training category', style: Theme.of(sheetContext).textTheme.titleLarge)),
+                Expanded(child: Text('1. Choose training topic', style: Theme.of(sheetContext).textTheme.titleLarge)),
                 TextButton.icon(onPressed: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(null), icon: const Icon(Icons.close_rounded), label: const Text('Cancel')),
               ]),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: category,
-                decoration: const InputDecoration(labelText: 'Category'),
+                decoration: const InputDecoration(labelText: 'Topic'),
                 items: const [
                   DropdownMenuItem(value: '', child: Text('All categories')),
                   DropdownMenuItem(value: 'EMS', child: Text('EMS')),
-                  DropdownMenuItem(value: 'COMPANY', child: Text('Fire / Company')),
+                  DropdownMenuItem(value: 'CPR', child: Text('CPR')),
+                  DropdownMenuItem(value: 'FIRE', child: Text('Fire')),
+                  DropdownMenuItem(value: 'FIRE', child: Text('Fire')),
                   DropdownMenuItem(value: 'HAZMAT', child: Text('HazMat')),
                   DropdownMenuItem(value: 'DRIVER', child: Text('Driver Operator')),
                   DropdownMenuItem(value: 'FACILITY', child: Text('Facility')),
