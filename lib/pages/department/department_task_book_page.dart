@@ -450,7 +450,7 @@ class _RequirementSheetState extends State<_RequirementSheet> {
 
   Future<void> _openReference(String raw) async {
     final uri = Uri.tryParse(raw);
-    if (uri == null) return;
+    if (uri == null || !['http', 'https'].contains(uri.scheme.toLowerCase())) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
@@ -507,7 +507,7 @@ class _RequirementSheetState extends State<_RequirementSheet> {
                   child: TextButton.icon(
                     onPressed: () => _openReference(requirement.referenceUrl!),
                     icon: const Icon(Icons.open_in_new_rounded),
-                    label: const Text('Open reference'),
+                    label: const Text('Open learning resource'),
                   ),
                 ),
             ],
