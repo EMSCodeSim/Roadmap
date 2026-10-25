@@ -589,6 +589,13 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
                   },
           ),
           const SizedBox(height: AppSpacing.lg),
+          // Keep build/switch actions above the long stage list on a phone.
+          _DepartmentTaskBookEntryCard(
+            customBooks: state.customTaskBooks,
+            onCreate: () => context.push(AppRoutes.customTaskBookCreate),
+            onSwitch: () => TaskBookPage._showSwitcher(context),
+          ),
+          const SizedBox(height: AppSpacing.lg),
           ...plan.sections.map(
             (s) => Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.lg),
@@ -603,14 +610,6 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          // Keep the custom/department Task Book entry point easy to find, but
-          // visually secondary once the user is actively working their path.
-          _DepartmentTaskBookEntryCard(
-            customBooks: state.customTaskBooks,
-            onCreate: () => context.push(AppRoutes.customTaskBookCreate),
-            onSwitch: () => TaskBookPage._showSwitcher(context),
           ),
           const SizedBox(height: AppSpacing.xl),
           Container(
@@ -946,7 +945,11 @@ class _TaskBookStageSectionCard<T> extends StatelessWidget {
     final completed = section.completedCount;
     final total = section.totalCount;
     final pct = total <= 0 ? 0.0 : (completed / total).clamp(0, 1).toDouble();
-    final defaultCollapsed = total > 0 && completed == total;
+    // Show the current stage first rather than expanding every unfinished
+    // stage into a very long page. Users can open any other stage on demand.
+    final containsNext = suggestedNextRequirementId != null &&
+        section.items.any((item) => item.requirement.id == suggestedNextRequirementId);
+    final defaultCollapsed = !containsNext;
 
     final progressLabel = total <= 0 ? '—' : '$completed of $total';
     final isDone = total > 0 && completed >= total;
@@ -962,6 +965,7 @@ class _TaskBookStageSectionCard<T> extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: ExpansionTile(
+          key: PageStorageKey('personal-taskbook-stage-${section.meta.title}'),
           initiallyExpanded: !defaultCollapsed,
           tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
           childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
