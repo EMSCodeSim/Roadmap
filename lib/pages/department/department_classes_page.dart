@@ -822,9 +822,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       // pending sync, and the actual close decision.
       if (await _editTrainingDocumentation()) await _closeTraining();
     }
-    for (final controller in controllers.values) { controller.dispose(); }
-    writtenController.dispose();
-    ccfController.dispose();
   }
 
   Future<void> _setRosterAttendance(DepartmentClassStudent member, String attendance) async {
