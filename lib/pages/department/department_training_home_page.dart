@@ -132,7 +132,6 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     // Matching is conservative: the verified record can support roadmap
     // progress, but it never fabricates a certification or authorization.
     try {
-      final app = app;
       final existing = await _careerRecordStore.load();
       var importedAny = false;
       for (final assignment in items.where((a) =>
