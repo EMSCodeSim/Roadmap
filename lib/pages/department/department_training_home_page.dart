@@ -55,23 +55,27 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
 
   Future<void> _refresh({bool silent = false}) async {
     if (_refreshing) return;
-    if (mounted) setState(() { _refreshing = true; if (!silent && _assignments.isEmpty) _loading = true; });
+    final timer = Stopwatch()..start();
+    if (mounted) setState(() {
+      _refreshing = true;
+      if (!silent && _assignments.isEmpty && _workQueue.isEmpty) _loading = true;
+    });
     try {
-      final session = await _api.currentSession();
-      // The essential dashboard requests are independent. Do not serialize them.
+      // Start both independent calls without waiting for session verification.
       final assignmentsFuture = _api.listAssignments();
       final queueFuture = _api.getWorkQueue();
+      final sessionFuture = _api.currentSession();
       final items = await assignmentsFuture;
-      final workQueue = await queueFuture;
       if (!mounted) return;
       items.sort(_priorityCompare);
-      setState(() {
-        _assignments = items;
-        _workQueue = workQueue.items;
-        _error = null;
-        _loading = false;
-      });
-      // Secondary data and personal evidence must never block first paint.
+      setState(() { _assignments = items; _error = null; _loading = false; });
+      debugPrint('Department: assignments visible after ${timer.elapsedMilliseconds}ms');
+      final workQueue = await queueFuture;
+      if (!mounted) return;
+      setState(() { _workQueue = workQueue.items; });
+      debugPrint('Department: work queue visible after ${timer.elapsedMilliseconds}ms');
+      final session = await sessionFuture;
+      if (!mounted) return;
       final app = context.read<AppState>();
       final inbox = context.read<DepartmentInboxController>();
       final mode = context.read<AppModeController>();
@@ -89,6 +93,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       setState(() { _error = e.message; _loading = false; });
     } finally {
       if (mounted) setState(() => _refreshing = false);
+      debugPrint('Department: primary refresh completed after ${timer.elapsedMilliseconds}ms');
     }
   }
 
@@ -101,25 +106,20 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     required AppModeController mode,
     required dynamic session,
   }) async {
-    // Refresh the independent panels without delaying the core dashboard.
-    try {
-      await mode.refreshFromSession(session);
-      await inbox.refresh(silent: true);
-    } catch (_) {
-      // A secondary service outage must not hide the department dashboard.
-    }
+    // Never make the initial screen depend on secondary data.
+    try { await mode.refreshFromSession(session); } catch (_) {}
+    try { await inbox.refresh(silent: true); } catch (_) {}
     if (const {'INSTRUCTOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
       try {
         final rmsFuture = _api.listRmsActionTrainingSheets();
         final instructorFuture = _api.listInstructorTrainingAttention();
         final rms = await rmsFuture;
+        if (mounted) setState(() => _rmsActions = rms);
         final instructors = await instructorFuture;
-        if (mounted) setState(() { _rmsActions = rms; _instructorTraining = instructors; });
-      } catch (_) {
-        // Keep the previously loaded secondary panels on transient errors.
-      }
+        if (mounted) setState(() => _instructorTraining = instructors);
+      } catch (_) {}
     }
-    _bridgePersonalEvidence(items: items, departmentName: departmentName, app: app);
+    await _bridgePersonalEvidence(items: items, departmentName: departmentName, app: app);
   }
 
   Future<void> _bridgePersonalEvidence({
@@ -127,45 +127,33 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     required String departmentName,
     required AppState app,
   }) async {
-    // Bridge newly completed department training into the responder's
-    // personal evidence without changing the official department record.
-    // Matching is conservative: the verified record can support roadmap
-    // progress, but it never fabricates a certification or authorization.
     try {
       final existing = await _careerRecordStore.load();
       var importedAny = false;
       for (final assignment in items.where((a) =>
-        a.progress >= 100 ||
-        a.status == 'COMPLETE' ||
-        a.status == 'COMPLETED')) {
-        if (CompetencyEvidenceBridge.isImported(existing, assignment)) {
-        continue;
-        }
-        final match =
-          CompetencyEvidenceBridge.matchAssignment(assignment, app.roadmap);
+          a.progress >= 100 || a.status == 'COMPLETE' || a.status == 'COMPLETED')) {
+        if (CompetencyEvidenceBridge.isImported(existing, assignment)) continue;
+        final match = CompetencyEvidenceBridge.matchAssignment(assignment, app.roadmap);
         final record = CompetencyEvidenceBridge.toVerifiedCareerRecord(
-        assignment: assignment,
-        departmentName: departmentName,
-        relatedGoalId: app.roadmap?.goal.id,
-        match: match,
+          assignment: assignment,
+          departmentName: departmentName,
+          relatedGoalId: app.roadmap?.goal.id,
+          match: match,
         );
         if (await _careerRecordStore.upsert(record)) {
-        existing.add(record);
-        importedAny = true;
-        await app.applyLogToRequirementProgress(record);
+          existing.add(record);
+          importedAny = true;
+          await app.applyLogToRequirementProgress(record);
         }
       }
       if (importedAny) {
         app.roadmapEvidenceChanged(
-        reason:
-            'Completed department training was added as verified evidence. Your Personal Roadmap was recalculated.',
+          reason: 'Completed department training was added as verified evidence. Your Personal Roadmap was recalculated.',
         );
       }
     } catch (_) {
-      // Department Home must remain available even if personal evidence
-      // bridging cannot run on this refresh.
+      // Personal evidence failures must not block department access.
     }
-
   }
 
   static int _priorityCompare(DepartmentTaskBookAssignment a, DepartmentTaskBookAssignment b) {
