@@ -49,7 +49,9 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
       });
       if (!_initialReviewOpened && widget.initialReviewId != null) {
         final matching = items.where((item) => item.id == widget.initialReviewId).firstOrNull;
-        if (matching != null) {
+        if (matching == null) {
+          setState(() => _error = 'The selected evaluation is not in your pending review queue. It may already be completed, reassigned, or unavailable to your account. Return to the original Task Book or Assignment to view its progress.');
+        } else {
           _initialReviewOpened = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) _open(matching);
