@@ -1392,8 +1392,16 @@ class ResponderRoadmapApi {
   }
 
   Future<List<DepartmentReviewItem>> listReviewQueue() async {
-    final data = await _request('GET', 'sign-offs?view=mine');
-    final list = data is List ? data : const <dynamic>[];
+    // The sign-offs endpoint returns { view, items, counts }. Accept the
+    // older bare-list shape too so a valid Needs Attention item is not
+    // mistaken for an unassigned review.
+    final data = await _request('GET', 'sign-offs?view=needs_me');
+    final rawItems = data is List
+        ? data
+        : data is Map
+            ? data['items']
+            : null;
+    final list = rawItems is List ? rawItems : const <dynamic>[];
     return list
         .whereType<Map>()
         .map((item) => DepartmentReviewItem.fromJson(
