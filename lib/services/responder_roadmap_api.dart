@@ -1561,6 +1561,7 @@ class ResponderRoadmapApi {
     required String notes,
     required String location,
     required double creditHours,
+    Map<String, double> ceCredits = const <String, double>{},
   }) async {
     final data = await _request(
       'PATCH',
@@ -1571,9 +1572,28 @@ class ResponderRoadmapApi {
         'notes': notes.trim(),
         'location': location.trim(),
         'creditHours': creditHours,
+        'ceCredits': ceCredits,
       },
     );
     return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassDetail> addTrainingSheetRosterMembers(
+    String classId, List<String> membershipIds,
+  ) async {
+    await _request('POST',
+      'classes/${Uri.encodeComponent(classId)}/roster/import',
+      body: <String, dynamic>{'membershipIds': membershipIds});
+    return getClass(classId);
+  }
+
+  Future<DepartmentClassDetail> addManualTrainingSheetStudent(
+    String classId, {required String name, String email = '', String organization = ''}
+  ) async {
+    await _request('POST',
+      'classes/${Uri.encodeComponent(classId)}/roster/manual',
+      body: <String, dynamic>{'name': name.trim(), 'email': email.trim(), 'organization': organization.trim()});
+    return getClass(classId);
   }
 
   Future<DepartmentClassDetail> approveTrainingSheet(String classId) async {
