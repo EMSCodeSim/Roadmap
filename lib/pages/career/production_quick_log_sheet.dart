@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/simple_quick_log_sheet.dart';
-import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 
 /// Scroll-safe production wrapper for the simplified Quick Add experience.
@@ -42,13 +41,11 @@ class ProductionQuickLogSheet extends StatelessWidget {
                       child: FilledButton.icon(
                         key: const Key('quick_add_training_sheet'),
                         onPressed: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const DepartmentClassesPage(
-                                openCreateTraining: true,
-                              ),
-                            ),
-                          );
+                          final router = GoRouter.of(context);
+                          router.pop();
+                          // Give the sheet dismissal a tick to settle.
+                          await Future<void>.delayed(Duration.zero);
+                          router.push('${AppRoutes.departmentTrainingSheets}?create=1');
                         },
                         icon: const Icon(Icons.assignment_add),
                         label: const Text(

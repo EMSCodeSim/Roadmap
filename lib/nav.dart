@@ -25,6 +25,7 @@ import 'package:firepath/pages/career/career_inbox_page.dart';
 import 'package:firepath/pages/career/promotion_portfolio_review_page.dart';
 import 'package:firepath/pages/career/department_transfer_page.dart';
 import 'package:firepath/pages/department/department_tab_page.dart';
+import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/pages/department/department_settings_page.dart';
 import 'package:firepath/pages/department/department_class_qr_scanner_page.dart';
 import 'package:firepath/pages/career/growth_overview_page.dart';
@@ -284,6 +285,27 @@ class AppRouter {
                 name: 'department',
                 pageBuilder: (context, state) =>
                     const NoTransitionPage(child: DepartmentTabPage()),
+                routes: [
+                  GoRoute(
+                    path: 'training-sheets',
+                    name: 'department_training_sheets',
+                    pageBuilder: (context, state) {
+                      final openCreate = state.uri.queryParameters['create'] == '1';
+                      return MaterialPage(child: DepartmentClassesPage(openCreateTraining: openCreate));
+                    },
+                    routes: [
+                      GoRoute(
+                        path: ':id',
+                        name: 'department_training_sheet_detail',
+                        pageBuilder: (context, state) {
+                          final classId = state.pathParameters['id']!;
+                          final showQr = state.uri.queryParameters['qr'] == '1';
+                          return MaterialPage(child: DepartmentClassDetailPage(classId: classId, showQrOnOpen: showQr));
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
@@ -579,6 +601,7 @@ class AppRoutes {
   static const String department = '/department';
   static const String departmentQrScan = '/department/scan';
   static const String departmentSettings = '/department/settings';
+  static const String departmentTrainingSheets = '/department/training-sheets';
 
   static const String career = growth;
   static const String careerVault = personalLog;

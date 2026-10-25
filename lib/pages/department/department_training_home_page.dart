@@ -242,16 +242,12 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   }
 
   Future<void> _openClasses() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => const DepartmentClassesPage(openCreateTraining: true),
-    ));
+    await context.push('${AppRoutes.departmentTrainingSheets}?create=1');
     if (mounted) await _refresh(silent: true);
   }
 
   Future<void> _openClass(String id) async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => DepartmentClassDetailPage(classId: id),
-    ));
+    await context.push('${AppRoutes.departmentTrainingSheets}/$id');
     if (mounted) await _refresh(silent: true);
   }
 

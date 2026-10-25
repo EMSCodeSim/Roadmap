@@ -652,7 +652,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                               title: const Text('Proctor class rosters', style: TextStyle(fontWeight: FontWeight.w800)),
                               subtitle: const Text('Check off skills for students assigned to your testing station.'),
                               trailing: const Icon(Icons.chevron_right_rounded),
-                              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DepartmentClassesPage())),
+                              onTap: () => context.push(AppRoutes.departmentTrainingSheets),
                             ),
                           ),
                         ],

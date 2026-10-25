@@ -7,7 +7,9 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:go_router/go_router.dart';
 
+import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
@@ -60,7 +62,10 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
           SafeArea(child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('1. Choose training category', style: Theme.of(sheetContext).textTheme.titleLarge),
+              Row(children: [
+                Expanded(child: Text('1. Choose training category', style: Theme.of(sheetContext).textTheme.titleLarge)),
+                TextButton.icon(onPressed: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(null), icon: const Icon(Icons.close_rounded), label: const Text('Cancel')),
+              ]),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: category,
@@ -80,11 +85,11 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
               const SizedBox(height: 12),
               Text('2. Choose department template', style: Theme.of(sheetContext).textTheme.titleMedium),
               SizedBox(height: 300, child: ListView(children: [
-                ListTile(leading: const Icon(Icons.note_add_outlined), title: const Text('Blank Training Sheet'), onTap: () => Navigator.pop(sheetContext)),
+                ListTile(leading: const Icon(Icons.note_add_outlined), title: const Text('Blank Training Sheet'), onTap: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(null)),
                 ...templates.where((t) => category.isEmpty || t.trainingCategory == category).map((t) =>
                   ListTile(leading: const Icon(Icons.copy_all_outlined), title: Text(t.name),
                     subtitle: Text(t.defaultTitle.isEmpty ? t.trainingCategory.replaceAll('_', ' ') : t.defaultTitle),
-                    onTap: () => Navigator.pop(sheetContext, t))),
+                    onTap: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(t))),
               ])),
             ]),
           )),
@@ -98,7 +103,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
       final templatesAvailable = await _api.listTrainingSheetTemplates().then((v)=>v.isNotEmpty).catchError((_)=>false);
       if (templatesAvailable && mounted) {
         // A null result can mean Blank or the picker was dismissed. Ask explicitly.
-        final blank = await showDialog<bool>(context: context, builder: (context)=>AlertDialog(title:const Text('Blank Training Sheet?'),content:const Text('Start without a saved template?'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Start Blank'))]));
+        final blank = await showDialog<bool>(context: context, builder: (dialogContext)=>AlertDialog(title:const Text('Blank Training Sheet?'),content:const Text('Start without a saved template?'),actions:[TextButton(onPressed:()=>dialogContext.pop(false),child:const Text('Cancel')),FilledButton(onPressed:()=>dialogContext.pop(true),child:const Text('Start Blank'))]));
         if(blank!=true)return;
       }
     }
@@ -107,9 +112,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
     if (created != null && mounted) {
       await _load();
       if (!mounted) return;
-      await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => DepartmentClassDetailPage(classId: created, showQrOnOpen: true),
-      ));
+      await context.push('${AppRoutes.departmentTrainingSheets}/$created?qr=1');
       if (mounted) await _load();
     }
   }
@@ -128,7 +131,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
             const SizedBox(height:6),const Text('Choose a starting preset. Existing custom capabilities are preserved and everything remains editable.'),
             const SizedBox(height:14),
             for(final item in const [('FIRE','Fire'),('EMS','EMS'),('FIRE_EMS','Fire & EMS')])
-              ListTile(title:Text(item.$2),trailing:current.agencyType==item.$1?const Icon(Icons.check_circle):const Icon(Icons.chevron_right),onTap:()=>Navigator.pop(context,item.$1)),
+              ListTile(title:Text(item.$2),trailing:current.agencyType==item.$1?const Icon(Icons.check_circle):const Icon(Icons.chevron_right),onTap:()=>context.pop(item.$1)),
           ]),
         ),
       );
@@ -219,11 +222,11 @@ class _TrainingSheetTemplatesPageState extends State<_TrainingSheetTemplatesPage
         const SizedBox(height:10),TextField(controller:location,decoration:const InputDecoration(labelText:'Default location')),
         const SizedBox(height:10),TextField(controller:notes,maxLines:3,decoration:const InputDecoration(labelText:'Default notes')),
         SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v)=>setLocal(()=>qr=v),title:const Text('QR self-registration')),
-      ]),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Save Template'))])));
+      ]),actions:[TextButton(onPressed:()=>context.pop(false),child:const Text('Cancel')),FilledButton(onPressed:()=>context.pop(true),child:const Text('Save Template'))])));
     if(ok!=true||name.text.trim().isEmpty)return;
     try{await widget.api.createTrainingSheetTemplate(name:name.text,defaultTitle:title.text,trainingCategory:category,creditHours:double.tryParse(hours.text)??0,checklistVersionId:checklist,location:location.text,notes:notes.text,requiredFields:widget.setup.requiredFields,selfRegistration:qr);await load();}catch(e){if(mounted)setState(()=>error=e.toString());}
   }
-  Future<void> archive(DepartmentTrainingSheetTemplate t)async{final ok=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(title:const Text('Archive template?'),content:Text('Archive "${t.name}"? Existing training records are not affected.'),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Archive'))]))??false;if(!ok)return;try{await widget.api.archiveTrainingSheetTemplate(t.id);await load();}catch(e){if(mounted)setState(()=>error=e.toString());}}
+  Future<void> archive(DepartmentTrainingSheetTemplate t)async{final ok=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(title:const Text('Archive template?'),content:Text('Archive "${t.name}"? Existing training records are not affected.'),actions:[TextButton(onPressed:()=>c.pop(false),child:const Text('Cancel')),FilledButton(onPressed:()=>c.pop(true),child:const Text('Archive'))]))??false;if(!ok)return;try{await widget.api.archiveTrainingSheetTemplate(t.id);await load();}catch(e){if(mounted)setState(()=>error=e.toString());}}
   @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Training Sheet Templates')),floatingActionButton:FloatingActionButton.extended(onPressed:add,icon:const Icon(Icons.add),label:const Text('New Template')),body:rows==null?const Center(child:CircularProgressIndicator()):RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.all(16),children:[
     const Text('Save the setup you reuse. Attendance, skill results and signatures are never part of a template.'),
     if(error!=null)Padding(padding:const EdgeInsets.only(top:10),child:Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))),
@@ -244,6 +247,28 @@ class _CreateTrainingSheet extends StatefulWidget {
 class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
   bool busy = false, qr = true, advanced = false; String? error; DateTime startTime = DateTime.now(); String category = 'COMPANY'; String checklist = ''; final Set<String> selectedMembers = <String>{};
+  bool _dirty = false;
+
+  void _markDirty() {
+    if (_dirty) return;
+    setState(() => _dirty = true);
+  }
+
+  Future<bool> _confirmDiscard() async {
+    if (!_dirty) return true;
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Discard draft Training Sheet?'),
+        content: const Text('You have entered information. If you leave now, it will not be saved.'),
+        actions: [
+          TextButton(onPressed: () => dialogContext.pop(false), child: const Text('Keep editing')),
+          FilledButton(onPressed: () => dialogContext.pop(true), child: const Text('Discard')),
+        ],
+      ),
+    );
+    return approved ?? false;
+  }
   @override void initState() {
     super.initState();
     final t=widget.template;
@@ -252,6 +277,10 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       hours.text=t.creditHours > 0 ? t.creditHours.toString() : '';
       category=t.trainingCategory; checklist=t.checklistVersionId; qr=t.selfRegistration;
     }
+    title.addListener(_markDirty);
+    location.addListener(_markDirty);
+    notes.addListener(_markDirty);
+    hours.addListener(_markDirty);
   }
   @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); super.dispose(); }
   Future<void> save() async {
@@ -266,14 +295,38 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     setState((){busy=true;error=null;});
     try {
       final created = await widget.api.createTrainingSheet(title:title.text, startsAt:startTime.toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, membershipIds:selectedMembers.toList(), selfRegistration:qr);
-      if(mounted) Navigator.pop(context,created.id);
+      if (mounted) {
+        setState(() => _dirty = false);
+        context.pop(created.id);
+      }
     } catch(e){if(mounted)setState(()=>error=e.toString());}
     finally{if(mounted)setState(()=>busy=false);}
   }
-  @override Widget build(BuildContext context)=>Padding(
-    padding: EdgeInsets.fromLTRB(20,16,20,MediaQuery.viewInsetsOf(context).bottom+24),
-    child: SingleChildScrollView(child: Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-      Text(widget.template==null?'Blank Training Sheet':'From Template · ${widget.template!.name}',style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
+  @override Widget build(BuildContext context)=>PopScope(
+    canPop: !_dirty,
+    onPopInvoked: (didPop) async {
+      if (didPop) return;
+      final discard = await _confirmDiscard();
+      if (!discard || !mounted) return;
+      setState(() => _dirty = false);
+      context.pop();
+    },
+    child: Padding(
+      padding: EdgeInsets.fromLTRB(20,16,20,MediaQuery.viewInsetsOf(context).bottom+24),
+      child: SingleChildScrollView(child: Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+      Row(children: [
+        Expanded(child: Text(widget.template==null?'Blank Training Sheet':'From Template · ${widget.template!.name}',style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900))),
+        TextButton.icon(
+          onPressed: busy ? null : () async {
+            final discard = await _confirmDiscard();
+            if (!discard || !mounted) return;
+            setState(() => _dirty = false);
+            context.pop();
+          },
+          icon: const Icon(Icons.close_rounded),
+          label: const Text('Cancel'),
+        ),
+      ]),
       const SizedBox(height:6), const Text('Create the class quickly, then collect student results and finish RMS documentation after training.'),
       if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
       const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
@@ -285,25 +338,28 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         DropdownMenuItem(value:'FACILITY',child:Text('Facility')),
         DropdownMenuItem(value:'OFFICER',child:Text('Officer')),
         DropdownMenuItem(value:'OTHER',child:Text('Other / Rescue')),
-      ],onChanged:(v)=>setState(()=>category=v??'COMPANY')),
-      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v)=>setState(()=>checklist=v??'')),
+      ],onChanged:(v){setState(()=>category=v??'COMPANY');_markDirty();}),
+      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v){setState(()=>checklist=v??'');_markDirty();}),
       const SizedBox(height:12),
       OutlinedButton.icon(
         onPressed: () async {
           final day = await showDatePicker(context:context,initialDate:startTime,firstDate:DateTime(2020),lastDate:DateTime.now().add(const Duration(days:730)));
           if(day==null || !mounted)return;
           final time = await showTimePicker(context:context,initialTime:TimeOfDay.fromDateTime(startTime));
-          if(time!=null && mounted)setState(()=>startTime=DateTime(day.year,day.month,day.day,time.hour,time.minute));
+           if (time != null && mounted) {
+             setState(() => startTime = DateTime(day.year, day.month, day.day, time.hour, time.minute));
+             _markDirty();
+           }
         },
         icon:const Icon(Icons.calendar_today_outlined),
-        label:Text('Training date / start: ${startTime.toLocal()}'),
+         label:Text('Training date / start: ${startTime.toLocal()}'),
       ),
       const SizedBox(height:12),
-      TextButton(onPressed:()=>setState(()=>advanced=!advanced),child:Text(advanced?'Hide optional details':'Show optional details')),
+      TextButton(onPressed:(){setState(()=>advanced=!advanced);_markDirty();},child:Text(advanced?'Hide optional details':'Show optional details')),
       if(advanced) TextField(controller:location,decoration:const InputDecoration(labelText:'Location (closeout optional)')),
       const SizedBox(height:12),if(advanced) TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Training hours (finish after teaching)')),
       const SizedBox(height:12),if(advanced) TextField(controller:notes,maxLines:3,decoration:const InputDecoration(labelText:'Optional preparation notes')),
-      const SizedBox(height:8),SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v)=>setState(()=>qr=v),title:const Text('Allow QR self-registration'),subtitle:const Text('Crew can scan in from their phones.')),
+      const SizedBox(height:8),SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v){setState(()=>qr=v);_markDirty();},title:const Text('Allow QR self-registration'),subtitle:const Text('Crew can scan in from their phones.')),
       const SizedBox(height:8),
       ExpansionTile(title:Text('Select department roster (${selectedMembers.length})'),children:[
         SizedBox(height:220,child:ListView(children:widget.setup.members.map((member){
@@ -313,14 +369,24 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
             title:Text(member['name']?.toString()??'Member'),
             value:selectedMembers.contains(id),
             onChanged:id.isEmpty?null:(selected)=>setState((){
-              if(selected==true){selectedMembers.add(id);}else{selectedMembers.remove(id);}
+              if(selected==true){selectedMembers.add(id);}else{selectedMembers.remove(id);} _markDirty();
             }),
           );
         }).toList())),
       ]),
-      const SizedBox(height:10),OutlinedButton.icon(onPressed:busy?null:()=>Navigator.of(context).pop(),icon:const Icon(Icons.close_rounded),label:const Text('Cancel / Exit without creating')),
+      const SizedBox(height:10),OutlinedButton.icon(
+        onPressed: busy ? null : () async {
+          final discard = await _confirmDiscard();
+          if (!discard || !mounted) return;
+          setState(() => _dirty = false);
+          context.pop();
+        },
+        icon: const Icon(Icons.close_rounded),
+        label: const Text('Cancel'),
+      ),
       const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Create Training Sheet')),
     ])),
+    ),
   );
 }
 
