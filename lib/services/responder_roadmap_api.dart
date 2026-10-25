@@ -905,6 +905,8 @@ class DepartmentCloseValidation {
 }
 
 class DepartmentClassDetail {
+  final List<Map<String, dynamic>> ceCredits;
+  final Map<String, dynamic> gradingConfig;
   final List<Map<String, dynamic>> customFields;
   final String id;
   final String title;
@@ -930,6 +932,8 @@ class DepartmentClassDetail {
   final List<DepartmentClassStudent> roster;
 
   const DepartmentClassDetail({
+    required this.ceCredits,
+    required this.gradingConfig,
     required this.customFields,
     required this.id,
     required this.title,
@@ -956,6 +960,8 @@ class DepartmentClassDetail {
   });
 
   factory DepartmentClassDetail.fromJson(Map<String, dynamic> json) => DepartmentClassDetail(
+        ceCredits: (json['ceCredits'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
+        gradingConfig: Map<String, dynamic>.from(json['gradingConfig'] as Map? ?? const {}),
         customFields: (json['customFields'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
         id: (json['id'] as String?) ?? '',
         title: (json['title'] as String?) ?? 'Class',
@@ -1819,8 +1825,8 @@ class ResponderRoadmapApi {
     return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
-  Future<DepartmentClassDetail> updateClassStudent({required String classId, required String enrollmentId, required String attendance, Map<String, dynamic>? customValues}) async {
-    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}', body: {'attendance': attendance, if (customValues != null) 'customValues': customValues});
+  Future<DepartmentClassDetail> updateClassStudent({required String classId, required String enrollmentId, required String attendance, Map<String, dynamic>? customValues, double? writtenScore, double? ccfScore}) async {
+    final data = await _request('POST', 'classes/${Uri.encodeComponent(classId)}/roster/${Uri.encodeComponent(enrollmentId)}', body: {'attendance': attendance, if (customValues != null) 'customValues': customValues, if (writtenScore != null) 'writtenScore': writtenScore, if (ccfScore != null) 'ccfScore': ccfScore});
     return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
