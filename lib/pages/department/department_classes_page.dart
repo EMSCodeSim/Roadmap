@@ -16,6 +16,11 @@ import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/pages/department/class_task_book_link_card.dart';
 
+const _emsCeCategories = <String>[
+  'Airway', 'Cardiology', 'Trauma', 'Medical', 'Operations',
+  'Pediatric / Obstetrics', 'Local / State', 'Individual',
+];
+
 class DepartmentClassesPage extends StatefulWidget {
   const DepartmentClassesPage({super.key, this.openCreateTraining = false});
   final bool openCreateTraining;
@@ -250,6 +255,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
   bool busy = false, qr = true, advanced = false; String? error; DateTime startTime = DateTime.now(); String category = 'COMPANY'; String checklist = ''; final Set<String> selectedMembers = <String>{};
   bool _dirty = false;
+  bool get _isEmsCe => widget.template?.ceCredits.isNotEmpty == true;
 
   void _markDirty() {
     if (_dirty) return;
@@ -275,7 +281,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     super.initState();
     final t=widget.template;
     if(t!=null){
-      title.text=t.defaultTitle; location.text=t.location; notes.text=t.notes;
+      title.text=_isEmsCe ? '' : t.defaultTitle; location.text=t.location; notes.text=t.notes;
       hours.text=t.creditHours > 0 ? t.creditHours.toString() : '';
       category=t.trainingCategory; checklist=t.checklistVersionId; qr=t.selfRegistration;
     }
@@ -287,6 +293,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); super.dispose(); }
   Future<void> save() async {
     if(title.text.trim().isEmpty){setState(()=>error='Training title is required.'); return;}
+    if(_isEmsCe && location.text.trim().isEmpty){setState(()=>error='Class location is required for EMS CE.'); return;}
     if(!qr && selectedMembers.isEmpty){setState(()=>error='Choose roster members or enable QR sign-in.');return;}
     final h=double.tryParse(hours.text.trim())??0;
     final mode=context.read<AppModeController>();
@@ -343,6 +350,8 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       ],onChanged:(v){setState(()=>category=v??'COMPANY');_markDirty();}),
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v){setState(()=>checklist=v??'');_markDirty();}),
       const SizedBox(height:12),
+      if(_isEmsCe) TextField(controller:location,decoration:const InputDecoration(labelText:'Class location *')),
+      if(_isEmsCe) const SizedBox(height:12),
       OutlinedButton.icon(
         onPressed: () async {
           final day = await showDatePicker(context:context,initialDate:startTime,firstDate:DateTime(2020),lastDate:DateTime.now().add(const Duration(days:730)));
@@ -358,7 +367,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       ),
       const SizedBox(height:12),
       TextButton(onPressed:(){setState(()=>advanced=!advanced);_markDirty();},child:Text(advanced?'Hide optional details':'Show optional details')),
-      if(advanced) TextField(controller:location,decoration:const InputDecoration(labelText:'Location (closeout optional)')),
+      if(advanced && !_isEmsCe) TextField(controller:location,decoration:const InputDecoration(labelText:'Location (closeout optional)')),
       const SizedBox(height:12),if(advanced) TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Training hours (finish after teaching)')),
       const SizedBox(height:12),if(advanced) TextField(controller:notes,maxLines:3,decoration:const InputDecoration(labelText:'Optional preparation notes')),
       const SizedBox(height:8),SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v){setState(()=>qr=v);_markDirty();},title:const Text('Allow QR self-registration'),subtitle:const Text('Crew can scan in from their phones.')),
@@ -386,7 +395,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         icon: const Icon(Icons.close_rounded),
         label: const Text('Cancel'),
       ),
-      const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Create Training Sheet')),
+      const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:Text(qr?'Create & Show QR':'Create Training Sheet')),
     ])),
     ),
   );
@@ -883,6 +892,11 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final narrative = TextEditingController(text:d.notes);
     final location = TextEditingController(text:d.location);
     final hours = TextEditingController(text:d.creditHours > 0 ? d.creditHours.toString() : '');
+    final isEms = d.trainingCategory == 'EMS';
+    final ceControllers = <String, TextEditingController>{
+      for (final category in _emsCeCategories)
+        category: TextEditingController(text: d.ceCredits.where((item) => item['category'] == category).map((item) => item['hours']).firstOrNull?.toString() ?? ''),
+    };
     Future<DateTime?> chooseTime(BuildContext dialogContext, DateTime initial) async {
       final day = await showDatePicker(
         context:dialogContext, initialDate:initial,
@@ -918,19 +932,33 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 decoration:const InputDecoration(labelText:'Credit hours (optional if times provided)')),
               const SizedBox(height:8),
               TextField(controller:narrative,maxLines:5,decoration:const InputDecoration(
-                labelText:'Training narrative / RMS codes',hintText:'Include department template RMS codes as needed')),
+                labelText:'Class objectives and training narrative',hintText:'Document objectives covered and include RMS codes as needed')),
+              if(isEms)...[
+                const SizedBox(height:14),
+                Text('EMS CE categories',style:Theme.of(dialogContext).textTheme.titleMedium),
+                const SizedBox(height:4),const Text('Confirm how earned credit is distributed. Example: 0.5 Medical and 0.5 Airway.'),
+                ..._emsCeCategories.map((category)=>Padding(
+                  padding:const EdgeInsets.only(top:8),
+                  child:TextField(controller:ceControllers[category],keyboardType:const TextInputType.numberWithOptions(decimal:true),
+                    onChanged:(_)=>update((){}),decoration:InputDecoration(labelText:'$category hours',hintText:'0')),
+                )),
+                const SizedBox(height:8),
+                Text('Total CE credit: ${ceControllers.values.fold<double>(0,(sum,c)=>sum+(double.tryParse(c.text.trim())??0)).toStringAsFixed(2)} hours',style:const TextStyle(fontWeight:FontWeight.w700)),
+              ],
             ],
           ))),
           actions:[
             TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Cancel')),
             FilledButton(onPressed:()=>Navigator.pop(dialogContext,<String,dynamic>{
               'start':start,'end':end,'notes':narrative.text,'location':location.text,'hours':double.tryParse(hours.text.trim())??0.0,
+              'ceCredits':<String,double>{for(final entry in ceControllers.entries) entry.key:double.tryParse(entry.value.text.trim())??0},
             }),child:const Text('Save Documentation')),
           ],
         ),
       ),
     );
     narrative.dispose(); location.dispose(); hours.dispose();
+    for(final controller in ceControllers.values){controller.dispose();}
     if (result == null || !mounted) return false;
     final savedStart = result['start'] as DateTime;
     final savedEnd = result['end'] as DateTime?;
@@ -938,12 +966,16 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       setState(()=>_error='Enter an actual end time after the start time before closing.');
       return false;
     }
+    if(isEms && (result['notes'] as String).trim().isEmpty){setState(()=>_error='Enter class objectives and a training narrative before closing EMS CE.');return false;}
+    final ceCredits=result['ceCredits'] as Map<String,double>;
+    if(isEms && !ceCredits.values.any((hours)=>hours>0)){setState(()=>_error='Assign EMS CE credit to at least one category before closing.');return false;}
     setState(() { _busy=true; _error=null; });
     try {
       _setDetail(await _api.updateTrainingSheetDocumentation(
         d.id, startsAt:savedStart, endsAt:savedEnd,
         notes:result['notes'] as String, location:result['location'] as String,
         creditHours:result['hours'] as double,
+        ceCredits:ceCredits,
       ));
       return true;
     } catch (error) {
@@ -1232,6 +1264,42 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     await _load();
   }
 
+  Future<void> _addStudents() async {
+    final detail=_detail;if(detail==null||_busy||detail.status=='COMPLETE')return;
+    final setup=await _api.getClassSetup();
+    if(!mounted)return;
+    final selected=<String>{};
+    final name=TextEditingController(),email=TextEditingController(),organization=TextEditingController();
+    final action=await showDialog<String>(context:context,builder:(dialogContext)=>StatefulBuilder(
+      builder:(dialogContext,update)=>AlertDialog(
+        title:const Text('Add students'),
+        content:SizedBox(width:460,child:SingleChildScrollView(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+          Text('Department roster',style:Theme.of(dialogContext).textTheme.titleMedium),
+          ...setup.members.map((member){final id=member['id']?.toString()??'';return CheckboxListTile(
+            contentPadding:EdgeInsets.zero,dense:true,title:Text(member['name']?.toString()??'Member'),value:selected.contains(id),
+            onChanged:id.isEmpty?null:(value)=>update((){if(value==true){selected.add(id);}else{selected.remove(id);}}));}),
+          const Divider(height:28),Text('Manual student',style:Theme.of(dialogContext).textTheme.titleMedium),
+          const SizedBox(height:8),TextField(controller:name,onChanged:(_)=>update((){}),decoration:const InputDecoration(labelText:'Student name *')),
+          const SizedBox(height:8),TextField(controller:email,onChanged:(_)=>update((){}),keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'Email *')),
+          const SizedBox(height:8),TextField(controller:organization,decoration:const InputDecoration(labelText:'Organization (optional)')),
+        ]))),
+        actions:[TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Cancel')),
+          if(selected.isNotEmpty) FilledButton(onPressed:()=>Navigator.pop(dialogContext,'roster'),child:Text('Add ${selected.length} selected')),
+          if(name.text.trim().isNotEmpty&&email.text.trim().isNotEmpty) FilledButton(onPressed:()=>Navigator.pop(dialogContext,'manual'),child:const Text('Add manual student'))],
+      ),
+    ));
+    final manualName=name.text.trim(),manualEmail=email.text.trim(),manualOrganization=organization.text.trim();
+    name.dispose();email.dispose();organization.dispose();
+    if(action==null||!mounted)return;
+    setState((){_busy=true;_error=null;});
+    try{
+      _setDetail(action=='roster'
+        ? await _api.addTrainingSheetRosterMembers(detail.id,selected.toList())
+        : await _api.addManualTrainingSheetStudent(detail.id,name:manualName,email:manualEmail,organization:manualOrganization));
+    }catch(error){if(mounted)setState(()=>_error='Unable to add students: $error');}
+    finally{if(mounted)setState(()=>_busy=false);}
+  }
+
 
   Future<String?> _correctionNotes(String title) async {
     final controller = TextEditingController();
@@ -1388,11 +1456,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               ),
               const SizedBox(height: 10),
               if (detail.roster.isEmpty)
-                FilledButton.icon(
-                  onPressed: _busy ? null : _showQr,
-                  icon: const Icon(Icons.qr_code_2_rounded),
-                  label: const Text('Show QR / Add Students'),
-                )
+                Wrap(spacing:8,runSpacing:8,children:[
+                  FilledButton.icon(onPressed:_busy?null:_showQr,icon:const Icon(Icons.qr_code_2_rounded),label:const Text('Show QR')),
+                  OutlinedButton.icon(onPressed:_busy?null:_addStudents,icon:const Icon(Icons.person_add_alt_1_outlined),label:const Text('Add students')),
+                ])
               else if (detail.roster.any((member) => member.attendance == 'REGISTERED'))
                 OutlinedButton.icon(
                   onPressed: _busy ? null : _load,
@@ -1475,6 +1542,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           children: [
             Wrap(spacing: 8, runSpacing: 8, children: [
               OutlinedButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: const Text('QR sign-in')),
+              OutlinedButton.icon(onPressed: _busy ? null : _addStudents, icon: const Icon(Icons.person_add_alt_1_outlined), label: const Text('Add students')),
               OutlinedButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh roster')),
               OutlinedButton.icon(onPressed: _busy ? null : _reviewPendingSkillSync,
                   icon: const Icon(Icons.sync_problem_outlined),
