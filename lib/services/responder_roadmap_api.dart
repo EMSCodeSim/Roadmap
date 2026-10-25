@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
@@ -1872,6 +1873,7 @@ class ResponderRoadmapApi {
     Map<String, dynamic>? body,
     bool authenticated = true,
   }) async {
+    final timer = Stopwatch()..start();
     final uri = Uri.parse('$baseUrl/$path');
     final headers = <String, String>{
       'Accept': 'application/json',
@@ -1912,6 +1914,9 @@ class ResponderRoadmapApi {
           throw ResponderRoadmapApiException('Unsupported request method: $method');
       }
     } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[Roadmap API] $method $path network failure after ${timer.elapsedMilliseconds}ms');
+      }
       if (error is ResponderRoadmapApiException) rethrow;
       throw const ResponderRoadmapApiException(
         'Could not reach ResponderRoadmap. Check your connection and try again.',
@@ -1923,6 +1928,10 @@ class ResponderRoadmapApi {
       decoded = response.body.isEmpty ? null : jsonDecode(response.body);
     } catch (_) {
       decoded = null;
+    }
+
+    if (kDebugMode) {
+      debugPrint('[Roadmap API] $method $path ${response.statusCode} ${timer.elapsedMilliseconds}ms');
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {

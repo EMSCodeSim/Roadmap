@@ -108,6 +108,29 @@ class DepartmentInboxController extends ChangeNotifier {
     _safeNotify();
   }
 
+  /// Refreshes only inbox data for the Department dashboard. Offline mutation
+  /// uploads and assignment reads are handled by the normal background sync
+  /// and must not be repeated as part of the dashboard's secondary rendering.
+  Future<void> refreshInboxOnly() async {
+    if (_syncState == DepartmentSyncState.syncing || !await _api.hasStoredToken) {
+      return;
+    }
+    try {
+      _inbox = await _api.getInbox();
+      _lastSyncedAt = _inbox?.serverTime ?? DateTime.now();
+      _lastError = null;
+      await _store.saveJson(_stateKey, {
+        'lastSyncedAt': _lastSyncedAt?.toIso8601String(),
+        'lastError': _lastError,
+        'state': _syncState.name,
+      });
+      _safeNotify();
+    } on ResponderRoadmapApiException catch (error) {
+      _lastError = error.message;
+      _safeNotify();
+    }
+  }
+
   Future<void> markRead(String id) async {
     await _api.markInboxRead(id);
     await refresh(silent: true);

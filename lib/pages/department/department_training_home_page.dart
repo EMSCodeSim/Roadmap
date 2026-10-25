@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -12,6 +15,16 @@ import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/state/app_state.dart';
+
+DepartmentReviewItem? resolveDepartmentReviewTarget(
+  String targetId,
+  Iterable<DepartmentReviewItem> reviews,
+) {
+  for (final review in reviews) {
+    if (review.id == targetId) return review;
+  }
+  return null;
+}
 
 /// Canonical department home for members. Official department records are read
 /// from responderroadmap.com; no local department database is used here.
@@ -55,69 +68,142 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
 
   Future<void> _refresh({bool silent = false}) async {
     if (_refreshing) return;
-    if (mounted) setState(() { _refreshing = true; if (!silent) _loading = true; });
+    final timer = Stopwatch()..start();
+    if (mounted) setState(() {
+      _refreshing = true;
+      if (!silent && _assignments.isEmpty && _workQueue.isEmpty) _loading = true;
+    });
     try {
-      final session = await _api.currentSession();
-      final items = await _api.listAssignments();
-      final workQueue = await _api.getWorkQueue();
-      List<DepartmentClassDetail> rmsActions = const [];
-      List<InstructorTrainingAttention> instructorTraining = const [];
-      final role = (session.role ?? '').toUpperCase();
-      if (const {'INSTRUCTOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
-        try { rmsActions = await _api.listRmsActionTrainingSheets(); } catch (_) {}
-        try { instructorTraining = await _api.listInstructorTrainingAttention(); } catch (_) {}
-      }
-      await context.read<DepartmentInboxController>().refresh(silent: true);
+      // Start both independent calls without waiting for session verification.
+      String? backgroundError;
+      final assignmentsFuture = _api.listAssignments().then<List<DepartmentTaskBookAssignment>?>((items) => items, onError: (Object error) {
+        backgroundError ??= error is ResponderRoadmapApiException
+            ? error.message
+            : 'Could not load department assignments.';
+        return null;
+      });
+      final queueFuture = _api.getWorkQueue().then<DepartmentWorkQueue?>((queue) => queue, onError: (Object error) {
+        backgroundError ??= error is ResponderRoadmapApiException
+            ? error.message
+            : 'Could not load Needs Attention.';
+        return null;
+      });
+      final sessionFuture = _api.currentSession().then<ResponderRoadmapSession?>((session) => session, onError: (Object error) {
+        backgroundError ??= error is ResponderRoadmapApiException
+            ? error.message
+            : 'Could not verify your department session.';
+        return null;
+      });
+      final items = await assignmentsFuture;
       if (!mounted) return;
-      await context.read<AppModeController>().refreshFromSession(session);
-
-      // Bridge newly completed department training into the responder's
-      // personal evidence without changing the official department record.
-      // Matching is conservative: the verified record can support roadmap
-      // progress, but it never fabricates a certification or authorization.
-      try {
-        final app = context.read<AppState>();
-        final existing = await _careerRecordStore.load();
-        var importedAny = false;
-        for (final assignment in items.where((a) =>
-            a.progress >= 100 ||
-            a.status == 'COMPLETE' ||
-            a.status == 'COMPLETED')) {
-          if (CompetencyEvidenceBridge.isImported(existing, assignment)) {
-            continue;
-          }
-          final match =
-              CompetencyEvidenceBridge.matchAssignment(assignment, app.roadmap);
-          final record = CompetencyEvidenceBridge.toVerifiedCareerRecord(
-            assignment: assignment,
-            departmentName: session.departmentName ?? 'Department',
-            relatedGoalId: app.roadmap?.goal.id,
-            match: match,
-          );
-          if (await _careerRecordStore.upsert(record)) {
-            existing.add(record);
-            importedAny = true;
-            await app.applyLogToRequirementProgress(record);
-          }
-        }
-        if (importedAny) {
-          app.roadmapEvidenceChanged(
-            reason:
-                'Completed department training was added as verified evidence. Your Personal Roadmap was recalculated.',
-          );
-        }
-      } catch (_) {
-        // Department Home must remain available even if personal evidence
-        // bridging cannot run on this refresh.
+      if (items != null) {
+        items.sort(_priorityCompare);
+        setState(() { _assignments = items; _error = backgroundError; _loading = false; });
+        debugPrint('Department: assignments visible after ${timer.elapsedMilliseconds}ms');
+      } else {
+        setState(() { _error = backgroundError; _loading = false; });
       }
-
-      items.sort(_priorityCompare);
-      setState(() { _assignments = items; _workQueue = workQueue.items; _rmsActions = rmsActions; _instructorTraining = instructorTraining; _error = null; _loading = false; });
+      final workQueue = await queueFuture;
+      if (!mounted) return;
+      if (workQueue != null) {
+        setState(() { _workQueue = workQueue.items; _error = backgroundError; });
+        debugPrint('Department: work queue visible after ${timer.elapsedMilliseconds}ms');
+      }
+      final session = await sessionFuture;
+      if (!mounted) return;
+      if (backgroundError != null) setState(() => _error = backgroundError);
+      if (session == null) return;
+      final app = context.read<AppState>();
+      final inbox = context.read<DepartmentInboxController>();
+      final mode = context.read<AppModeController>();
+      _loadSecondaryData(
+        role: (session.role ?? '').toUpperCase(),
+        departmentName: session.departmentName ?? 'Department',
+        items: items ?? _assignments,
+        app: app,
+        inbox: inbox,
+        mode: mode,
+        session: session,
+      );
     } on ResponderRoadmapApiException catch (e) {
       if (!mounted) return;
       setState(() { _error = e.message; _loading = false; });
     } finally {
       if (mounted) setState(() => _refreshing = false);
+      debugPrint('Department: primary refresh completed after ${timer.elapsedMilliseconds}ms');
+    }
+  }
+
+  Future<void> _loadSecondaryData({
+    required String role,
+    required String departmentName,
+    required List<DepartmentTaskBookAssignment> items,
+    required AppState app,
+    required DepartmentInboxController inbox,
+    required AppModeController mode,
+    required dynamic session,
+  }) async {
+    // Keep all secondary requests off the first-render path and run independent
+    // work concurrently. The inbox-only refresh avoids repeating assignments
+    // and queued offline writes that the app-level controller already handles.
+    final tasks = <Future<void>>[
+      mode.refreshFromSession(session).then<void>((_) {}, onError: (_) {}),
+      inbox.refreshInboxOnly(),
+      _bridgePersonalEvidence(items: items, departmentName: departmentName, app: app),
+    ];
+    if (const {'INSTRUCTOR', 'TRAINING_OFFICER', 'DEPARTMENT_ADMINISTRATOR'}.contains(role)) {
+      tasks.add(_loadInstructorSecondaryData());
+    }
+    unawaited(Future.wait<void>(tasks).then<void>((_) {}));
+  }
+
+  Future<void> _loadInstructorSecondaryData() async {
+    final rmsFuture = _api.listRmsActionTrainingSheets().then<List<DepartmentClassDetail>?>((value) => value, onError: (_) => null);
+    final instructorFuture = _api.listInstructorTrainingAttention().then<List<InstructorTrainingAttention>?>((value) => value, onError: (_) => null);
+    final results = await Future.wait<Object?>([rmsFuture, instructorFuture]);
+    if (!mounted) return;
+    setState(() {
+      if (results[0] != null) _rmsActions = results[0]! as List<DepartmentClassDetail>;
+      if (results[1] != null) _instructorTraining = results[1]! as List<InstructorTrainingAttention>;
+    });
+  }
+
+  Future<void> _bridgePersonalEvidence({
+    required List<DepartmentTaskBookAssignment> items,
+    required String departmentName,
+    required AppState app,
+  }) async {
+    final timer = Stopwatch()..start();
+    try {
+      final existing = await _careerRecordStore.load();
+      var importedAny = false;
+      for (final assignment in items.where((a) =>
+          a.progress >= 100 || a.status == 'COMPLETE' || a.status == 'COMPLETED')) {
+        if (CompetencyEvidenceBridge.isImported(existing, assignment)) continue;
+        final match = CompetencyEvidenceBridge.matchAssignment(assignment, app.roadmap);
+        final record = CompetencyEvidenceBridge.toVerifiedCareerRecord(
+          assignment: assignment,
+          departmentName: departmentName,
+          relatedGoalId: app.roadmap?.goal.id,
+          match: match,
+        );
+        if (await _careerRecordStore.upsert(record)) {
+          existing.add(record);
+          importedAny = true;
+          await app.applyLogToRequirementProgress(record);
+        }
+      }
+      if (importedAny) {
+        app.roadmapEvidenceChanged(
+          reason: 'Completed department training was added as verified evidence. Your Personal Roadmap was recalculated.',
+        );
+      }
+    } catch (_) {
+      // Personal evidence failures must not block department access.
+    } finally {
+      if (kDebugMode) {
+        debugPrint('Department: personal evidence sync completed after ${timer.elapsedMilliseconds}ms');
+      }
     }
   }
 
@@ -192,10 +278,32 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       return;
     }
     if (item.kind == 'EVALUATION') {
-      await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => DepartmentReviewPage(initialReviewId: item.targetId),
-      ));
-      if (mounted) await _refresh(silent: true);
+      // Work-queue EVALUATION targetId is the review/completion ID (the same
+      // identity returned by listReviewQueue), never an assignment ID. Resolve
+      // it before navigating so a stale item cannot open an unrelated admin
+      // queue or fail on that screen after the user has left the dashboard.
+      try {
+        final reviews = await _api.listReviewQueue();
+        if (!mounted) return;
+        if (resolveDepartmentReviewTarget(item.targetId, reviews) == null) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('This evaluation is no longer assigned to you. Refresh the dashboard and try again.'),
+          ));
+          await _refresh(silent: true);
+          return;
+        }
+        await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => DepartmentReviewPage(
+            initialReviewId: item.targetId,
+            initialReviews: reviews,
+          ),
+        ));
+        if (mounted) await _refresh(silent: true);
+      } on ResponderRoadmapApiException catch (error) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
       return;
     }
     if (item.kind == 'TRAINING_SHEET' || item.kind == 'RMS_ENTRY') {
@@ -256,12 +364,11 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
-        child: _loading
-            ? ListView(children: [SizedBox(height: 220), Center(child: CircularProgressIndicator())])
-            : ListView(
+        child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                 children: [
+                  if (_loading) const LinearProgressIndicator(),
                   if (_error != null) Card(child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),

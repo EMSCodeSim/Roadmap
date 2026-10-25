@@ -50,6 +50,9 @@ jobs:
       - name: ResponderRoadmap department flow tests
         run: flutter test test/responder_roadmap_department_flow_test.dart
 
+      - name: Department dashboard loading and Needs Attention routing tests
+        run: flutter test test/department_work_queue_navigation_test.dart
+
       - name: Ten-member offline Training Sheet synchronization tests
         run: flutter test test/training_sheet_offline_sync_test.dart
 
