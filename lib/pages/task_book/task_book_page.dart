@@ -440,21 +440,21 @@ class _CustomTaskBookBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
-          ...plan.sections.map((section) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-              child: _TaskBookStageSectionCard<Requirement>(
-                section: section,
-                goalId: goalId,
-                suggestedNextRequirementId: plan.suggestedNext?.requirement.id,
-                openRequirement: (r) => AppRouter.openRequirement(
-                  context,
-                  r,
-                  goalId: goalId,
+          ..._CatalogGrouper.groupByCategory(plan).map(
+                (section) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                  child: _RoadmapCatalogSectionCard<Requirement>(
+                    section: section,
+                    goalId: goalId,
+                    suggestedNextRequirementId: plan.suggestedNext?.requirement.id,
+                    openRequirement: (r) => AppRouter.openRequirement(
+                      context,
+                      r,
+                      goalId: goalId,
+                    ),
+                  ),
                 ),
               ),
-            );
-          }),
           if (list.isEmpty)
             Text(
               'No requirements yet. Tap “Edit / Build Task Book” to add your first item.',
@@ -517,6 +517,8 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
       isComplete: (raw) => raw.isComplete,
       getId: (raw) => raw.requirement.id,
     );
+
+    final catalogSections = _CatalogGrouper.groupByCategory(plan);
 
     return SafeArea(
       child: ListView(
@@ -589,10 +591,10 @@ class _TaskBookBodyState extends State<_TaskBookBody> {
                   },
           ),
           const SizedBox(height: AppSpacing.lg),
-          ...plan.sections.map(
+          ...catalogSections.map(
             (s) => Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-              child: _TaskBookStageSectionCard<RoadmapRequirement>(
+              child: _RoadmapCatalogSectionCard<RoadmapRequirement>(
                 section: s,
                 goalId: roadmap.goal.id,
                 suggestedNextRequirementId: plan.suggestedNext?.requirement.id,
@@ -1045,6 +1047,163 @@ class _TaskBookStageSectionCard<T> extends StatelessWidget {
               ),
           ],
         ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoadmapCatalogSection<T> {
+  final String category;
+  final List<TaskBookStageItem<T>> items;
+  final int completedCount;
+  final int totalCount;
+
+  const _RoadmapCatalogSection({
+    required this.category,
+    required this.items,
+    required this.completedCount,
+    required this.totalCount,
+  });
+}
+
+class _CatalogGrouper {
+  static List<_RoadmapCatalogSection<T>> groupByCategory<T>(TaskBookStagePlan<T> plan) {
+    // Preserve the original roadmap ordering by using the originalIndex.
+    final flat = <TaskBookStageItem<T>>[];
+    for (final section in plan.sections) {
+      flat.addAll(section.items);
+    }
+    flat.sort((a, b) => a.originalIndex.compareTo(b.originalIndex));
+
+    final byCategory = <String, List<TaskBookStageItem<T>>>{};
+    final order = <String>[];
+
+    for (final item in flat) {
+      final raw = item.requirement.category.trim();
+      final category = raw.isEmpty ? 'Other' : raw;
+      if (!byCategory.containsKey(category)) order.add(category);
+      byCategory.putIfAbsent(category, () => <TaskBookStageItem<T>>[]).add(item);
+    }
+
+    return order.map((category) {
+      final items = byCategory[category] ?? <TaskBookStageItem<T>>[];
+      final completed = items.where((e) => e.isComplete).length;
+      return _RoadmapCatalogSection<T>(
+        category: category,
+        items: items,
+        completedCount: completed,
+        totalCount: items.length,
+      );
+    }).toList();
+  }
+}
+
+class _RoadmapCatalogSectionCard<T> extends StatelessWidget {
+  final _RoadmapCatalogSection<T> section;
+  final String goalId;
+  final String? suggestedNextRequirementId;
+  final ValueChanged<Requirement> openRequirement;
+
+  const _RoadmapCatalogSectionCard({
+    required this.section,
+    required this.goalId,
+    required this.suggestedNextRequirementId,
+    required this.openRequirement,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final completed = section.completedCount;
+    final total = section.totalCount;
+    final pct = total <= 0 ? 0.0 : (completed / total).clamp(0, 1).toDouble();
+    final progressLabel = total <= 0 ? '—' : '$completed of $total';
+    final isDone = total > 0 && completed >= total;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: Material(
+          color: Colors.transparent,
+          child: ExpansionTile(
+            key: PageStorageKey('roadmap-category-${section.category}'),
+            initiallyExpanded: false,
+            tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+            childrenPadding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${section.category} · $progressLabel',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                if (isDone) ...[
+                  const SizedBox(width: 8),
+                  StatusPill(
+                    text: 'Done',
+                    backgroundColor: FireOpsSemanticColors.completed.withValues(alpha: 0.14),
+                    foregroundColor: FireOpsSemanticColors.completed,
+                    maxWidth: 84,
+                  ),
+                ],
+              ],
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: pct,
+                  minHeight: 8,
+                  backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+                  valueColor: AlwaysStoppedAnimation(cs.primary),
+                ),
+              ),
+            ),
+            children: [
+              if (section.items.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
+                  child: Text(
+                    'No items in this catalog yet.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+                  ),
+                )
+              else
+                Container(
+                  margin: const EdgeInsets.only(top: AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
+                  ),
+                  child: Column(
+                    children: [
+                      for (int i = 0; i < section.items.length; i++) ...[
+                        _StagedRequirementRow(
+                          requirement: section.items[i].requirement,
+                          goalId: goalId,
+                          isComplete: section.items[i].isComplete,
+                          suggestedNext: suggestedNextRequirementId != null && suggestedNextRequirementId == section.items[i].requirement.id,
+                          canStartNow: section.items[i].canStartNow,
+                          unmetPrereqLabels: section.items[i].unmetPrerequisiteLabels,
+                          showDivider: i != section.items.length - 1,
+                          onOpen: () => openRequirement(section.items[i].requirement),
+                          rowKey: Key('roadmap-category-item-${section.items[i].requirement.id}'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
