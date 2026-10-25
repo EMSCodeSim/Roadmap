@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -170,6 +171,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     required String departmentName,
     required AppState app,
   }) async {
+    final timer = Stopwatch()..start();
     try {
       final existing = await _careerRecordStore.load();
       var importedAny = false;
@@ -196,6 +198,10 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       }
     } catch (_) {
       // Personal evidence failures must not block department access.
+    } finally {
+      if (kDebugMode) {
+        debugPrint('Department: personal evidence sync completed after ${timer.elapsedMilliseconds}ms');
+      }
     }
   }
 
