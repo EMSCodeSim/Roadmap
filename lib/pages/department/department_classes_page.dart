@@ -316,6 +316,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
           );
         }).toList())),
       ]),
+      const SizedBox(height:10),OutlinedButton.icon(onPressed:busy?null:()=>Navigator.of(context).pop(),icon:const Icon(Icons.close_rounded),label:const Text('Cancel / Exit without creating')),
       const SizedBox(height:14),FilledButton.icon(onPressed:busy?null:save,icon:busy?const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.play_arrow_rounded),label:const Text('Create Training Sheet')),
     ])),
   );
