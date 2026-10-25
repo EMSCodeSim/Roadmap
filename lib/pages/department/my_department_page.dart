@@ -546,6 +546,12 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
           widget.taskBooksOnly ? 'Task Books' : 'Department',
         ),
         actions: [
+          if (!_loading && _link == null)
+            TextButton.icon(
+              onPressed: _syncing ? null : _connect,
+              icon: const Icon(Icons.login_rounded),
+              label: const Text('Sign in'),
+            ),
           if (_link != null)
             IconButton(
               tooltip: 'Sync department records',
