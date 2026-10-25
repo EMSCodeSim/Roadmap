@@ -705,6 +705,9 @@ class DepartmentServerCredential {
 }
 
 class DepartmentTrainingSheetTemplate {
+  final String topic;
+  final List<Map<String, dynamic>> ceCredits;
+  final Map<String, dynamic> gradingConfig;
   final List<Map<String, dynamic>> customFields;
   final String id;
   final String name;
@@ -721,6 +724,9 @@ class DepartmentTrainingSheetTemplate {
   final bool archived;
 
   const DepartmentTrainingSheetTemplate({
+    required this.topic,
+    required this.ceCredits,
+    required this.gradingConfig,
     required this.customFields,
     required this.id, required this.name, required this.defaultTitle,
     required this.classType, required this.trainingCategory, required this.creditHours,
@@ -731,6 +737,9 @@ class DepartmentTrainingSheetTemplate {
 
   factory DepartmentTrainingSheetTemplate.fromJson(Map<String, dynamic> json) =>
       DepartmentTrainingSheetTemplate(
+        topic: (json['topic'] as String?) ?? (json['trainingCategory'] as String?) ?? 'OTHER',
+        ceCredits: (json['ceCredits'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
+        gradingConfig: Map<String, dynamic>.from(json['gradingConfig'] as Map? ?? const {}),
         customFields: (json['customFields'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
         id: (json['id'] as String?) ?? '',
         name: (json['name'] as String?) ?? 'Template',
