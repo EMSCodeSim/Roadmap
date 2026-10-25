@@ -438,6 +438,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       final matches = student.results.where((result) => result.requirementId == skill.id);
       if (matches.isEmpty || matches.last.result != 'PASS') return false;
     }
+    final config = detail.gradingConfig;
+    if (config['writtenTestEnabled'] == true) {
+      if (student.writtenScore == null) return false;
+      final threshold = (config['writtenTestPassPercent'] as num?)?.toDouble();
+      if (threshold != null && student.writtenScore! < threshold) return false;
+    }
+    if (config['ccfEnabled'] == true) {
+      if (student.ccfScore == null) return false;
+      final threshold = (config['ccfPassPercent'] as num?)?.toDouble();
+      if (threshold != null && student.ccfScore! < threshold) return false;
+    }
     return true;
   }
 
@@ -448,8 +459,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         .where((skill) => skill.required && !member.results.any(
           (result) => result.requirementId == skill.id && result.result == 'PASS',
         )).toList();
-    if (missing.isEmpty) return '';
-    return '${missing.length} required skill(s) need a passing result';
+    final issues = <String>[];
+    if (missing.isNotEmpty) issues.add('${missing.length} required skill(s) need a passing result');
+    final config = detail.gradingConfig;
+    if (config['writtenTestEnabled'] == true && (member.writtenScore == null || ((config['writtenTestPassPercent'] as num?)?.toDouble() case final threshold? when threshold > (member.writtenScore ?? 0)))) issues.add('written test score needed');
+    if (config['ccfEnabled'] == true && (member.ccfScore == null || ((config['ccfPassPercent'] as num?)?.toDouble() case final threshold? when threshold > (member.ccfScore ?? 0)))) issues.add('CCF score needed');
+    return issues.join('; ');
   }
 
   Future<void> _confirmSelectedAttendance() async {
