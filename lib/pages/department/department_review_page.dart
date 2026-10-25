@@ -59,7 +59,10 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
         } else {
           _initialReviewOpened = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _open(matching);
+            if (!mounted) return;
+            _open(matching, openNext: false).then((_) {
+              if (mounted) Navigator.of(context).pop();
+            });
           });
         }
       }
@@ -71,7 +74,7 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
     }
   }
 
-  Future<void> _open(DepartmentReviewItem item) async {
+  Future<void> _open(DepartmentReviewItem item, {bool openNext = true}) async {
     // Continue directly to the next authorized, still-pending review.
     // Refresh after every decision: a sign-off can advance to another stage
     // or disappear from this evaluator's queue.
@@ -93,6 +96,10 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
         ),
       );
       if (!mounted || changed != true) return;
+      if (!openNext) {
+        await _load();
+        return;
+      }
       final previousIndex = _items.indexWhere((entry) => entry.id == nextId);
       await _load();
       if (!mounted || _error != null || _items.isEmpty) return;
@@ -118,6 +125,36 @@ class _DepartmentReviewPageState extends State<DepartmentReviewPage> {
     final cs = Theme.of(context).colorScheme;
     final elevatedRole = mode.role == 'TRAINING_OFFICER' ||
         mode.role == 'DEPARTMENT_ADMINISTRATOR';
+
+    // A Needs Attention selection is a direct-detail route. Keep the queue
+    // page out of the render tree while its selected review is resolved and
+    // opened, so the former Department Admin screen cannot flash underneath.
+    if (widget.initialReviewId != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Evaluation Review')),
+        body: SafeArea(
+          child: Center(
+            child: _error == null
+                ? const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 14),
+                      Text('Opening assigned evaluation…'),
+                    ],
+                  )
+                : Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: _MessageCard(
+                      icon: Icons.sync_problem_rounded,
+                      title: 'Could not open evaluation',
+                      message: _error!,
+                    ),
+                  ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
