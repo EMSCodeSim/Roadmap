@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_inbox_page.dart';
-import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/pages/task_book/task_book_page.dart';
 import 'package:firepath/models/custom_task_book.dart';
 import 'package:firepath/services/department_link_store.dart';
