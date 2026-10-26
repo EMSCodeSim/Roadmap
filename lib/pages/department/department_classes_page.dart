@@ -1645,7 +1645,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 )
               else
                 FilledButton.icon(
-                  onPressed: _busy ? null : _reviewAndFinish,
+                  onPressed: _busy ? null : () { _reviewAndFinish(); },
                   icon: const Icon(Icons.rate_review_outlined),
                   label: const Text('Review & Finish'),
                 ),
@@ -1719,7 +1719,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   icon: const Icon(Icons.sync_problem_outlined),
                   label: const Text('Review offline skill results')),
               OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Group grade')),
-              OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish')),
+              OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : () { _reviewAndFinish(); }, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish')),
             ]),
           ],
         ),
