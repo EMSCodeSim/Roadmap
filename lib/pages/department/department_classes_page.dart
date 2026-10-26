@@ -34,6 +34,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
   List<DepartmentClassSummary>? _classes;
   DepartmentClassSetup? _setup;
   String? _error;
+  bool _initialCreateOpened = false;
 
   @override
   void initState() { super.initState(); _load(); }
@@ -44,7 +45,8 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
       try { setup = await _api.getClassSetup(); } catch (_) {}
       if (!mounted) return;
       setState(() { _classes = rows; _setup = setup; _error = null; });
-      if (widget.openCreateTraining && setup != null) {
+      if (widget.openCreateTraining && setup != null && !_initialCreateOpened) {
+        _initialCreateOpened = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _createTraining();
         });
@@ -118,8 +120,8 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
     if (!mounted) return;
     final created = await showModalBottomSheet<String>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected));
     if (created != null && mounted) {
-      await _load();
-      if (!mounted) return;
+      // Open the new class immediately. The detail route uses qr=1 to display
+      // the live QR and Print QR Code actions as soon as the class loads.
       await context.push('${AppRoutes.departmentTrainingSheets}/$created?qr=1');
       if (mounted) await _load();
     }
@@ -1645,7 +1647,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 )
               else
                 FilledButton.icon(
-                  onPressed: _busy ? null : () { _reviewAndFinish(); },
+                  onPressed: _busy ? null : _reviewAndFinish,
                   icon: const Icon(Icons.rate_review_outlined),
                   label: const Text('Review & Finish'),
                 ),
@@ -1719,7 +1721,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   icon: const Icon(Icons.sync_problem_outlined),
                   label: const Text('Review offline skill results')),
               OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Group grade')),
-              OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : () { _reviewAndFinish(); }, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish')),
+              OutlinedButton.icon(onPressed: _busy || detail.roster.isEmpty ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Finish')),
             ]),
           ],
         ),
