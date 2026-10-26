@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/department_link_store.dart';
+import 'package:firepath/services/notification_preferences_store.dart';
+import 'package:firepath/services/push_notification_service.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 
@@ -18,7 +20,38 @@ class DepartmentSettingsPage extends StatefulWidget {
 class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
   final _api = ResponderRoadmapApi();
   final _linkStore = DepartmentLinkStore();
+  final _notificationStore = NotificationPreferencesStore();
   bool _disconnecting = false;
+  bool _savingNotifications = false;
+  NotificationPreferences? _notifications;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationStore.load().then((value) {
+      if (mounted) setState(() => _notifications = value);
+    });
+  }
+
+  Future<void> _updateNotifications(NotificationPreferences value) async {
+    if (_savingNotifications) return;
+    final enablesDeviceAlert = value.taskBookAlerts ||
+        value.assignmentAlerts ||
+        value.needsAttentionAlerts;
+    setState(() => _savingNotifications = true);
+    try {
+      if (enablesDeviceAlert && !await PushNotificationService.requestPermission()) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Phone notifications are disabled in device settings.'),
+        ));
+        return;
+      }
+      await _notificationStore.save(value);
+      if (mounted) setState(() => _notifications = value);
+    } finally {
+      if (mounted) setState(() => _savingNotifications = false);
+    }
+  }
 
   Future<void> _confirmDisconnect(BuildContext context) async {
     final confirmed = await showModalBottomSheet<bool>(
@@ -116,6 +149,36 @@ class _DepartmentSettingsPageState extends State<DepartmentSettingsPage> {
                       : 'Rank: ${link.rank}',
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            _SettingsSection(
+              title: 'Phone notifications',
+              helperText: 'Choose which department updates may alert this phone. You can change these at any time.',
+              children: _notifications == null
+                  ? const [ListTile(title: Text('Loading notification settings…'), trailing: CircularProgressIndicator())]
+                  : [
+                      SwitchListTile(
+                        secondary: const Icon(Icons.menu_book_outlined),
+                        title: const Text('Task Books'),
+                        subtitle: const Text('Notify me when a new Task Book is assigned.'),
+                        value: _notifications!.taskBookAlerts,
+                        onChanged: _savingNotifications ? null : (value) => _updateNotifications(_notifications!.copyWith(taskBookAlerts: value)),
+                      ),
+                      SwitchListTile(
+                        secondary: const Icon(Icons.assignment_outlined),
+                        title: const Text('Assignments'),
+                        subtitle: const Text('Notify me when a new one-page Assignment is assigned.'),
+                        value: _notifications!.assignmentAlerts,
+                        onChanged: _savingNotifications ? null : (value) => _updateNotifications(_notifications!.copyWith(assignmentAlerts: value)),
+                      ),
+                      SwitchListTile(
+                        secondary: const Icon(Icons.notification_important_outlined),
+                        title: const Text('Needs Attention'),
+                        subtitle: const Text('Notify me when a new approval, correction, or follow-up needs action.'),
+                        value: _notifications!.needsAttentionAlerts,
+                        onChanged: _savingNotifications ? null : (value) => _updateNotifications(_notifications!.copyWith(needsAttentionAlerts: value)),
+                      ),
+                    ],
             ),
             const SizedBox(height: 12),
             _SettingsSection(
