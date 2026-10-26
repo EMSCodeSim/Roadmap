@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/material.dart';
@@ -1230,6 +1231,179 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     finally{if(mounted)setState(()=>_busy=false);}
   }
 
+  String _recordDate(DateTime? value) {
+    if (value == null) return 'Not recorded';
+    final local = value.toLocal();
+    String two(int number) => number.toString().padLeft(2, '0');
+    final hour = local.hour == 0 ? 12 : (local.hour > 12 ? local.hour - 12 : local.hour);
+    final period = local.hour >= 12 ? 'PM' : 'AM';
+    return '${local.month}/${local.day}/${local.year} $hour:${two(local.minute)} $period';
+  }
+
+  Future<Uint8List> _buildTrainingRecordPdf(
+    DepartmentClassDetail detail,
+    String departmentName,
+  ) async {
+    final document = pw.Document(
+      title: '${detail.title} Training Record',
+      author: departmentName.isEmpty ? 'Responder Roadmap' : departmentName,
+      subject: 'Completed department training record',
+    );
+    final skillNames = <String, String>{
+      for (final section in detail.sections)
+        for (final skill in section.skills) skill.id: skill.title,
+    };
+    final rosterRows = detail.roster.map((student) => <String>[
+      student.name,
+      student.attendance.replaceAll('_', ' '),
+      student.finalResult.replaceAll('_', ' '),
+      student.writtenScore?.toStringAsFixed(1) ?? '',
+      student.ccfScore?.toStringAsFixed(1) ?? '',
+    ]).toList(growable: false);
+    final resultRows = <List<String>>[];
+    for (final student in detail.roster) {
+      for (final result in student.results) {
+        resultRows.add(<String>[
+          student.name,
+          skillNames[result.requirementId] ?? 'Checklist skill',
+          result.result.replaceAll('_', ' '),
+          result.evaluatorName,
+          result.notes,
+        ]);
+      }
+    }
+    final ceSummary = detail.ceCredits
+        .where((item) => (item['hours'] as num?)?.toDouble() != null && (item['hours'] as num).toDouble() > 0)
+        .map((item) => '${item['category']}: ${(item['hours'] as num).toDouble().toStringAsFixed(2)} hr')
+        .join(' | ');
+
+    pw.Widget line(String label, String value) => pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 4),
+      child: pw.RichText(text: pw.TextSpan(children: [
+        pw.TextSpan(text: '$label: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+        pw.TextSpan(text: value.isEmpty ? 'Not recorded' : value),
+      ])),
+    );
+
+    document.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.letter,
+      margin: const pw.EdgeInsets.all(36),
+      header: (context) => pw.Container(
+        padding: const pw.EdgeInsets.only(bottom: 8),
+        decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: .5))),
+        child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+          pw.Text(departmentName.isEmpty ? 'Responder Roadmap' : departmentName,
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text('Official Training Record', style: const pw.TextStyle(fontSize: 9)),
+        ]),
+      ),
+      footer: (context) => pw.Align(
+        alignment: pw.Alignment.centerRight,
+        child: pw.Text('Page ${context.pageNumber} of ${context.pagesCount} | Training ID ${detail.id}',
+          style: const pw.TextStyle(fontSize: 8)),
+      ),
+      build: (context) => [
+        pw.SizedBox(height: 10),
+        pw.Text(detail.title, style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 12),
+        line('Category', detail.trainingCategory.replaceAll('_', ' ')),
+        line('Checklist', detail.checklistTitle),
+        line('Location', detail.location),
+        line('Start', _recordDate(detail.startsAt)),
+        line('Finish', _recordDate(detail.endsAt)),
+        line('Training hours', detail.creditHours.toStringAsFixed(2)),
+        if (ceSummary.isNotEmpty) line('EMS CE credits', ceSummary),
+        line('Status', detail.status),
+        line('Instructor approval', _recordDate(detail.instructorApprovedAt)),
+        line('RMS status', detail.rmsStatus.replaceAll('_', ' ')),
+        if (detail.rmsEnteredAt != null) line('RMS entered', _recordDate(detail.rmsEnteredAt)),
+        if (detail.rmsReference.isNotEmpty) line('RMS reference', detail.rmsReference),
+        if (detail.notes.isNotEmpty) ...[
+          pw.SizedBox(height: 10),
+          pw.Text('Class objectives and training narrative', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 5),
+          pw.Text(detail.notes),
+        ],
+        pw.SizedBox(height: 16),
+        pw.Text('Class roster', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 6),
+        pw.TableHelper.fromTextArray(
+          headers: const ['Student', 'Attendance', 'Final result', 'Written', 'CCF'],
+          data: rosterRows,
+          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+          cellStyle: const pw.TextStyle(fontSize: 8),
+          cellPadding: const pw.EdgeInsets.all(4),
+        ),
+        if (resultRows.isNotEmpty) ...[
+          pw.SizedBox(height: 16),
+          pw.Text('Checklist results', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 6),
+          pw.TableHelper.fromTextArray(
+            headers: const ['Student', 'Skill', 'Result', 'Evaluator', 'Notes'],
+            data: resultRows,
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+            cellStyle: const pw.TextStyle(fontSize: 7),
+            cellPadding: const pw.EdgeInsets.all(3),
+            columnWidths: const {
+              0: pw.FlexColumnWidth(1.2), 1: pw.FlexColumnWidth(1.8),
+              2: pw.FlexColumnWidth(.8), 3: pw.FlexColumnWidth(1.1), 4: pw.FlexColumnWidth(1.5),
+            },
+          ),
+        ],
+        pw.SizedBox(height: 14),
+        pw.Text('Generated from the canonical Responder Roadmap record.', style: const pw.TextStyle(fontSize: 8)),
+      ],
+    ));
+    return document.save();
+  }
+
+  Future<void> _printTrainingRecord() async {
+    final detail = _detail;
+    if (detail == null || detail.status != 'COMPLETE' || _busy) return;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Training record PDF', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          const Text('Print with AirPrint or share the PDF to Files, email, or another app.'),
+          const SizedBox(height: 16),
+          FilledButton.icon(onPressed: () => Navigator.pop(sheetContext, 'print'), icon: const Icon(Icons.print_outlined), label: const Text('Print Record')),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(onPressed: () => Navigator.pop(sheetContext, 'share'), icon: const Icon(Icons.ios_share_outlined), label: const Text('Share / Save PDF')),
+        ]),
+      )),
+    );
+    if (action == null || !mounted) return;
+    setState(() { _busy = true; _error = null; });
+    try {
+      var departmentName = '';
+      try {
+        final record = await _api.getClosedTrainingExportRecord(detail.id);
+        final department = record['department'];
+        if (department is Map) departmentName = department['name']?.toString() ?? '';
+      } catch (_) {
+        // The loaded canonical class still contains everything required to print.
+      }
+      final bytes = await _buildTrainingRecordPdf(detail, departmentName);
+      final safe = detail.title.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
+      final name = '${safe.isEmpty ? 'training' : safe}_${detail.id}.pdf';
+      if (action == 'print') {
+        await Printing.layoutPdf(onLayout: (_) async => bytes, name: name);
+      } else {
+        await Printing.sharePdf(bytes: bytes, filename: name);
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Unable to create the training record PDF: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _printQr(String url, String title) async {
     final document = pw.Document();
     document.addPage(pw.Page(
@@ -1609,12 +1783,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               label: const Text('Export CSV for RMS'),
             ),
             OutlinedButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () => Share.share(
-                        'Open the canonical training record at https://responderroadmap.com/classes/${detail.id} to print/save as PDF.',
-                        subject: '${detail.title} training record',
-                      ),
+              onPressed: _busy ? null : _printTrainingRecord,
               icon: const Icon(Icons.picture_as_pdf_outlined),
               label: const Text('PDF / Print Record'),
             ),
