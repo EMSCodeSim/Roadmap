@@ -454,6 +454,32 @@ class _RequirementSheetState extends State<_RequirementSheet> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  bool get _hasUnsubmittedWork =>
+      _notes.text != widget.requirement.memberNotes ||
+      _evidence.text.trim().isNotEmpty ||
+      _memberAttested ||
+      _checkedStepIds.isNotEmpty ||
+      _selectedClassSkillResultId != null;
+
+  Future<void> _closeRequirement() async {
+    if (_submitting) return;
+    if (_hasUnsubmittedWork) {
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Leave this task?'),
+          content: const Text('Your unsubmitted notes and selections will not be saved.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Keep Working')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Leave Task')),
+          ],
+        ),
+      ) ?? false;
+      if (!discard || !mounted) return;
+    }
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final requirement = widget.requirement;
@@ -469,9 +495,25 @@ class _RequirementSheetState extends State<_RequirementSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              requirement.title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IconButton(
+                  onPressed: _submitting ? null : _closeRequirement,
+                  tooltip: 'Back to Task Book',
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      requirement.title,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             _StatusChip(status: _requirementStatus(requirement)),
