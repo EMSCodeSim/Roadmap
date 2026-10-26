@@ -60,8 +60,10 @@ class DepartmentInboxController extends ChangeNotifier {
       await _api.retryPendingClassMutations();
       final pending = await _api.pendingSubmissionCount() + await _api.pendingClassMutationCount();
       _inbox = await _api.getInbox();
+      var allAssignments = const <DepartmentTaskBookAssignment>[];
       try {
         final assignments = await _api.listAssignments();
+        allAssignments = assignments;
         final now = DateTime.now();
         _urgentAssignments = assignments.where((assignment) {
           final returned = assignment.sections
@@ -95,6 +97,12 @@ class DepartmentInboxController extends ChangeNotifier {
       _lastError = null;
       _syncState = pending > 0 ? DepartmentSyncState.waitingToUpload : DepartmentSyncState.synced;
       await PushNotificationService.configure(api: _api, onMessage: () => refresh(silent: true));
+      if (_inbox != null) {
+        await PushNotificationService.processDepartmentUpdates(
+          inbox: _inbox!,
+          assignments: allAssignments,
+        );
+      }
     } on ResponderRoadmapApiException catch (error) {
       final pending = await _api.pendingSubmissionCount() + await _api.pendingClassMutationCount();
       _lastError = error.message;
