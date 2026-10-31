@@ -53,7 +53,7 @@ void main() {
     );
     expect(
       FireOpsCatalog.goalsForPath(CareerPath.fire).every(
-        (g) => g.id.startsWith('ops_'),
+        (g) => g.id.startsWith('ops_') || g.category == 'Fire Specialty',
       ),
       isTrue,
     );

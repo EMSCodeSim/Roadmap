@@ -256,7 +256,7 @@ class _CreateTrainingSheet extends StatefulWidget {
 
 class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
-  bool busy = false, qr = true, advanced = false; String? error; DateTime startTime = DateTime.now(); String category = 'COMPANY'; String checklist = ''; final Set<String> selectedMembers = <String>{};
+  bool busy = false, qr = true, advanced = false; String? error; DateTime startTime = DateTime.now(); String category = 'COMPANY'; String checklist = ''; final Set<String> selectedMembers = <String>{}; final Map<String, String> stationProctors = <String, String>{};
   bool _dirty = false;
   bool get _isEmsCe => widget.template?.ceCredits.isNotEmpty == true;
 
@@ -296,7 +296,6 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); super.dispose(); }
   Future<void> save() async {
     if(title.text.trim().isEmpty){setState(()=>error='Training title is required.'); return;}
-    if(_isEmsCe && location.text.trim().isEmpty){setState(()=>error='Class location is required for EMS CE.'); return;}
     if(!qr && selectedMembers.isEmpty){setState(()=>error='Choose roster members or enable QR sign-in.');return;}
     final h=double.tryParse(hours.text.trim())??0;
     final mode=context.read<AppModeController>();
@@ -306,7 +305,8 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:startTime.toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, membershipIds:selectedMembers.toList(), selfRegistration:qr);
+      final stations = stationProctors.entries.map((entry) => <String, String>{'checklistVersionId': entry.key, 'title': widget.setup.checklists.firstWhere((v) => v['id']?.toString() == entry.key)['title']?.toString() ?? 'Skills station', 'proctorUserId': entry.value}).toList(growable:false);
+      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:startTime.toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, membershipIds:selectedMembers.toList(), selfRegistration:qr, stations:stations);
       if (mounted) {
         setState(() => _dirty = false);
         context.pop(created.id);
@@ -352,8 +352,58 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         DropdownMenuItem(value:'OTHER',child:Text('Other / Rescue')),
       ],onChanged:(v){setState(()=>category=v??'COMPANY');_markDirty();}),
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v){setState(()=>checklist=v??'');_markDirty();}),
+      if (advanced)
+        ExpansionTile(
+          title: Text('Multiple skill stations (${stationProctors.length})'),
+          subtitle: const Text('Assign a published checklist and authorized proctor to each station.'),
+          children: widget.setup.checklists.map<Widget>((item) {
+            final id = item['id']?.toString() ?? '';
+            final selected = stationProctors.containsKey(id);
+            return Column(
+              children: [
+                CheckboxListTile(
+                  dense: true,
+                  title: Text(item['title']?.toString() ?? 'Checklist'),
+                  subtitle: Text('${item['skillCount'] ?? 0} skills'),
+                  value: selected,
+                  onChanged: (value) {
+                    setState(() {
+                      if (value == true) {
+                        if (widget.setup.proctors.isNotEmpty) {
+                          stationProctors[id] = widget.setup.proctors.first['userId']?.toString() ?? '';
+                        }
+                      } else {
+                        stationProctors.remove(id);
+                      }
+                    });
+                    _markDirty();
+                  },
+                ),
+                if (selected)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: DropdownButtonFormField<String>(
+                      initialValue: stationProctors[id],
+                      decoration: const InputDecoration(labelText: 'Assigned proctor'),
+                      items: widget.setup.proctors.map((person) => DropdownMenuItem(
+                        value: person['userId']?.toString() ?? '',
+                        child: Text(person['name']?.toString() ?? 'Proctor'),
+                      )).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => stationProctors[id] = value);
+                          _markDirty();
+                        }
+                      },
+                    ),
+                  ),
+                const Divider(),
+              ],
+            );
+          }).toList(),
+        ),
       const SizedBox(height:12),
-      if(_isEmsCe) TextField(controller:location,decoration:const InputDecoration(labelText:'Class location *')),
+      if(_isEmsCe) TextField(controller:location,decoration:const InputDecoration(labelText:'Class location (optional)')),
       if(_isEmsCe) const SizedBox(height:12),
       OutlinedButton.icon(
         onPressed: () async {

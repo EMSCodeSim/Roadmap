@@ -50,11 +50,11 @@ class TaskBookNavigation {
   }
 
   static TaskBookOpenTarget targetFor(Requirement requirement) {
-    if (hasPreparationTasks(requirement)) {
-      return TaskBookOpenTarget.preparationTasks;
-    }
     if (hasSkillsChecklist(requirement)) {
       return TaskBookOpenTarget.skillsChecklist;
+    }
+    if (hasPreparationTasks(requirement)) {
+      return TaskBookOpenTarget.preparationTasks;
     }
     return TaskBookOpenTarget.requirementDetail;
   }

@@ -938,6 +938,7 @@ class DepartmentClassDetail {
   final bool registrationEnabled;
   final String registrationToken;
   final List<DepartmentClassSection> sections;
+  final List<Map<String, dynamic>> stations;
   final List<DepartmentClassStudent> roster;
 
   const DepartmentClassDetail({
@@ -965,6 +966,7 @@ class DepartmentClassDetail {
     required this.registrationEnabled,
     required this.registrationToken,
     required this.sections,
+    required this.stations,
     required this.roster,
   });
 
@@ -999,6 +1001,7 @@ class DepartmentClassDetail {
         registrationEnabled: json['registrationEnabled'] == true,
         registrationToken: (json['registrationToken'] as String?) ?? '',
         sections: (json['sections'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSection.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+        stations: (json['stations'] as List? ?? const []).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList(growable: false),
         roster: (json['roster'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassStudent.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
       );
 }
@@ -1486,6 +1489,7 @@ class ResponderRoadmapApi {
     String notes = '',
     List<String> membershipIds = const [],
     List<String> proctorUserIds = const [],
+    List<Map<String, String>> stations = const [],
     bool selfRegistration = true,
     String trainingSheetTemplateId = '',
   }) async {
@@ -1501,6 +1505,7 @@ class ResponderRoadmapApi {
       'notes': notes.trim(),
       'membershipIds': membershipIds,
       'proctorUserIds': proctorUserIds,
+      'stations': stations,
       'selfRegistration': selfRegistration,
       if (trainingSheetTemplateId.isNotEmpty) 'trainingSheetTemplateId': trainingSheetTemplateId,
     });

@@ -71,6 +71,12 @@ jobs:
       - name: Task Book focus preference tests
         run: flutter test test/task_book_focus_store_test.dart
 
+      - name: Home and backup sheet widget tests
+        timeout-minutes: 3
+        run: |
+          flutter test --concurrency=1 test/home_overview_test.dart
+          flutter test --concurrency=1 test/portfolio_backup_sheet_test.dart
+
       - name: Verify personal qualification task book navigation
         run: |
           grep -q "1. Find a class" lib/pages/task_book/qualification_task_book_page.dart
@@ -86,6 +92,12 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Set up Java 17 for Android Gradle builds
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -125,7 +137,7 @@ jobs:
         id: legacy_tests
         timeout-minutes: 15
         continue-on-error: true
-        run: flutter test --timeout 2m
+        run: flutter test --timeout 2m --concurrency=2
 
       - name: Report legacy diagnostic failures
         if: steps.legacy_tests.outcome == 'failure'
