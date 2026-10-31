@@ -25,7 +25,7 @@ void main() {
     expect(find.text('EXPOSURE'), findsOneWidget);
     expect(find.text('DRIVING'), findsOneWidget);
     expect(find.text('CAREER'), findsOneWidget);
-    expect(find.text('TASK BOOK'), findsOneWidget);
+    expect(find.text('Task Book / Career Road progress'), findsOneWidget);
     expect(find.text('Scan department class QR'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
