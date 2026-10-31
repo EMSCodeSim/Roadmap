@@ -72,7 +72,10 @@ jobs:
         run: flutter test test/task_book_focus_store_test.dart
 
       - name: Home and backup sheet widget tests
-        run: flutter test test/home_overview_test.dart test/portfolio_backup_sheet_test.dart --concurrency=1 --timeout 1m
+        timeout-minutes: 3
+        run: |
+          flutter test --concurrency=1 test/home_overview_test.dart
+          flutter test --concurrency=1 test/portfolio_backup_sheet_test.dart
 
       - name: Verify personal qualification task book navigation
         run: |

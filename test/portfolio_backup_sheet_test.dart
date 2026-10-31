@@ -15,30 +15,40 @@ void main() {
     FlutterSecureStorage.setMockInitialValues(<String, String>{});
   });
 
-  testWidgets('backup sheet makes file save and file restore the primary actions',
+  testWidgets(
+    'backup sheet makes file save and file restore the primary actions',
+      timeout: const Timeout(Duration(seconds: 45)),
       (tester) async {
-    final app = AppState();
-    await app.bootstrap();
+        final app = AppState();
+        print('backup widget test: bootstrap start');
+        await app.bootstrap();
+        print('backup widget test: bootstrap done');
 
-    await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: app,
-        child: const MaterialApp(
-          home: Scaffold(body: PortfolioBackupSheet()),
-        ),
-      ),
-    );
-    await tester.pump();
+        print('backup widget test: pump start');
+        await tester.pumpWidget(
+          ChangeNotifierProvider.value(
+            value: app,
+            child: const MaterialApp(
+              home: Scaffold(body: PortfolioBackupSheet()),
+            ),
+          ),
+        );
+        print('backup widget test: pump done');
+        await tester.pump();
+        print('backup widget test: initial frame done');
 
-    expect(find.byKey(const Key('backup-save-file')), findsOneWidget);
-    expect(find.byKey(const Key('backup-restore-file')), findsOneWidget);
-    expect(find.text('Save or share backup file'), findsOneWidget);
-    expect(find.text('Restore from backup file'), findsOneWidget);
-    expect(find.text('Paste FireOps Career Portfolio JSON'), findsNothing);
+        expect(find.byKey(const Key('backup-save-file')), findsOneWidget);
+        expect(find.byKey(const Key('backup-restore-file')), findsOneWidget);
+        expect(find.text('Save or share backup file'), findsOneWidget);
+        expect(find.text('Restore from backup file'), findsOneWidget);
+        expect(find.text('Paste FireOps Career Portfolio JSON'), findsNothing);
 
-    await tester.tap(find.text('Paste an older backup instead'));
-    await tester.pump();
-    expect(find.text('Paste FireOps Career Portfolio JSON'), findsOneWidget);
-    expect(find.text('Restore pasted backup'), findsOneWidget);
-  });
+        await tester.tap(find.text('Paste an older backup instead'));
+        print('backup widget test: tap done');
+        await tester.pump();
+        print('backup widget test: second frame done');
+        expect(find.text('Paste FireOps Career Portfolio JSON'), findsOneWidget);
+        expect(find.text('Restore pasted backup'), findsOneWidget);
+      },
+  );
 }

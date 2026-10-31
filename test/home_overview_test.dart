@@ -16,31 +16,43 @@ void main() {
     FlutterSecureStorage.setMockInitialValues(<String, String>{});
   });
 
-  testWidgets('Home retains My Roadmap and separates personal and department overview', (tester) async {
-    final app = AppState();
-    await app.bootstrap();
-    final department = DepartmentInboxController();
+  testWidgets(
+    'Home retains My Roadmap and separates personal and department overview',
+    timeout: const Timeout(Duration(seconds: 45)),
+    (tester) async {
+      final app = AppState();
+      print('home widget test: bootstrap start');
+      await app.bootstrap();
+      print('home widget test: bootstrap done');
+      final department = DepartmentInboxController();
 
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: app),
-          ChangeNotifierProvider<DepartmentInboxController>.value(value: department),
-        ],
-        child: const MaterialApp(home: VisualHomePage()),
-      ),
-    );
-    // Avoid waiting indefinitely for progress indicators and asynchronous sync.
-    await tester.pump(const Duration(milliseconds: 300));
+      print('home widget test: pump start');
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AppState>.value(value: app),
+            ChangeNotifierProvider<DepartmentInboxController>.value(
+              value: department,
+            ),
+          ],
+          child: const MaterialApp(home: VisualHomePage()),
+        ),
+      );
+      print('home widget test: pump done');
+      // Avoid waiting indefinitely for progress indicators and asynchronous sync.
+      await tester.pump(const Duration(milliseconds: 300));
+      print('home widget test: first frame done');
 
-    expect(find.text('My Roadmap'), findsOneWidget);
-    expect(find.text('Personal overview'), findsOneWidget);
-    expect(find.text('What should I work on next?'), findsNothing);
+      expect(find.text('My Roadmap'), findsOneWidget);
+      expect(find.text('Personal overview'), findsOneWidget);
+      expect(find.text('What should I work on next?'), findsNothing);
 
-    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Department overview'), findsOneWidget);
-    expect(find.textContaining('Connect to your department'), findsOneWidget);
-    expect(find.text('Open Department'), findsOneWidget);
-  });
+      await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+      await tester.pump(const Duration(milliseconds: 300));
+      print('home widget test: scroll done');
+      expect(find.text('Department overview'), findsOneWidget);
+      expect(find.textContaining('Connect to your department'), findsOneWidget);
+      expect(find.text('Open Department'), findsOneWidget);
+    },
+  );
 }
