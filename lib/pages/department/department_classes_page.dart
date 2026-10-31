@@ -352,7 +352,56 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         DropdownMenuItem(value:'OTHER',child:Text('Other / Rescue')),
       ],onChanged:(v){setState(()=>category=v??'COMPANY');_markDirty();}),
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v){setState(()=>checklist=v??'');_markDirty();}),
-      if(advanced) ExpansionTile(title:Text('Multiple skill stations (${stationProctors.length})'),subtitle:const Text('Assign a published checklist and authorized proctor to each station.'),children:widget.setup.checklists.map((item){final id=item['id']?.toString()??'';final selected=stationProctors.containsKey(id);return Column(children:[CheckboxListTile(dense:true,title:Text(item['title']?.toString()??'Checklist'),subtitle:Text('${item['skillCount']??0} skills'),value:selected,onChanged:(value){setState((){if(value==true){if(widget.setup.proctors.isNotEmpty) stationProctors[id]=widget.setup.proctors.first['userId']?.toString()??'';}else{stationProctors.remove(id);}_markDirty();});}}),if(selected) Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:DropdownButtonFormField<String>(initialValue:stationProctors[id],decoration:const InputDecoration(labelText:'Assigned proctor'),items:widget.setup.proctors.map((p)=>DropdownMenuItem(value:p['userId']?.toString()??'',child:Text(p['name']?.toString()??'Proctor'))).toList(),onChanged:(value){if(value!=null)setState(()=>stationProctors[id]=value);})),const Divider()]);}).toList()),
+      if (advanced)
+        ExpansionTile(
+          title: Text('Multiple skill stations (${stationProctors.length})'),
+          subtitle: const Text('Assign a published checklist and authorized proctor to each station.'),
+          children: widget.setup.checklists.map<Widget>((item) {
+            final id = item['id']?.toString() ?? '';
+            final selected = stationProctors.containsKey(id);
+            return Column(
+              children: [
+                CheckboxListTile(
+                  dense: true,
+                  title: Text(item['title']?.toString() ?? 'Checklist'),
+                  subtitle: Text('${item['skillCount'] ?? 0} skills'),
+                  value: selected,
+                  onChanged: (value) {
+                    setState(() {
+                      if (value == true) {
+                        if (widget.setup.proctors.isNotEmpty) {
+                          stationProctors[id] = widget.setup.proctors.first['userId']?.toString() ?? '';
+                        }
+                      } else {
+                        stationProctors.remove(id);
+                      }
+                    });
+                    _markDirty();
+                  },
+                ),
+                if (selected)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: DropdownButtonFormField<String>(
+                      initialValue: stationProctors[id],
+                      decoration: const InputDecoration(labelText: 'Assigned proctor'),
+                      items: widget.setup.proctors.map((person) => DropdownMenuItem(
+                        value: person['userId']?.toString() ?? '',
+                        child: Text(person['name']?.toString() ?? 'Proctor'),
+                      )).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => stationProctors[id] = value);
+                          _markDirty();
+                        }
+                      },
+                    ),
+                  ),
+                const Divider(),
+              ],
+            );
+          }).toList(),
+        ),
       const SizedBox(height:12),
       if(_isEmsCe) TextField(controller:location,decoration:const InputDecoration(labelText:'Class location (optional)')),
       if(_isEmsCe) const SizedBox(height:12),
