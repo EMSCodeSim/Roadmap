@@ -80,11 +80,11 @@ void main() {
 
   testWidgets('Firefighter I checklist shows national JPR sections', (tester) async {
     final app = AppState();
-    await app.bootstrap();
-    await app.completeOnboarding(
+    await tester.runAsync(app.bootstrap);
+    await tester.runAsync(() => app.completeOnboarding(
       profile: _profile(goalId: 'ops_firefighter'),
       certifications: const [],
-    );
+    ));
 
     final requirement = app.roadmap!.all
         .map((item) => item.requirement)
@@ -119,11 +119,11 @@ void main() {
   testWidgets('Pumper checklist offers preparation tasks as a secondary action',
       (tester) async {
     final app = AppState();
-    await app.bootstrap();
-    await app.completeOnboarding(
+    await tester.runAsync(app.bootstrap);
+    await tester.runAsync(() => app.completeOnboarding(
       profile: _profile(goalId: 'ops_engineer'),
       certifications: const [],
-    );
+    ));
 
     final requirement = app.roadmap!.all
         .map((item) => item.requirement)
@@ -151,11 +151,11 @@ void main() {
   testWidgets('Task Book tap on Firefighter I opens the skills checklist',
       (tester) async {
     final app = AppState();
-    await app.bootstrap();
-    await app.completeOnboarding(
+    await tester.runAsync(app.bootstrap);
+    await tester.runAsync(() => app.completeOnboarding(
       profile: _profile(goalId: 'ops_firefighter'),
       certifications: const [],
-    );
+    ));
 
     final router = GoRouter(
       initialLocation: AppRoutes.myPath,
