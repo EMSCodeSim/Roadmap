@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,7 +9,12 @@ import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
+  });
 
   testWidgets('Home retains My Roadmap and separates personal and department overview', (tester) async {
     final app = AppState();

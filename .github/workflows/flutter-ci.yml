@@ -71,6 +71,9 @@ jobs:
       - name: Task Book focus preference tests
         run: flutter test test/task_book_focus_store_test.dart
 
+      - name: Home and backup sheet widget tests
+        run: flutter test test/home_overview_test.dart test/portfolio_backup_sheet_test.dart --concurrency=1 --timeout 1m
+
       - name: Verify personal qualification task book navigation
         run: |
           grep -q "1. Find a class" lib/pages/task_book/qualification_task_book_page.dart
@@ -131,7 +134,7 @@ jobs:
         id: legacy_tests
         timeout-minutes: 15
         continue-on-error: true
-        run: flutter test --timeout 2m
+        run: flutter test --timeout 2m --concurrency=2
 
       - name: Report legacy diagnostic failures
         if: steps.legacy_tests.outcome == 'failure'
