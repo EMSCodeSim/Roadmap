@@ -49,12 +49,14 @@ void main() {
 
   testWidgets('daily focus shows time modes and next-step framing', (tester) async {
     final app = AppState();
-    await app.bootstrap();
-    await app.completeOnboarding(
-      profile: volunteerProfile(),
-      certifications: [cert('FF I')],
-    );
-    await app.setPrimaryGoal('ops_engineer');
+    await tester.runAsync(() async {
+      await app.bootstrap();
+      await app.completeOnboarding(
+        profile: volunteerProfile(),
+        certifications: [cert('FF I')],
+      );
+      await app.setPrimaryGoal('ops_engineer');
+    });
 
     await tester.pumpWidget(
       ChangeNotifierProvider.value(

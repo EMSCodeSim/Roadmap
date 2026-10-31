@@ -82,6 +82,9 @@ jobs:
           flutter test --concurrency=1 test/task_book_cert_checklist_test.dart
           flutter test --concurrency=1 test/home_quick_access_row_test.dart
           flutter test --concurrency=1 test/onboarding_welcome_test.dart
+          flutter test --concurrency=1 test/home_readiness_panel_test.dart
+          flutter test --concurrency=1 test/daily_focus_page_test.dart
+          flutter test --concurrency=1 test/simple_quick_log_sheet_test.dart
 
       - name: Verify personal qualification task book navigation
         run: |
