@@ -13,7 +13,7 @@ void main() {
 
   testWidgets('home stays focused on personal career growth', (tester) async {
     final app = AppState();
-    await app.bootstrap();
+    await tester.runAsync(app.bootstrap);
 
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
@@ -21,7 +21,7 @@ void main() {
         child: const MaterialApp(home: VisualHomePage()),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Department'), findsNothing);
     expect(find.text('Personal'), findsNothing);
