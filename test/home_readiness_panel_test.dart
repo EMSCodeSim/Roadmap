@@ -51,7 +51,7 @@ void main() {
   testWidgets('home keeps personal career goal visible and separates department progress', (tester) async {
     final app = AppState();
     await tester.runAsync(() async {
-      await tester.runAsync(app.bootstrap);
+      await app.bootstrap();
       await app.completeOnboarding(
         profile: volunteerProfile(),
         certifications: [cert('FF I'), cert('FF II')],
