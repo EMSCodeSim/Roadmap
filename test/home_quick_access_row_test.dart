@@ -31,7 +31,14 @@ void main() {
 
     expect(find.text('Department'), findsNothing);
     expect(find.text('Personal'), findsNothing);
-    expect(find.text('Daily Focus'), findsOneWidget);
-    expect(find.text('My Path'), findsOneWidget);
+    expect(find.text('Personal overview'), findsOneWidget);
+    expect(find.text('Needs attention'), findsOneWidget);
+    expect(find.text('Open My Roadmap'), findsOneWidget);
+    expect(find.text('Department overview'), findsOneWidget);
+    expect(find.text('Open Department'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Personal overview')).dy,
+      lessThan(tester.getTopLeft(find.text('Department overview')).dy),
+    );
   });
 }
