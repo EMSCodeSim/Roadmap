@@ -18,13 +18,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() async {
-    print('home setup: before temp directory');
     _testDocumentsDirectory = await Directory.systemTemp.createTemp('roadmap-home-test-');
-    print('home setup: temp directory ready');
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues(<String, String>{});
     _pathProviderChannel.setMockMethodCallHandler((call) async {
-      print('home setup: path provider call ${call.method}');
       if (call.method == 'getApplicationDocumentsDirectory') {
         return _testDocumentsDirectory.path;
       }
@@ -43,12 +40,9 @@ void main() {
     'Home retains My Roadmap and separates personal and department overview',
     (tester) async {
       final app = AppState();
-      print('home test: bootstrap start');
-      await app.bootstrap();
-      print('home test: bootstrap complete');
+      await tester.runAsync(app.bootstrap);
       final department = DepartmentInboxController();
 
-      print('home test: pump start');
       await tester.pumpWidget(
         MultiProvider(
           providers: [
@@ -60,7 +54,6 @@ void main() {
           child: const MaterialApp(home: VisualHomePage()),
         ),
       );
-      print('home test: pump complete');
       // Avoid waiting indefinitely for progress indicators and asynchronous sync.
       await tester.pump(const Duration(milliseconds: 300));
 
