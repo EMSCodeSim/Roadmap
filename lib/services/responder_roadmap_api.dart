@@ -1439,7 +1439,6 @@ class ResponderRoadmapApi {
     String checklistVersionId = '', String location = '', String notes = '',
     List<String> requiredFields = const [], bool selfRegistration = true,
     List<String> proctorUserIds = const [],
-    List<Map<String, String>> stations = const [],
   }) async {
     final data = await _request('POST', 'training-sheet-templates', body: {
       'name': name.trim(), 'defaultTitle': defaultTitle.trim(), 'classType': classType,
@@ -1490,6 +1489,7 @@ class ResponderRoadmapApi {
     String notes = '',
     List<String> membershipIds = const [],
     List<String> proctorUserIds = const [],
+    List<Map<String, String>> stations = const [],
     bool selfRegistration = true,
     String trainingSheetTemplateId = '',
   }) async {
