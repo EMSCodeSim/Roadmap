@@ -77,6 +77,12 @@ jobs:
           flutter test --concurrency=1 test/home_overview_test.dart
           flutter test --concurrency=1 test/portfolio_backup_sheet_test.dart
 
+      - name: Previously failing legacy widget regressions
+        run: |
+          flutter test --concurrency=1 test/task_book_cert_checklist_test.dart
+          flutter test --concurrency=1 test/home_quick_access_row_test.dart
+          flutter test --concurrency=1 test/onboarding_welcome_test.dart
+
       - name: Verify personal qualification task book navigation
         run: |
           grep -q "1. Find a class" lib/pages/task_book/qualification_task_book_page.dart

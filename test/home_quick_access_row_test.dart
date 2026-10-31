@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firepath/pages/home/visual_home_page.dart';
 import 'package:firepath/state/app_state.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
 
 void main() {
   setUp(() {
@@ -13,19 +14,31 @@ void main() {
 
   testWidgets('home stays focused on personal career growth', (tester) async {
     final app = AppState();
-    await app.bootstrap();
+    await tester.runAsync(app.bootstrap);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: app,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppState>.value(value: app),
+          ChangeNotifierProvider<DepartmentInboxController>(
+            create: (_) => DepartmentInboxController(),
+          ),
+        ],
         child: const MaterialApp(home: VisualHomePage()),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Department'), findsNothing);
     expect(find.text('Personal'), findsNothing);
-    expect(find.text('Daily Focus'), findsOneWidget);
-    expect(find.text('My Path'), findsOneWidget);
+    expect(find.text('Personal overview'), findsOneWidget);
+    expect(find.text('Needs attention'), findsWidgets);
+    expect(find.text('Open My Roadmap'), findsOneWidget);
+    expect(find.text('Department overview'), findsOneWidget);
+    expect(find.text('Open Department'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Personal overview')).dy,
+      lessThan(tester.getTopLeft(find.text('Department overview')).dy),
+    );
   });
 }
