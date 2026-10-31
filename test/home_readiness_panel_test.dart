@@ -50,12 +50,14 @@ void main() {
 
   testWidgets('home keeps personal career goal visible and separates department progress', (tester) async {
     final app = AppState();
-    await app.bootstrap();
-    await app.completeOnboarding(
-      profile: volunteerProfile(),
-      certifications: [cert('FF I'), cert('FF II')],
-    );
-    await app.setPrimaryGoal('ops_engineer');
+    await tester.runAsync(() async {
+      await tester.runAsync(app.bootstrap);
+      await app.completeOnboarding(
+        profile: volunteerProfile(),
+        certifications: [cert('FF I'), cert('FF II')],
+      );
+      await app.setPrimaryGoal('ops_engineer');
+    });
 
     await tester.pumpWidget(
       MultiProvider(
@@ -85,7 +87,7 @@ void main() {
 
   testWidgets('home prompts to choose a roadmap when no goal is set', (tester) async {
     final app = AppState();
-    await app.bootstrap();
+    await tester.runAsync(app.bootstrap);
 
     await tester.pumpWidget(
       MultiProvider(
