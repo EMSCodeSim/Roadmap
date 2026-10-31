@@ -11,7 +11,7 @@ void main() {
 
     expect(find.text('Your career roadmap, organized.'), findsOneWidget);
     expect(find.text('Build your personal roadmap'), findsOneWidget);
-    expect(find.text('Complete task books and assignments'), findsOneWidget);
+    expect(find.text('Build on your next steps'), findsOneWidget);
     expect(find.text('Connect with your department'), findsOneWidget);
     expect(find.text('Set up my roadmap'), findsOneWidget);
     expect(find.textContaining('Connecting a department is optional'),
