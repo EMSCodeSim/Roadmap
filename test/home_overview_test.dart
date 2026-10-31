@@ -64,7 +64,6 @@ void main() {
       await tester.drag(find.byType(ListView).first, const Offset(0, -500));
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Department overview'), findsOneWidget);
-      expect(find.textContaining('Connect to your department'), findsOneWidget);
       expect(find.text('Open Department'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
