@@ -17,13 +17,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() async {
-    print('backup setup: before temp directory');
     _testDocumentsDirectory = await Directory.systemTemp.createTemp('roadmap-backup-test-');
-    print('backup setup: temp directory ready');
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues(<String, String>{});
     _pathProviderChannel.setMockMethodCallHandler((call) async {
-      print('backup setup: path provider call ${call.method}');
       if (call.method == 'getApplicationDocumentsDirectory') {
         return _testDocumentsDirectory.path;
       }
@@ -42,11 +39,8 @@ void main() {
     'backup sheet makes file save and file restore the primary actions',
     (tester) async {
       final app = AppState();
-      print('backup test: bootstrap start');
-      await app.bootstrap();
-      print('backup test: bootstrap complete');
+      await tester.runAsync(app.bootstrap);
 
-      print('backup test: pump start');
       await tester.pumpWidget(
         ChangeNotifierProvider.value(
           value: app,
@@ -55,7 +49,6 @@ void main() {
           ),
         ),
       );
-      print('backup test: pump complete');
       await tester.pump();
 
       expect(find.byKey(const Key('backup-save-file')), findsOneWidget);
