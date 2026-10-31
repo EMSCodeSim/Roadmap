@@ -87,6 +87,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Set up Java 17 for Android Gradle builds
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
