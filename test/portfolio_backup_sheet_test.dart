@@ -17,30 +17,30 @@ void main() {
 
   testWidgets(
     'backup sheet makes file save and file restore the primary actions',
-      timeout: const Timeout(Duration(seconds: 45)),
-      (tester) async {
-        final app = AppState();
+    (tester) async {
+      final app = AppState();
 
-        await tester.pumpWidget(
-          ChangeNotifierProvider.value(
-            value: app,
-            child: const MaterialApp(
-              home: Scaffold(body: PortfolioBackupSheet()),
-            ),
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: app,
+          child: const MaterialApp(
+            home: Scaffold(body: PortfolioBackupSheet()),
           ),
-        );
-        await tester.pump();
+        ),
+      );
+      await tester.pump();
 
-        expect(find.byKey(const Key('backup-save-file')), findsOneWidget);
-        expect(find.byKey(const Key('backup-restore-file')), findsOneWidget);
-        expect(find.text('Save or share backup file'), findsOneWidget);
-        expect(find.text('Restore from backup file'), findsOneWidget);
-        expect(find.text('Paste FireOps Career Portfolio JSON'), findsNothing);
+      expect(find.byKey(const Key('backup-save-file')), findsOneWidget);
+      expect(find.byKey(const Key('backup-restore-file')), findsOneWidget);
+      expect(find.text('Save or share backup file'), findsOneWidget);
+      expect(find.text('Restore from backup file'), findsOneWidget);
+      expect(find.text('Paste FireOps Career Portfolio JSON'), findsNothing);
 
-        await tester.tap(find.text('Paste an older backup instead'));
-        await tester.pump();
-        expect(find.text('Paste FireOps Career Portfolio JSON'), findsOneWidget);
-        expect(find.text('Restore pasted backup'), findsOneWidget);
-      },
+      await tester.tap(find.text('Paste an older backup instead'));
+      await tester.pump();
+      expect(find.text('Paste FireOps Career Portfolio JSON'), findsOneWidget);
+      expect(find.text('Restore pasted backup'), findsOneWidget);
+    },
+    timeout: const Timeout(Duration(seconds: 45)),
   );
 }

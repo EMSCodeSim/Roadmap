@@ -18,7 +18,6 @@ void main() {
 
   testWidgets(
     'Home retains My Roadmap and separates personal and department overview',
-    timeout: const Timeout(Duration(seconds: 45)),
     (tester) async {
       final app = AppState();
       final department = DepartmentInboxController();
@@ -47,5 +46,6 @@ void main() {
       expect(find.textContaining('Connect to your department'), findsOneWidget);
       expect(find.text('Open Department'), findsOneWidget);
     },
+    timeout: const Timeout(Duration(seconds: 45)),
   );
 }
