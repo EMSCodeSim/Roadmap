@@ -21,12 +21,8 @@ void main() {
     timeout: const Timeout(Duration(seconds: 45)),
     (tester) async {
       final app = AppState();
-      print('home widget test: bootstrap start');
-      await app.bootstrap();
-      print('home widget test: bootstrap done');
       final department = DepartmentInboxController();
 
-      print('home widget test: pump start');
       await tester.pumpWidget(
         MultiProvider(
           providers: [
@@ -38,10 +34,8 @@ void main() {
           child: const MaterialApp(home: VisualHomePage()),
         ),
       );
-      print('home widget test: pump done');
       // Avoid waiting indefinitely for progress indicators and asynchronous sync.
       await tester.pump(const Duration(milliseconds: 300));
-      print('home widget test: first frame done');
 
       expect(find.text('My Roadmap'), findsOneWidget);
       expect(find.text('Personal overview'), findsOneWidget);
@@ -49,7 +43,6 @@ void main() {
 
       await tester.drag(find.byType(ListView).first, const Offset(0, -500));
       await tester.pump(const Duration(milliseconds: 300));
-      print('home widget test: scroll done');
       expect(find.text('Department overview'), findsOneWidget);
       expect(find.textContaining('Connect to your department'), findsOneWidget);
       expect(find.text('Open Department'), findsOneWidget);

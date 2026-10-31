@@ -20,11 +20,7 @@ void main() {
       timeout: const Timeout(Duration(seconds: 45)),
       (tester) async {
         final app = AppState();
-        print('backup widget test: bootstrap start');
-        await app.bootstrap();
-        print('backup widget test: bootstrap done');
 
-        print('backup widget test: pump start');
         await tester.pumpWidget(
           ChangeNotifierProvider.value(
             value: app,
@@ -33,9 +29,7 @@ void main() {
             ),
           ),
         );
-        print('backup widget test: pump done');
         await tester.pump();
-        print('backup widget test: initial frame done');
 
         expect(find.byKey(const Key('backup-save-file')), findsOneWidget);
         expect(find.byKey(const Key('backup-restore-file')), findsOneWidget);
@@ -44,9 +38,7 @@ void main() {
         expect(find.text('Paste FireOps Career Portfolio JSON'), findsNothing);
 
         await tester.tap(find.text('Paste an older backup instead'));
-        print('backup widget test: tap done');
         await tester.pump();
-        print('backup widget test: second frame done');
         expect(find.text('Paste FireOps Career Portfolio JSON'), findsOneWidget);
         expect(find.text('Restore pasted backup'), findsOneWidget);
       },
