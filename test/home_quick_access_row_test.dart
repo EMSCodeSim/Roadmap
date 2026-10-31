@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firepath/pages/home/visual_home_page.dart';
 import 'package:firepath/state/app_state.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
 
 void main() {
   setUp(() {
@@ -16,8 +17,13 @@ void main() {
     await tester.runAsync(app.bootstrap);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: app,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppState>.value(value: app),
+          ChangeNotifierProvider<DepartmentInboxController>(
+            create: (_) => DepartmentInboxController(),
+          ),
+        ],
         child: const MaterialApp(home: VisualHomePage()),
       ),
     );
