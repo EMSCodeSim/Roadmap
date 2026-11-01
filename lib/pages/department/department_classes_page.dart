@@ -1661,49 +1661,53 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ])));
       }),
 
-      if (detail.status != 'COMPLETE')
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Next step', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              Text(
-                detail.roster.isEmpty
-                    ? 'Add students to begin this Training Sheet.'
-                    : detail.roster.any((member) => member.attendance == 'REGISTERED')
-                        ? 'Record attendance for every student.'
-                        : detail.roster.any((member) => member.attendance == 'PRESENT' && !_studentComplete(detail, member))
-                            ? 'Grade required skills for present students.'
-                            : 'Review the completed roster and close training.',
-              ),
-              const SizedBox(height: 10),
-              if (detail.roster.isEmpty)
-                Wrap(spacing:8,runSpacing:8,children:[
-                  FilledButton.icon(onPressed:_busy?null:_showQr,icon:const Icon(Icons.qr_code_2_rounded),label:const Text('Show QR')),
-                  OutlinedButton.icon(onPressed:_busy?null:_addStudents,icon:const Icon(Icons.person_add_alt_1_outlined),label:const Text('Add students')),
-                ])
-              else if (detail.roster.any((member) => member.attendance == 'REGISTERED'))
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _load,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Refresh Roster'),
-                )
-              else if (detail.roster.any((member) => member.attendance == 'PRESENT' && !_studentComplete(detail, member)))
-                FilledButton.icon(
-                  onPressed: _busy ? null : _groupGrade,
-                  icon: const Icon(Icons.fact_check_outlined),
-                  label: const Text('Grade Skills'),
-                )
-              else
-                FilledButton.icon(
-                  onPressed: _busy ? null : _reviewAndFinish,
-                  icon: const Icon(Icons.rate_review_outlined),
-                  label: const Text('Review & Finish'),
-                ),
-            ]),
-          ),
+      // Keep the next required instructor action visible before the long roster.
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Finish this Training Sheet', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 6),
+            Text(detail.status == 'COMPLETE'
+                ? detail.rmsStatus == 'NOT_READY'
+                    ? 'Training is closed. Instructor approval is next.'
+                    : detail.rmsStatus == 'AWAITING_ENTRY'
+                        ? 'Instructor approved. Record the entry in your department RMS.'
+                        : 'All steps complete — RMS entry recorded.'
+                : detail.roster.isEmpty
+                    ? 'Step 1 of 5 · Add students or display the sign-in QR code.'
+                    : detail.roster.any((m) => m.attendance == 'REGISTERED')
+                        ? 'Step 2 of 5 · Record attendance for every student.'
+                        : detail.roster.any((m) => m.attendance == 'PRESENT' && !_studentComplete(detail, m))
+                            ? 'Step 3 of 5 · Grade required skills for present students.'
+                            : 'Step 4 of 5 · Enter end time, narrative, and RMS details; then review and close.'),
+            const SizedBox(height: 12),
+            if (detail.status != 'COMPLETE' && detail.roster.isEmpty)
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: const Text('Show QR')),
+                OutlinedButton.icon(onPressed: _busy ? null : _addStudents, icon: const Icon(Icons.person_add_alt_1_outlined), label: const Text('Add students')),
+              ])
+            else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'REGISTERED'))
+              const Text('Select students in the roster below, record attendance, then return here to continue.')
+            else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'PRESENT' && !_studentComplete(detail, m)))
+              FilledButton.icon(onPressed: _busy ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Grade Skills')),
+            else if (detail.status != 'COMPLETE')
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                FilledButton.icon(onPressed: _busy ? null : () async { await _editTrainingDocumentation(); }, icon: const Icon(Icons.edit_note_rounded), label: const Text('Enter Training Documentation')),
+                OutlinedButton.icon(onPressed: _busy ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Close')),
+              ])
+            else if (detail.rmsStatus == 'NOT_READY')
+              FilledButton.icon(onPressed: _busy ? null : _approveTrainingSheet, icon: const Icon(Icons.approval_outlined), label: const Text('Instructor Approve'))
+            else if (detail.rmsStatus == 'AWAITING_ENTRY' && canRecordRmsEntry)
+              FilledButton.icon(onPressed: _busy ? null : _markRmsEntered, icon: const Icon(Icons.fact_check_outlined), label: const Text('Mark RMS Entered'))
+            else if (detail.rmsStatus == 'AWAITING_ENTRY')
+              const Text('Waiting for an authorized department administrator to record RMS entry.'),
+            const SizedBox(height: 8),
+            if (detail.status != 'COMPLETE')
+              TextButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh class progress')),
+          ]),
         ),
+      ),
       if (detail.ceCredits.isNotEmpty || detail.gradingConfig.isNotEmpty)
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Template requirements', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
