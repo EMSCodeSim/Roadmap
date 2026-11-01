@@ -1688,7 +1688,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 OutlinedButton.icon(onPressed: _busy ? null : _addStudents, icon: const Icon(Icons.person_add_alt_1_outlined), label: const Text('Add students')),
               ])
             else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'REGISTERED'))
-              const Text('Select students in the roster below, record attendance, then return here to continue.'),
+              const Text('Select students in the roster below, record attendance, then return here to continue.')
             else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'PRESENT' && !_studentComplete(detail, m)))
               FilledButton.icon(onPressed: _busy ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Grade Skills')),
             else if (detail.status != 'COMPLETE')
