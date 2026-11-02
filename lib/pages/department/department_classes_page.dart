@@ -1690,7 +1690,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'REGISTERED'))
               const Text('Select students in the roster below, record attendance, then return here to continue.')
             else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'PRESENT' && !_studentComplete(detail, m)))
-              FilledButton.icon(onPressed: _busy ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Grade Skills')),
+              FilledButton.icon(onPressed: _busy ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Grade Skills'))
             else if (detail.status != 'COMPLETE')
               Wrap(spacing: 8, runSpacing: 8, children: [
                 FilledButton.icon(onPressed: _busy ? null : () async { await _editTrainingDocumentation(); }, icon: const Icon(Icons.edit_note_rounded), label: const Text('Enter Training Documentation')),
