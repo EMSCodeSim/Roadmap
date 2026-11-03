@@ -83,7 +83,6 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
                   DropdownMenuItem(value: 'EMS', child: Text('EMS')),
                   DropdownMenuItem(value: 'CPR', child: Text('CPR')),
                   DropdownMenuItem(value: 'FIRE', child: Text('Fire')),
-                  DropdownMenuItem(value: 'FIRE', child: Text('Fire')),
                   DropdownMenuItem(value: 'HAZMAT', child: Text('HazMat')),
                   DropdownMenuItem(value: 'DRIVER', child: Text('Driver Operator')),
                   DropdownMenuItem(value: 'FACILITY', child: Text('Facility')),
@@ -96,7 +95,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
               Text('2. Choose department template', style: Theme.of(sheetContext).textTheme.titleMedium),
               SizedBox(height: 300, child: ListView(children: [
                 ListTile(leading: const Icon(Icons.note_add_outlined), title: const Text('Blank Training Sheet'), onTap: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(null)),
-                ...templates.where((t) => category.isEmpty || t.trainingCategory == category).map((t) =>
+                ...templates.where((t) => category.isEmpty || t.topic == category).map((t) =>
                   ListTile(leading: const Icon(Icons.copy_all_outlined), title: Text(t.name),
                     subtitle: Text(t.defaultTitle.isEmpty ? t.trainingCategory.replaceAll('_', ' ') : t.defaultTitle),
                     onTap: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(t))),
