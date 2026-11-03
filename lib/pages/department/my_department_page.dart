@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
+import 'package:firepath/pages/department/department_join_qr_scanner_page.dart';
 import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/pages/department/department_inbox_page.dart';
 import 'package:firepath/pages/task_book/task_book_page.dart';
@@ -175,8 +176,16 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     }
   }
 
-  Future<void> _createDepartmentAccount() async {
-    final code = await _showJoinCodeSheet();
+  Future<void> _scanDepartmentJoinQr() async {
+    final code = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const DepartmentJoinQrScannerPage()),
+    );
+    if (!mounted || code == null) return;
+    await _createDepartmentAccount(scannedCode: code);
+  }
+
+  Future<void> _createDepartmentAccount({String? scannedCode}) async {
+    final code = scannedCode ?? await _showJoinCodeSheet();
     if (code == null || code.trim().isEmpty) return;
     setState(() => _syncing = true);
     try {
@@ -590,6 +599,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                         error: _loadError,
                         onConnect: _connect,
                         onCreateAccount: _createDepartmentAccount,
+                        onScanQr: _scanDepartmentJoinQr,
                       ),
                       if (!widget.taskBooksOnly) ...[
                         const SizedBox(height: 12),
@@ -1372,12 +1382,14 @@ class _ConnectCard extends StatelessWidget {
   final String? error;
   final VoidCallback onConnect;
   final VoidCallback onCreateAccount;
+  final VoidCallback onScanQr;
 
   const _ConnectCard({
     required this.busy,
     required this.error,
     required this.onConnect,
     required this.onCreateAccount,
+    required this.onScanQr,
   });
 
   @override
@@ -1437,6 +1449,16 @@ class _ConnectCard extends StatelessWidget {
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.link_rounded),
               label: Text(busy ? 'Signing in…' : 'Sign in to department'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: busy ? null : onScanQr,
+              icon: const Icon(Icons.qr_code_scanner_rounded),
+              label: const Text('Scan department join QR'),
             ),
           ),
           const SizedBox(height: 10),
