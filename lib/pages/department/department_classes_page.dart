@@ -94,6 +94,8 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
               const SizedBox(height: 12),
               Text('2. Choose department template', style: Theme.of(sheetContext).textTheme.titleMedium),
               SizedBox(height: 300, child: ListView(children: [
+                if (templates.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('No saved department templates yet. Starter examples on the web dashboard must be reviewed and saved to your department before they appear here. You can still create a blank Training Sheet.')),
+                if (templates.isNotEmpty && !templates.any((t) => category.isEmpty || t.topic == category)) const Padding(padding: EdgeInsets.all(12), child: Text('No saved templates match this topic. Select All categories or start a blank Training Sheet.')),
                 ListTile(leading: const Icon(Icons.note_add_outlined), title: const Text('Blank Training Sheet'), onTap: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(null)),
                 ...templates.where((t) => category.isEmpty || t.topic == category).map((t) =>
                   ListTile(leading: const Icon(Icons.copy_all_outlined), title: Text(t.name),
@@ -158,12 +160,12 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
 
   Future<void> _manageTemplates() async {
     final setup=_setup; if(setup==null)return;
-    await Navigator.of(context).push(MaterialPageRoute(builder:(_)=>_TrainingSheetTemplatesPage(api:_api,setup:setup)));
+    await Navigator.of(context).push(MaterialPageRoute(builder:(_)=>_TrainingSheetTemplatesPage(api:_api,setup:setup,canManage:context.read<AppModeController>().isAdmin)));
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Training Sheets'), actions: [if (context.watch<AppModeController>().isAdmin) IconButton(tooltip:'Department setup',onPressed:_configureAgency,icon:const Icon(Icons.tune_rounded)), if (context.watch<AppModeController>().isAdmin && _setup != null) IconButton(tooltip: 'Training Sheet templates', onPressed: _manageTemplates, icon: const Icon(Icons.library_books_outlined)), if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) IconButton(tooltip: 'Create Training Sheet', onPressed: _createTraining, icon: const Icon(Icons.add_rounded))]),
+    appBar: AppBar(title: const Text('Training Sheets'), actions: [if (context.watch<AppModeController>().isAdmin) IconButton(tooltip:'Department setup',onPressed:_configureAgency,icon:const Icon(Icons.tune_rounded)), if (_setup != null) IconButton(tooltip: 'Browse Training Sheet templates', onPressed: _manageTemplates, icon: const Icon(Icons.library_books_outlined)), if ((context.watch<AppModeController>().isInstructor || context.watch<AppModeController>().isAdmin) && _setup != null) IconButton(tooltip: 'Create Training Sheet', onPressed: _createTraining, icon: const Icon(Icons.add_rounded))]),
     body: _classes == null ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(16), children: [
@@ -210,8 +212,8 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
 
 
 class _TrainingSheetTemplatesPage extends StatefulWidget {
-  const _TrainingSheetTemplatesPage({required this.api,required this.setup});
-  final ResponderRoadmapApi api; final DepartmentClassSetup setup;
+  const _TrainingSheetTemplatesPage({required this.api,required this.setup,required this.canManage});
+  final ResponderRoadmapApi api; final DepartmentClassSetup setup; final bool canManage;
   @override State<_TrainingSheetTemplatesPage> createState()=>_TrainingSheetTemplatesPageState();
 }
 class _TrainingSheetTemplatesPageState extends State<_TrainingSheetTemplatesPage>{
@@ -236,12 +238,12 @@ class _TrainingSheetTemplatesPageState extends State<_TrainingSheetTemplatesPage
     try{await widget.api.createTrainingSheetTemplate(name:name.text,defaultTitle:title.text,trainingCategory:category,creditHours:double.tryParse(hours.text)??0,checklistVersionId:checklist,location:location.text,notes:notes.text,requiredFields:widget.setup.requiredFields,selfRegistration:qr);await load();}catch(e){if(mounted)setState(()=>error=e.toString());}
   }
   Future<void> archive(DepartmentTrainingSheetTemplate t)async{final ok=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(title:const Text('Archive template?'),content:Text('Archive "${t.name}"? Existing training records are not affected.'),actions:[TextButton(onPressed:()=>c.pop(false),child:const Text('Cancel')),FilledButton(onPressed:()=>c.pop(true),child:const Text('Archive'))]))??false;if(!ok)return;try{await widget.api.archiveTrainingSheetTemplate(t.id);await load();}catch(e){if(mounted)setState(()=>error=e.toString());}}
-  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Training Sheet Templates')),floatingActionButton:FloatingActionButton.extended(onPressed:add,icon:const Icon(Icons.add),label:const Text('New Template')),body:rows==null?const Center(child:CircularProgressIndicator()):RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.all(16),children:[
-    const Text('Save the setup you reuse. Attendance, skill results and signatures are never part of a template.'),
+  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Training Sheet Templates')),floatingActionButton:widget.canManage ? FloatingActionButton.extended(onPressed:add,icon:const Icon(Icons.add),label:const Text('New Template')) : null,body:rows==null?const Center(child:CircularProgressIndicator()):RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.all(16),children:[
+    const Text('Saved department templates are shared between the web dashboard and this app. Starter examples on the web must first be saved as department templates. Attendance, results and signatures are never copied from a template.'),
     if(error!=null)Padding(padding:const EdgeInsets.only(top:10),child:Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))),
     const SizedBox(height:12),
-    if(rows!.isEmpty)const Card(child:Padding(padding:EdgeInsets.all(18),child:Text('No templates yet. Create one for recurring drills, EMS CE, driver training, or company training.'))),
-    ...rows!.map((t)=>Card(child:ListTile(leading:const Icon(Icons.description_outlined),title:Text(t.name,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text([t.defaultTitle,t.trainingCategory.replaceAll('_',' '),if(t.creditHours>0)'${t.creditHours} hr'].where((v)=>v.isNotEmpty).join(' · ')),trailing:PopupMenuButton<String>(onSelected:(v){if(v=='archive')archive(t);},itemBuilder:(_)=>const [PopupMenuItem(value:'archive',child:Text('Archive'))])))),
+    if(rows!.isEmpty)const Card(child:Padding(padding:EdgeInsets.all(18),child:Text('No saved department templates yet. An administrator can review starter examples in the web Training Sheet Template Library and save them to the department. Pull down to refresh after saving.'))),
+    ...rows!.map((t)=>Card(child:ListTile(leading:const Icon(Icons.description_outlined),title:Text(t.name,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text([t.defaultTitle,t.trainingCategory.replaceAll('_',' '),if(t.creditHours>0)'${t.creditHours} hr'].where((v)=>v.isNotEmpty).join(' · ')),trailing:widget.canManage ? PopupMenuButton<String>(onSelected:(v){if(v=='archive')archive(t);},itemBuilder:(_)=>const [PopupMenuItem(value:'archive',child:Text('Archive'))]) : null))),
   ])));
 }
 
