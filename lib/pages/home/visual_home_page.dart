@@ -19,69 +19,46 @@ class VisualHomePage extends StatelessWidget {
     final app = context.watch<AppState>();
     final department = context.watch<DepartmentInboxController>();
     final departmentName = (app.profile.departmentName ?? '').trim();
+    final theme = Theme.of(context);
+
     return Scaffold(
+      appBar: AppBar(
+        title: FirefighterRoadmapWordmark(
+          iconSize: 24,
+          textStyle: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Settings and profile',
+            onPressed: () => context.push(AppRoutes.settings),
+            icon: const Icon(Icons.settings_outlined),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       body: SafeArea(
         child: ListView(
-          padding: EdgeInsets.zero,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF071A33), Color(0xFF12345A)],
-                ),
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(28),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _Header(
-                      onSettings: () => context.push(AppRoutes.settings),
-                      onDark: true,
-                    ),
-                    const SizedBox(height: 22),
-                    Text(
-                      'YOUR TRAINING, ONE CLEAR NEXT STEP',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: const Color(0xFF9CC7F4),
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.0,
-                          ),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      departmentName.isNotEmpty
-                          ? departmentName
-                          : 'Ready for your next step?',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                  ],
+            if (departmentName.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 12),
+                child: Text(
+                  departmentName,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _MyStatusCard(app: app),
-                  const SizedBox(height: 22),
-                  const _QuickAccessSection(),
-                  const SizedBox(height: 22),
-                  _HomeOverview(app: app, department: department),
-                ],
-              ),
-            ),
+            ],
+            _MyStatusCard(app: app),
+            const SizedBox(height: 18),
+            const _QuickAccessSection(),
+            const SizedBox(height: 18),
+            _HomeOverview(app: app, department: department),
           ],
         ),
       ),
@@ -102,16 +79,14 @@ class _MyStatusCard extends StatelessWidget {
     final currentRole = app.profile.currentRoles.isEmpty
         ? 'Role not set'
         : app.profile.currentRoles.first;
-    final nextTarget = roadmap?.goal.title ?? 'Choose your career goal';
+    final goal = roadmap?.goal.title ?? 'Choose your career goal';
     final progress =
         roadmap == null ? null : (roadmap.percentComplete * 100).round();
 
     return Card(
-      elevation: 2,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -119,51 +94,44 @@ class _MyStatusCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'YOUR NEXT STEP',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.9,
+                    'My Roadmap',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
                 if (progress != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 11,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cs.primaryContainer,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '$progress% complete',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: cs.onPrimaryContainer,
-                        fontWeight: FontWeight.w900,
-                      ),
+                  Text(
+                    '$progress% complete',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
-              nextTarget,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w900,
-                height: 1.12,
+              'Career goal',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: cs.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 7),
+            const SizedBox(height: 3),
+            Text(
+              goal,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                height: 1.15,
+              ),
+            ),
+            const SizedBox(height: 6),
             Text(
               currentRole,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
               ),
             ),
             if (roadmap != null) ...[
@@ -179,43 +147,28 @@ class _MyStatusCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${roadmap.completedCount}/${roadmap.totalCount}',
+                    '${roadmap.completedCount} of ${roadmap.totalCount}',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurface,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 7),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(99),
-                child: LinearProgressIndicator(
-                  value: (progress! / 100).clamp(0.0, 1.0),
-                  minHeight: 8,
-                  backgroundColor:
-                      cs.surfaceContainerHighest.withValues(alpha: 0.7),
-                ),
+              const SizedBox(height: 6),
+              LinearProgressIndicator(
+                value: (progress! / 100).clamp(0.0, 1.0),
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(3),
               ),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             SizedBox(
-              height: 52,
+              height: 48,
               child: FilledButton.icon(
                 onPressed: () => context.go(AppRoutes.myPath),
                 icon: const Icon(Icons.arrow_forward_rounded),
                 label: Text(
                   roadmap == null ? 'Build My Roadmap' : 'Continue My Roadmap',
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFC8102E),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  textStyle: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
                 ),
               ),
             ),
@@ -231,6 +184,8 @@ class _QuickAccessSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -238,28 +193,38 @@ class _QuickAccessSection extends StatelessWidget {
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             'Quick access',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
-        _QuickAccessTile(
-          icon: Icons.fact_check_outlined,
-          title: 'Training Sheets',
-          subtitle: 'Open department classes and training',
-          onTap: () => context.go(AppRoutes.departmentTrainingSheets),
-        ),
-        _QuickAccessTile(
-          icon: Icons.menu_book_outlined,
-          title: 'My Task Books',
-          subtitle: 'Continue skills and requirements',
-          onTap: () => context.go(AppRoutes.myPath),
-        ),
-        _QuickAccessTile(
-          icon: Icons.workspace_premium_outlined,
-          title: 'Qualifications',
-          subtitle: 'View credentials and expiration dates',
-          onTap: () => context.go(AppRoutes.certifications),
+        Card(
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              _QuickAccessTile(
+                icon: Icons.fact_check_outlined,
+                title: 'Training Sheets',
+                subtitle: 'Department classes and training',
+                onTap: () => context.go(AppRoutes.departmentTrainingSheets),
+              ),
+              Divider(height: 1, indent: 64, color: cs.outlineVariant),
+              _QuickAccessTile(
+                icon: Icons.menu_book_outlined,
+                title: 'My Task Books',
+                subtitle: 'Skills and requirements',
+                onTap: () => context.go(AppRoutes.myPath),
+              ),
+              Divider(height: 1, indent: 64, color: cs.outlineVariant),
+              _QuickAccessTile(
+                icon: Icons.workspace_premium_outlined,
+                title: 'Qualifications',
+                subtitle: 'Credentials and expiration dates',
+                onTap: () => context.go(AppRoutes.certifications),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -281,55 +246,24 @@ class _QuickAccessTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: cs.primary, size: 26),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
-            ],
-          ),
+    final theme = Theme.of(context);
+    return ListTile(
+      onTap: onTap,
+      minVerticalPadding: 12,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      leading: Icon(icon, color: theme.colorScheme.primary, size: 25),
+      title: Text(
+        title,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w700,
         ),
       ),
+      subtitle: Text(
+        subtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: const Icon(Icons.chevron_right_rounded),
     );
   }
 }
@@ -714,66 +648,3 @@ class _OverviewMetric extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
-  final VoidCallback onSettings;
-  final bool onDark;
-
-  const _Header({required this.onSettings, this.onDark = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-    final foreground = onDark ? Colors.white : cs.onSurface;
-    final supporting = onDark ? Colors.white70 : cs.onSurfaceVariant;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FirefighterRoadmapWordmark(
-                foregroundColor: foreground,
-                iconSize: 28,
-                textStyle: t.titleLarge?.copyWith(
-                  color: foreground,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Know where you are. Know what comes next.',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: t.bodySmall?.copyWith(
-                  color: supporting,
-                  height: 1.25,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        Material(
-          color: onDark ? Colors.white.withValues(alpha: 0.10) : cs.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: BorderSide(
-              color: (onDark ? Colors.white : cs.outline).withValues(
-                alpha: onDark ? 0.18 : 0.12,
-              ),
-            ),
-          ),
-          child: IconButton(
-            tooltip: 'Settings and profile',
-            onPressed: onSettings,
-            icon: Icon(Icons.settings_outlined, color: foreground),
-          ),
-        ),
-      ],
-    );
-  }
-}
