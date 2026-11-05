@@ -334,7 +334,7 @@ class _QuickAccessTile extends StatelessWidget {
   }
 }
 
-class _HomeOverview extends StatefulWidget {class _HomeOverview extends StatefulWidget {
+class _HomeOverview extends StatefulWidget {
   final AppState app;
   final DepartmentInboxController department;
 
