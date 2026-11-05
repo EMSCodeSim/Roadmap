@@ -57,7 +57,7 @@ void main() {
       // Avoid waiting indefinitely for progress indicators and asynchronous sync.
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('YOUR NEXT STEP'), findsOneWidget);
+      expect(find.text('My Roadmap'), findsOneWidget);
       expect(find.text('Build My Roadmap'), findsOneWidget);
       expect(find.text('Personal overview'), findsOneWidget);
       expect(find.text('What should I work on next?'), findsNothing);
