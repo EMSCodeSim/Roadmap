@@ -102,7 +102,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('My Roadmap'), findsOneWidget);
+    expect(find.text('YOUR NEXT STEP'), findsOneWidget);
     expect(find.text('Choose your career goal'), findsOneWidget);
     expect(find.text('Personal overview'), findsOneWidget);
   });
