@@ -18,16 +18,70 @@ class VisualHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     final department = context.watch<DepartmentInboxController>();
+    final departmentName = (app.profile.departmentName ?? '').trim();
     return Scaffold(
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+          padding: EdgeInsets.zero,
           children: [
-            _Header(onSettings: () => context.push(AppRoutes.settings)),
-            const SizedBox(height: 14),
-            _MyStatusCard(app: app),
-            const SizedBox(height: 14),
-            _HomeOverview(app: app, department: department),
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF071A33), Color(0xFF12345A)],
+                ),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(28),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Header(
+                      onSettings: () => context.push(AppRoutes.settings),
+                      onDark: true,
+                    ),
+                    const SizedBox(height: 22),
+                    Text(
+                      'YOUR TRAINING, ONE CLEAR NEXT STEP',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: const Color(0xFF9CC7F4),
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.0,
+                          ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      departmentName.isNotEmpty
+                          ? departmentName
+                          : 'Ready for your next step?',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _MyStatusCard(app: app),
+                  const SizedBox(height: 22),
+                  const _QuickAccessSection(),
+                  const SizedBox(height: 22),
+                  _HomeOverview(app: app, department: department),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -42,92 +96,127 @@ class _MyStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final roadmap = app.roadmap;
     final currentRole = app.profile.currentRoles.isEmpty
-        ? 'Not set'
+        ? 'Role not set'
         : app.profile.currentRoles.first;
-    final nextTarget = roadmap?.goal.title ?? 'Choose a roadmap';
+    final nextTarget = roadmap?.goal.title ?? 'Choose your career goal';
     final progress =
         roadmap == null ? null : (roadmap.percentComplete * 100).round();
 
     return Card(
+      elevation: 2,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'MY GOAL · MY PROGRESS',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: cs.onSurfaceVariant,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.6,
-                            ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'My Roadmap',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w900),
-                      ),
-                    ],
+                  child: Text(
+                    'YOUR NEXT STEP',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: cs.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.9,
+                    ),
                   ),
                 ),
                 if (progress != null)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
+                      horizontal: 11,
+                      vertical: 7,
                     ),
                     decoration: BoxDecoration(
                       color: cs.primaryContainer,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      '$progress%',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: cs.onPrimaryContainer,
-                            fontWeight: FontWeight.w900,
-                          ),
+                      '$progress% complete',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: cs.onPrimaryContainer,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 10),
-            _StatusLine(label: 'Current level', value: currentRole),
-            _StatusLine(label: 'Career goal', value: nextTarget),
-            _StatusLine(
-              label: 'Requirements completed',
-              value: roadmap == null ? 'Not started' : '${roadmap.completedCount}/${roadmap.totalCount}',
+            Text(
+              nextTarget,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w900,
+                height: 1.12,
+              ),
             ),
-            if (progress != null) ...[
-              const SizedBox(height: 8),
+            const SizedBox(height: 7),
+            Text(
+              currentRole,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (roadmap != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Requirements completed',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${roadmap.completedCount}/${roadmap.totalCount}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurface,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 7),
               ClipRRect(
                 borderRadius: BorderRadius.circular(99),
                 child: LinearProgressIndicator(
-                  value: (progress / 100).clamp(0, 1),
+                  value: (progress! / 100).clamp(0.0, 1.0),
                   minHeight: 8,
                   backgroundColor:
                       cs.surfaceContainerHighest.withValues(alpha: 0.7),
                 ),
               ),
             ],
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
                 onPressed: () => context.go(AppRoutes.myPath),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                label: Text(roadmap == null ? 'Build My Roadmap' : 'View My Roadmap'),
+                icon: const Icon(Icons.arrow_forward_rounded),
+                label: Text(
+                  roadmap == null ? 'Build My Roadmap' : 'Continue My Roadmap',
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFC8102E),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
             ),
           ],
@@ -137,46 +226,113 @@ class _MyStatusCard extends StatelessWidget {
   }
 }
 
-class _StatusLine extends StatelessWidget {
-  final String label;
-  final String value;
-  const _StatusLine({
-    required this.label,
-    required this.value,
+class _QuickAccessSection extends StatelessWidget {
+  const _QuickAccessSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            'Quick access',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+        ),
+        _QuickAccessTile(
+          icon: Icons.fact_check_outlined,
+          title: 'Training Sheets',
+          subtitle: 'Open department classes and training',
+          onTap: () => context.go(AppRoutes.departmentTrainingSheets),
+        ),
+        _QuickAccessTile(
+          icon: Icons.menu_book_outlined,
+          title: 'My Task Books',
+          subtitle: 'Continue skills and requirements',
+          onTap: () => context.go(AppRoutes.myPath),
+        ),
+        _QuickAccessTile(
+          icon: Icons.workspace_premium_outlined,
+          title: 'Qualifications',
+          subtitle: 'View credentials and expiration dates',
+          onTap: () => context.go(AppRoutes.certifications),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickAccessTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _QuickAccessTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
-            ),
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: cs.primary, size: 26),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+            ],
           ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
-                  ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
-
 
 class _HomeOverview extends StatefulWidget {
   final AppState app;
@@ -560,27 +716,39 @@ class _OverviewMetric extends StatelessWidget {
 
 class _Header extends StatelessWidget {
   final VoidCallback onSettings;
+  final bool onDark;
 
-  const _Header({required this.onSettings});
+  const _Header({required this.onSettings, this.onDark = false});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final foreground = onDark ? Colors.white : cs.onSurface;
+    final supporting = onDark ? Colors.white70 : cs.onSurfaceVariant;
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const FirefighterRoadmapWordmark(),
+              FirefighterRoadmapWordmark(
+                foregroundColor: foreground,
+                iconSize: 28,
+                textStyle: t.titleLarge?.copyWith(
+                  color: foreground,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 4),
               Text(
                 'Know where you are. Know what comes next.',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: t.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
+                  color: supporting,
                   height: 1.25,
                   fontWeight: FontWeight.w600,
                 ),
@@ -590,19 +758,22 @@ class _Header extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Material(
-          color: cs.surface,
+          color: onDark ? Colors.white.withValues(alpha: 0.10) : cs.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
-            side: BorderSide(color: cs.outline.withValues(alpha: 0.12)),
+            side: BorderSide(
+              color: (onDark ? Colors.white : cs.outline).withValues(
+                alpha: onDark ? 0.18 : 0.12,
+              ),
+            ),
           ),
           child: IconButton(
             tooltip: 'Settings and profile',
             onPressed: onSettings,
-            icon: Icon(Icons.settings_outlined, color: cs.onSurface),
+            icon: Icon(Icons.settings_outlined, color: foreground),
           ),
         ),
       ],
     );
   }
 }
-

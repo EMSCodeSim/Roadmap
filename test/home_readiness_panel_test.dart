@@ -73,9 +73,9 @@ void main() {
     // Bounded pumps: live progress indicators must not stall widget tests.
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('My Roadmap'), findsOneWidget);
-    expect(find.text('MY GOAL · MY PROGRESS'), findsOneWidget);
-    expect(find.text('Career goal'), findsOneWidget);
+    expect(find.text('YOUR NEXT STEP'), findsOneWidget);
+    expect(find.text('Continue My Roadmap'), findsOneWidget);
+    expect(find.text('Requirements completed'), findsOneWidget);
     expect(find.textContaining('Driver/Operator'), findsWidgets);
     expect(find.text('Personal overview'), findsOneWidget);
 
@@ -102,8 +102,8 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('My Roadmap'), findsOneWidget);
-    expect(find.text('Choose a roadmap'), findsOneWidget);
+    expect(find.text('YOUR NEXT STEP'), findsOneWidget);
+    expect(find.text('Choose your career goal'), findsOneWidget);
     expect(find.text('Personal overview'), findsOneWidget);
   });
 }
