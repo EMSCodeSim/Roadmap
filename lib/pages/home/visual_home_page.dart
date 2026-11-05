@@ -18,7 +18,7 @@ class VisualHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     final department = context.watch<DepartmentInboxController>();
-    final departmentName = app.profile.departmentName?.trim();
+    final departmentName = (app.profile.departmentName ?? '').trim();
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -55,8 +55,8 @@ class VisualHomePage extends StatelessWidget {
                     ),
                     const SizedBox(height: 7),
                     Text(
-                      departmentName?.isNotEmpty == true
-                          ? departmentName!
+                      departmentName.isNotEmpty
+                          ? departmentName
                           : 'Ready for your next step?',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,

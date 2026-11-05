@@ -33,7 +33,7 @@ void main() {
     expect(find.text('Personal'), findsNothing);
     expect(find.text('Personal overview'), findsOneWidget);
     expect(find.text('Needs attention'), findsWidgets);
-    expect(find.text('Open My Roadmap'), findsOneWidget);
+    expect(find.text('Build My Roadmap'), findsOneWidget);
     expect(find.text('Department overview'), findsOneWidget);
     expect(find.text('Open Department'), findsOneWidget);
     expect(
