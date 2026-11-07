@@ -34,11 +34,11 @@ class ProductionQuickLogSheet extends StatelessWidget {
           if (mode.departmentLink != null) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (canCreateTrainingSheet) ...[
-                    Expanded(
-                      child: FilledButton.icon(
+                    FilledButton.icon(
                         key: const Key('quick_add_training_sheet'),
                         onPressed: () async {
                           final router = GoRouter.of(context);
@@ -52,12 +52,10 @@ class ProductionQuickLogSheet extends StatelessWidget {
                           'Create Training Sheet',
                           textAlign: TextAlign.center,
                         ),
-                      ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(height: 10),
                   ],
-                  Expanded(
-                    child: OutlinedButton.icon(
+                  OutlinedButton.icon(
                       key: const Key('quick_add_scan_class_qr'),
                       onPressed: () =>
                           context.push(AppRoutes.departmentQrScan),
@@ -66,7 +64,6 @@ class ProductionQuickLogSheet extends StatelessWidget {
                         'Scan Training Sheet',
                         textAlign: TextAlign.center,
                       ),
-                    ),
                   ),
                 ],
               ),
