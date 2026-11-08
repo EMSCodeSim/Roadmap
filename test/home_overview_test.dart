@@ -63,7 +63,11 @@ void main() {
 
       await tester.drag(find.byType(ListView).first, const Offset(0, -500));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Department updates'), findsWidgets);
+      expect(find.text('Department updates'), findsOneWidget);
+      // Department actions are intentionally hidden until its card expands.
+      expect(find.text('Open Department'), findsNothing);
+      await tester.tap(find.text('Department updates'));
+      await tester.pump(const Duration(milliseconds: 350));
       expect(find.text('Open Department'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
