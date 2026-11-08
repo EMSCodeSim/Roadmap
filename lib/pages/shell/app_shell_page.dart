@@ -32,16 +32,18 @@ class AppShellPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final inbox = context.watch<DepartmentInboxController>();
-    final bottomPad = MediaQuery.paddingOf(context).bottom;
     final unreadLabel = inbox.unreadCount > 99 ? '99+' : '${inbox.unreadCount}';
 
     return Scaffold(
       body: navigationShell,
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 20),
+        child: FloatingActionButton(
         key: const Key('quick_log_fab'),
         tooltip: 'Quick Add',
         onPressed: () => QuickLogLauncher.open(context),
         child: const Icon(Icons.add_rounded),
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: SafeArea(
@@ -54,11 +56,12 @@ class AppShellPage extends StatelessWidget {
             ),
           ),
           child: Padding(
-            padding: EdgeInsets.only(bottom: bottomPad == 0 ? 10 : 6),
+            padding: const EdgeInsets.only(bottom: 2),
             child: NavigationBar(
               selectedIndex: navigationShell.currentIndex,
               onDestinationSelected: _go,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              height: 64,
+              labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
               destinations: [
                 const NavigationDestination(
                   icon: Icon(Icons.home_outlined),
