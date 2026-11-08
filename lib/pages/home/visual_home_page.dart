@@ -545,8 +545,6 @@ class _HomeOverviewState extends State<_HomeOverview>
     final completedSteps = assignments?.fold<int>(0, (total, item) => total + item.complete) ?? 0;
     final requiredSteps = assignments?.fold<int>(0, (total, item) => total + item.totalRequired) ?? 0;
     final progress = requiredSteps > 0 ? (completedSteps / requiredSteps).clamp(0.0, 1.0).toDouble() : null;
-    final urgent = inbox.urgentAssignments;
-    final actions = inbox.inbox?.needsAction ?? const <DepartmentActionItem>[];
     final sync = inbox.syncState;
 
     if (!_connected && !_loadingDepartment) {
