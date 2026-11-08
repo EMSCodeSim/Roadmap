@@ -37,7 +37,7 @@ void main() {
   });
 
   testWidgets(
-    'Home retains My Roadmap and separates personal and department overview',
+    'Home shows personal progress and one department entry',
     (tester) async {
       final app = AppState();
       await tester.runAsync(app.bootstrap);
@@ -58,13 +58,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('My Roadmap'), findsOneWidget);
-      expect(find.text('Build My Roadmap'), findsOneWidget);
-      expect(find.text('Personal overview'), findsOneWidget);
+      expect(find.text('Personal Progress'), findsOneWidget);
       expect(find.text('What should I work on next?'), findsNothing);
 
       await tester.drag(find.byType(ListView).first, const Offset(0, -500));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Department overview'), findsOneWidget);
+      expect(find.text('Department updates'), findsWidgets);
       expect(find.text('Open Department'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
