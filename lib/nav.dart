@@ -301,17 +301,14 @@ class AppRouter {
               ),
             ],
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.profile,
-                name: 'profile',
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: ProfilePage()),
-              ),
-            ],
-          ),
         ],
+      ),
+
+      GoRoute(
+        path: AppRoutes.profile,
+        name: 'profile',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: ProfilePage()),
       ),
 
       GoRoute(
