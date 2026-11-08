@@ -71,9 +71,9 @@ class AppShellPage extends StatelessWidget {
                   label: 'My Roadmap',
                 ),
                 const NavigationDestination(
-                  icon: Icon(Icons.school_outlined),
-                  selectedIcon: Icon(Icons.school_rounded),
-                  label: 'Training',
+                  icon: Icon(Icons.folder_copy_outlined),
+                  selectedIcon: Icon(Icons.folder_copy_rounded),
+                  label: 'Records',
                 ),
                 NavigationDestination(
                   icon: Badge(
