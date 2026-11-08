@@ -81,21 +81,28 @@ extension TextStyleExtensions on TextStyle {
 // =============================================================================
 
 class LightModeColors {
-  /// Operational palette:
-  /// - Primary action/accent: #E11D48
-  /// - Primary dark/navy:     #0B1220
+  /// Public-safety inspired palette.
+  ///
+  /// - Navy: primary navigation + headers
+  /// - Bright blue: training/personal development
+  /// - Teal/green: completion/success
+  /// - Orange: pending/deadlines
+  /// - Purple: goals/growth
   static const navy = Color(0xFF0B1220);
-  static const accent = Color(0xFFE11D48);
+  static const brightBlue = Color(0xFF2563EB);
+  static const tealGreen = Color(0xFF10B981);
+  static const orange = Color(0xFFF59E0B);
+  static const purple = Color(0xFF7C3AED);
 
-  static const lightPrimary = accent;
+  static const lightPrimary = navy;
   static const lightOnPrimary = Color(0xFFFFFFFF);
-  static const lightPrimaryContainer = Color(0xFFFDE7EF); // subtle rose tint
+  static const lightPrimaryContainer = Color(0xFFE9EEF7); // soft navy-tinted
   static const lightOnPrimaryContainer = navy;
 
-  static const lightSecondary = navy;
+  static const lightSecondary = brightBlue;
   static const lightOnSecondary = Color(0xFFFFFFFF);
 
-  static const lightTertiary = Color(0xFF1F2937); // slate (neutral)
+  static const lightTertiary = purple;
   static const lightOnTertiary = Color(0xFFFFFFFF);
 
   // Error colors
@@ -113,24 +120,27 @@ class LightModeColors {
   // Outline and shadow
   static const lightOutline = Color(0xFFCBD5E1); // light slate border
   static const lightShadow = Color(0xFF000000);
-  static const lightInversePrimary = accent;
+  static const lightInversePrimary = brightBlue;
 }
 
 /// Dark mode colors with good contrast
 class DarkModeColors {
   static const navy = Color(0xFF0B1220);
-  static const accent = Color(0xFFE11D48);
+  static const brightBlue = Color(0xFF3B82F6);
+  static const tealGreen = Color(0xFF34D399);
+  static const orange = Color(0xFFFBBF24);
+  static const purple = Color(0xFFA78BFA);
 
-  static const darkPrimary = accent;
+  static const darkPrimary = navy;
   static const darkOnPrimary = Color(0xFFFFFFFF);
-  static const darkPrimaryContainer = Color(0xFF2B0B16);
-  static const darkOnPrimaryContainer = Color(0xFFFDE7EF);
+  static const darkPrimaryContainer = Color(0xFF111B2E);
+  static const darkOnPrimaryContainer = Color(0xFFE5E7EB);
 
-  static const darkSecondary = Color(0xFF94A3B8); // slate
-  static const darkOnSecondary = navy;
+  static const darkSecondary = brightBlue;
+  static const darkOnSecondary = Color(0xFF071226);
 
-  static const darkTertiary = Color(0xFFCBD5E1);
-  static const darkOnTertiary = navy;
+  static const darkTertiary = purple;
+  static const darkOnTertiary = Color(0xFF0B1220);
 
   // Error colors
   static const darkError = Color(0xFFFFB4AB);
@@ -146,7 +156,7 @@ class DarkModeColors {
   // Outline and shadow
   static const darkOutline = Color(0xFF22304A);
   static const darkShadow = Color(0xFF000000);
-  static const darkInversePrimary = accent;
+  static const darkInversePrimary = brightBlue;
 }
 
 /// Semantic colors used across FireOps Path UI (status + header)
@@ -154,7 +164,7 @@ class FireOpsSemanticColors {
   static const headerDark = Color(0xFF0B1220);
 
   // Status semantics: keep meaning consistent across the app.
-  static const green = Color(0xFF16A34A); // approved/current/complete
+  static const green = Color(0xFF10B981); // approved/current/complete
   static const amber = Color(0xFFF59E0B); // attention/in progress/expiring
   static const red = Color(0xFFDC2626); // overdue/expired/returned/restricted
   static const blue = Color(0xFF2563EB); // informational/pending
@@ -169,6 +179,15 @@ class FireOpsSemanticColors {
   // Back-compat (older references)
   static const completed = complete;
   static const warning = expiring;
+}
+
+/// Feature-color mapping for high-signal UI.
+class FireOpsFeatureColors {
+  static const roadmap = LightModeColors.purple;
+  static const training = LightModeColors.brightBlue;
+  static const qualifications = LightModeColors.tealGreen;
+  static const certificates = LightModeColors.orange;
+  static const critical = FireOpsSemanticColors.red;
 }
 
 /// Shared card styling tokens.

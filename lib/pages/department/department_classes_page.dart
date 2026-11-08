@@ -9,13 +9,17 @@ import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:go_router/go_router.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
+import 'package:firepath/services/theme.dart';
+import 'package:firepath/services/training_time_calculator.dart';
 import 'package:firepath/pages/department/class_task_book_link_card.dart';
+import 'package:firepath/widgets/training_sheet/training_sheet_cards.dart';
 
 const _emsCeCategories = <String>[
   'Airway', 'Cardiology', 'Trauma', 'Medical', 'Operations',
@@ -295,6 +299,19 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     hours.addListener(_markDirty);
   }
   @override void dispose(){ title.dispose(); location.dispose(); notes.dispose(); hours.dispose(); super.dispose(); }
+
+  Future<TimeOfDay?> _pickTimeDigital(BuildContext context, TimeOfDay initial) => showTimePicker(
+    context: context,
+    initialTime: initial,
+    initialEntryMode: TimePickerEntryMode.inputOnly,
+    builder: (context, child) {
+      final media = MediaQuery.of(context);
+      return MediaQuery(
+        data: media.copyWith(alwaysUse24HourFormat: media.alwaysUse24HourFormat),
+        child: child ?? const SizedBox.shrink(),
+      );
+    },
+  );
   Future<void> save() async {
     if(title.text.trim().isEmpty){setState(()=>error='Training title is required.'); return;}
     if(!qr && selectedMembers.isEmpty){setState(()=>error='Choose roster members or enable QR sign-in.');return;}
@@ -410,7 +427,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         onPressed: () async {
           final day = await showDatePicker(context:context,initialDate:startTime,firstDate:DateTime(2020),lastDate:DateTime.now().add(const Duration(days:730)));
           if(day==null || !mounted)return;
-          final time = await showTimePicker(context:context,initialTime:TimeOfDay.fromDateTime(startTime));
+          final time = await _pickTimeDigital(context, TimeOfDay.fromDateTime(startTime));
            if (time != null && mounted) {
              setState(() => startTime = DateTime(day.year, day.month, day.day, time.hour, time.minute));
              _markDirty();
@@ -948,64 +965,216 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       for (final category in _emsCeCategories)
         category: TextEditingController(text: d.ceCredits.where((item) => item['category'] == category).map((item) => item['hours']).firstOrNull?.toString() ?? ''),
     };
+
+    int parseHoursToMinutes(String raw) {
+      final value = double.tryParse(raw.trim()) ?? 0;
+      if (value <= 0) return 0;
+      return (value * 60).round();
+    }
+
+    String formatLocalDateTime(DateTime dateTime) {
+      final local = dateTime.toLocal();
+      final hour = local.hour == 0 ? 12 : (local.hour > 12 ? local.hour - 12 : local.hour);
+      final period = local.hour >= 12 ? 'PM' : 'AM';
+      String two(int v) => v.toString().padLeft(2, '0');
+      return '${local.month}/${local.day}/${local.year} $hour:${two(local.minute)} $period';
+    }
     Future<DateTime?> chooseTime(BuildContext dialogContext, DateTime initial) async {
       final day = await showDatePicker(
         context:dialogContext, initialDate:initial,
         firstDate:DateTime(2020), lastDate:DateTime.now().add(const Duration(days:730)),
       );
       if (day == null || !dialogContext.mounted) return null;
-      final time = await showTimePicker(context:dialogContext,initialTime:TimeOfDay.fromDateTime(initial));
+      final time = await showTimePicker(
+        context: dialogContext,
+        initialTime: TimeOfDay.fromDateTime(initial),
+        initialEntryMode: TimePickerEntryMode.inputOnly,
+        builder: (context, child) {
+          final media = MediaQuery.of(context);
+          return MediaQuery(
+            data: media.copyWith(alwaysUse24HourFormat: media.alwaysUse24HourFormat),
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
+      );
       if (time == null) return null;
       return DateTime(day.year,day.month,day.day,time.hour,time.minute);
     }
     final result = await showDialog<Map<String, dynamic>>(
-      context:context,
-      builder:(dialogContext)=>StatefulBuilder(
-        builder:(dialogContext,update)=>AlertDialog(
-          title:const Text('Finish Training Documentation'),
-          content:SizedBox(width:440,child:SingleChildScrollView(child:Column(
-            mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-              const Text('Complete times, narrative and department RMS codes after teaching. Saving does not mark the record entered into RMS.'),
-              const SizedBox(height:12),
-              OutlinedButton.icon(
-                onPressed:() async { final chosen=await chooseTime(dialogContext,start); if(chosen!=null)update(()=>start=chosen); },
-                icon:const Icon(Icons.schedule),label:Text('Start: $start'),
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, update) {
+          final elapsedMinutes = TrainingTimeCalculator.elapsedMinutes(start, end);
+          final split = (elapsedMinutes == null)
+              ? null
+              : TrainingTimeCalculator.splitDayNight(
+                  startLocal: start,
+                  endLocal: end!,
+                  definition: TrainingTimeCalculator.defaultDayNight,
+                );
+          final allocatedMinutes = isEms
+              ? ceControllers.values.fold<int>(0, (sum, c) => sum + parseHoursToMinutes(c.text))
+              : 0;
+          final overAllocated = elapsedMinutes != null && allocatedMinutes > elapsedMinutes;
+          final remainingMinutes = elapsedMinutes == null ? null : (elapsedMinutes - allocatedMinutes);
+
+          return AlertDialog(
+            title: const Text('Finish Training Documentation'),
+            content: SizedBox(
+              width: 460,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Card(
+                      color: Theme.of(dialogContext).colorScheme.surfaceVariant,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(children: [
+                          Icon(Icons.schedule_rounded, color: FireOpsFeatureColors.training),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text('Time & hours', style: Theme.of(dialogContext).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+                              const SizedBox(height: 4),
+                              Text(
+                                elapsedMinutes == null
+                                    ? 'Duration: Pending (set End Time)'
+                                    : 'Duration: ${formatMinutesAsHoursMinutes(elapsedMinutes)}',
+                                style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              if (split != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    'Day ${formatMinutesAsHoursMinutes(split.dayMinutes)} · Night ${formatMinutesAsHoursMinutes(split.nightMinutes)}',
+                                    style: Theme.of(dialogContext).textTheme.bodySmall,
+                                  ),
+                                ),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(TrainingTimeCalculator.defaultDayNight.label, style: Theme.of(dialogContext).textTheme.bodySmall),
+                              ),
+                            ]),
+                          ),
+                        ]),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final chosen = await chooseTime(dialogContext, start);
+                        if (chosen != null) update(() => start = chosen);
+                      },
+                      icon: const Icon(Icons.schedule),
+                      label: Text('Start Time: ${formatLocalDateTime(start)}'),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final chosen = await chooseTime(dialogContext, end ?? start);
+                        if (chosen != null) update(() => end = chosen);
+                      },
+                      icon: const Icon(Icons.schedule),
+                      label: Text(end == null ? 'End Time: Set when complete' : 'End Time: ${formatLocalDateTime(end!)}'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(controller: location, decoration: const InputDecoration(labelText: 'Training location')),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: narrative,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        labelText: 'Class objectives and training narrative',
+                        hintText: 'Document objectives covered and include RMS codes as needed',
+                      ),
+                    ),
+                    if (isEms) ...[
+                      const SizedBox(height: 14),
+                      Text('EMS CE categories', style: Theme.of(dialogContext).textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      const Text('Allocate time-based credit (total cannot exceed class duration).'),
+                      ..._emsCeCategories.map((category) => Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: TextField(
+                          controller: ceControllers[category],
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          onChanged: (_) => update(() {}),
+                          decoration: InputDecoration(labelText: '$category hours', hintText: '0'),
+                        ),
+                      )),
+                      const SizedBox(height: 8),
+                      if (elapsedMinutes != null) ...[
+                        Row(children: [
+                          Expanded(child: Text('Assigned', style: Theme.of(dialogContext).textTheme.bodySmall)),
+                          Text(
+                            formatMinutesAsHoursMinutes(allocatedMinutes),
+                            style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w900, color: LightModeColors.purple),
+                          ),
+                        ]),
+                        const SizedBox(height: 6),
+                        LinearProgressIndicator(
+                          value: (allocatedMinutes / elapsedMinutes).clamp(0, 1),
+                          minHeight: 8,
+                          borderRadius: BorderRadius.circular(999),
+                          backgroundColor: Theme.of(dialogContext).colorScheme.surfaceVariant,
+                          color: overAllocated ? Theme.of(dialogContext).colorScheme.error : FireOpsSemanticColors.green,
+                        ),
+                        const SizedBox(height: 6),
+                        Row(children: [
+                          Expanded(child: Text('Remaining', style: Theme.of(dialogContext).textTheme.bodySmall)),
+                          Text(
+                            remainingMinutes == null
+                                ? '—'
+                                : (remainingMinutes < 0
+                                    ? 'Over by ${formatMinutesAsHoursMinutes(-remainingMinutes)}'
+                                    : formatMinutesAsHoursMinutes(remainingMinutes)),
+                            style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: overAllocated ? Theme.of(dialogContext).colorScheme.error : FireOpsSemanticColors.green,
+                            ),
+                          ),
+                        ]),
+                        if (overAllocated)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              'Total assigned credit cannot exceed class duration.',
+                              style: TextStyle(color: Theme.of(dialogContext).colorScheme.error, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                      ] else
+                        const Text('Set End Time to validate credit allocations.'),
+                    ],
+                  ],
+                ),
               ),
-              const SizedBox(height:8),
-              OutlinedButton.icon(
-                onPressed:() async { final chosen=await chooseTime(dialogContext,end??start); if(chosen!=null)update(()=>end=chosen); },
-                icon:const Icon(Icons.schedule),label:Text(end==null?'Set actual end time':'End: $end'),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: overAllocated
+                    ? null
+                    : () {
+                        final computedMinutes = TrainingTimeCalculator.elapsedMinutes(start, end);
+                        Navigator.pop(dialogContext, <String, dynamic>{
+                          'start': start,
+                          'end': end,
+                          'notes': narrative.text,
+                          'location': location.text,
+                          // Back-compat: creditHours remains a double, derived from elapsed minutes when possible.
+                          'hours': computedMinutes == null ? (double.tryParse(hours.text.trim()) ?? 0.0) : (computedMinutes / 60.0),
+                          'ceCredits': <String, double>{
+                            for (final entry in ceControllers.entries) entry.key: double.tryParse(entry.value.text.trim()) ?? 0,
+                          },
+                        });
+                      },
+                child: const Text('Save Documentation'),
               ),
-              const SizedBox(height:8),
-              TextField(controller:location,decoration:const InputDecoration(labelText:'Training location')),
-              const SizedBox(height:8),
-              TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),
-                decoration:const InputDecoration(labelText:'Credit hours (optional if times provided)')),
-              const SizedBox(height:8),
-              TextField(controller:narrative,maxLines:5,decoration:const InputDecoration(
-                labelText:'Class objectives and training narrative',hintText:'Document objectives covered and include RMS codes as needed')),
-              if(isEms)...[
-                const SizedBox(height:14),
-                Text('EMS CE categories',style:Theme.of(dialogContext).textTheme.titleMedium),
-                const SizedBox(height:4),const Text('Confirm how earned credit is distributed. Example: 0.5 Medical and 0.5 Airway.'),
-                ..._emsCeCategories.map((category)=>Padding(
-                  padding:const EdgeInsets.only(top:8),
-                  child:TextField(controller:ceControllers[category],keyboardType:const TextInputType.numberWithOptions(decimal:true),
-                    onChanged:(_)=>update((){}),decoration:InputDecoration(labelText:'$category hours',hintText:'0')),
-                )),
-                const SizedBox(height:8),
-                Text('Total CE credit: ${ceControllers.values.fold<double>(0,(sum,c)=>sum+(double.tryParse(c.text.trim())??0)).toStringAsFixed(2)} hours',style:const TextStyle(fontWeight:FontWeight.w700)),
-              ],
             ],
-          ))),
-          actions:[
-            TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Cancel')),
-            FilledButton(onPressed:()=>Navigator.pop(dialogContext,<String,dynamic>{
-              'start':start,'end':end,'notes':narrative.text,'location':location.text,'hours':double.tryParse(hours.text.trim())??0.0,
-              'ceCredits':<String,double>{for(final entry in ceControllers.entries) entry.key:double.tryParse(entry.value.text.trim())??0},
-            }),child:const Text('Save Documentation')),
-          ],
-        ),
+          );
+        },
       ),
     );
     narrative.dispose(); location.dispose(); hours.dispose();
@@ -1020,6 +1189,19 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     if(isEms && (result['notes'] as String).trim().isEmpty){setState(()=>_error='Enter class objectives and a training narrative before closing EMS CE.');return false;}
     final ceCredits=result['ceCredits'] as Map<String,double>;
     if(isEms && !ceCredits.values.any((hours)=>hours>0)){setState(()=>_error='Assign EMS CE credit to at least one category before closing.');return false;}
+
+    final elapsedMinutes = TrainingTimeCalculator.elapsedMinutes(savedStart, savedEnd);
+    if (elapsedMinutes == null) {
+      setState(() => _error = 'End Time must be after Start Time.');
+      return false;
+    }
+    if (isEms) {
+      final allocatedMinutes = ceCredits.values.fold<int>(0, (sum, value) => sum + parseHoursToMinutes(value.toString()));
+      if (allocatedMinutes > elapsedMinutes) {
+        setState(() => _error = 'Assigned CE credit cannot exceed class duration (${formatMinutesAsHoursMinutes(elapsedMinutes)}).');
+        return false;
+      }
+    }
     setState(() { _busy=true; _error=null; });
     try {
       _setDetail(await _api.updateTrainingSheetDocumentation(
@@ -1256,7 +1438,18 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final d=_detail; if(d==null||_busy)return;
     final date=await showDatePicker(context:context,initialDate:DateTime.now().add(const Duration(days:7)),firstDate:DateTime.now(),lastDate:DateTime.now().add(const Duration(days:730)));
     if(date==null||!mounted)return;
-    final time=await showTimePicker(context:context,initialTime:TimeOfDay.fromDateTime(d.startsAt?.toLocal()??DateTime.now()));
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(d.startsAt?.toLocal() ?? DateTime.now()),
+      initialEntryMode: TimePickerEntryMode.inputOnly,
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        return MediaQuery(
+          data: media.copyWith(alwaysUse24HourFormat: media.alwaysUse24HourFormat),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+    );
     if(time==null||!mounted)return;
     final when=DateTime(date.year,date.month,date.day,time.hour,time.minute);
     final ok=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(title:const Text('Repeat Training?'),content:Text('Create a new training sheet for ${d.title} on ${when.toLocal()}?\n\nThe setup is copied. Roster, attendance, skill results, signatures, completion status and old timestamps are not copied.'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Create Repeat'))]))??false;
@@ -1265,7 +1458,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     try{
       final created=await _api.createTrainingSheet(title:d.title,startsAt:when.toUtc().toIso8601String(),trainingCategory:d.trainingCategory,checklistVersionId:d.checklistVersionId,creditHours:d.creditHours,location:d.location,notes:d.notes,proctorUserIds:d.proctorUserIds,selfRegistration:false);
       if(!mounted)return;
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder:(_)=>DepartmentClassDetailPage(classId:created.id)));
+      context.go('${AppRoutes.departmentTrainingSheets}/${created.id}');
     }catch(e){if(mounted)setState(()=>_error=e.toString());}
     finally{if(mounted)setState(()=>_busy=false);}
   }
@@ -1648,8 +1841,11 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final detail = _detail; final student = _student;
     final mode = context.watch<AppModeController>();
     final canRecordRmsEntry = mode.isAdmin;
-    return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Class roster')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
-      Text(detail.checklistTitle, style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 10),
+    return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Training Sheet')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
+      TrainingSheetHeaderCard(detail: detail),
+      const SizedBox(height: 10),
+      TrainingSheetTimeHoursCard(detail: detail, onEditTimes: _busy ? () {} : () async { await _editTrainingDocumentation(); }),
+      const SizedBox(height: 10),
       Consumer<DepartmentInboxController>(builder:(context,sync,_) {
         final waiting=sync.syncState==DepartmentSyncState.waitingToUpload;
         final failed=sync.syncState==DepartmentSyncState.failed;
@@ -1662,53 +1858,74 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ])));
       }),
 
-      // Keep the next required instructor action visible before the long roster.
-      Card(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Finish this Training Sheet', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 6),
-            Text(detail.status == 'COMPLETE'
-                ? detail.rmsStatus == 'NOT_READY'
-                    ? 'Training is closed. Instructor approval is next.'
-                    : detail.rmsStatus == 'AWAITING_ENTRY'
-                        ? 'Instructor approved. Record the entry in your department RMS.'
-                        : 'All steps complete — RMS entry recorded.'
-                : detail.roster.isEmpty
-                    ? 'Step 1 of 5 · Add students or display the sign-in QR code.'
-                    : detail.roster.any((m) => m.attendance == 'REGISTERED')
-                        ? 'Step 2 of 5 · Record attendance for every student.'
-                        : detail.roster.any((m) => m.attendance == 'PRESENT' && !_studentComplete(detail, m))
-                            ? 'Step 3 of 5 · Grade required skills for present students.'
-                            : 'Step 4 of 5 · Enter end time, narrative, and RMS details; then review and close.'),
-            const SizedBox(height: 12),
-            if (detail.status != 'COMPLETE' && detail.roster.isEmpty)
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                FilledButton.icon(onPressed: _busy ? null : _showQr, icon: const Icon(Icons.qr_code_2_rounded), label: const Text('Show QR')),
-                OutlinedButton.icon(onPressed: _busy ? null : _addStudents, icon: const Icon(Icons.person_add_alt_1_outlined), label: const Text('Add students')),
-              ])
-            else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'REGISTERED'))
-              const Text('Select students in the roster below, record attendance, then return here to continue.')
-            else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'PRESENT' && !_studentComplete(detail, m)))
-              FilledButton.icon(onPressed: _busy ? null : _groupGrade, icon: const Icon(Icons.fact_check_outlined), label: const Text('Grade Skills'))
-            else if (detail.status != 'COMPLETE')
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                FilledButton.icon(onPressed: _busy ? null : () async { await _editTrainingDocumentation(); }, icon: const Icon(Icons.edit_note_rounded), label: const Text('Enter Training Documentation')),
-                OutlinedButton.icon(onPressed: _busy ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Close')),
-              ])
-            else if (detail.rmsStatus == 'NOT_READY')
-              FilledButton.icon(onPressed: _busy ? null : _approveTrainingSheet, icon: const Icon(Icons.approval_outlined), label: const Text('Instructor Approve'))
-            else if (detail.rmsStatus == 'AWAITING_ENTRY' && canRecordRmsEntry)
-              FilledButton.icon(onPressed: _busy ? null : _markRmsEntered, icon: const Icon(Icons.fact_check_outlined), label: const Text('Mark RMS Entered'))
-            else if (detail.rmsStatus == 'AWAITING_ENTRY')
-              const Text('Waiting for an authorized department administrator to record RMS entry.'),
-            const SizedBox(height: 8),
-            if (detail.status != 'COMPLETE')
-              TextButton.icon(onPressed: _busy ? null : _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh class progress')),
-          ]),
-        ),
-      ),
+      Builder(builder: (context) {
+        final statusTone = detail.status == 'COMPLETE'
+            ? (detail.instructorApprovedAt != null ? FireOpsSemanticColors.green : FireOpsSemanticColors.amber)
+            : (detail.roster.isEmpty ? FireOpsSemanticColors.amber : FireOpsSemanticColors.blue);
+
+        String title;
+        String subtitle;
+        VoidCallback? primary;
+        String primaryLabel;
+        IconData primaryIcon;
+        final secondary = <Widget>[];
+
+        if (detail.status != 'COMPLETE' && detail.roster.isEmpty) {
+          title = 'Next action: Start roster';
+          subtitle = 'Show QR for self-registration or add students manually.';
+          primary = _busy ? null : _showQr;
+          primaryLabel = 'Show QR';
+          primaryIcon = Icons.qr_code_2_rounded;
+          secondary.add(OutlinedButton.icon(onPressed: _busy ? null : _addStudents, icon: const Icon(Icons.person_add_alt_1_outlined), label: const Text('Add students')));
+        } else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'REGISTERED')) {
+          title = 'Next action: Attendance';
+          subtitle = 'Confirm attendance for every student (present/absent).';
+          primary = _busy ? null : () {};
+          primaryLabel = 'Roster below';
+          primaryIcon = Icons.people_alt_outlined;
+        } else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'PRESENT' && !_studentComplete(detail, m))) {
+          title = 'Next action: Skill evaluations';
+          subtitle = 'Grade required skills for present students.';
+          primary = _busy ? null : _groupGrade;
+          primaryLabel = 'Grade skills';
+          primaryIcon = Icons.fact_check_outlined;
+        } else if (detail.status != 'COMPLETE') {
+          title = 'Next action: Closeout';
+          subtitle = 'Set end time, narrative, then review and close the Training Sheet.';
+          primary = _busy ? null : () async { await _editTrainingDocumentation(); };
+          primaryLabel = 'Edit documentation';
+          primaryIcon = Icons.edit_note_rounded;
+          secondary.add(OutlinedButton.icon(onPressed: _busy ? null : _reviewAndFinish, icon: const Icon(Icons.rate_review_outlined), label: const Text('Review & Close')));
+        } else if (detail.rmsStatus == 'NOT_READY') {
+          title = 'Next action: Instructor approval';
+          subtitle = 'Review the completed sheet and approve as the instructor.';
+          primary = _busy ? null : _approveTrainingSheet;
+          primaryLabel = 'Instructor approve';
+          primaryIcon = Icons.approval_outlined;
+        } else if (detail.rmsStatus == 'AWAITING_ENTRY' && canRecordRmsEntry) {
+          title = 'Next action: RMS entry';
+          subtitle = 'Record RMS entry once your department’s record is complete.';
+          primary = _busy ? null : _markRmsEntered;
+          primaryLabel = 'Mark RMS entered';
+          primaryIcon = Icons.fact_check_outlined;
+        } else {
+          title = 'Status: RMS entry pending';
+          subtitle = 'Waiting for an authorized department administrator to record RMS entry.';
+          primary = null;
+          primaryLabel = '—';
+          primaryIcon = Icons.hourglass_bottom_rounded;
+        }
+
+        return TrainingSheetNextActionCard(
+          title: title,
+          subtitle: subtitle,
+          primaryAction: primary,
+          primaryLabel: primaryLabel,
+          primaryIcon: primaryIcon,
+          secondaryActions: secondary,
+          statusTone: statusTone,
+        );
+      }),
       if (detail.ceCredits.isNotEmpty || detail.gradingConfig.isNotEmpty)
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Template requirements', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),

@@ -71,14 +71,9 @@ class AppShellPage extends StatelessWidget {
                   label: 'My Roadmap',
                 ),
                 const NavigationDestination(
-                  icon: Icon(Icons.note_alt_outlined),
-                  selectedIcon: Icon(Icons.note_alt_rounded),
-                  label: 'Record',
-                ),
-                const NavigationDestination(
-                  icon: Icon(Icons.workspace_premium_outlined),
-                  selectedIcon: Icon(Icons.workspace_premium_rounded),
-                  label: 'Credentials',
+                  icon: Icon(Icons.school_outlined),
+                  selectedIcon: Icon(Icons.school_rounded),
+                  label: 'Training',
                 ),
                 NavigationDestination(
                   icon: Badge(
@@ -92,6 +87,11 @@ class AppShellPage extends StatelessWidget {
                     child: const Icon(Icons.apartment_rounded),
                   ),
                   label: 'Department',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.person_outline_rounded),
+                  selectedIcon: Icon(Icons.person_rounded),
+                  label: 'Profile',
                 ),
               ],
             ),

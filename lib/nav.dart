@@ -36,6 +36,8 @@ import 'package:firepath/pages/career/quick_log_setup_page.dart';
 import 'package:firepath/pages/certifications/certifications_page.dart';
 import 'package:firepath/pages/resources/resources_page.dart';
 import 'package:firepath/pages/settings/settings_page.dart';
+import 'package:firepath/pages/training/training_hub_page.dart';
+import 'package:firepath/pages/profile/profile_page.dart';
 import 'package:firepath/pages/requirement/requirement_detail_page.dart';
 import 'package:firepath/pages/requirement/get_started_page.dart';
 import 'package:firepath/pages/certifications/certification_detail_page.dart';
@@ -261,20 +263,10 @@ class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.personalLog,
-                name: 'personal_log',
+                path: AppRoutes.training,
+                name: 'training',
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: CareerRecordV2Page()),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.certifications,
-                name: 'certifications',
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: CertificationsPage()),
+                    const NoTransitionPage(child: TrainingHubPage()),
               ),
             ],
           ),
@@ -309,6 +301,16 @@ class AppRouter {
               ),
             ],
           ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.profile,
+                name: 'profile',
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: ProfilePage()),
+              ),
+            ],
+          ),
         ],
       ),
 
@@ -317,6 +319,13 @@ class AppRouter {
         name: 'settings',
         pageBuilder: (context, state) =>
             const MaterialPage(child: SettingsPage()),
+      ),
+
+      GoRoute(
+        path: AppRoutes.personalLog,
+        name: 'personal_log',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: CareerRecordV2Page()),
       ),
 
       GoRoute(
@@ -590,6 +599,9 @@ class AppRoutes {
   static const String home = '/home';
   static const String myPath = '/path';
   static const String myPathLegacy = '/task-book/customize';
+  static const String training = '/training';
+  static const String profile = '/profile';
+
   static const String personalLog = '/log';
   static const String personalLogLegacy = '/log/legacy';
   static const String personalLogClassic = '/log/classic';
