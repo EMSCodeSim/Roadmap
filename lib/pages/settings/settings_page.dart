@@ -147,6 +147,13 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(
         leading: const AppBackButton.toHome(),
         title: const Text('Settings'),
+        actions: [
+          IconButton(
+            tooltip: 'My Profile',
+            icon: const Icon(Icons.person_outline_rounded),
+            onPressed: () => context.push(AppRoutes.profile),
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
