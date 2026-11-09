@@ -68,7 +68,7 @@ void main() {
       expect(departmentOverview, findsOneWidget);
       await tester.ensureVisible(departmentOverview);
       await tester.tap(departmentOverview);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Open Department'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
