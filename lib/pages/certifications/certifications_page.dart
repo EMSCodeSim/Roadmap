@@ -7,6 +7,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/services/catalog.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 import 'package:firepath/widgets/certification_renewal_tile.dart';
 import 'package:firepath/widgets/calm_empty_state.dart';
@@ -320,7 +321,10 @@ class _CertificationsPageState extends State<CertificationsPage> {
       });
 
     return Scaffold(
-      appBar: const FirefighterRoadmapAppBar(subtitle: 'Certs'),
+      appBar: const FirefighterRoadmapAppBar(
+        subtitle: 'Certs',
+        leading: AppBackButton.toHome(),
+      ),
       body: SafeArea(
         child: total == 0
             ? Center(
