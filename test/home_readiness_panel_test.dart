@@ -74,19 +74,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('My Roadmap'), findsOneWidget);
-    expect(find.text('Continue'), findsOneWidget);
-    expect(find.text('Personal Progress'), findsOneWidget);
-    expect(find.text('Driver/Operator / Engineer'), findsOneWidget);
-    expect(find.textContaining('complete'), findsOneWidget);
-
-    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+    expect(find.text('Continue my roadmap'), findsOneWidget);
+    expect(find.text('My Goals'), findsOneWidget);
+    await tester.tap(find.text('My Goals'));
     await tester.pump(const Duration(milliseconds: 300));
-    final departmentOverview = find.text('Department updates');
-    expect(departmentOverview, findsOneWidget);
-    await tester.ensureVisible(departmentOverview);
-    await tester.tap(departmentOverview);
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Open Department'), findsOneWidget);
+    expect(find.text('Driver/Operator / Engineer'), findsOneWidget);
   });
 
   testWidgets('home prompts to choose a roadmap when no goal is set', (tester) async {
@@ -107,7 +99,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('My Roadmap'), findsOneWidget);
-    expect(find.text('Choose your career goal'), findsOneWidget);
-    expect(find.text('Personal Progress'), findsOneWidget);
+    expect(find.text('Choose your first career goal'), findsOneWidget);
+    expect(find.text('Start my roadmap'), findsOneWidget);
+    expect(find.text('My Goals'), findsOneWidget);
   });
 }
