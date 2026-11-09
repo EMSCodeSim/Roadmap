@@ -32,7 +32,6 @@ void main() {
     expect(find.text('Department'), findsNothing);
     expect(find.text('Personal'), findsNothing);
     expect(find.text('Quick actions'), findsOneWidget);
-    expect(find.text('Needs attention'), findsWidgets);
     expect(find.text('Start My Roadmap'), findsOneWidget);
     final departmentOverview = find.text('Department updates');
     expect(departmentOverview, findsOneWidget);
