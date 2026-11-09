@@ -123,10 +123,72 @@ class _TaskBookEntryPageState extends State<TaskBookEntryPage> {
               const SizedBox(height: 12),
             ],
           ],
+          const SizedBox(height: 8),
+          Text(
+            'Personal growth tools',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          _GrowthToolTile(
+            icon: Icons.insights_outlined,
+            title: 'Career intelligence',
+            subtitle: 'Readiness, strengths, and areas to build',
+            onTap: () => context.push(AppRoutes.careerIntelligence),
+          ),
+          _GrowthToolTile(
+            icon: Icons.hub_outlined,
+            title: 'Competency map',
+            subtitle: 'See evidence and competency progress',
+            onTap: () => context.push(AppRoutes.competencyMap),
+          ),
+          _GrowthToolTile(
+            icon: Icons.trending_up_rounded,
+            title: 'Growth planning',
+            subtitle: 'Development, experience, and longer-term goals',
+            onTap: () => context.push(AppRoutes.growthDetails),
+          ),
+          _GrowthToolTile(
+            icon: Icons.workspace_premium_outlined,
+            title: 'Certifications',
+            subtitle: 'Track the credentials needed for your next role',
+            onTap: () => context.push(AppRoutes.certifications),
+          ),
+          _GrowthToolTile(
+            icon: Icons.history_rounded,
+            title: 'Career record',
+            subtitle: 'Recall experience, training, achievements, and evidence',
+            onTap: () => context.push(AppRoutes.personalLog),
+          ),
         ],
       ),
     );
   }
+}
+
+class _GrowthToolTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _GrowthToolTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          leading: Icon(icon),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(subtitle),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: onTap,
+        ),
+      );
 }
 
 class _RoadmapHeroCard extends StatelessWidget {
