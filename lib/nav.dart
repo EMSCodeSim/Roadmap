@@ -33,7 +33,6 @@ import 'package:firepath/pages/career/competency_map_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_v2_page.dart';
 import 'package:firepath/pages/career/quick_log_setup_page.dart';
-import 'package:firepath/pages/certifications/certifications_page.dart';
 import 'package:firepath/pages/resources/resources_page.dart';
 import 'package:firepath/pages/settings/settings_page.dart';
 import 'package:firepath/pages/training/training_hub_page.dart';
