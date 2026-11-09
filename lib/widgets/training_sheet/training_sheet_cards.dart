@@ -106,12 +106,6 @@ class TrainingSheetTimeHoursCard extends StatelessWidget {
 
   static String _formatTime(DateTime local) {
     final h = local.hour;
-    final use12 = true; // Visual formatting only; actual picker uses system setting.
-    if (!use12) {
-      final hh = h.toString().padLeft(2, '0');
-      final mm = local.minute.toString().padLeft(2, '0');
-      return '$hh:$mm';
-    }
     final hour = h == 0 ? 12 : (h > 12 ? h - 12 : h);
     final period = h >= 12 ? 'PM' : 'AM';
     final mm = local.minute.toString().padLeft(2, '0');

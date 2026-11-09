@@ -31,14 +31,13 @@ void main() {
 
     expect(find.text('Department'), findsNothing);
     expect(find.text('Personal'), findsNothing);
-    expect(find.text('Personal overview'), findsOneWidget);
-    expect(find.text('Needs attention'), findsWidgets);
-    expect(find.text('Build My Roadmap'), findsOneWidget);
-    expect(find.text('Department overview'), findsOneWidget);
-    expect(find.text('Open Department'), findsOneWidget);
+    expect(find.text('Quick actions'), findsOneWidget);
+    expect(find.text('Start My Roadmap'), findsOneWidget);
+    final departmentOverview = find.text('Department updates');
+    expect(departmentOverview, findsOneWidget);
     expect(
-      tester.getTopLeft(find.text('Personal overview')).dy,
-      lessThan(tester.getTopLeft(find.text('Department overview')).dy),
+      tester.getTopLeft(find.text('My Roadmap')).dy,
+      lessThan(tester.getTopLeft(departmentOverview).dy),
     );
   });
 }

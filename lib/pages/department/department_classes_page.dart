@@ -1836,12 +1836,58 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     ]),
   );
 
+  Widget _closeoutChecklist(DepartmentClassDetail detail) {
+    final attendanceDone = detail.roster.isNotEmpty &&
+        detail.roster.every((member) => member.attendance != 'REGISTERED');
+    final skillsDone = attendanceDone &&
+        detail.roster.where((member) => member.attendance == 'PRESENT')
+            .every((member) => _studentComplete(detail, member));
+    final completed = <bool>[
+      detail.roster.isNotEmpty,
+      attendanceDone,
+      skillsDone,
+      detail.status == 'COMPLETE',
+      detail.instructorApprovedAt != null,
+      detail.rmsStatus == 'RMS_ENTERED',
+    ];
+    final labels = <String>[
+      'Roster', 'Attendance', 'Skills & evaluations',
+      'Review & close', 'Instructor approval', 'Department RMS entry',
+    ];
+    final actions = <VoidCallback>[
+      _addStudents, () => setState(() => _selectAttendance = true),
+      _groupGrade, _reviewAndFinish, _approveTrainingSheet, _markRmsEntered,
+    ];
+    final count = completed.where((value) => value).length;
+    return Card(child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Closeout checklist', style: Theme.of(context).textTheme.titleLarge),
+        Text('$count of 6 complete'),
+        const SizedBox(height: 8),
+        LinearProgressIndicator(value: count / 6),
+        for (var i = 0; i < labels.length; i++)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(completed[i] ? Icons.check_circle : Icons.radio_button_unchecked,
+              color: completed[i] ? Colors.green : null),
+            title: Text(labels[i]),
+            subtitle: Text(completed[i] ? 'Complete' : 'Needs attention'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _busy ? null : actions[i],
+          ),
+      ]),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final detail = _detail; final student = _student;
     final mode = context.watch<AppModeController>();
     final canRecordRmsEntry = mode.isAdmin;
     return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Training Sheet')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
+      _closeoutChecklist(detail),
+      const SizedBox(height: 10),
       TrainingSheetHeaderCard(detail: detail),
       const SizedBox(height: 10),
       TrainingSheetTimeHoursCard(detail: detail, onEditTimes: _busy ? () {} : () async { await _editTrainingDocumentation(); }),
