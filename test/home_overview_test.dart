@@ -37,7 +37,7 @@ void main() {
   });
 
   testWidgets(
-    'Home shows personal progress and one department entry',
+    'Home retains My Roadmap and separates personal and department overview',
     (tester) async {
       final app = AppState();
       await tester.runAsync(app.bootstrap);
@@ -58,16 +58,17 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('My Roadmap'), findsOneWidget);
-      expect(find.text('Personal Progress'), findsOneWidget);
+      expect(find.text('Start My Roadmap'), findsOneWidget);
+      expect(find.text('Quick actions'), findsOneWidget);
       expect(find.text('What should I work on next?'), findsNothing);
 
       await tester.drag(find.byType(ListView).first, const Offset(0, -500));
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Department updates'), findsOneWidget);
-      // Department actions are intentionally hidden until its card expands.
-      expect(find.text('Open Department'), findsNothing);
-      await tester.tap(find.text('Department updates'));
-      await tester.pump(const Duration(milliseconds: 350));
+      final departmentOverview = find.text('Department updates');
+      expect(departmentOverview, findsOneWidget);
+      await tester.ensureVisible(departmentOverview);
+      await tester.tap(departmentOverview);
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Open Department'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
