@@ -92,7 +92,7 @@ jobs:
           grep -q "Certification snapshot" lib/pages/task_book/qualification_task_book_page.dart
           grep -q "authority.sourceUrl" lib/pages/task_book/qualification_task_book_page.dart
           grep -q "Optional practice notes" lib/pages/task_book/qualification_task_book_page.dart
-          grep -A3 "Optional practice notes" lib/pages/task_book/qualification_task_book_page.dart | grep -q "initiallyExpanded: false"
+          grep -B3 "Optional practice notes" lib/pages/task_book/qualification_task_book_page.dart | grep -q "initiallyExpanded: false"
           grep -q "PERSONAL CHECKLIST" lib/pages/task_book/qualification_task_book_page.dart
 
   platform-builds:
