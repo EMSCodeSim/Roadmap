@@ -124,9 +124,9 @@ class RequirementDetailPage extends StatelessWidget {
             ],
 
             _SectionTitle(
-              icon: Icons.playlist_add_check,
-              title: 'How to Complete',
-              subtitle: 'Turn this requirement into next actions.',
+              icon: Icons.assignment_turned_in_outlined,
+              title: 'Collect & Track',
+              subtitle: 'Capture the official info, then log progress and evidence.',
             ),
             const SizedBox(height: AppSpacing.md),
             _StepsCard(
@@ -876,28 +876,30 @@ List<String> _stepsForRequirement(
 
   if (hasSkillsChecklist || r.type == RequirementType.certification) {
     return [
-      'Open the skills checklist and work the next unfinished JPR / objective.',
-      'Add department, state, or academy items on top of the national baseline.',
-      'Use Quick Log to record practice, training hours, or sign-offs connected to this credential.',
-      'The credential itself is complete only when it is current in Certs — checking skills is preparation, not certification.',
+      'Open “Get Started” and save the official state/authority page for this credential.',
+      'Record what you learn: prerequisites, costs/fees, required documents, and where to apply/test.',
+      'Use Quick Log to capture training, practice hours, evaluations, and key milestones as they happen.',
+      'Optional: use the Skills checklist to track practice items — it supports preparation but does not certify you.',
+      'Mark this requirement complete after the credential is issued and current in Certs.',
     ];
   }
 
   if (hasTaskBook || r.type == RequirementType.taskBook) {
     return [
-      'Open the Task Book and identify the next incomplete task.',
-      'Use Quick Log to record practice, training hours, or task sign-offs connected to this requirement.',
-      'Save evidence (photos, certificates, evaluator notes) as you go.',
-      'Mark complete once your evaluator/department signs off.',
+      'Open “Get Started” and save the official reference links you’ll rely on.',
+      'Use the Task Book as a personal checklist to track what you’ve done and what’s next.',
+      'Use Quick Log to capture sessions, feedback, and sign-offs while details are fresh.',
+      'Save evidence (photos, certificates, evaluator notes) so it’s ready for reviews and interviews.',
+      'Mark complete once the requirement is officially verified (department/authority).',
     ];
   }
 
   return switch (r.type) {
     RequirementType.certification || RequirementType.trainingCourse || RequirementType.course || RequirementType.education => [
-        'Open “Get Started” to see prerequisites and the best official links for your state.',
-        'Find training (academy, state, or approved provider) and enroll.',
-        'Study with your preferred materials and log study time with Quick Log.',
-        'After completion, record the credential and mark this requirement complete.',
+        'Open “Get Started” and save the official reference links (state, academy, testing authority).',
+        'Collect the specifics that apply to you: prerequisites, dates, and required documents.',
+        'Log training and key events with Quick Log so you can recall them later.',
+        'After you earn the credential, add it to Certs and mark this requirement complete.',
       ],
     RequirementType.numericProgress => [
         'Confirm the required target and unit$unitSuffix.',
@@ -907,15 +909,15 @@ List<String> _stepsForRequirement(
       ],
     RequirementType.experience => [
         'Confirm the minimum experience needed (time-in-role, years, or months).',
-        'Log key milestones (hours, assignments, ride-alongs) using Quick Log.',
-        'Track evidence (letters, evaluations, duty assignments) in your Career Vault.',
+        'Use Quick Log to capture significant assignments, leadership moments, and learning events.',
+        'Save evidence (letters, evaluations, duty assignments) so it’s ready for promotion reviews.',
         'Mark complete when your experience minimum is satisfied.',
       ],
     RequirementType.promotionalTest || RequirementType.practical || RequirementType.interview => [
-        'Use “Get Started” to gather official testing / promotional resources.',
-        'Create a weekly study plan and log practice reps with Quick Log.',
-        'Capture feedback and scoring notes after each mock scenario.',
-        'Mark complete once you pass / are cleared by your department.',
+        'Use “Get Started” to save the official policy, testing announcement, and scoring rubric (if available).',
+        'Log study blocks, practice scenarios, and coaching feedback with Quick Log.',
+        'Capture what went well / what to improve after each mock or panel.',
+        'Mark complete once you pass or are officially cleared by your department.',
       ],
     RequirementType.custom => [
         'Clarify what “done” means (who verifies it and what evidence counts).',

@@ -413,6 +413,59 @@ class _PathTab extends StatelessWidget {
               onTap: () => context.push(AppRoutes.goalSetup),
             ),
           ),
+
+          const SizedBox(height: AppSpacing.lg),
+          _SectionTitle(label: 'CAPTURE & RECALL'),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'New priority: collect the details you’ll want later — for promotions, interviews, and annual reviews.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _QuickCaptureTile(
+                  icon: Icons.edit_note_rounded,
+                  title: 'Log an event',
+                  subtitle: 'Assignments, drills, leadership moments',
+                  onTap: () => context.go(AppRoutes.personalLog),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _QuickCaptureTile(
+                  icon: Icons.timeline_rounded,
+                  title: 'Timeline',
+                  subtitle: 'Recall key milestones fast',
+                  onTap: () => DefaultTabController.of(context).animateTo(1),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: _QuickCaptureTile(
+                  icon: Icons.workspace_premium_outlined,
+                  title: 'Promotion review',
+                  subtitle: 'Interview-ready highlights',
+                  onTap: () => context.push(AppRoutes.promotionPortfolioReview),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _QuickCaptureTile(
+                  icon: Icons.picture_as_pdf_outlined,
+                  title: 'Export',
+                  subtitle: 'Bring records to reviews',
+                  onTap: () => context.push(AppRoutes.careerExport),
+                ),
+              ),
+            ],
+          ),
+
           if (state.profile.effectiveCareerPath != CareerPath.ems) ...[
             const SizedBox(height: AppSpacing.lg),
             _CareerPathOverview(state: state, roadmap: roadmap),
@@ -1245,6 +1298,58 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900, color: cs.onSurfaceVariant));
+  }
+}
+
+class _QuickCaptureTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _QuickCaptureTile({required this.icon, required this.title, required this.subtitle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              height: 38,
+              width: 38,
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: cs.primary),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.3)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
   }
 }
 

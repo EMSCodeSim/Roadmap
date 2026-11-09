@@ -28,6 +28,7 @@ class QualificationTaskBookPage extends StatelessWidget {
       return const Scaffold(body: Center(child: Text('Task book not found.')));
     }
     final state = context.watch<AppState>();
+    final cs = Theme.of(context).colorScheme;
     final roadmap = state.roadmap;
     final goalId = roadmap?.goal.id;
     if (goalId == null) {
@@ -131,13 +132,42 @@ class QualificationTaskBookPage extends StatelessWidget {
         child: ListView(
           padding: AppSpacing.paddingLg,
           children: [
-            Text('Your qualification in five steps',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Certification snapshot',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Use this page to collect official references and track your progress. Detailed step-by-step guidance and JPR packets vary by state/academy—use the official source link as your single source of truth.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+            ),
+            const SizedBox(height: 10),
+            if (authority != null)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.verified_outlined),
+                  title: Text('Official ${authority.stateCode} reference', style: const TextStyle(fontWeight: FontWeight.w900)),
+                  subtitle: Text(authority.sourceTitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => launchUrl(Uri.parse(authority.sourceUrl), mode: LaunchMode.externalApplication),
+                ),
+              )
+            else
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.location_on_outlined),
+                  title: const Text('Add your state in Profile', style: TextStyle(fontWeight: FontWeight.w900)),
+                  subtitle: const Text('We’ll link the official certification authority for quick reference.'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push(AppRoutes.profile),
+                ),
+              ),
+            const SizedBox(height: 12),
             ExpansionTile(
               initiallyExpanded: false,
               leading: const Icon(Icons.place_outlined),
-              title: const Text('1. Find a class'),
-              subtitle: const Text('Training providers and enrollment'),
+              title: const Text('Find training (reference only)'),
+              subtitle: const Text('Capture who, where, and when — not the full playbook'),
               children: [
                 if (authority != null)
                   ListTile(
@@ -162,8 +192,8 @@ class QualificationTaskBookPage extends StatelessWidget {
             ExpansionTile(
               initiallyExpanded: false,
               leading: const Icon(Icons.menu_book_outlined),
-              title: const Text('2. Books and chapters'),
-              subtitle: const Text('Assigned reading and study resources'),
+              title: const Text('Study plan (your notes)'),
+              subtitle: const Text('Save what your program actually assigns'),
               children: [
                 const ListTile(
                   title: Text('Follow your course syllabus'),
@@ -181,11 +211,15 @@ class QualificationTaskBookPage extends StatelessWidget {
             ExpansionTile(
               initiallyExpanded: true,
               leading: const Icon(Icons.checklist_rounded),
-              title: const Text('3. Skills and JPRs'),
+              title: const Text('Skills checklist (optional)'),
               subtitle: Text('${tasks.where((t) => t.section.contains('JPR') ||
                   t.section == 'PERFORMANCE' ||
                   t.section == 'APPARATUS OPERATIONS').length} practical items'),
               children: [
+                const ListTile(
+                  title: Text('Keep it simple'),
+                  subtitle: Text('Track practice items you care about. For official criteria, always use the state/academy evaluator packet.'),
+                ),
                 ...tasks.where((t) => t.section.contains('JPR') ||
                     t.section == 'PERFORMANCE' ||
                     t.section == 'APPARATUS OPERATIONS').map((t) => _TaskTile(
@@ -199,8 +233,8 @@ class QualificationTaskBookPage extends StatelessWidget {
             ExpansionTile(
               initiallyExpanded: false,
               leading: const Icon(Icons.quiz_outlined),
-              title: const Text('4. Written test'),
-              subtitle: const Text('Knowledge examination preparation'),
+              title: const Text('Written test (reference only)'),
+              subtitle: const Text('Save format, dates, and reminders'),
               children: [
                 const ListTile(subtitle: Text('Confirm exam format, passing criteria, and scheduling with the testing authority.')),
                 ...tasks.where((t) => t.section == 'TESTING' &&
@@ -214,8 +248,8 @@ class QualificationTaskBookPage extends StatelessWidget {
             ExpansionTile(
               initiallyExpanded: false,
               leading: const Icon(Icons.workspace_premium_outlined),
-              title: const Text('5. Skills test'),
-              subtitle: const Text('Practical examination and qualification'),
+              title: const Text('Final verification'),
+              subtitle: const Text('Official evaluation and credential issuance'),
               children: [
                 const ListTile(subtitle: Text('An authorized evaluator or testing authority must verify official completion. Personal checklist progress is not certification.')),
                 ...tasks.where((t) => t.section == 'CERTIFICATION' ||
