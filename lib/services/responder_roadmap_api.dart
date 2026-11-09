@@ -1676,6 +1676,24 @@ class ResponderRoadmapApi {
     return DepartmentClassDetail.fromJson(_asMap(data));
   }
 
+  Future<DepartmentClassDetail> updateClassEvaluationSetup({
+    required String classId,
+    String trainingSheetTemplateId = '',
+    String checklistVersionId = '',
+  }) async {
+    final data = await _request(
+      'PATCH',
+      'app/training-sheets/${Uri.encodeComponent(classId)}/evaluation-setup',
+      body: <String, dynamic>{
+        if (trainingSheetTemplateId.isNotEmpty)
+          'trainingSheetTemplateId': trainingSheetTemplateId,
+        if (checklistVersionId.isNotEmpty)
+          'checklistVersionId': checklistVersionId,
+      },
+    );
+    return DepartmentClassDetail.fromJson(_asMap(data));
+  }
+
   Future<DepartmentClassMutationResult> recordClassSkillDurable({required String classId, required String enrollmentId, required String requirementId, required String result, String notes = ''}) async {
     final key='skill:$classId:$enrollmentId:$requirementId';
     try {
