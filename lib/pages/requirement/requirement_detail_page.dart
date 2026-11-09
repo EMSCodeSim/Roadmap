@@ -125,8 +125,8 @@ class RequirementDetailPage extends StatelessWidget {
 
             _SectionTitle(
               icon: Icons.assignment_turned_in_outlined,
-              title: 'Collect & Track',
-              subtitle: 'Capture the official info, then log progress and evidence.',
+              title: 'Track Progress & Evidence',
+              subtitle: 'Save the official reference and record details you may need to recall later.',
             ),
             const SizedBox(height: AppSpacing.md),
             _StepsCard(
@@ -570,43 +570,23 @@ class _StepsCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          for (int i = 0; i < steps.length; i++) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 26,
-                  height: 26,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(10),
+          for (final item in steps)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.circle, size: 8, color: cs.primary),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
+                    ),
                   ),
-                  child: Text(
-                    '${i + 1}',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w900, color: cs.primary),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    steps[i],
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
-                  ),
-                ),
-              ],
-            ),
-            if (i != steps.length - 1)
-              Padding(
-                padding: const EdgeInsets.only(left: 13),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10),
-                  height: 18,
-                  width: 1,
-                  color: cs.outline.withValues(alpha: 0.18),
-                ),
+                ],
               ),
-          ],
+            ),
         ],
       ),
     );
@@ -874,62 +854,63 @@ List<String> _stepsForRequirement(
   final unit = (r.progressUnit ?? r.experienceUnit ?? '').trim();
   final unitSuffix = unit.isEmpty ? '' : ' ($unit)';
 
-  if (hasSkillsChecklist || r.type == RequirementType.certification) {
+  if (r.type == RequirementType.certification ||
+      r.type == RequirementType.trainingCourse ||
+      r.type == RequirementType.course ||
+      r.type == RequirementType.education) {
     return [
-      'Open “Get Started” and save the official state/authority page for this credential.',
-      'Record what you learn: prerequisites, costs/fees, required documents, and where to apply/test.',
-      'Use Quick Log to capture training, practice hours, evaluations, and key milestones as they happen.',
-      'Optional: use the Skills checklist to track practice items — it supports preparation but does not certify you.',
-      'Mark this requirement complete after the credential is issued and current in Certs.',
+      'Official reference: save the state, academy, or testing authority link.',
+      'Progress to record: requirements that apply to you, key dates, training, and experience.',
+      'Credential: add it to Certs when it is issued and current.',
+    ];
+  }
+
+  if (r.type == RequirementType.experience) {
+    return [
+      'Target: track the required time or experience$unitSuffix.',
+      'Examples: record significant assignments, your role, actions, and outcomes.',
+      'Proof: keep evaluations or other supporting records for future reviews.',
+    ];
+  }
+
+  if (r.type == RequirementType.promotionalTest ||
+      r.type == RequirementType.practical ||
+      r.type == RequirementType.interview) {
+    return [
+      'Reference: keep the current department policy, announcement, or rubric.',
+      'Examples: capture practice feedback and experiences you may want to discuss.',
+      'Result: record the outcome when the process is complete.',
     ];
   }
 
   if (hasTaskBook || r.type == RequirementType.taskBook) {
     return [
-      'Open “Get Started” and save the official reference links you’ll rely on.',
-      'Use the Task Book as a personal checklist to track what you’ve done and what’s next.',
-      'Use Quick Log to capture sessions, feedback, and sign-offs while details are fresh.',
-      'Save evidence (photos, certificates, evaluator notes) so it’s ready for reviews and interviews.',
-      'Mark complete once the requirement is officially verified (department/authority).',
+      'Reference: save the official links you rely on.',
+      'Progress: record sessions, feedback, sign-offs, and meaningful milestones.',
+      'Evidence: keep supporting records together for future reviews.',
     ];
   }
 
-  return switch (r.type) {
-    RequirementType.certification || RequirementType.trainingCourse || RequirementType.course || RequirementType.education => [
-        'Open “Get Started” and save the official reference links (state, academy, testing authority).',
-        'Collect the specifics that apply to you: prerequisites, dates, and required documents.',
-        'Log training and key events with Quick Log so you can recall them later.',
-        'After you earn the credential, add it to Certs and mark this requirement complete.',
-      ],
-    RequirementType.numericProgress => [
-        'Confirm the required target and unit$unitSuffix.',
-        'Use Quick Log to capture each session and keep the current total up to date.',
-        'Review progress weekly until you hit the target.',
-        'Mark complete when your total meets the requirement.',
-      ],
-    RequirementType.experience => [
-        'Confirm the minimum experience needed (time-in-role, years, or months).',
-        'Use Quick Log to capture significant assignments, leadership moments, and learning events.',
-        'Save evidence (letters, evaluations, duty assignments) so it’s ready for promotion reviews.',
-        'Mark complete when your experience minimum is satisfied.',
-      ],
-    RequirementType.promotionalTest || RequirementType.practical || RequirementType.interview => [
-        'Use “Get Started” to save the official policy, testing announcement, and scoring rubric (if available).',
-        'Log study blocks, practice scenarios, and coaching feedback with Quick Log.',
-        'Capture what went well / what to improve after each mock or panel.',
-        'Mark complete once you pass or are officially cleared by your department.',
-      ],
-    RequirementType.custom => [
-        'Clarify what “done” means (who verifies it and what evidence counts).',
-        'Add a department link or reference material in Get Started.',
-        'Use Quick Log for each step until you reach completion.',
-        'Mark complete when verified.',
-      ],
-    _ => [
-        'Open “Get Started” to gather official info and training resources.',
-        'Use Quick Log to capture time and milestones.',
-        'Add evidence as you go.',
-        'Mark complete once verified.',
-      ],
-  };
+  if (r.type == RequirementType.numericProgress) {
+    return [
+      'Target: confirm the required amount and unit$unitSuffix.',
+      'Progress: log sessions or milestones so your total stays current.',
+      'Completion: mark done when your recorded progress meets the target.',
+    ];
+  }
+
+  if (r.type == RequirementType.custom) {
+    return [
+      'Clarify what completion means and who verifies it.',
+      'Save the reference or supporting information you will need.',
+      'Capture progress and mark complete when verified.',
+    ];
+  }
+
+  return [
+    'Reference: save the official information that applies to this goal.',
+    'Progress: log important training, experience, or milestones.',
+    'Evidence: keep the details you may want for a future review.',
+  ];
 }
+
