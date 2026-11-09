@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firepath/nav.dart';
+import 'package:firepath/models/career_record.dart';
+import 'package:firepath/services/career_inbox.dart';
+import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/certification_urgency.dart';
 import 'package:firepath/state/app_state.dart';
+import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 
-/// A personal-first home. Department workflows remain in the Department tab.
+/// A compact daily overview. Long-term personal development lives in My Roadmap.
 class VisualHomePage extends StatefulWidget {
   const VisualHomePage({super.key});
 
@@ -16,220 +20,224 @@ class VisualHomePage extends StatefulWidget {
 }
 
 class _VisualHomePageState extends State<VisualHomePage> {
-  static const _preferenceKey = 'personal_home_expanded_v1';
-  final Set<String> _expanded = {};
-  bool _loaded = false;
+  final CareerRecordStore _recordStore = CareerRecordStore();
+  List<CareerRecord> _records = const [];
+  bool _loadingRecords = true;
 
   @override
   void initState() {
     super.initState();
-    _loadPreferences();
+    _loadRecords();
   }
 
-  Future<void> _loadPreferences() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (!mounted) return;
-      setState(() {
-        _expanded.addAll(prefs.getStringList(_preferenceKey) ?? const []);
-        _loaded = true;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loaded = true);
-    }
-  }
-
-  Future<void> _toggle(String key) async {
+  Future<void> _loadRecords() async {
+    final records = await _recordStore.load();
+    if (!mounted) return;
     setState(() {
-      if (!_expanded.add(key)) _expanded.remove(key);
+      _records = records;
+      _loadingRecords = false;
     });
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_preferenceKey, _expanded.toList());
-    } catch (_) {
-      // Expansion remains usable if local persistence is unavailable.
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final department = context.watch<DepartmentInboxController>();
+    final colors = Theme.of(context).colorScheme;
     final roadmap = app.roadmap;
-    final theme = Theme.of(context);
-    final departmentName = (app.profile.departmentName ?? '').trim();
-    final percent = roadmap == null
-        ? null
-        : (roadmap.percentComplete * 100).round().clamp(0, 100);
+    final nextStep = roadmap?.nextStep;
+    final credentials = CertificationUrgency.urgent(
+      app.certifications,
+      withinDays: 90,
+    );
+    final followUps = CareerInbox.build(app: app, records: _records)
+        .where((item) => item.kind != CareerInboxKind.certification)
+        .toList(growable: false);
 
     return Scaffold(
       appBar: AppBar(
-        title: FirefighterRoadmapWordmark(
-          iconSize: 24,
-          textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-        ),
+        title: const FirefighterRoadmapWordmark(),
         actions: [
           IconButton(
-            tooltip: 'Settings and profile',
+            tooltip: 'Settings',
             onPressed: () => context.push(AppRoutes.settings),
             icon: const Icon(Icons.settings_outlined),
           ),
         ],
       ),
-      body: SafeArea(
+      body: RefreshIndicator(
+        onRefresh: _loadRecords,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            Text('My Roadmap', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Today',
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineMedium
+                  ?.copyWith(fontWeight: FontWeight.w900),
+            ),
             const SizedBox(height: 4),
-            Text('Your journey. Your progress.', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 20),
+            Text(
+              'Your priorities, at a glance.',
+              style: TextStyle(color: colors.onSurfaceVariant),
+            ),
+            const SizedBox(height: 16),
+            _sectionTitle(context, 'Next action'),
             Card(
               margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      const Icon(Icons.spa_outlined, color: Colors.green),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text('My growth', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))),
-                      Text(percent == null ? 'Not started' : '$percent%', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                    ]),
-                    const SizedBox(height: 12),
-                    LinearProgressIndicator(
-                      value: percent == null ? 0 : percent / 100,
-                      minHeight: 8,
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.green,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(roadmap?.goal.title ?? 'Choose your first career goal', maxLines: 2, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: () => context.go(AppRoutes.myPath),
-                      child: Text(roadmap == null ? 'Start my roadmap' : 'Continue my roadmap'),
-                    ),
-                  ],
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                leading: const CircleAvatar(
+                  child: Icon(Icons.arrow_forward_rounded),
+                ),
+                title: Text(
+                  nextStep?.requirement.name ??
+                      (roadmap == null
+                          ? 'Choose a career goal'
+                          : 'No immediate roadmap step'),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  roadmap == null
+                      ? 'Set a goal in My Roadmap to get a recommended next step.'
+                      : nextStep == null
+                          ? 'Review your personal growth plan.'
+                          : 'Recommended step in your personal plan.',
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.go(
+                  roadmap == null ? AppRoutes.goalSetup : AppRoutes.myPath,
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            _GrowthTile(
-              title: 'My Progress',
-              subtitle: 'Your personal growth',
-              icon: Icons.trending_up_rounded,
-              color: Colors.blue,
-              expanded: _loaded && _expanded.contains('progress'),
-              onToggle: () => _toggle('progress'),
-              details: roadmap == null
-                  ? 'Start a roadmap to see your progress.'
-                  : '${roadmap.completedCount} of ${roadmap.totalCount} requirements completed',
-              onOpen: () => context.go(AppRoutes.myPath),
+            _sectionTitle(
+              context,
+              'Credentials',
+              actionLabel: 'All',
+              onAction: () => context.go(AppRoutes.certifications),
             ),
-            _GrowthTile(
-              title: 'My Goals',
-              subtitle: 'What I am working toward',
-              icon: Icons.track_changes_rounded,
-              color: Colors.deepPurple,
-              expanded: _loaded && _expanded.contains('goals'),
-              onToggle: () => _toggle('goals'),
-              details: roadmap?.goal.title ?? 'Set your next career goal.',
-              onOpen: () => context.go(AppRoutes.myPath),
+            if (credentials.isEmpty)
+              _statusCard(
+                icon: Icons.verified_outlined,
+                title: 'No credentials need attention',
+                detail: 'Expiring and expired credentials will appear here.',
+              )
+            else
+              ...credentials.take(3).map(
+                    (item) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.warning_amber_rounded,
+                          color: colors.error,
+                        ),
+                        title: Text(app.certificationDisplayName(item.cert)),
+                        subtitle: Text(
+                          item.isExpired
+                              ? 'Expired · renewal needs attention'
+                              : 'Expires in ${item.daysRemaining} ${item.daysRemaining == 1 ? 'day' : 'days'}',
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => context.push(
+                          '${AppRoutes.certificationDetail}/${item.cert.id}',
+                        ),
+                      ),
+                    ),
+                  ),
+            const SizedBox(height: 8),
+            _sectionTitle(
+              context,
+              'Unfinished records',
+              actionLabel: 'Records',
+              onAction: () => context.go(AppRoutes.training),
             ),
-            _GrowthTile(
-              title: 'My Learning',
-              subtitle: 'Keep building your skills',
-              icon: Icons.menu_book_rounded,
-              color: Colors.teal,
-              expanded: _loaded && _expanded.contains('learning'),
-              onToggle: () => _toggle('learning'),
-              details: 'Review your personal training and activity history.',
-              // Use push() so a user can always get back to Home with the back button.
-              onOpen: () => context.push(AppRoutes.personalLog),
+            _statusCard(
+              icon: Icons.history_rounded,
+              title: _loadingRecords
+                  ? 'Checking personal records…'
+                  : followUps.isEmpty
+                      ? 'No unfinished follow-ups'
+                      : '${followUps.length} follow-up${followUps.length == 1 ? '' : 's'} to finish',
+              detail: _loadingRecords
+                  ? 'Your saved history and roadmap evidence are loading.'
+                  : followUps.isEmpty
+                      ? 'Quick Add history and completed milestones stay in Records.'
+                      : followUps.first.title,
+              onTap: () => context.go(AppRoutes.training),
             ),
-            _GrowthTile(
-              title: 'My Achievements',
-              subtitle: 'Qualifications and milestones',
-              icon: Icons.workspace_premium_rounded,
-              color: Colors.deepOrange,
-              expanded: _loaded && _expanded.contains('achievements'),
-              onToggle: () => _toggle('achievements'),
-              details: 'View your qualifications and certificates.',
-              onOpen: () => context.go(AppRoutes.certifications),
+            const SizedBox(height: 16),
+            _sectionTitle(
+              context,
+              'Department attention',
+              actionLabel: 'Open',
+              onAction: () => context.go(AppRoutes.department),
             ),
-            if (departmentName.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Card(
-                margin: EdgeInsets.zero,
-                child: ListTile(
-                  leading: const Icon(Icons.apartment_rounded),
-                  title: const Text('Department'),
-                  subtitle: const Text('Updates and department workspace'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => context.go(AppRoutes.department),
-                ),
-              ),
-            ],
+            _statusCard(
+              icon: Icons.apartment_rounded,
+              title: department.actionCount == 0
+                  ? 'No department actions waiting'
+                  : '${department.actionCount} item${department.actionCount == 1 ? '' : 's'} need attention',
+              detail: department.unreadCount == 0
+                  ? 'Department requests and updates appear here.'
+                  : '${department.unreadCount} unread update${department.unreadCount == 1 ? '' : 's'}',
+              onTap: () => context.go(AppRoutes.department),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: () => context.go(AppRoutes.myPath),
+              icon: const Icon(Icons.route_rounded),
+              label: const Text('Open My Roadmap'),
+            ),
           ],
         ),
       ),
     );
   }
-}
 
-class _GrowthTile extends StatelessWidget {
-  const _GrowthTile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.expanded,
-    required this.onToggle,
-    required this.details,
-    required this.onOpen,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final bool expanded;
-  final VoidCallback onToggle;
-  final String details;
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Card(
-        margin: EdgeInsets.zero,
-        clipBehavior: Clip.antiAlias,
-        child: Column(children: [
-          ListTile(
-            onTap: onToggle,
-            leading: CircleAvatar(
-              backgroundColor: color.withValues(alpha: 0.12),
-              child: Icon(icon, color: color),
+  Widget _sectionTitle(
+    BuildContext context,
+    String title, {
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
             ),
-            title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-            trailing: Icon(expanded ? Icons.expand_less : Icons.expand_more),
-          ),
-          if (expanded) ...[
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text(details),
-                const SizedBox(height: 10),
-                OutlinedButton(onPressed: onOpen, child: Text('Open $title')),
-              ]),
-            ),
+            if (actionLabel != null)
+              TextButton(onPressed: onAction, child: Text(actionLabel)),
           ],
-        ]),
-      ),
-    );
-  }
+        ),
+      );
+
+  Widget _statusCard({
+    required IconData icon,
+    required String title,
+    required String detail,
+    VoidCallback? onTap,
+  }) =>
+      Card(
+        margin: EdgeInsets.zero,
+        child: ListTile(
+          leading: Icon(icon),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(detail),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: onTap,
+        ),
+      );
 }
