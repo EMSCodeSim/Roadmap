@@ -86,14 +86,14 @@ jobs:
           flutter test --concurrency=1 test/daily_focus_page_test.dart
           flutter test --concurrency=1 test/simple_quick_log_sheet_test.dart
 
-      - name: Verify personal qualification task book navigation
+      - name: Verify personal qualification reference and optional tracking
         run: |
-          grep -q "1. Find a class" lib/pages/task_book/qualification_task_book_page.dart
-          grep -q "2. Books and chapters" lib/pages/task_book/qualification_task_book_page.dart
-          grep -q "3. Skills and JPRs" lib/pages/task_book/qualification_task_book_page.dart
-          grep -q "4. Written test" lib/pages/task_book/qualification_task_book_page.dart
-          grep -q "5. Skills test" lib/pages/task_book/qualification_task_book_page.dart
+          grep -q "AppBackButton.toTaskBook" lib/pages/task_book/qualification_task_book_page.dart
+          grep -q "Certification snapshot" lib/pages/task_book/qualification_task_book_page.dart
           grep -q "authority.sourceUrl" lib/pages/task_book/qualification_task_book_page.dart
+          grep -q "Optional practice notes" lib/pages/task_book/qualification_task_book_page.dart
+          grep -B3 "Optional practice notes" lib/pages/task_book/qualification_task_book_page.dart | grep -q "initiallyExpanded: false"
+          grep -q "PERSONAL CHECKLIST" lib/pages/task_book/qualification_task_book_page.dart
 
   platform-builds:
     needs: validate
