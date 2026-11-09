@@ -1974,7 +1974,25 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Closeout checklist', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 6),
-        Text('BuildContext context, String label, bool complete, String detail) => Padding(
+        Text('${complete} of 6 steps complete · Tap a step to open its screen'),
+        const SizedBox(height: 10),
+        LinearProgressIndicator(value: complete / 6),
+        const SizedBox(height: 10),
+        for (var i = 0; i < labels.length; i++)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(done[i] ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+              color: done[i] ? Colors.green : null),
+            title: Text(labels[i]),
+            subtitle: Text(done[i] ? 'Complete' : 'Tap to review or complete'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _openCloseoutStep(i),
+          ),
+      ]),
+    ));
+  }
+
+  Widget _closeoutLine(BuildContext context, String label, bool complete, String detail) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),
     child: Row(children: [
       Icon(complete ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
