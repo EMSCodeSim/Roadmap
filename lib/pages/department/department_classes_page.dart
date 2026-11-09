@@ -932,7 +932,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                       const SizedBox(height: 6),
                       Text(
                         hasMissingItems
-                            ? 'Required items that are incomplete are shown in red. Tap a member to fix their record.'
+                            ? 'Required items that are incomplete are shown in red. Close this review and use the matching checklist step to fix them.'
                             : 'Review is clear. You can continue to the Training Sheet details and closeout.',
                       ),
                     ],
