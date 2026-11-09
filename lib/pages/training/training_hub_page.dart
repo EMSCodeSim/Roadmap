@@ -3,11 +3,12 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/nav.dart';
+import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/widgets/section_header.dart';
 
-/// Personal training landing page.
+/// Personal records landing page: Quick Logs, statistics, and certificates.
 ///
 /// This page is a UI-only re-organization of existing destinations. It does not
 /// change any training workflows or data models.
@@ -23,7 +24,7 @@ class TrainingHubPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Training'),
+        title: const Text('Records'),
         actions: [
           IconButton(
             tooltip: 'Settings',
@@ -38,56 +39,49 @@ class TrainingHubPage extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
             Text(
-              'Log, review, and organize your training—without the clutter.',
+              'Your Quick Logs, career statistics, and dated certificates in one place.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 16),
-            const SectionHeader(title: 'Quick actions'),
+            const SectionHeader(title: 'Your records'),
             const SizedBox(height: 10),
             _ActionGrid(
               children: [
                 _GridActionCard(
                   color: FireOpsFeatureColors.training,
                   icon: Icons.history_rounded,
-                  title: 'Training History',
-                  subtitle: 'Logs and evidence',
+                  title: 'All Quick Logs',
+                  subtitle: 'Every record, searchable by date and type',
                   onTap: () => context.push(AppRoutes.personalLog),
                 ),
                 _GridActionCard(
                   color: FireOpsFeatureColors.certificates,
                   icon: Icons.workspace_premium_rounded,
-                  title: 'Certificates',
-                  subtitle: 'Credentials & expirations',
+                  title: 'Certificates & Dates',
+                  subtitle: 'Issued, expiration and renewal dates',
                   onTap: () => context.push(AppRoutes.certifications),
                 ),
                 _GridActionCard(
                   color: FireOpsFeatureColors.roadmap,
                   icon: Icons.menu_book_rounded,
-                  title: 'My Task Books',
-                  subtitle: 'Requirements & sign-offs',
-                  onTap: () => context.go(AppRoutes.myPath),
+                  title: 'Records & Stats',
+                  subtitle: 'Yearly and career totals',
+                  onTap: () => context.push(AppRoutes.personalLog),
                 ),
                 _GridActionCard(
                   color: cs.primary,
                   icon: Icons.add_task_rounded,
                   title: 'Quick Add',
-                  subtitle: 'Log training fast',
-                  onTap: () {
-                    // Keep existing Quick Add behavior (FAB) as primary; this is
-                    // just a convenient entry point.
-                    // The FAB is always available from the shell.
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Use Quick Add (+) to log training.')),
-                    );
-                  },
+                  subtitle: 'Add a new record',
+                  onTap: () => QuickLogLauncher.open(context),
                 ),
               ],
             ),
             if (departmentName.isNotEmpty) ...[
               const SizedBox(height: 18),
-              const SectionHeader(title: 'Department shortcuts'),
+              const SectionHeader(title: 'Department records'),
               const SizedBox(height: 10),
               Card(
                 margin: EdgeInsets.zero,
