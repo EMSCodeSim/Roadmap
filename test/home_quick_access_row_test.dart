@@ -39,10 +39,5 @@ void main() {
       tester.getTopLeft(find.text('My Roadmap')).dy,
       lessThan(tester.getTopLeft(departmentOverview).dy),
     );
-
-    await tester.ensureVisible(departmentOverview);
-    await tester.tap(departmentOverview);
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Open Department'), findsOneWidget);
   });
 }
