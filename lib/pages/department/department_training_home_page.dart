@@ -16,6 +16,7 @@ import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/state/app_state.dart';
+import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 
 DepartmentReviewItem? resolveDepartmentReviewTarget(
   String targetId,
@@ -234,9 +235,9 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   }
 
   Future<void> _open(DepartmentTaskBookAssignment item) async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => DepartmentTaskBookPage(assignment: item),
-    ));
+    // NOTE: Department pages still use imperative navigation in places because
+    // they embed stateful flows that predate go_router. Keep behavior stable.
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => DepartmentTaskBookPage(assignment: item)));
     if (mounted) await _refresh(silent: true);
   }
 
@@ -400,17 +401,15 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     final assignedTaskBooks = active.where((a) => !a.isSingleTask).toList();
     final canManageTrainingSheets = mode.isInstructor || mode.isAdmin;
     return Scaffold(
-      appBar: AppBar(
-        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Department'),
-          if ((mode.departmentLink?.departmentName ?? '').isNotEmpty)
-            Text(mode.departmentLink!.departmentName, style: Theme.of(context).textTheme.bodySmall),
-        ]),
+      appBar: FirefighterRoadmapAppBar(
+        subtitle: (mode.departmentLink?.departmentName ?? '').trim().isNotEmpty
+            ? mode.departmentLink!.departmentName
+            : 'Department',
         actions: [
-          TextButton.icon(
+          IconButton(
+            tooltip: 'Department settings',
             onPressed: () => context.push(AppRoutes.departmentSettings),
             icon: const Icon(Icons.settings_outlined),
-            label: const Text('Settings'),
           ),
           IconButton(
             tooltip: 'Refresh',
@@ -428,10 +427,29 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                 children: [
                   if (_loading) const LinearProgressIndicator(),
-                  if (_error != null) Card(child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                  )),
+                  if (_error != null)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _error!,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   _SyncLine(inbox: inbox),
                   const SizedBox(height: 12),
                   _dashboardBox(
@@ -594,7 +612,16 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
     const SizedBox(height: 8),
-    if (items.isEmpty) Text('Nothing here right now.', style: Theme.of(context).textTheme.bodyMedium)
+    if (items.isEmpty)
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .35),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        child: Text('Nothing here right now.', style: Theme.of(context).textTheme.bodyMedium),
+      )
     else ...items.map((item) => Card(
       child: ListTile(
         title: Text(item.taskBookTitle),
@@ -690,6 +717,7 @@ class _CanonicalWorkQueue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     if (items.isEmpty) {
       return const ListTile(
         contentPadding: EdgeInsets.zero,
@@ -703,14 +731,17 @@ class _CanonicalWorkQueue extends StatelessWidget {
         for (final item in items)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(switch (item.kind) {
+            leading: Icon(
+              switch (item.kind) {
               "EVALUATION" => Icons.fact_check_outlined,
               "TRAINING_SHEET" => Icons.school_outlined,
               "RMS_ENTRY" => Icons.assignment_late_outlined,
               _ => item.priority == "URGENT"
                   ? Icons.notification_important_outlined
                   : Icons.assignment_outlined,
-            }),
+              },
+              color: item.priority == 'URGENT' ? FireOpsSemanticColors.red : cs.primary,
+            ),
             title: Text(item.title),
             subtitle: Text('${item.reason}\nNext: ${item.actionLabel} · Owner: ${item.owner}'),
             isThreeLine: true,

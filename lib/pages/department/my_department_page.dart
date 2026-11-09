@@ -17,6 +17,7 @@ import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/section_header.dart';
+import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 
 class MyDepartmentPage extends StatefulWidget {
   final bool taskBooksOnly;
@@ -552,16 +553,14 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
         .toList(growable: false);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.taskBooksOnly ? 'Task Books' : 'Department',
-        ),
+      appBar: FirefighterRoadmapAppBar(
+        subtitle: widget.taskBooksOnly ? 'Task Books' : 'Department',
         actions: [
           if (_link != null)
-            TextButton.icon(
+            IconButton(
+              tooltip: 'Department settings',
               onPressed: () => context.push(AppRoutes.departmentSettings),
               icon: const Icon(Icons.settings_outlined),
-              label: const Text('Settings'),
             ),
           if (_link != null)
             IconButton(
