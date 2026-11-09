@@ -488,10 +488,12 @@ class _CredentialCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: Text(certs.length.toString() + ' credentials',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
+                Text(certs.length.toString() + ' credentials',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 3),
                 Text(current.toString() + ' current  ·  ' + expiring.toString() + ' expiring  ·  ' + expired.toString() + ' expired',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ],
@@ -570,7 +572,7 @@ class _TrainingHistoryCard extends StatelessWidget {
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   title: Text(record.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(CareerStats.formatDate(record.date) + '  ·  ' + record.category),
+                  subtitle: Text(CareerStats.formatDate(record.date) + '  ·  ' + (record.category.trim().isEmpty ? 'Training' : record.category)),
                   trailing: Text(record.hours == null ? '' : CareerStats.formatDurationHours(record.hours!)),
                   onTap: onOpen,
                 ),
