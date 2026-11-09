@@ -29,22 +29,15 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Personal Progress'), findsOneWidget);
-    expect(find.text('My Roadmap'), findsOneWidget);
-    expect(find.text('Department updates'), findsOneWidget);
-    expect(find.text('Open Department'), findsNothing);
-
-    // Department actions stay collapsed until the member asks for them.
-    await tester.scrollUntilVisible(
-      find.text('Department updates'),
-      250,
-      scrollable: find.byType(Scrollable).first,
+    expect(find.text('Department'), findsNothing);
+    expect(find.text('Personal'), findsNothing);
+    expect(find.text('Quick actions'), findsOneWidget);
+    expect(find.text('Start My Roadmap'), findsOneWidget);
+    final departmentOverview = find.text('Department updates');
+    expect(departmentOverview, findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('My Roadmap')).dy,
+      lessThan(tester.getTopLeft(departmentOverview).dy),
     );
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text('Department updates'));
-    await tester.pump(const Duration(milliseconds: 350));
-    expect(find.text('Open Department'), findsOneWidget);
   });
 }
