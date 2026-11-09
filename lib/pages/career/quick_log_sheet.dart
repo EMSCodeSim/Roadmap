@@ -794,6 +794,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
   List<ApparatusProfile> _savedApparatus = const [];
   ApparatusProfile? _apparatus;
   bool _emergent = false;
+  String? _driveLighting;
   bool _patientTransport = false;
   bool _returnEmergent = false;
   bool _backing = false;
@@ -1147,6 +1148,8 @@ class _QuickLogFormState extends State<_QuickLogForm> {
     _gallons.text = '${details['gallonsMoved'] ?? ''}';
     _cycles.text = '${details['shuttleCycles'] ?? ''}';
     _emergent = details['emergent'] == true;
+    _driveLighting = details['lighting'] == 'DAY' || details['lighting'] == 'NIGHT'
+        ? details['lighting'] as String : null;
     _patientTransport = details['patientTransport'] == true;
     _returnEmergent = details['returnEmergent'] == true;
     _backing = details['backing'] == true;
@@ -1223,6 +1226,15 @@ class _QuickLogFormState extends State<_QuickLogForm> {
       TextField(controller: _hours,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         decoration: const InputDecoration(labelText: 'Drive time (hours)', hintText: '0.75')),
+      const SizedBox(height: 12),
+      _SectionLabel('DRIVING CONDITIONS'),
+      const SizedBox(height: 6),
+      Wrap(spacing: 8, children: [
+        ChoiceChip(label: const Text('Day'), selected: _driveLighting == 'DAY',
+          onSelected: (_) => setState(() => _driveLighting = 'DAY')),
+        ChoiceChip(label: const Text('Night'), selected: _driveLighting == 'NIGHT',
+          onSelected: (_) => setState(() => _driveLighting = 'NIGHT')),
+      ]),
       const SizedBox(height: 12),
       _SectionLabel('ACTIVITY'),
       const SizedBox(height: 6),
@@ -1531,6 +1543,7 @@ class _QuickLogFormState extends State<_QuickLogForm> {
       if (end != null) 'endMiles': end,
       if (start != null && end != null && end >= start) 'totalMiles': end - start,
       'emergent': _emergent,
+      if (_driveLighting != null) 'lighting': _driveLighting,
       'patientTransport': _patientTransport,
       'returnEmergent': _returnEmergent,
       'backing': _backing,

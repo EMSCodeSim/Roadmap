@@ -68,6 +68,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
   bool _emergent = false;
   bool _transport = false;
   _DriveActivity _driveActivity = _DriveActivity.response;
+  String? _driveLighting;
   CareerRecordOutcome? _skillOutcome;
   bool _shareWithDepartment = false;
 
@@ -113,6 +114,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                   emergent: _emergent,
                   transport: _transport,
                   driveActivity: _driveActivity,
+                  driveLighting: _driveLighting,
                   skillOutcome: _skillOutcome,
                   shareWithDepartment: _shareWithDepartment,
                   departmentConnected: context.watch<AppModeController>().departmentLink != null,
@@ -120,6 +122,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                       setState(() => _emergent = value),
                   onTransportChanged: (value) =>
                       setState(() => _transport = value),
+                  onDriveLightingChanged: (value) => setState(() => _driveLighting = value),
                   onDriveActivityChanged: (value) =>
                       setState(() => _driveActivity = value),
                   onSkillOutcomeChanged: (value) =>
@@ -250,6 +253,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
           'emergent': _emergent,
           'patientTransport': _transport,
           'activityType': _driveActivity.name,
+          if (_driveLighting != null) 'lighting': _driveLighting,
           'quickCapture': true,
         };
       case _SimpleMode.call:
@@ -537,12 +541,14 @@ class _ConfirmStep extends StatelessWidget {
   final bool emergent;
   final bool transport;
   final _DriveActivity driveActivity;
+  final String? driveLighting;
   final CareerRecordOutcome? skillOutcome;
   final bool shareWithDepartment;
   final bool departmentConnected;
   final ValueChanged<bool> onEmergentChanged;
   final ValueChanged<bool> onTransportChanged;
   final ValueChanged<_DriveActivity> onDriveActivityChanged;
+  final ValueChanged<String> onDriveLightingChanged;
   final ValueChanged<CareerRecordOutcome?> onSkillOutcomeChanged;
   final ValueChanged<bool> onShareChanged;
   final VoidCallback onBack;
@@ -562,12 +568,14 @@ class _ConfirmStep extends StatelessWidget {
     required this.emergent,
     required this.transport,
     required this.driveActivity,
+    required this.driveLighting,
     required this.skillOutcome,
     required this.shareWithDepartment,
     required this.departmentConnected,
     required this.onEmergentChanged,
     required this.onTransportChanged,
     required this.onDriveActivityChanged,
+    required this.onDriveLightingChanged,
     required this.onSkillOutcomeChanged,
     required this.onShareChanged,
     required this.onBack,
@@ -718,6 +726,13 @@ class _ConfirmStep extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          Text('Driving conditions', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 6),
+          Wrap(spacing: 8, children: [
+            ChoiceChip(label: const Text('Day'), selected: driveLighting == 'DAY', onSelected: (_) => onDriveLightingChanged('DAY')),
+            ChoiceChip(label: const Text('Night'), selected: driveLighting == 'NIGHT', onSelected: (_) => onDriveLightingChanged('NIGHT')),
+          ]),
+          const SizedBox(height: 12),
           Text('Type', style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 6),
           Wrap(
