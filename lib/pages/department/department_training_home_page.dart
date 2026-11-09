@@ -314,30 +314,79 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     String? subtitle,
   }) {
     final expanded = _expandedSection == id;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final pillBg = count > 0
+        ? cs.primaryContainer.withValues(alpha: 0.85)
+        : cs.surfaceContainerHighest;
+    final pillFg = count > 0 ? cs.primary : cs.onSurfaceVariant;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       clipBehavior: Clip.antiAlias,
       child: Column(children: [
-        ListTile(
-          leading: Icon(icon),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-          subtitle: (subtitle ?? '').trim().isEmpty
-              ? null
-              : Text(
-                  subtitle!.trim(),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text('$count', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(width: 12),
-            Icon(expanded ? Icons.expand_less : Icons.expand_more),
-          ]),
+        InkWell(
           onTap: () => setState(() => _expandedSection = expanded ? null : id),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: cs.primary.withValues(alpha: AppCardTokens.subtleBorderAlpha)),
+                  ),
+                  child: Icon(icon, color: cs.primary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900, height: 1.1)),
+                      if ((subtitle ?? '').trim().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle!.trim(),
+                          style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: pillBg,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: cs.outline.withValues(alpha: AppCardTokens.subtleBorderAlpha)),
+                      ),
+                      child: Text('$count', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w900, color: pillFg)),
+                    ),
+                    const SizedBox(height: 6),
+                    Icon(expanded ? Icons.expand_less : Icons.expand_more, color: cs.onSurfaceVariant),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
-        if (expanded) ...[
-          const Divider(height: 1),
-          Padding(padding: const EdgeInsets.all(12), child: child),
-        ],
+        AnimatedCrossFade(
+          duration: AppMotion.medium,
+          crossFadeState: expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          firstChild: const SizedBox.shrink(),
+          secondChild: Column(children: [
+            Divider(height: 1, color: cs.outline.withValues(alpha: 0.12)),
+            Padding(padding: const EdgeInsets.all(12), child: child),
+          ]),
+        ),
       ]),
     );
   }
@@ -349,6 +398,7 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     final active = _assignments.where((a) => _status(a) != 'Complete').toList();
     final oneOffAssignments = active.where((a) => a.isSingleTask).toList();
     final assignedTaskBooks = active.where((a) => !a.isSingleTask).toList();
+    final canManageTrainingSheets = mode.isInstructor || mode.isAdmin;
     return Scaffold(
       appBar: AppBar(
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -405,30 +455,44 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     child: _Section(title: 'Your department task books',
                       items: assignedTaskBooks, status: _status, onTap: _open),
                   ),
-                  _dashboardBox(
-                    id: 'instructors', title: 'Instructors',
-                    icon: Icons.school_outlined,
-                    count: _instructorTraining.length +
-                        _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).length,
-                    subtitle: 'Create and manage Training Sheets. Approvals happen here; RMS entry is separate.',
-                    child: Column(children: [
-                      Align(alignment: Alignment.centerLeft, child: FilledButton.icon(
-                        onPressed: _openClasses,
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text('Create Training Sheet'),
-                      )),
-                      for (final item in _instructorTraining)
-                        ListTile(title: Text(item.title), subtitle: Text(item.nextStep),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () => _openClass(item.id)),
-                      for (final item in _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)))
-                        ListTile(title: Text(item.title), subtitle: const Text('Not yet entered into RMS'),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () => _openClass(item.id)),
-                      if (_instructorTraining.isEmpty && _rmsActions.isEmpty)
-                        const ListTile(title: Text('No classes awaiting action')),
-                    ]),
-                  ),
+                  if (canManageTrainingSheets)
+                    _dashboardBox(
+                      id: 'instructors',
+                      title: 'Training Sheets',
+                      icon: Icons.school_outlined,
+                      count: _instructorTraining.length +
+                          _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).length,
+                      subtitle: 'Create classes, finalize training sheets, and handle instructor approvals.',
+                      child: Column(children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: FilledButton.tonalIcon(
+                            onPressed: _openClasses,
+                            icon: const Icon(Icons.add_rounded),
+                            label: const Text('Create Training Sheet'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        for (final item in _instructorTraining)
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            subtitle: Text(item.nextStep, maxLines: 2, overflow: TextOverflow.ellipsis),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: () => _openClass(item.id),
+                          ),
+                        for (final item in _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)))
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            subtitle: const Text('Not yet entered into RMS'),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: () => _openClass(item.id),
+                          ),
+                        if (_instructorTraining.isEmpty && _rmsActions.isEmpty)
+                          const ListTile(contentPadding: EdgeInsets.zero, title: Text('No classes awaiting action')),
+                      ]),
+                    ),
                   _dashboardBox(
                     id: 'eligibility', title: 'Check Member Eligibility',
                     icon: Icons.verified_user_outlined, count: 0,

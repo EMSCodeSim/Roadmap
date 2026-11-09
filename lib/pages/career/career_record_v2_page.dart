@@ -13,6 +13,7 @@ import 'package:firepath/services/scored_skill_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
+import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/widgets/portfolio_backup_sheet.dart';
 
 enum _CareerFilter {
@@ -203,6 +204,10 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
 
     return Scaffold(
       appBar: FirefighterRoadmapAppBar(
+        // This screen is frequently opened via `context.go('/log')`, which can
+        // replace the current route and leave no stack to pop. Always provide
+        // a reliable way back to Home.
+        leading: const AppBackButton.toHome(),
         subtitle: 'Log',
         actions: [
           IconButton(

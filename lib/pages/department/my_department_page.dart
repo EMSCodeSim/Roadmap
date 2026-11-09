@@ -16,6 +16,7 @@ import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
+import 'package:firepath/widgets/section_header.dart';
 
 class MyDepartmentPage extends StatefulWidget {
   final bool taskBooksOnly;
@@ -1180,16 +1181,24 @@ class _DepartmentOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Department overview',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w900),
-        ),
+        Row(children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: cs.primary.withValues(alpha: AppCardTokens.subtleBorderAlpha)),
+            ),
+            child: Icon(Icons.dashboard_customize_outlined, color: cs.primary, size: 18),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(child: SectionHeader(title: 'Department overview')),
+        ]),
         const SizedBox(height: 8),
         Row(
           children: [

@@ -145,7 +145,8 @@ class _VisualHomePageState extends State<VisualHomePage> {
               expanded: _loaded && _expanded.contains('learning'),
               onToggle: () => _toggle('learning'),
               details: 'Review your personal training and activity history.',
-              onOpen: () => context.go(AppRoutes.personalLog),
+              // Use push() so a user can always get back to Home with the back button.
+              onOpen: () => context.push(AppRoutes.personalLog),
             ),
             _GrowthTile(
               title: 'My Achievements',

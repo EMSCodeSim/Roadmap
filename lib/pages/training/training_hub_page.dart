@@ -12,6 +12,7 @@ import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/services/certification_urgency.dart';
+import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/widgets/section_header.dart';
 
@@ -284,6 +285,12 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                 style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 14),
+              _QuickActionsRow(
+                onQuickAdd: () => QuickLogLauncher.open(context),
+                onOpenCertificates: () => context.push(AppRoutes.certifications),
+                onOpenStats: () => context.push(AppRoutes.personalLog),
+              ),
+              const SizedBox(height: 16),
               if (urgent.isNotEmpty) ...[
                 _NeedsAttentionCard(
                   expired: urgent.where((item) => item.isExpired).length,
@@ -292,11 +299,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                 ),
                 const SizedBox(height: 16),
               ],
-              _SectionTitle(
-                title: 'At a glance',
-                action: 'Full stats',
-                onAction: () => context.push(AppRoutes.personalLog),
-              ),
+              _SectionTitle(title: 'At a glance', icon: Icons.insights_outlined, action: 'Full stats', onAction: () => context.push(AppRoutes.personalLog)),
               const SizedBox(height: 8),
               _StatsStrip(
                 year: DateTime.now().year,
@@ -304,11 +307,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                 careerStats: stats,
               ),
               const SizedBox(height: 18),
-              _SectionTitle(
-                title: 'Activity',
-                action: 'All logs',
-                onAction: () => context.push(AppRoutes.personalLog),
-              ),
+              _SectionTitle(title: 'Quick logs', icon: Icons.folder_copy_outlined, action: 'All logs', onAction: () => context.push(AppRoutes.personalLog)),
               const SizedBox(height: 8),
               if (_loading)
                 const _LoadingCard()
@@ -326,11 +325,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                   onOpen: () => context.push(AppRoutes.personalLog),
                 ),
               const SizedBox(height: 18),
-              _SectionTitle(
-                title: 'Credentials',
-                action: 'All credentials',
-                onAction: () => context.push(AppRoutes.certifications),
-              ),
+              _SectionTitle(title: 'Certificates & licenses', icon: Icons.workspace_premium_outlined, action: 'Open', onAction: () => context.push(AppRoutes.certifications)),
               const SizedBox(height: 8),
               _CredentialCard(
                 certs: certs,
@@ -338,11 +333,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                 onOpen: () => context.push(AppRoutes.certifications),
               ),
               const SizedBox(height: 18),
-              _SectionTitle(
-                title: 'Training history',
-                action: 'All training',
-                onAction: () => context.push(AppRoutes.personalLog),
-              ),
+              _SectionTitle(title: 'Training records', icon: Icons.school_outlined, action: 'All training', onAction: () => context.push(AppRoutes.personalLog)),
               const SizedBox(height: 8),
               if (_loading)
                 const _LoadingCard()
@@ -356,7 +347,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                   onOpen: () => context.push(AppRoutes.personalLog),
                 ),
               const SizedBox(height: 18),
-              _SectionTitle(title: 'Stats and exports'),
+              _SectionTitle(title: 'Stats & exports', icon: Icons.ios_share_outlined),
               const SizedBox(height: 8),
               _ExportCard(
                 year: DateTime.now().year,
@@ -379,19 +370,132 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, this.action, this.onAction});
+  const _SectionTitle({required this.title, required this.icon, this.action, this.onAction});
   final String title;
+  final IconData icon;
   final String? action;
   final VoidCallback? onAction;
 
   @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          Expanded(child: SectionHeader(title: title)),
-          if (action != null)
-            TextButton(onPressed: onAction, child: Text(action!)),
-        ],
-      );
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cs.primary.withValues(alpha: AppCardTokens.subtleBorderAlpha)),
+                ),
+                child: Icon(icon, color: cs.primary, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: SectionHeader(title: title)),
+            ],
+          ),
+        ),
+        if (action != null)
+          TextButton(onPressed: onAction, child: Text(action!)),
+      ],
+    );
+  }
+}
+
+class _QuickActionsRow extends StatelessWidget {
+  const _QuickActionsRow({required this.onQuickAdd, required this.onOpenCertificates, required this.onOpenStats});
+  final VoidCallback onQuickAdd;
+  final VoidCallback onOpenCertificates;
+  final VoidCallback onOpenStats;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Expanded(
+          child: _QuickActionTile(
+            icon: Icons.add_rounded,
+            title: 'Quick Add',
+            subtitle: 'Log now',
+            color: cs.primary,
+            background: cs.primaryContainer.withValues(alpha: 0.55),
+            onTap: onQuickAdd,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _QuickActionTile(
+            icon: Icons.workspace_premium_outlined,
+            title: 'Certificates',
+            subtitle: 'Renewals',
+            color: cs.tertiary,
+            background: cs.tertiaryContainer.withValues(alpha: 0.55),
+            onTap: onOpenCertificates,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _QuickActionTile(
+            icon: Icons.insights_outlined,
+            title: 'Stats',
+            subtitle: 'Year view',
+            color: cs.secondary,
+            background: cs.secondaryContainer.withValues(alpha: 0.55),
+            onTap: onOpenStats,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickActionTile extends StatelessWidget {
+  const _QuickActionTile({required this.icon, required this.title, required this.subtitle, required this.color, required this.background, required this.onTap});
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final Color background;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: cs.outline.withValues(alpha: AppCardTokens.subtleBorderAlpha)),
+          ),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 20),
+                const Spacer(),
+                Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant, size: 20),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(title, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900)),
+            Text(subtitle, style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant)),
+          ]),
+        ),
+      ),
+    );
+  }
 }
 
 class _StatsStrip extends StatelessWidget {
@@ -620,12 +724,6 @@ class _RecordPreviewCard extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: onOpen,
               ),
-            ListTile(
-              leading: const Icon(Icons.add_task_outlined),
-              title: const Text('Add a Quick Log'),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => QuickLogLauncher.open(context),
-            ),
           ],
         ),
       );
