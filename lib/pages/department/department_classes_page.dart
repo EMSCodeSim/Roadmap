@@ -2303,20 +2303,185 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       await _focusRoster();
       return;
     }
-    final hasPresentMembers =
-        detail.roster.any((member) => member.attendance == 'PRESENT');
-    final hasSkills =
-        detail.sections.any((section) => section.skills.isNotEmpty);
-    if (!hasPresentMembers || !hasSkills) {
-      _showChecklistMessage(
-        !hasPresentMembers
-            ? 'Confirm at least one student as present before grading skills.'
-            : 'Add a skills checklist to this Training Sheet before grading.',
-      );
+    if (!detail.roster.any((member) => member.attendance == 'PRESENT')) {
+      _showChecklistMessage('Confirm at least one student as present before grading skills.');
       await _openAttendanceStep();
       return;
     }
-    await _groupGrade();
+    await _showSkillsEvaluationWorkspace();
+  }
+
+  Future<void> _chooseEvaluationSetup() async {
+    final detail = _detail;
+    if (detail == null || _busy) return;
+    setState(() { _busy = true; _error = null; });
+    try {
+      final results = await Future.wait<dynamic>([
+        _api.listTrainingSheetTemplates(),
+        _api.getClassSetup(),
+      ]);
+      if (!mounted) return;
+      final templates = results[0] as List<DepartmentTrainingSheetTemplate>;
+      final setup = results[1] as DepartmentClassSetup;
+      final choice = await showModalBottomSheet<Map<String, String>>(
+        context: context,
+        useSafeArea: true,
+        isScrollControlled: true,
+        builder: (sheetContext) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: .75,
+          maxChildSize: .94,
+          builder: (_, controller) => ListView(
+            controller: controller,
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text('Add skills & evaluation setup', style: Theme.of(sheetContext).textTheme.headlineSmall),
+              const SizedBox(height: 6),
+              const Text('Choose a prebuilt Training Sheet setup or a department checklist. It is copied to this class.'),
+              const SizedBox(height: 18),
+              if (templates.isNotEmpty) ...[
+                Text('Training Sheet templates', style: Theme.of(sheetContext).textTheme.titleMedium),
+                for (final template in templates.where((item) =>
+                    item.checklistVersionId.isNotEmpty || item.gradingConfig.isNotEmpty || item.customFields.isNotEmpty))
+                  ListTile(
+                    leading: const Icon(Icons.fact_check_outlined),
+                    title: Text(template.name),
+                    subtitle: Text([
+                      if (template.checklistVersionId.isNotEmpty) 'Skills checklist',
+                      if (template.gradingConfig['writtenTestEnabled'] == true) 'Written score',
+                      if (template.gradingConfig['ccfEnabled'] == true) 'CCF score',
+                      if (template.customFields.isNotEmpty) '${template.customFields.length} grading field(s)',
+                    ].join(' · ')),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.pop(sheetContext, {
+                      'trainingSheetTemplateId': template.id,
+                    }),
+                  ),
+                const Divider(),
+              ],
+              Text('Department checklists', style: Theme.of(sheetContext).textTheme.titleMedium),
+              for (final checklist in setup.checklists)
+                ListTile(
+                  leading: const Icon(Icons.checklist_rounded),
+                  title: Text(checklist['title']?.toString() ?? 'Checklist'),
+                  subtitle: Text('${checklist['skillCount'] ?? 0} skills · version ${checklist['version'] ?? ''}'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.pop(sheetContext, {
+                    'checklistVersionId': checklist['id']?.toString() ?? '',
+                  }),
+                ),
+            ],
+          ),
+        ),
+      );
+      if (choice == null || !mounted) return;
+      setState(() => _busy = true);
+      final updated = await _api.updateClassEvaluationSetup(
+        classId: detail.id,
+        trainingSheetTemplateId: choice['trainingSheetTemplateId'] ?? '',
+        checklistVersionId: choice['checklistVersionId'] ?? '',
+      );
+      _setDetail(updated);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Skills & evaluation setup added')),
+        );
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Unable to add evaluation setup: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _showSkillsEvaluationWorkspace() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, updateSheet) {
+          final detail = _detail!;
+          final skills = detail.sections.expand((section) => section.skills).toList();
+          final present = detail.roster.where((member) => member.attendance == 'PRESENT').toList();
+          final hasGrades = detail.gradingConfig.isNotEmpty || detail.customFields.isNotEmpty;
+          return DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: .88,
+            maxChildSize: .96,
+            builder: (_, controller) => ListView(
+              controller: controller,
+              padding: const EdgeInsets.all(20),
+              children: [
+                Row(children: [
+                  Expanded(child: Text('Skills & evaluations', style: Theme.of(sheetContext).textTheme.headlineSmall)),
+                  IconButton(onPressed: () => Navigator.pop(sheetContext), icon: const Icon(Icons.close_rounded)),
+                ]),
+                Text('${present.length} present student${present.length == 1 ? '' : 's'}'),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () async {
+                    await _chooseEvaluationSetup();
+                    if (mounted) updateSheet(() {});
+                  },
+                  icon: const Icon(Icons.add_rounded),
+                  label: Text(skills.isEmpty && !hasGrades ? 'Add prebuilt checklist or grading setup' : 'Add or change evaluation setup'),
+                ),
+                if (skills.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  Text('Skills checklist', style: Theme.of(sheetContext).textTheme.titleLarge),
+                  Text('${skills.length} skill${skills.length == 1 ? '' : 's'} ready to evaluate'),
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : () async {
+                      Navigator.pop(sheetContext);
+                      await _groupGrade();
+                    },
+                    icon: const Icon(Icons.done_all_rounded),
+                    label: const Text('Check or grade skills · Apply to all'),
+                  ),
+                ],
+                if (hasGrades) ...[
+                  const SizedBox(height: 22),
+                  Text('Student grades', style: Theme.of(sheetContext).textTheme.titleLarge),
+                  const Text('Open a student to record written, CCF, or template grading fields.'),
+                  const SizedBox(height: 8),
+                  for (final student in present)
+                    Card(
+                      child: ListTile(
+                        leading: const CircleAvatar(child: Icon(Icons.person_outline_rounded)),
+                        title: Text(student.name),
+                        subtitle: Text([
+                          if (student.writtenScore != null) 'Written ${student.writtenScore}%',
+                          if (student.ccfScore != null) 'CCF ${student.ccfScore}%',
+                          if (student.writtenScore == null && student.ccfScore == null) 'Tap to grade',
+                        ].join(' · ')),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: _busy ? null : () async {
+                          await _editCustomResults(detail, student);
+                          if (mounted) updateSheet(() {});
+                        },
+                      ),
+                    ),
+                ],
+                if (skills.isEmpty && !hasGrades) ...[
+                  const SizedBox(height: 24),
+                  const Icon(Icons.assignment_add, size: 48),
+                  const SizedBox(height: 8),
+                  const Text('Add a prebuilt setup to begin evaluating students.', textAlign: TextAlign.center),
+                ],
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () => Navigator.pop(sheetContext),
+                  child: const Text('Finish skills & evaluations'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _activateCloseoutStep(
