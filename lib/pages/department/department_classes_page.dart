@@ -492,6 +492,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   bool _selectAttendance = false;
   final Set<String> _selectedAttendanceIds = <String>{};
   final _memberEditorKey = GlobalKey();
+  final _detailScrollController = ScrollController();
+  final _rosterSectionKey = GlobalKey();
   // Drafts are kept per enrollment so switching roster members does not discard
   // unsent evaluations. Only explicit Submit sends results to the server.
   final Map<String, Map<String, String>> _draftSkillResults = {};
@@ -499,6 +501,13 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
 
   @override
   void initState() { super.initState(); _load(); }
+
+  @override
+  void dispose() {
+    _detailScrollController.dispose();
+    super.dispose();
+  }
+
   bool _initialQrShown = false;
   Future<void> _load() async { try { _setDetail(await _api.getClass(widget.classId));
     if (widget.showQrOnOpen && !_initialQrShown && mounted) {
@@ -1825,18 +1834,138 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
   }
 
-  Widget _closeoutLine(BuildContext context, String label, bool complete, String detail) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(children: [
-      Icon(complete ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-        size: 20, color: complete ? Colors.green : Theme.of(context).colorScheme.outline),
-      const SizedBox(width: 8),
-      Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700))),
-      Flexible(child: Text(detail, textAlign: TextAlign.end, style: Theme.of(context).textTheme.bodySmall)),
-    ]),
-  );
+  void _showChecklistMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
-  Widget _closeoutChecklist(DepartmentClassDetail detail) {
+  Future<void> _focusRoster() async {
+    await Future<void>.delayed(Duration.zero);
+    if (!_detailScrollController.hasClients) return;
+
+    void revealRoster() {
+      final target = _rosterSectionKey.currentContext;
+      if (target != null) {
+        Scrollable.ensureVisible(
+          target,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.08,
+        );
+      }
+    }
+
+    if (_rosterSectionKey.currentContext == null) {
+      await _detailScrollController.animateTo(
+        _detailScrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => revealRoster());
+  }
+
+  Future<void> _openAttendanceStep() async {
+    final detail = _detail;
+    if (detail == null) return;
+    if (detail.roster.isEmpty) {
+      _showChecklistMessage('Add students or open QR sign-in to build the roster.');
+      await _addStudents();
+      return;
+    }
+    if (detail.status != 'COMPLETE') {
+      setState(() {
+        _showGrading = false;
+        _selectAttendance = true;
+        _missingOnly = false;
+      });
+    }
+    await _focusRoster();
+  }
+
+  Future<void> _openSkillsStep() async {
+    final detail = _detail;
+    if (detail == null) return;
+    if (detail.status == 'COMPLETE') {
+      await _focusRoster();
+      return;
+    }
+    final hasPresentMembers =
+        detail.roster.any((member) => member.attendance == 'PRESENT');
+    final hasSkills =
+        detail.sections.any((section) => section.skills.isNotEmpty);
+    if (!hasPresentMembers || !hasSkills) {
+      _showChecklistMessage(
+        !hasPresentMembers
+            ? 'Confirm at least one student as present before grading skills.'
+            : 'Add a skills checklist to this Training Sheet before grading.',
+      );
+      await _openAttendanceStep();
+      return;
+    }
+    await _groupGrade();
+  }
+
+  Future<void> _activateCloseoutStep(
+    int index,
+    DepartmentClassDetail detail, {
+    required bool canRecordRmsEntry,
+  }) async {
+    switch (index) {
+      case 0:
+        if (detail.roster.isEmpty) {
+          await _addStudents();
+        } else {
+          await _focusRoster();
+        }
+        return;
+      case 1:
+        await _openAttendanceStep();
+        return;
+      case 2:
+        await _openSkillsStep();
+        return;
+      case 3:
+        if (detail.status == 'COMPLETE') {
+          _showChecklistMessage('Training is already closed.');
+        } else {
+          await _reviewAndFinish();
+        }
+        return;
+      case 4:
+        if (detail.status != 'COMPLETE') {
+          _showChecklistMessage(
+            'Close the Training Sheet before instructor approval.',
+          );
+        } else if (detail.instructorApprovedAt != null) {
+          _showChecklistMessage('Instructor approval is already recorded.');
+        } else {
+          await _approveTrainingSheet();
+        }
+        return;
+      case 5:
+        if (detail.rmsStatus == 'RMS_ENTERED') {
+          _showChecklistMessage('Department RMS entry is already recorded.');
+        } else if (!canRecordRmsEntry) {
+          _showChecklistMessage(
+            'Only an authorized department administrator can record RMS entry.',
+          );
+        } else if (detail.rmsStatus != 'AWAITING_ENTRY') {
+          _showChecklistMessage(
+            'Instructor approval is required before RMS entry.',
+          );
+        } else {
+          await _markRmsEntered();
+        }
+        return;
+    }
+  }
+
+  Widget _closeoutChecklist(
+    DepartmentClassDetail detail, {
+    required bool canRecordRmsEntry,
+  }) {
     final attendanceDone = detail.roster.isNotEmpty &&
         detail.roster.every((member) => member.attendance != 'REGISTERED');
     final skillsDone = attendanceDone &&
@@ -1854,9 +1983,31 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       'Roster', 'Attendance', 'Skills & evaluations',
       'Review & close', 'Instructor approval', 'Department RMS entry',
     ];
-    final actions = <VoidCallback>[
-      _addStudents, () => setState(() => _selectAttendance = true),
-      _groupGrade, _reviewAndFinish, _approveTrainingSheet, _markRmsEntered,
+    final descriptions = <String>[
+      detail.roster.isEmpty
+          ? 'Tap to add students or open QR sign-in'
+          : '${detail.roster.length} registered · Tap to review',
+      detail.roster.isEmpty
+          ? 'Add students first'
+          : '${detail.roster.where((member) => member.attendance != 'REGISTERED').length}/${detail.roster.length} recorded · Tap to update',
+      detail.roster.where((member) => _studentComplete(detail, member)).length
+              .toString() +
+          ' ready · Tap to grade present students',
+      detail.status == 'COMPLETE'
+          ? 'Training is closed'
+          : 'Review required fields and close the sheet',
+      detail.instructorApprovedAt != null
+          ? 'Approved'
+          : detail.status == 'COMPLETE'
+              ? 'Tap to approve as instructor'
+              : 'Available after training is closed',
+      detail.rmsStatus == 'RMS_ENTERED'
+          ? 'RMS entry recorded'
+          : detail.rmsStatus == 'AWAITING_ENTRY' && canRecordRmsEntry
+              ? 'Tap to record the department RMS entry'
+              : detail.rmsStatus == 'AWAITING_ENTRY'
+                  ? 'Waiting for an authorized department administrator'
+                  : 'Available after instructor approval',
     ];
     final count = completed.where((value) => value).length;
     return Card(child: Padding(
@@ -1872,9 +2023,15 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             leading: Icon(completed[i] ? Icons.check_circle : Icons.radio_button_unchecked,
               color: completed[i] ? Colors.green : null),
             title: Text(labels[i]),
-            subtitle: Text(completed[i] ? 'Complete' : 'Needs attention'),
+            subtitle: Text(descriptions[i]),
             trailing: const Icon(Icons.chevron_right),
-            onTap: _busy ? null : actions[i],
+            onTap: _busy
+                ? null
+                : () => _activateCloseoutStep(
+                      i,
+                      detail,
+                      canRecordRmsEntry: canRecordRmsEntry,
+                    ),
           ),
       ]),
     ));
@@ -1885,8 +2042,11 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final detail = _detail; final student = _student;
     final mode = context.watch<AppModeController>();
     final canRecordRmsEntry = mode.isAdmin;
-    return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Training Sheet')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
-      _closeoutChecklist(detail),
+    return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Training Sheet')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(
+      controller: _detailScrollController,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+      children: [
+      _closeoutChecklist(detail, canRecordRmsEntry: canRecordRmsEntry),
       const SizedBox(height: 10),
       TrainingSheetHeaderCard(detail: detail),
       const SizedBox(height: 10),
@@ -1926,8 +2086,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         } else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'REGISTERED')) {
           title = 'Next action: Attendance';
           subtitle = 'Confirm attendance for every student (present/absent).';
-          primary = _busy ? null : () {};
-          primaryLabel = 'Roster below';
+          primary = _busy ? null : _openAttendanceStep;
+          primaryLabel = 'Open attendance recorder';
           primaryIcon = Icons.people_alt_outlined;
         } else if (detail.status != 'COMPLETE' && detail.roster.any((m) => m.attendance == 'PRESENT' && !_studentComplete(detail, m))) {
           title = 'Next action: Skill evaluations';
@@ -1972,6 +2132,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           statusTone: statusTone,
         );
       }),
+      if (_error != null)
+        Card(
+          color: Theme.of(context).colorScheme.errorContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+            ),
+          ),
+        ),
       if (detail.ceCredits.isNotEmpty || detail.gradingConfig.isNotEmpty)
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Template requirements', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
@@ -2013,15 +2184,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           Text('${detail.roster.where((member) => _studentComplete(detail, member)).length}/${detail.roster.where((member) => member.attendance == 'PRESENT').length} present students ready'),
           const SizedBox(height: 8),
           LinearProgressIndicator(value: detail.roster.isEmpty ? 0 : detail.roster.where((member) => _missingFor(detail, member).isEmpty).length / detail.roster.length),
-          const SizedBox(height: 14),
-          Text('Instructor Closeout', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          _closeoutLine(context, 'Roster', detail.roster.isNotEmpty, '${detail.roster.length} registered'),
-          _closeoutLine(context, 'Attendance verified', detail.roster.isNotEmpty && detail.roster.every((member) => member.attendance != 'REGISTERED'), '${detail.roster.where((member) => member.attendance != 'REGISTERED').length}/${detail.roster.length} recorded'),
-          _closeoutLine(context, 'Required skill results', detail.roster.isNotEmpty && detail.roster.every((member) => member.attendance != 'REGISTERED') && detail.roster.where((member) => member.attendance == 'PRESENT').every((member) => _studentComplete(detail, member)), '${detail.roster.where((member) => _studentComplete(detail, member)).length} ready'),
-          _closeoutLine(context, 'Training closed', detail.status == 'COMPLETE', 'Review & Close'),
-          _closeoutLine(context, 'Instructor approval', detail.instructorApprovedAt != null, 'Required before RMS entry'),
-          _closeoutLine(context, 'Department RMS entry', detail.rmsStatus == 'RMS_ENTERED', 'Separate official record step'),
         ],
       ))),
       const SizedBox(height: 10),
@@ -2209,7 +2371,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       ),
-      Row(children: [
+      Row(
+        key: _rosterSectionKey,
+        children: [
         Expanded(child: Text('Roster', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
         Text('${detail.roster.where((item) => _studentComplete(detail, item)).length}/${detail.roster.length} ready', style: Theme.of(context).textTheme.labelLarge),
       ]),
@@ -2300,7 +2464,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               style: Theme.of(context).textTheme.bodySmall),
         ),
       const SizedBox(height: 10),
-      if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
       if (detail.status != 'COMPLETE' && detail.roster.isNotEmpty && detail.roster.any((item) => !_studentComplete(detail, item)))
         Padding(
           padding: const EdgeInsets.only(top: 10),

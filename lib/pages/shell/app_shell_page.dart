@@ -33,18 +33,24 @@ class AppShellPage extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final inbox = context.watch<DepartmentInboxController>();
     final unreadLabel = inbox.unreadCount > 99 ? '99+' : '${inbox.unreadCount}';
+    final isTrainingSheetDetail = GoRouterState.of(context)
+        .uri
+        .path
+        .startsWith('/department/training-sheets/');
 
     return Scaffold(
       body: navigationShell,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 20),
-        child: FloatingActionButton(
-        key: const Key('quick_log_fab'),
-        tooltip: 'Quick Add',
-        onPressed: () => QuickLogLauncher.open(context),
-        child: const Icon(Icons.add_rounded),
-        ),
-      ),
+      floatingActionButton: isTrainingSheetDetail
+          ? null
+          : Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: FloatingActionButton(
+                key: const Key('quick_log_fab'),
+                tooltip: 'Quick Add',
+                onPressed: () => QuickLogLauncher.open(context),
+                child: const Icon(Icons.add_rounded),
+              ),
+            ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: SafeArea(
         top: false,
