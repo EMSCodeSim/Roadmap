@@ -486,7 +486,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _studentId;
   String? _error;
   bool _busy = false;
-  bool _showAdvanced = false;
   String? _groupSkillId;
   bool _showGrading = false;
   bool _missingOnly = false;
@@ -2045,12 +2044,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Training Sheet')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 28), children: [
       _closeoutChecklist(detail),
       const SizedBox(height: 10),
-      OutlinedButton.icon(
-        onPressed: () => setState(() => _showAdvanced = !_showAdvanced),
-        icon: Icon(_showAdvanced ? Icons.expand_less : Icons.expand_more),
-        label: Text(_showAdvanced ? 'Hide advanced details' : 'Show advanced details and legacy tools'),
-      ),
-      if (_showAdvanced) ...[
       TrainingSheetHeaderCard(detail: detail),
       const SizedBox(height: 10),
       TrainingSheetTimeHoursCard(detail: detail, onEditTimes: _busy ? () {} : () async { await _editTrainingDocumentation(); }),
@@ -2551,7 +2544,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ])); }),
         ]))),
         ],
-      ],
     ]));
   }
 }
