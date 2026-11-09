@@ -209,12 +209,12 @@ class QualificationTaskBookPage extends StatelessWidget {
               ],
             ),
             ExpansionTile(
-              initiallyExpanded: true,
+              initiallyExpanded: false,
               leading: const Icon(Icons.checklist_rounded),
-              title: const Text('Skills checklist (optional)'),
+              title: const Text('Optional practice notes'),
               subtitle: Text('${tasks.where((t) => t.section.contains('JPR') ||
                   t.section == 'PERFORMANCE' ||
-                  t.section == 'APPARATUS OPERATIONS').length} practical items'),
+                  t.section == 'APPARATUS OPERATIONS').length} personal items · official criteria come from your authority'),
               children: [
                 const ListTile(
                   title: Text('Keep it simple'),
@@ -391,7 +391,7 @@ class QualificationTaskBookPage extends StatelessWidget {
                         child: Text(
                           guide == null
                               ? 'PREPARATION TASKS  •  ${(pct * 100).round()}% Complete'
-                              : 'GET CERTIFIED  •  ${(pct * 100).round()}% Complete',
+                              : 'PERSONAL CHECKLIST  •  ${(pct * 100).round()}% Complete',
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w900),
                         ),
@@ -424,7 +424,7 @@ class QualificationTaskBookPage extends StatelessWidget {
                   if (guide != null) ...[
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      'Complete these preparation steps as you work through your official ${guide.title} process. Career Road progress is personal tracking, not certification approval.',
+                      'This percentage reflects optional personal checklist items only. Your credential is complete when the issuing authority awards it and it is recorded in Certs.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
