@@ -125,6 +125,9 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
     final training = records
         .where((record) => record.type == CareerRecordType.training)
         .toList();
+    final activity = records
+        .where((record) => record.type != CareerRecordType.training)
+        .toList();
     final stats = CareerStats.fromRecords(records);
     final certs = app.certifications;
     final pdf = pw.Document();
@@ -167,12 +170,12 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
           else
             ...training.map(_pdfRecord),
           pw.SizedBox(height: 14),
-          pw.Text('Activity history (' + records.length.toString() + ')',
+          pw.Text('Activity history (' + activity.length.toString() + ')',
               style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold)),
-          if (records.isEmpty)
-            pw.Text('No activity records on file.')
+          if (activity.isEmpty)
+            pw.Text('No other activity records on file.')
           else
-            ...records.map(_pdfRecord),
+            ...activity.map(_pdfRecord),
           pw.SizedBox(height: 10),
           pw.Text(
             'This report contains personal records from Responder Roadmap. '
