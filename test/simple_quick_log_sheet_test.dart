@@ -19,6 +19,8 @@ void main() {
     );
 
     expect(find.text('What are you logging?'), findsOneWidget);
+    expect(find.text('Create Training Sheet'), findsOneWidget);
+    expect(find.byKey(const Key('quick_add_training_sheet')), findsOneWidget);
     expect(find.text('TRAINING'), findsOneWidget);
     expect(find.text('CALL'), findsOneWidget);
     expect(find.text('SKILL'), findsOneWidget);
