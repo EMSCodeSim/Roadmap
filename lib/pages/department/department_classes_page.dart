@@ -1938,19 +1938,362 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   Future<void> _openAttendanceStep() async {
     final detail = _detail;
     if (detail == null) return;
-    if (detail.roster.isEmpty) {
-      _showChecklistMessage('Add students or open QR sign-in to build the roster.');
-      await _addStudents();
-      return;
-    }
-    if (detail.status != 'COMPLETE') {
-      setState(() {
-        _showGrading = false;
-        _selectAttendance = true;
-        _missingOnly = false;
-      });
-    }
-    await _focusRoster();
+
+    final selectedIds = <String>{};
+    var saving = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, updateSheet) {
+          final current = _detail;
+          if (current == null) return const SizedBox.shrink();
+          final roster = current.roster;
+          final attendanceComplete = roster.isNotEmpty &&
+              roster.every((member) => member.attendance != 'REGISTERED');
+          final presentCount =
+              roster.where((member) => member.attendance == 'PRESENT').length;
+          final absentCount =
+              roster.where((member) => member.attendance == 'ABSENT').length;
+          final selectedCount =
+              roster.where((member) => selectedIds.contains(member.id)).length;
+          final allSelected =
+              roster.isNotEmpty && selectedCount == roster.length;
+
+          Future<void> saveSelected(String attendance) async {
+            final ids = roster
+                .where((member) => selectedIds.contains(member.id))
+                .map((member) => member.id)
+                .toList();
+            if (ids.isEmpty || saving) return;
+            updateSheet(() => saving = true);
+            for (final id in ids) {
+              final latest = _detail?.roster
+                  .where((member) => member.id == id)
+                  .firstOrNull;
+              if (latest != null && latest.attendance != attendance) {
+                await _setRosterAttendance(latest, attendance);
+              }
+              if (!mounted) return;
+            }
+            selectedIds.clear();
+            if (sheetContext.mounted) {
+              updateSheet(() => saving = false);
+            }
+          }
+
+          Future<void> saveOne(
+            DepartmentClassStudent member,
+            String attendance,
+          ) async {
+            if (saving || member.attendance == attendance) return;
+            updateSheet(() => saving = true);
+            await _setRosterAttendance(member, attendance);
+            if (sheetContext.mounted) {
+              updateSheet(() => saving = false);
+            }
+          }
+
+          return FractionallySizedBox(
+            heightFactor: 0.94,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Roster & attendance',
+                              style: Theme.of(sheetContext)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            Text(
+                              roster.isEmpty
+                                  ? 'Build the roster, then record attendance.'
+                                  : '${roster.length} students · $presentCount present · $absentCount absent',
+                              style: Theme.of(sheetContext).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed:
+                            saving ? null : () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton.tonalIcon(
+                        onPressed: saving || current.status == 'COMPLETE'
+                            ? null
+                            : () async {
+                                await _addStudents();
+                                if (sheetContext.mounted) {
+                                  updateSheet(() {});
+                                }
+                              },
+                        icon: const Icon(Icons.person_add_alt_1_rounded),
+                        label: const Text('Add students'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: saving ? null : () async {
+                          await _showQr();
+                          if (sheetContext.mounted) {
+                            updateSheet(() {});
+                          }
+                        },
+                        icon: const Icon(Icons.qr_code_2_rounded),
+                        label: const Text('Roster QR'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (roster.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: allSelected,
+                          tristate: selectedCount > 0 && !allSelected,
+                          onChanged: saving
+                              ? null
+                              : (value) => updateSheet(() {
+                                    if (value == true) {
+                                      selectedIds.addAll(
+                                        roster.map((member) => member.id),
+                                      );
+                                    } else {
+                                      selectedIds.clear();
+                                    }
+                                  }),
+                        ),
+                        Expanded(
+                          child: Text(
+                            allSelected
+                                ? 'All students selected'
+                                : selectedCount == 0
+                                    ? 'Select all'
+                                    : '$selectedCount selected',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: saving
+                              ? null
+                              : () => updateSheet(() {
+                                    if (allSelected) {
+                                      selectedIds.clear();
+                                    } else {
+                                      selectedIds.addAll(
+                                        roster.map((member) => member.id),
+                                      );
+                                    }
+                                  }),
+                          child: Text(allSelected ? 'Clear' : 'Select all'),
+                        ),
+                      ],
+                    ),
+                    if (selectedCount > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: FilledButton.icon(
+                                onPressed: saving
+                                    ? null
+                                    : () => saveSelected('PRESENT'),
+                                icon: const Icon(Icons.check_rounded),
+                                label: const Text('Mark present'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: saving
+                                    ? null
+                                    : () => saveSelected('ABSENT'),
+                                icon: const Icon(Icons.person_off_outlined),
+                                label: const Text('Mark absent'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                  Expanded(
+                    child: roster.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.groups_2_outlined,
+                                    size: 52,
+                                    color: Theme.of(sheetContext)
+                                        .colorScheme
+                                        .primary,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'No students on the roster yet.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    'Use the QR code, choose members from the department list, or add a student manually.',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: roster.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final member = roster[index];
+                              final selected =
+                                  selectedIds.contains(member.id);
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Checkbox(
+                                      value: selected,
+                                      onChanged: saving
+                                          ? null
+                                          : (value) => updateSheet(() {
+                                                if (value == true) {
+                                                  selectedIds.add(member.id);
+                                                } else {
+                                                  selectedIds.remove(member.id);
+                                                }
+                                              }),
+                                    ),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            member.name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Wrap(
+                                            spacing: 6,
+                                            runSpacing: 6,
+                                            children: [
+                                              ChoiceChip(
+                                                label: const Text('Present'),
+                                                selected:
+                                                    member.attendance ==
+                                                        'PRESENT',
+                                                onSelected: saving ||
+                                                        current.status ==
+                                                            'COMPLETE'
+                                                    ? null
+                                                    : (_) => saveOne(
+                                                          member,
+                                                          'PRESENT',
+                                                        ),
+                                              ),
+                                              ChoiceChip(
+                                                label: const Text('Absent'),
+                                                selected:
+                                                    member.attendance ==
+                                                        'ABSENT',
+                                                onSelected: saving ||
+                                                        current.status ==
+                                                            'COMPLETE'
+                                                    ? null
+                                                    : (_) => saveOne(
+                                                          member,
+                                                          'ABSENT',
+                                                        ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (member.attendance == 'REGISTERED')
+                                      Icon(
+                                        Icons.error_outline_rounded,
+                                        color: Theme.of(sheetContext)
+                                            .colorScheme
+                                            .error,
+                                      )
+                                    else
+                                      const Icon(
+                                        Icons.check_circle_rounded,
+                                        color: Colors.green,
+                                      ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (!attendanceComplete && roster.isNotEmpty)
+                    Text(
+                      'Mark every student present or absent to finish this step.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Theme.of(sheetContext).colorScheme.error,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    onPressed: saving || !attendanceComplete
+                        ? null
+                        : () => Navigator.pop(sheetContext),
+                    icon: saving
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.done_rounded),
+                    label: const Text('Finish roster & attendance'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _openSkillsStep() async {
@@ -1983,13 +2326,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   }) async {
     switch (index) {
       case 0:
-        if (detail.roster.isEmpty) {
-          await _addStudents();
-        } else if (detail.roster.any((member) => member.attendance == 'REGISTERED')) {
-          await _openAttendanceStep();
-        } else {
-          await _focusRoster();
-        }
+        await _openAttendanceStep();
         return;
       case 1:
         await _openSkillsStep();
