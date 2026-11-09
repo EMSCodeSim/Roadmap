@@ -133,7 +133,6 @@ class RequirementDetailPage extends StatelessWidget {
               steps: _stepsForRequirement(
                 req,
                 hasTaskBook: hasTaskBook,
-                hasSkillsChecklist: hasSkillsChecklist,
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -849,7 +848,6 @@ String _priorityLabel(RequirementPriority p) => switch (p) {
 List<String> _stepsForRequirement(
   Requirement r, {
   required bool hasTaskBook,
-  required bool hasSkillsChecklist,
 }) {
   final unit = (r.progressUnit ?? r.experienceUnit ?? '').trim();
   final unitSuffix = unit.isEmpty ? '' : ' ($unit)';
