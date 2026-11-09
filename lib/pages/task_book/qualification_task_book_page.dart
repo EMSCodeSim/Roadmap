@@ -217,9 +217,10 @@ class QualificationTaskBookPage extends StatelessWidget {
                   t.section == 'APPARATUS OPERATIONS').length} personal items · official criteria come from your authority'),
               children: [
                 const ListTile(
-                  title: Text('Keep it simple'),
-                  subtitle: Text('Track practice items you care about. For official criteria, always use the state/academy evaluator packet.'),
+                  title: Text('Optional personal tracking'),
+                  subtitle: Text('Use this only if it helps you remember practice. It is not a required roadmap step; follow the official evaluator packet for certification.'),
                 ),
+
                 ...tasks.where((t) => t.section.contains('JPR') ||
                     t.section == 'PERFORMANCE' ||
                     t.section == 'APPARATUS OPERATIONS').map((t) => _TaskTile(
