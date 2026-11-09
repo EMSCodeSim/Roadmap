@@ -29,16 +29,15 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Department'), findsNothing);
-    expect(find.text('Personal'), findsNothing);
-    expect(find.text('Personal overview'), findsOneWidget);
-    expect(find.text('Needs attention'), findsWidgets);
-    expect(find.text('Build My Roadmap'), findsOneWidget);
-    expect(find.text('Department overview'), findsOneWidget);
+    expect(find.text('Personal Progress'), findsOneWidget);
+    expect(find.text('My Roadmap'), findsOneWidget);
+    expect(find.text('Department updates'), findsOneWidget);
+    expect(find.text('Open Department'), findsNothing);
+
+    // Department actions stay collapsed until the member asks for them.
+    await tester.ensureVisible(find.text('Department updates'));
+    await tester.tap(find.text('Department updates'));
+    await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('Open Department'), findsOneWidget);
-    expect(
-      tester.getTopLeft(find.text('Personal overview')).dy,
-      lessThan(tester.getTopLeft(find.text('Department overview')).dy),
-    );
   });
 }
