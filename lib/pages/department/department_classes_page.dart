@@ -854,52 +854,121 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   Future<void> _reviewAndFinish() async {
     final detail = _detail;
     if (detail == null || _busy) return;
-    final issues = detail.roster.where((m) => _missingFor(detail, m).isNotEmpty).toList();
+    final memberIssues = detail.roster
+        .where((member) => _missingFor(detail, member).isNotEmpty)
+        .toList();
+    late final DepartmentCloseValidation validation;
+    try {
+      validation = await _api.validateClassClosure(detail.id);
+    } catch (error) {
+      if (mounted) {
+        setState(() => _error = 'Unable to check required closeout items: $error');
+      }
+      return;
+    }
+    if (!mounted) return;
+    final serverIssues = validation.missing;
+    final hasMissingItems =
+        memberIssues.isNotEmpty || serverIssues.isNotEmpty || !validation.canClose;
     final selection = await showModalBottomSheet<DepartmentClassStudent>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(child: FractionallySizedBox(
-        heightFactor: 0.75,
-        child: Column(children: [
-          Padding(padding: const EdgeInsets.all(16), child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Review & Finish', style: Theme.of(sheetContext).textTheme.titleLarge),
-              const SizedBox(height: 6),
-              Text(issues.isEmpty
-                ? 'No member attendance or required-skill gaps detected locally. Server validation is still required.'
-                : '${issues.length} member(s) need attention. Tap a member to fix their record.'),
-            ],
-          )),
-          Expanded(child: ListView(children: issues.isEmpty
-            ? [const ListTile(leading: Icon(Icons.check_circle_outline),
-                title: Text('Member-level checks complete'),
-                subtitle: Text('Check server-required fields and proctors before closing.'))]
-            : issues.map((member) => ListTile(
-                leading: const Icon(Icons.report_problem_outlined),
-                title: Text(member.name),
-                subtitle: Text(_missingFor(detail, member)),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.pop(sheetContext, member),
-              )).toList())),
-          Padding(padding: const EdgeInsets.all(16), child: SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () => Navigator.pop(sheetContext),
-              icon: const Icon(Icons.fact_check_outlined),
-              label: Text(issues.isEmpty ? 'Check server readiness' : 'Back to roster'),
+      builder: (sheetContext) {
+        final errorColor = Theme.of(sheetContext).colorScheme.error;
+        final tiles = <Widget>[
+          for (final item in serverIssues)
+            ListTile(
+              leading: Icon(Icons.error_outline_rounded, color: errorColor),
+              title: Text(
+                item.message,
+                style: TextStyle(color: errorColor, fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(item.action, style: TextStyle(color: errorColor)),
             ),
-          )),
-        ]),
-      )),
+          for (final member in memberIssues)
+            ListTile(
+              leading: Icon(Icons.error_outline_rounded, color: errorColor),
+              title: Text(
+                '${member.name} needs attention',
+                style: TextStyle(color: errorColor, fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                _missingFor(detail, member),
+                style: TextStyle(color: errorColor),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.pop(sheetContext, member),
+            ),
+          if (!validation.canClose && serverIssues.isEmpty && memberIssues.isEmpty)
+            ListTile(
+              leading: Icon(Icons.error_outline_rounded, color: errorColor),
+              title: Text(
+                'The server still requires more information.',
+                style: TextStyle(color: errorColor, fontWeight: FontWeight.w700),
+              ),
+            ),
+          if (!hasMissingItems)
+            const ListTile(
+              leading: Icon(Icons.check_circle_outline, color: Colors.green),
+              title: Text('All required closeout items are ready.'),
+              subtitle: Text('Instructor approval remains a separate required step.'),
+            ),
+        ];
+        return SafeArea(
+          child: FractionallySizedBox(
+            heightFactor: 0.78,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Review required items',
+                        style: Theme.of(sheetContext).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        hasMissingItems
+                            ? 'Required items that are incomplete are shown in red. Tap a member to fix their record.'
+                            : 'Review is clear. You can continue to the Training Sheet details and closeout.',
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(child: ListView(children: tiles)),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: Icon(
+                        hasMissingItems
+                            ? Icons.arrow_back_rounded
+                            : Icons.fact_check_outlined,
+                      ),
+                      label: Text(
+                        hasMissingItems
+                            ? 'Return to closeout checklist'
+                            : 'Continue to close',
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
     if (!mounted) return;
     if (selection != null) {
       _jumpToMember(selection, grading: selection.attendance == 'PRESENT');
-    } else if (issues.isEmpty) {
-      // The server remains the authority for required fields, proctors,
-      // pending sync, and the actual close decision.
+    } else if (!hasMissingItems && validation.canClose) {
+      // The server remains authoritative for close validation and approval.
       if (await _editTrainingDocumentation()) await _closeTraining();
     }
   }
@@ -1916,35 +1985,25 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       case 0:
         if (detail.roster.isEmpty) {
           await _addStudents();
+        } else if (detail.roster.any((member) => member.attendance == 'REGISTERED')) {
+          await _openAttendanceStep();
         } else {
           await _focusRoster();
         }
         return;
       case 1:
-        await _openAttendanceStep();
-        return;
-      case 2:
         await _openSkillsStep();
         return;
-      case 3:
-        if (detail.status == 'COMPLETE') {
-          _showChecklistMessage('Training is already closed.');
-        } else {
-          await _reviewAndFinish();
-        }
-        return;
-      case 4:
+      case 2:
         if (detail.status != 'COMPLETE') {
-          _showChecklistMessage(
-            'Close the Training Sheet before instructor approval.',
-          );
-        } else if (detail.instructorApprovedAt != null) {
-          _showChecklistMessage('Instructor approval is already recorded.');
-        } else {
+          await _reviewAndFinish();
+        } else if (detail.instructorApprovedAt == null) {
           await _approveTrainingSheet();
+        } else {
+          _showChecklistMessage('Training is already closed and instructor approved.');
         }
         return;
-      case 5:
+      case 3:
         if (detail.rmsStatus == 'RMS_ENTERED') {
           _showChecklistMessage('Department RMS entry is already recorded.');
         } else if (!canRecordRmsEntry) {
@@ -1966,43 +2025,53 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     DepartmentClassDetail detail, {
     required bool canRecordRmsEntry,
   }) {
-    final attendanceDone = detail.roster.isNotEmpty &&
+    final rosterAttendanceDone = detail.roster.isNotEmpty &&
         detail.roster.every((member) => member.attendance != 'REGISTERED');
-    final skillsDone = attendanceDone &&
+    final skillsDone = rosterAttendanceDone &&
         detail.roster.where((member) => member.attendance == 'PRESENT')
             .every((member) => _studentComplete(detail, member));
+    final reviewApprovalDone = detail.status == 'COMPLETE' &&
+        detail.instructorApprovedAt != null;
+    final rmsDone = detail.rmsStatus == 'RMS_ENTERED';
     final completed = <bool>[
-      detail.roster.isNotEmpty,
-      attendanceDone,
+      rosterAttendanceDone,
       skillsDone,
-      detail.status == 'COMPLETE',
-      detail.instructorApprovedAt != null,
-      detail.rmsStatus == 'RMS_ENTERED',
+      reviewApprovalDone,
+      rmsDone,
+    ];
+    final requiredIncomplete = <bool>[
+      !rosterAttendanceDone,
+      rosterAttendanceDone && !skillsDone,
+      !reviewApprovalDone,
+      reviewApprovalDone && !rmsDone,
     ];
     final labels = <String>[
-      'Roster', 'Attendance', 'Skills & evaluations',
-      'Review & close', 'Instructor approval', 'Department RMS entry',
+      'Roster & attendance',
+      'Skills & evaluations',
+      'Review & instructor approval',
+      'Department RMS entry',
     ];
+    final readyCount = detail.roster
+        .where((member) => _studentComplete(detail, member))
+        .length;
     final descriptions = <String>[
       detail.roster.isEmpty
           ? 'Tap to add students or open QR sign-in'
-          : '${detail.roster.length} registered · Tap to review',
-      detail.roster.isEmpty
-          ? 'Add students first'
-          : '${detail.roster.where((member) => member.attendance != 'REGISTERED').length}/${detail.roster.length} recorded · Tap to update',
-      detail.roster.where((member) => _studentComplete(detail, member)).length
-              .toString() +
-          ' ready · Tap to grade present students',
-      detail.status == 'COMPLETE'
-          ? 'Training is closed'
-          : 'Review required fields and close the sheet',
-      detail.instructorApprovedAt != null
-          ? 'Approved'
+          : rosterAttendanceDone
+              ? '${detail.roster.length} registered · Attendance verified'
+              : '${detail.roster.where((member) => member.attendance != 'REGISTERED').length}/${detail.roster.length} attendance recorded · Tap to update',
+      skillsDone
+          ? '$readyCount present students ready'
+          : rosterAttendanceDone
+              ? '$readyCount ready · Tap to grade required skills'
+              : 'Complete roster and attendance first',
+      reviewApprovalDone
+          ? 'Training closed and instructor approved'
           : detail.status == 'COMPLETE'
-              ? 'Tap to approve as instructor'
-              : 'Available after training is closed',
-      detail.rmsStatus == 'RMS_ENTERED'
-          ? 'RMS entry recorded'
+              ? 'Tap to record instructor approval'
+              : 'Review required items, close the sheet, then approve',
+      rmsDone
+          ? 'Department RMS entry recorded'
           : detail.rmsStatus == 'AWAITING_ENTRY' && canRecordRmsEntry
               ? 'Tap to record the department RMS entry'
               : detail.rmsStatus == 'AWAITING_ENTRY'
@@ -2010,20 +2079,41 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   : 'Available after instructor approval',
     ];
     final count = completed.where((value) => value).length;
+    final error = Theme.of(context).colorScheme.error;
     return Card(child: Padding(
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Closeout checklist', style: Theme.of(context).textTheme.titleLarge),
-        Text('$count of 6 complete'),
+        Text('$count of 4 complete'),
         const SizedBox(height: 8),
-        LinearProgressIndicator(value: count / 6),
+        LinearProgressIndicator(value: count / 4),
         for (var i = 0; i < labels.length; i++)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(completed[i] ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: completed[i] ? Colors.green : null),
-            title: Text(labels[i]),
-            subtitle: Text(descriptions[i]),
+            leading: Icon(
+              completed[i]
+                  ? Icons.check_circle
+                  : requiredIncomplete[i]
+                      ? Icons.error_outline_rounded
+                      : Icons.radio_button_unchecked,
+              color: completed[i]
+                  ? Colors.green
+                  : requiredIncomplete[i]
+                      ? error
+                      : null,
+            ),
+            title: Text(
+              labels[i],
+              style: requiredIncomplete[i] && !completed[i]
+                  ? TextStyle(color: error, fontWeight: FontWeight.w700)
+                  : null,
+            ),
+            subtitle: Text(
+              descriptions[i],
+              style: requiredIncomplete[i] && !completed[i]
+                  ? TextStyle(color: error)
+                  : null,
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: _busy
                 ? null
@@ -2036,6 +2126,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       ]),
     ));
   }
+
 
   @override
   Widget build(BuildContext context) {
