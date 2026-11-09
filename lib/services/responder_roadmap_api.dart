@@ -927,6 +927,8 @@ class DepartmentClassDetail {
   final DateTime? startsAt;
   final DateTime? endsAt;
   final String location;
+  final String station;
+  final String shift;
   final String notes;
   final List<String> proctorUserIds;
   final String status;
@@ -955,6 +957,8 @@ class DepartmentClassDetail {
     required this.startsAt,
     required this.endsAt,
     required this.location,
+    required this.station,
+    required this.shift,
     required this.notes,
     required this.proctorUserIds,
     required this.status,
@@ -984,6 +988,8 @@ class DepartmentClassDetail {
         startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
         endsAt: DateTime.tryParse((json['endsAt'] as String?) ?? ''),
         location: (json['location'] as String?) ?? '',
+        station: (json['station'] as String?) ?? '',
+        shift: (json['shift'] as String?) ?? '',
         notes: (json['notes'] as String?) ?? '',
         proctorUserIds: (json['proctors'] as List? ?? const [])
             .whereType<Map>()
@@ -1565,6 +1571,9 @@ class ResponderRoadmapApi {
     DateTime? endsAt,
     required String notes,
     required String location,
+    String? station,
+    String? shift,
+    String? trainingCategory,
     required double creditHours,
     Map<String, double> ceCredits = const <String, double>{},
   }) async {
@@ -1576,6 +1585,9 @@ class ResponderRoadmapApi {
         'endsAt': endsAt?.toUtc().toIso8601String(),
         'notes': notes.trim(),
         'location': location.trim(),
+        if (station != null) 'station': station.trim(),
+        if (shift != null) 'shift': shift.trim(),
+        if (trainingCategory != null) 'trainingCategory': trainingCategory,
         'creditHours': creditHours,
         'ceCredits': ceCredits,
       },

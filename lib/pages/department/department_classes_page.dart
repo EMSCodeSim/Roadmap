@@ -870,13 +870,63 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final serverIssues = validation.missing;
     final hasMissingItems =
         memberIssues.isNotEmpty || serverIssues.isNotEmpty || !validation.canClose;
-    final selection = await showModalBottomSheet<DepartmentClassStudent>(
+    final selection = await showModalBottomSheet<Object>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (sheetContext) {
         final errorColor = Theme.of(sheetContext).colorScheme.error;
+        final ceSummary = detail.ceCredits
+            .where((item) => (item['hours'] as num?)?.toDouble() != null && (item['hours'] as num).toDouble() > 0)
+            .map((item) => '${item['category']} ${(item['hours'] as num).toDouble().toStringAsFixed(2)} hr')
+            .join(' · ');
+        Widget summaryRow(String label, String value, {bool required = false}) =>
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                SizedBox(width: 112, child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800))),
+                Expanded(child: Text(value.isEmpty ? (required ? 'Required — not completed' : 'Not recorded') : value,
+                    style: TextStyle(color: value.isEmpty && required ? errorColor : null,
+                        fontWeight: value.isEmpty && required ? FontWeight.w800 : null))),
+              ]),
+            );
         final tiles = <Widget>[
+          Card(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(detail.title, style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 8),
+                summaryRow('Start', _recordDate(detail.startsAt), required: true),
+                summaryRow('End', _recordDate(detail.endsAt), required: true),
+                summaryRow('Total hours', detail.creditHours > 0 ? detail.creditHours.toStringAsFixed(2) : '', required: true),
+                summaryRow('Category', detail.trainingCategory.replaceAll('_', ' '), required: true),
+                if (detail.trainingCategory == 'EMS') summaryRow('CE category', ceSummary, required: true),
+                summaryRow('Station', detail.station),
+                summaryRow('Shift', detail.shift),
+                summaryRow('Location', detail.location),
+                summaryRow('Checklist', detail.checklistTitle),
+                summaryRow('Roster', '${detail.roster.length} students · ${detail.roster.where((m) => m.attendance == 'PRESENT').length} present'),
+                summaryRow('Description', detail.notes, required: true),
+              ]),
+            ),
+          ),
+          if (hasMissingItems)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: errorColor.withValues(alpha: .08),
+                border: Border.all(color: errorColor),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(children: [
+                Icon(Icons.error_outline_rounded, color: errorColor),
+                const SizedBox(width: 10),
+                Expanded(child: Text('Required information', style: TextStyle(color: errorColor, fontWeight: FontWeight.w900))),
+              ]),
+            ),
           for (final item in serverIssues)
             ListTile(
               leading: Icon(Icons.error_outline_rounded, color: errorColor),
@@ -926,14 +976,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Review required items',
+                        'Review Training Sheet',
                         style: Theme.of(sheetContext).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 6),
                       Text(
                         hasMissingItems
-                            ? 'Required items that are incomplete are shown in red. Close this review and use the matching checklist step to fix them.'
-                            : 'Review is clear. You can continue to the Training Sheet details and closeout.',
+                            ? 'Review the full record below. Required information that is incomplete is shown in red.'
+                            : 'The Training Sheet is complete and ready to close, print, and approve.',
                       ),
                     ],
                   ),
@@ -944,16 +994,16 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   child: SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () => Navigator.pop(sheetContext),
+                      onPressed: () => Navigator.pop(sheetContext, hasMissingItems ? 'edit' : 'continue'),
                       icon: Icon(
                         hasMissingItems
-                            ? Icons.arrow_back_rounded
+                            ? Icons.edit_note_rounded
                             : Icons.fact_check_outlined,
                       ),
                       label: Text(
                         hasMissingItems
-                            ? 'Return to closeout checklist'
-                            : 'Continue to close',
+                            ? 'Fill required information now'
+                            : 'Review details & continue',
                       ),
                     ),
                   ),
@@ -965,11 +1015,52 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       },
     );
     if (!mounted) return;
-    if (selection != null) {
+    if (selection is DepartmentClassStudent) {
       _jumpToMember(selection, grading: selection.attendance == 'PRESENT');
-    } else if (!hasMissingItems && validation.canClose) {
-      // The server remains authoritative for close validation and approval.
-      if (await _editTrainingDocumentation()) await _closeTraining();
+    } else if (selection == 'edit') {
+      if (await _editTrainingDocumentation() && mounted) await _reviewAndFinish();
+    } else if (selection == 'continue' && validation.canClose) {
+      if (await _editTrainingDocumentation()) {
+        await _closeTraining();
+        if (mounted && _detail?.status == 'COMPLETE') await _showCompletedTrainingActions();
+      }
+    }
+  }
+
+  Future<void> _showCompletedTrainingActions() async {
+    final detail = _detail;
+    if (detail == null || detail.status != 'COMPLETE' || !mounted) return;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text('Training Sheet complete', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            const Text('Print or save a copy now. Instructor approval makes this the official record and sends it to the department RMS queue.'),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.pop(sheetContext, 'print'),
+              icon: const Icon(Icons.print_outlined),
+              label: const Text('Print / save Training Sheet'),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: detail.instructorApprovedAt == null ? () => Navigator.pop(sheetContext, 'approve') : null,
+              icon: const Icon(Icons.verified_outlined),
+              label: Text(detail.instructorApprovedAt == null ? 'Instructor approve class' : 'Instructor approved'),
+            ),
+          ]),
+        ),
+      ),
+    );
+    if (action == 'print') {
+      await _printTrainingRecord();
+      if (mounted && _detail?.instructorApprovedAt == null) await _showCompletedTrainingActions();
+    } else if (action == 'approve') {
+      await _approveTrainingSheet();
     }
   }
 
@@ -1037,8 +1128,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     DateTime? end = d.endsAt?.toLocal();
     final narrative = TextEditingController(text:d.notes);
     final location = TextEditingController(text:d.location);
+    final station = TextEditingController(text:d.station);
     final hours = TextEditingController(text:d.creditHours > 0 ? d.creditHours.toString() : '');
-    final isEms = d.trainingCategory == 'EMS';
+    String trainingCategory = d.trainingCategory;
+    String shift = d.shift;
     final ceControllers = <String, TextEditingController>{
       for (final category in _emsCeCategories)
         category: TextEditingController(text: d.ceCredits.where((item) => item['category'] == category).map((item) => item['hours']).firstOrNull?.toString() ?? ''),
@@ -1082,6 +1175,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, update) {
+          final isEms = trainingCategory == 'EMS';
           final elapsedMinutes = TrainingTimeCalculator.elapsedMinutes(start, end);
           final split = (elapsedMinutes == null)
               ? null
@@ -1158,14 +1252,49 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                       label: Text(end == null ? 'End Time: Set when complete' : 'End Time: ${formatLocalDateTime(end!)}'),
                     ),
                     const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      initialValue: trainingCategory,
+                      decoration: const InputDecoration(labelText: 'Training category *'),
+                      items: const [
+                        DropdownMenuItem(value: 'COMPANY', child: Text('Company training')),
+                        DropdownMenuItem(value: 'FACILITY', child: Text('Facility / station')),
+                        DropdownMenuItem(value: 'EMS', child: Text('EMS')),
+                        DropdownMenuItem(value: 'HAZMAT', child: Text('HazMat')),
+                        DropdownMenuItem(value: 'DRIVER', child: Text('Driver / apparatus')),
+                        DropdownMenuItem(value: 'OFFICER', child: Text('Officer development')),
+                        DropdownMenuItem(value: 'OTHER', child: Text('Other')),
+                      ],
+                      onChanged: (value) => update(() => trainingCategory = value ?? 'COMPANY'),
+                    ),
+                    const SizedBox(height: 8),
                     TextField(controller: location, decoration: const InputDecoration(labelText: 'Training location')),
                     const SizedBox(height: 8),
                     TextField(
-                      controller: narrative,
-                      maxLines: 5,
+                      controller: station,
                       decoration: const InputDecoration(
-                        labelText: 'Class objectives and training narrative',
-                        hintText: 'Document objectives covered and include RMS codes as needed',
+                        labelText: 'Station / facility',
+                        hintText: 'Station 181',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      initialValue: shift,
+                      decoration: const InputDecoration(labelText: 'Shift / platoon'),
+                      items: <String>{'', 'A', 'B', 'C', 'DAY', 'NIGHT', if (shift.isNotEmpty) shift}
+                          .map((value) => DropdownMenuItem(
+                                value: value,
+                                child: Text(value.isEmpty ? 'Not selected' : value),
+                              ))
+                          .toList(growable: false),
+                      onChanged: (value) => update(() => shift = value ?? ''),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: narrative,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Short class description / objectives',
+                        hintText: 'Briefly describe what was taught and practiced',
                       ),
                     ),
                     if (isEms) ...[
@@ -1241,6 +1370,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                           'end': end,
                           'notes': narrative.text,
                           'location': location.text,
+                          'station': station.text,
+                          'shift': shift,
+                          'trainingCategory': trainingCategory,
                           // Back-compat: creditHours remains a double, derived from elapsed minutes when possible.
                           'hours': computedMinutes == null ? (double.tryParse(hours.text.trim()) ?? 0.0) : (computedMinutes / 60.0),
                           'ceCredits': <String, double>{
@@ -1255,7 +1387,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         },
       ),
     );
-    narrative.dispose(); location.dispose(); hours.dispose();
+    narrative.dispose(); location.dispose(); station.dispose(); hours.dispose();
     for(final controller in ceControllers.values){controller.dispose();}
     if (result == null || !mounted) return false;
     final savedStart = result['start'] as DateTime;
@@ -1264,7 +1396,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       setState(()=>_error='Enter an actual end time after the start time before closing.');
       return false;
     }
-    if(isEms && (result['notes'] as String).trim().isEmpty){setState(()=>_error='Enter class objectives and a training narrative before closing EMS CE.');return false;}
+    final savedCategory = result['trainingCategory'] as String;
+    final isEms = savedCategory == 'EMS';
+    if(isEms && (result['notes'] as String).trim().isEmpty){setState(()=>_error='Enter a short class description before closing EMS CE.');return false;}
     final ceCredits=result['ceCredits'] as Map<String,double>;
     if(isEms && !ceCredits.values.any((hours)=>hours>0)){setState(()=>_error='Assign EMS CE credit to at least one category before closing.');return false;}
 
@@ -1285,6 +1419,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       _setDetail(await _api.updateTrainingSheetDocumentation(
         d.id, startsAt:savedStart, endsAt:savedEnd,
         notes:result['notes'] as String, location:result['location'] as String,
+        station:result['station'] as String, shift:result['shift'] as String,
+        trainingCategory:savedCategory,
         creditHours:result['hours'] as double,
         ceCredits:ceCredits,
       ));
@@ -1633,6 +1769,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         line('Category', detail.trainingCategory.replaceAll('_', ' ')),
         line('Checklist', detail.checklistTitle),
         line('Location', detail.location),
+        line('Station', detail.station),
+        line('Shift', detail.shift),
         line('Start', _recordDate(detail.startsAt)),
         line('Finish', _recordDate(detail.endsAt)),
         line('Training hours', detail.creditHours.toStringAsFixed(2)),
