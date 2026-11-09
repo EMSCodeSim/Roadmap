@@ -1775,12 +1775,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             onChanged:id.isEmpty?null:(value)=>update((){if(value==true){selected.add(id);}else{selected.remove(id);}}));}),
           const Divider(height:28),Text('Manual student',style:Theme.of(dialogContext).textTheme.titleMedium),
           const SizedBox(height:8),TextField(controller:name,onChanged:(_)=>update((){}),decoration:const InputDecoration(labelText:'Student name *')),
-          const SizedBox(height:8),TextField(controller:email,onChanged:(_)=>update((){}),keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'Email *')),
+          const SizedBox(height:8),TextField(controller:email,onChanged:(_)=>update((){}),keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'Email (optional)')),
           const SizedBox(height:8),TextField(controller:organization,decoration:const InputDecoration(labelText:'Organization (optional)')),
         ]))),
         actions:[TextButton(onPressed:()=>Navigator.pop(dialogContext),child:const Text('Cancel')),
           if(selected.isNotEmpty) FilledButton(onPressed:()=>Navigator.pop(dialogContext,'roster'),child:Text('Add ${selected.length} selected')),
-          if(name.text.trim().isNotEmpty&&email.text.trim().isNotEmpty) FilledButton(onPressed:()=>Navigator.pop(dialogContext,'manual'),child:const Text('Add manual student'))],
+          if(name.text.trim().isNotEmpty) FilledButton(onPressed:()=>Navigator.pop(dialogContext,'manual'),child:const Text('Add manual student'))],
       ),
     ));
     final manualName=name.text.trim(),manualEmail=email.text.trim(),manualOrganization=organization.text.trim();
