@@ -1919,16 +1919,20 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         } else {
           await _focusRoster();
         }
+        return;
       case 1:
         await _openAttendanceStep();
+        return;
       case 2:
         await _openSkillsStep();
+        return;
       case 3:
         if (detail.status == 'COMPLETE') {
           _showChecklistMessage('Training is already closed.');
         } else {
           await _reviewAndFinish();
         }
+        return;
       case 4:
         if (detail.status != 'COMPLETE') {
           _showChecklistMessage(
@@ -1939,6 +1943,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         } else {
           await _approveTrainingSheet();
         }
+        return;
       case 5:
         if (detail.rmsStatus == 'RMS_ENTERED') {
           _showChecklistMessage('Department RMS entry is already recorded.');
@@ -1953,6 +1958,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         } else {
           await _markRmsEntered();
         }
+        return;
     }
   }
 
@@ -2126,6 +2132,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           statusTone: statusTone,
         );
       }),
+      if (_error != null)
+        Card(
+          color: Theme.of(context).colorScheme.errorContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+            ),
+          ),
+        ),
       if (detail.ceCredits.isNotEmpty || detail.gradingConfig.isNotEmpty)
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Template requirements', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
@@ -2256,17 +2273,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ),
       ],
       const SizedBox(height: 12),
-      if (_error != null)
-        Card(
-          color: Theme.of(context).colorScheme.errorContainer,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
-            ),
-          ),
-        ),
       if (detail.status != 'COMPLETE' && detail.roster.isNotEmpty && detail.sections.any((section) => section.skills.isNotEmpty)) ...[
         const SizedBox(height: 12),
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
