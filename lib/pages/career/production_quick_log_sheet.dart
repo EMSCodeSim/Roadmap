@@ -31,13 +31,13 @@ class ProductionQuickLogSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (mode.departmentLink != null) ...[
+          ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (canCreateTrainingSheet) ...[
+                  ...[
                     FilledButton.icon(
                         key: const Key('quick_add_training_sheet'),
                         onPressed: () async {
@@ -45,7 +45,11 @@ class ProductionQuickLogSheet extends StatelessWidget {
                           router.pop();
                           // Give the sheet dismissal a tick to settle.
                           await Future<void>.delayed(Duration.zero);
-                          router.push('${AppRoutes.departmentTrainingSheets}?create=1');
+                          if (canCreateTrainingSheet) {
+                            router.push('${AppRoutes.departmentTrainingSheets}?create=1');
+                          } else {
+                            router.push(AppRoutes.department);
+                          }
                         },
                         icon: const Icon(Icons.assignment_add),
                         label: const Text(
@@ -55,7 +59,7 @@ class ProductionQuickLogSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                   ],
-                  OutlinedButton.icon(
+                  if (mode.departmentLink != null) OutlinedButton.icon(
                       key: const Key('quick_add_scan_class_qr'),
                       onPressed: () =>
                           context.push(AppRoutes.departmentQrScan),
