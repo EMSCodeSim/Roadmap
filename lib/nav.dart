@@ -39,6 +39,7 @@ import 'package:firepath/pages/training/training_hub_page.dart';
 import 'package:firepath/pages/profile/profile_page.dart';
 import 'package:firepath/pages/requirement/requirement_detail_page.dart';
 import 'package:firepath/pages/requirement/get_started_page.dart';
+import 'package:firepath/pages/certifications/certifications_page.dart';
 import 'package:firepath/pages/certifications/certification_detail_page.dart';
 import 'package:firepath/pages/certifications/certification_picker_page.dart';
 import 'package:firepath/pages/task_book/qualification_task_book_checklist_shell.dart';
@@ -534,6 +535,12 @@ class AppRouter {
             extra: state.extra,
           ),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.certifications,
+        name: 'certifications',
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: CertificationsPage()),
       ),
       GoRoute(
         path: AppRoutes.certificationAdd,
