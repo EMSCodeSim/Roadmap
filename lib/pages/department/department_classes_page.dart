@@ -1893,6 +1893,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                         selected: member.attendance == 'ABSENT',
                         onSelected: _busy || d.status == 'COMPLETE' ? null : (_) =>
                           perform(() => _setRosterAttendance(member, 'ABSENT'))),
+                      ChoiceChip(label: const Text('Excused'),
+                        selected: member.attendance == 'EXCUSED',
+                        onSelected: _busy || d.status == 'COMPLETE' ? null : (_) =>
+                          perform(() => _setRosterAttendance(member, 'EXCUSED'))),
                     ]),
                   ]),
                 )),
@@ -1900,13 +1904,42 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               if (step == 2) ...[
                 Text('${present.where((m) => _studentComplete(d, m)).length} of ${present.length} present students ready'),
                 const SizedBox(height: 12),
-                for (final member in present) ListTile(
+                for (final member in present) Card(child: ExpansionTile(
                   leading: Icon(_studentComplete(d, member)
                     ? Icons.check_circle : Icons.pending_outlined,
                     color: _studentComplete(d, member) ? Colors.green : null),
                   title: Text(member.name),
-                  subtitle: Text(_studentComplete(d, member) ? 'All required results recorded' : 'Skills still required'),
-                ),
+                  subtitle: Text(_studentComplete(d, member) ? 'All required results recorded' : 'Tap to grade skills'),
+                  children: [
+                    for (final section in d.sections)
+                      for (final skill in section.skills) Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(skill.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 6),
+                          Wrap(spacing: 6, runSpacing: 6, children: [
+                            for (final result in const ['PASS', 'FAIL', 'NEEDS_REMEDIATION', 'NOT_APPLICABLE'])
+                              ChoiceChip(
+                                label: Text(result == 'NEEDS_REMEDIATION' ? 'Remediation' : result == 'NOT_APPLICABLE' ? 'N/A' : result == 'PASS' ? 'Pass' : 'Fail'),
+                                selected: (_draftSkillResults[member.id]?[skill.id] ??
+                                  member.results.where((item) => item.requirementId == skill.id).firstOrNull?.result) == result,
+                                onSelected: _busy || d.status == 'COMPLETE' ? null : (_) =>
+                                  perform(() => _stageSkill(member, skill, result)),
+                              ),
+                          ]),
+                        ]),
+                      ),
+                    Padding(padding: const EdgeInsets.all(12), child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _busy || (_draftSkillResults[member.id]?.isEmpty ?? true)
+                          ? null : () => perform(() => _submitSkillDrafts(member)),
+                        icon: const Icon(Icons.save_outlined),
+                        label: Text('Save ${_draftSkillResults[member.id]?.length ?? 0} results'),
+                      ),
+                    )),
+                  ],
+                )),
                 action('Record group skill results', Icons.fact_check_outlined, _groupGrade),
                 action('Review offline results', Icons.sync_problem_outlined, _reviewPendingSkillSync),
               ],
