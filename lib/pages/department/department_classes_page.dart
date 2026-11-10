@@ -622,7 +622,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _studentId;
   String? _error;
   bool _busy = false;
-  String? _groupSkillId;
   bool _showGrading = false;
   bool _missingOnly = false;
   bool _selectAttendance = false;
@@ -2150,42 +2149,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
   }
 
-  Future<void> _passGroupSkill(DepartmentClassStudent member, DepartmentClassSkill skill) async {
-    final detail = _detail;
-    if (detail == null || _busy || detail.status == 'COMPLETE') return;
-    if (member.attendance != 'PRESENT') {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Confirm attendance before recording a pass.')));
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final previous = member.results
-          .where((item) => item.requirementId == skill.id)
-          .firstOrNull;
-      final saved = await _api.recordClassSkillBatchDurable(
-        classId: detail.id,
-        requirementId: skill.id,
-        results: [
-          <String, dynamic>{
-            'enrollmentId': member.id,
-            'result': 'PASS',
-            'notes': '',
-            'expectedUpdatedAt': previous?.updatedAt,
-          },
-        ],
-      );
-      if (saved.detail != null) _setDetail(saved.detail!);
-      if (saved.queued && mounted) {
-        context.read<DepartmentInboxController>().submissionQueued();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Waiting to Sync — ${member.name} skill result saved on this device.')));
-      }
-    } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   void _showChecklistMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -3175,51 +3138,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ],
         ),
       ],
-      const SizedBox(height: 12),
-      if (detail.status != 'COMPLETE' && detail.roster.isNotEmpty && detail.sections.any((section) => section.skills.isNotEmpty)) ...[
-        const SizedBox(height: 12),
-        Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Quick Skill Grading', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 6),
-            const Text('Select a skill and record each observed result separately. Group grading never approves the entire roster.'),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              key: ValueKey(_groupSkillId),
-              initialValue: detail.sections.expand((section) => section.skills).any((skill) => skill.id == _groupSkillId) ? _groupSkillId : null,
-              decoration: const InputDecoration(labelText: 'Skill being evaluated'),
-              isExpanded: true,
-              items: detail.sections.expand((section) => section.skills).map((skill) =>
-                DropdownMenuItem(value: skill.id, child: Text(skill.title, overflow: TextOverflow.ellipsis))).toList(),
-              onChanged: _busy ? null : (value) => setState(() => _groupSkillId = value),
-            ),
-            if (_groupSkillId != null) ...[
-              const SizedBox(height: 10),
-              for (final member in detail.roster)
-                Builder(builder: (context) {
-                  final skill = detail.sections.expand((section) => section.skills).where((s) => s.id == _groupSkillId).firstOrNull;
-                  if (skill == null) return const SizedBox.shrink();
-                  final result = member.results.where((r) => r.requirementId == skill.id).firstOrNull;
-                  return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(member.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text('${member.attendance} · ${result?.result ?? 'NOT_EVALUATED'}', style: Theme.of(context).textTheme.bodySmall),
-                    ])),
-                    TextButton(
-                      onPressed: _busy ? null : () => setState(() => _studentId = member.id),
-                      child: const Text('Details'),
-                    ),
-                    FilledButton(
-                      onPressed: _busy || member.attendance != 'PRESENT' ? null : () => _passGroupSkill(member, skill),
-                      child: const Text('Pass'),
-                    ),
-                  ]));
-                }),
-            ],
-          ],
-        ))),
-      ],
       if (mode.isAdmin)
         ExpansionTile(
           title: const Text('Optional: Connect to Task Book'),
@@ -3237,18 +3155,11 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           Padding(padding: const EdgeInsets.all(12), child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Quick roster recorder', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+          Text('Attendance tools', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
-          const Text('Choose attendance or grading. Select a member, record the result, then move to the next.'),
+          const Text('Confirm attendance and filter the roster to find members who still need attention.'),
           const SizedBox(height: 10),
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, label: Text('Attendance'), icon: Icon(Icons.people_outline)),
-              ButtonSegment(value: true, label: Text('Grade skills'), icon: Icon(Icons.fact_check_outlined)),
-            ],
-            selected: {_showGrading},
-            onSelectionChanged: (choice) => setState(() => _showGrading = choice.first),
-          ),
+          const Text('Attendance tools. Skills and grading are available from the guided closeout list above.'),
           if (!_showGrading && detail.status != 'COMPLETE' &&
               detail.roster.any((m) => m.attendance == 'REGISTERED'))
             OutlinedButton.icon(
@@ -3402,7 +3313,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             ]),
           ),
         ),
-        if (detail.customFields.isNotEmpty || detail.gradingConfig.isNotEmpty) ...[
+        if (_showGrading && (detail.customFields.isNotEmpty || detail.gradingConfig.isNotEmpty)) ...[
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: _busy || detail.status == 'COMPLETE' ? null : () => _editCustomResults(detail, student),
