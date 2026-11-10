@@ -126,9 +126,10 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
     final setup = _setup;
     if (setup == null) return;
     DepartmentTrainingSheetTemplate? selected;
+    List<DepartmentTrainingSheetTemplate> templates = const [];
     List<DepartmentTrainingSheetComponentTemplate> components = const [];
     try {
-      final templates = await _api.listTrainingSheetTemplates();
+      templates = await _api.listTrainingSheetTemplates();
       try {
         components = await _api.listTrainingSheetComponents();
       } catch (_) {
@@ -517,7 +518,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
                 CheckboxListTile(
                   dense: true,
                   title: Text(item.name),
-                  subtitle: Text('${item['skillCount'] ?? 0} skills'),
+                  subtitle: const Text('Checklist saved in a Training Sheet template'),
                   value: selected,
                   onChanged: (value) {
                     setState(() {
@@ -2666,7 +2667,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       );
       if (choice == null || !mounted) return;
       final selectedTemplate = templates.where((item) => item.id == choice['trainingSheetTemplateId']).firstOrNull;
-      final hasExistingSetup = detail.templateName.isNotEmpty ||
+      final hasExistingSetup = detail.checklistVersionId.isNotEmpty ||
           detail.gradingConfig.isNotEmpty ||
           detail.customFields.isNotEmpty ||
           detail.ceCredits.isNotEmpty;
