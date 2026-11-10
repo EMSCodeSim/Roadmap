@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 21278)
-Total output lines: 2116
-
 import 'dart:convert';
 import 'dart:math';
 
@@ -793,7 +790,591 @@ class DepartmentClassSetup {
   factory DepartmentClassSetup.fromJson(Map<String, dynamic> json) => DepartmentClassSetup(
         checklists: (json['checklists'] as List? ?? const []).whereType<Map>().map((v) => Map<String, dynamic>.from(v)).toList(growable: false),
         members: (json['members'] as List? ?? const []).whereType<Map>().map((v) => Map<String, dynamic>.from(v)).toList(growable: false),
-        proctors: (json['proctors'] as List? ?? …6278 tokens truncated…rtificationSharing.fromJson(_asMap(data));
+        proctors: (json['proctors'] as List? ?? const []).whereType<Map>().map((v) => Map<String, dynamic>.from(v)).toList(growable: false),
+        requiredFields: (json['requiredFields'] as List? ?? const []).map((v) => v.toString().toUpperCase()).toList(growable: false),
+      );
+}
+
+class InstructorTrainingAttention {
+  final String id;
+  final String title;
+  final String status;
+  final String rmsStatus;
+  final DateTime? instructorApprovedAt;
+  const InstructorTrainingAttention({
+    required this.id, required this.title, required this.status,
+    required this.rmsStatus, required this.instructorApprovedAt,
+  });
+  factory InstructorTrainingAttention.fromJson(Map<String, dynamic> json) =>
+      InstructorTrainingAttention(
+        id: (json['id'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Training Sheet',
+        status: (json['status'] as String?) ?? 'DRAFT',
+        rmsStatus: (json['rmsStatus'] as String?) ?? 'NOT_READY',
+        instructorApprovedAt: DateTime.tryParse((json['instructorApprovedAt'] as String?) ?? ''),
+      );
+
+  String get nextStep {
+    if (status != 'COMPLETE') return 'Complete roster, grading and close training';
+    if (instructorApprovedAt == null) return 'Instructor approval needed';
+    return 'Awaiting department RMS entry';
+  }
+}
+
+class DepartmentClassSummary {
+  final String id;
+  final String title;
+  final String classType;
+  final String checklistTitle;
+  final String status;
+  final DateTime? startsAt;
+  final String location;
+  final int rosterCount;
+  final int completeCount;
+
+  const DepartmentClassSummary({required this.id, required this.title, required this.classType, required this.checklistTitle, required this.status, required this.startsAt, required this.location, required this.rosterCount, required this.completeCount});
+
+  factory DepartmentClassSummary.fromJson(Map<String, dynamic> json) => DepartmentClassSummary(
+        id: (json['id'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Class',
+        classType: (json['classType'] as String?) ?? 'GENERAL',
+        checklistTitle: (json['checklistTitle'] as String?) ?? 'Checklist',
+        status: (json['status'] as String?) ?? 'DRAFT',
+        startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        location: (json['location'] as String?) ?? '',
+        rosterCount: _asInt(json['rosterCount']),
+        completeCount: _asInt(json['completeCount']),
+      );
+}
+
+class DepartmentClassSkill {
+  final String id;
+  final String title;
+  final String description;
+  final bool required;
+  const DepartmentClassSkill({required this.id, required this.title, required this.description, required this.required});
+  factory DepartmentClassSkill.fromJson(Map<String, dynamic> json) => DepartmentClassSkill(id: (json['id'] as String?) ?? '', title: (json['title'] as String?) ?? 'Skill', description: (json['description'] as String?) ?? '', required: json['required'] != false);
+}
+
+class DepartmentClassSection {
+  final String id;
+  final String title;
+  final List<DepartmentClassSkill> skills;
+  const DepartmentClassSection({required this.id, required this.title, required this.skills});
+  factory DepartmentClassSection.fromJson(Map<String, dynamic> json) => DepartmentClassSection(
+        id: (json['id'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Skills',
+        skills: (json['skills'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSkill.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+      );
+}
+
+class DepartmentClassSkillResult {
+  final String requirementId;
+  final String result;
+  final String notes;
+  final String evaluatorName;
+  final DateTime? evaluatedAt;
+  final String? updatedAt;
+  const DepartmentClassSkillResult({required this.requirementId, required this.result, required this.notes, required this.evaluatorName, required this.evaluatedAt, this.updatedAt});
+  factory DepartmentClassSkillResult.fromJson(Map<String, dynamic> json) => DepartmentClassSkillResult(requirementId: (json['requirementId'] as String?) ?? '', result: (json['result'] as String?) ?? 'NOT_EVALUATED', notes: (json['notes'] as String?) ?? '', evaluatorName: (json['evaluatorName'] as String?) ?? '', evaluatedAt: DateTime.tryParse((json['evaluatedAt'] as String?) ?? ''), updatedAt: json['updatedAt'] as String?);
+}
+
+class DepartmentClassStudent {
+  final Map<String, dynamic> customValues;
+  final String id;
+  final String? membershipId;
+  final String name;
+  final String email;
+  final String attendance;
+  final double? writtenScore;
+  final double? ccfScore;
+  final String finalResult;
+  final List<DepartmentClassSkillResult> results;
+  const DepartmentClassStudent({required this.id, this.membershipId, required this.name, required this.email, required this.attendance, required this.writtenScore, required this.ccfScore, required this.customValues, required this.finalResult, required this.results});
+  factory DepartmentClassStudent.fromJson(Map<String, dynamic> json) => DepartmentClassStudent(
+        id: (json['id'] as String?) ?? '', membershipId: json['membershipId'] as String?, name: (json['name'] as String?) ?? 'Student', email: (json['email'] as String?) ?? '', attendance: (json['attendance'] as String?) ?? 'REGISTERED',
+        writtenScore: (json['writtenScore'] as num?)?.toDouble(), ccfScore: (json['ccfScore'] as num?)?.toDouble(), finalResult: (json['finalResult'] as String?) ?? 'PENDING',
+        customValues: json['customValues'] is Map ? Map<String, dynamic>.from(json['customValues'] as Map) : {},
+        results: (json['results'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSkillResult.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+      );
+}
+
+class DepartmentCloseValidationItem {
+  final String code;
+  final String message;
+  final String action;
+  const DepartmentCloseValidationItem({required this.code, required this.message, required this.action});
+  factory DepartmentCloseValidationItem.fromJson(Map<String,dynamic> json)=>DepartmentCloseValidationItem(code:(json['code'] as String?)??'MISSING',message:(json['message'] as String?)??'Required information is missing.',action:(json['action'] as String?)??'Complete the missing information.');
+}
+class DepartmentCloseValidation {
+  final bool canClose;
+  final List<DepartmentCloseValidationItem> missing;
+  const DepartmentCloseValidation({required this.canClose,required this.missing});
+  factory DepartmentCloseValidation.fromJson(Map<String,dynamic> json)=>DepartmentCloseValidation(canClose:json['canClose']==true,missing:(json['missing'] as List? ?? const []).whereType<Map>().map((e)=>DepartmentCloseValidationItem.fromJson(Map<String,dynamic>.from(e))).toList(growable:false));
+}
+
+class DepartmentClassDetail {
+  final List<Map<String, dynamic>> ceCredits;
+  final Map<String, dynamic> gradingConfig;
+  final List<Map<String, dynamic>> customFields;
+  final String id;
+  final String title;
+  final String classType;
+  final String checklistTitle;
+  final String checklistVersionId;
+  final String trainingCategory;
+  final double creditHours;
+  final DateTime? startsAt;
+  final DateTime? endsAt;
+  final String location;
+  final String station;
+  final String shift;
+  final String notes;
+  final List<String> proctorUserIds;
+  final String status;
+  final String rmsStatus;
+  final DateTime? instructorApprovedAt;
+  final DateTime? rmsEnteredAt;
+  final String rmsReference;
+  final String rmsEntryNote;
+  final bool registrationEnabled;
+  final String registrationToken;
+  final List<DepartmentClassSection> sections;
+  final List<Map<String, dynamic>> stations;
+  final List<DepartmentClassStudent> roster;
+
+  const DepartmentClassDetail({
+    required this.ceCredits,
+    required this.gradingConfig,
+    required this.customFields,
+    required this.id,
+    required this.title,
+    required this.classType,
+    required this.checklistTitle,
+    required this.checklistVersionId,
+    required this.trainingCategory,
+    required this.creditHours,
+    required this.startsAt,
+    required this.endsAt,
+    required this.location,
+    required this.station,
+    required this.shift,
+    required this.notes,
+    required this.proctorUserIds,
+    required this.status,
+    required this.rmsStatus,
+    required this.instructorApprovedAt,
+    required this.rmsEnteredAt,
+    required this.rmsReference,
+    required this.rmsEntryNote,
+    required this.registrationEnabled,
+    required this.registrationToken,
+    required this.sections,
+    required this.stations,
+    required this.roster,
+  });
+
+  factory DepartmentClassDetail.fromJson(Map<String, dynamic> json) => DepartmentClassDetail(
+        ceCredits: (json['ceCredits'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
+        gradingConfig: Map<String, dynamic>.from(json['gradingConfig'] as Map? ?? const {}),
+        customFields: (json['customFields'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
+        id: (json['id'] as String?) ?? '',
+        title: (json['title'] as String?) ?? 'Class',
+        classType: (json['classType'] as String?) ?? 'GENERAL',
+        checklistTitle: (json['checklistTitle'] as String?) ?? 'Checklist',
+        checklistVersionId: (json['checklistVersionId'] as String?) ?? '',
+        trainingCategory: (json['trainingCategory'] as String?) ?? 'COMPANY',
+        creditHours: (json['creditHours'] as num?)?.toDouble() ?? 0,
+        startsAt: DateTime.tryParse((json['startsAt'] as String?) ?? ''),
+        endsAt: DateTime.tryParse((json['endsAt'] as String?) ?? ''),
+        location: (json['location'] as String?) ?? '',
+        station: (json['station'] as String?) ?? '',
+        shift: (json['shift'] as String?) ?? '',
+        notes: (json['notes'] as String?) ?? '',
+        proctorUserIds: (json['proctors'] as List? ?? const [])
+            .whereType<Map>()
+            .map((v) => v['userId']?.toString() ?? '')
+            .where((v) => v.isNotEmpty)
+            .toList(growable: false),
+        status: (json['status'] as String?) ?? 'DRAFT',
+        rmsStatus: (json['rmsStatus'] as String?) ?? 'NOT_READY',
+        instructorApprovedAt:
+            DateTime.tryParse((json['instructorApprovedAt'] as String?) ?? ''),
+        rmsEnteredAt:
+            DateTime.tryParse((json['rmsEnteredAt'] as String?) ?? ''),
+        rmsReference: (json['rmsReference'] as String?) ?? '',
+        rmsEntryNote: (json['rmsEntryNote'] as String?) ?? '',
+        registrationEnabled: json['registrationEnabled'] == true,
+        registrationToken: (json['registrationToken'] as String?) ?? '',
+        sections: (json['sections'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassSection.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+        stations: (json['stations'] as List? ?? const []).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList(growable: false),
+        roster: (json['roster'] as List? ?? const []).whereType<Map>().map((item) => DepartmentClassStudent.fromJson(Map<String, dynamic>.from(item))).toList(growable: false),
+      );
+}
+
+
+class DepartmentSkillMasteryItem {
+  final String skillId;
+  final String skillName;
+  final String status;
+  final bool stale;
+  final String trend;
+  final double? latestScore;
+  final double? previousScore;
+  final String latestResult;
+  final DateTime? lastEvaluatedAt;
+  final int observations;
+  final String evaluatorName;
+  final String source;
+  final String referenceTitle;
+
+  const DepartmentSkillMasteryItem({
+    required this.skillId,
+    required this.skillName,
+    required this.status,
+    required this.stale,
+    required this.trend,
+    required this.latestScore,
+    required this.previousScore,
+    required this.latestResult,
+    required this.lastEvaluatedAt,
+    required this.observations,
+    required this.evaluatorName,
+    required this.source,
+    required this.referenceTitle,
+  });
+
+  factory DepartmentSkillMasteryItem.fromJson(Map<String, dynamic> json) =>
+      DepartmentSkillMasteryItem(
+        skillId: (json['skillId'] as String?) ?? '',
+        skillName: (json['skillName'] as String?) ?? 'Skill',
+        status: (json['status'] as String?) ?? 'OBSERVED',
+        stale: json['stale'] == true,
+        trend: (json['trend'] as String?) ?? 'FIRST_OBSERVATION',
+        latestScore: (json['latestScore'] as num?)?.toDouble(),
+        previousScore: (json['previousScore'] as num?)?.toDouble(),
+        latestResult: (json['latestResult'] as String?) ?? '',
+        lastEvaluatedAt:
+            DateTime.tryParse((json['lastEvaluatedAt'] as String?) ?? ''),
+        observations: _asInt(json['observations']),
+        evaluatorName: (json['evaluatorName'] as String?) ?? '',
+        source: (json['source'] as String?) ?? '',
+        referenceTitle: (json['referenceTitle'] as String?) ?? '',
+      );
+}
+
+class DepartmentSkillMastery {
+  final int proficiencyThreshold;
+  final int reassessmentDays;
+  final List<DepartmentSkillMasteryItem> skills;
+
+  const DepartmentSkillMastery({
+    required this.proficiencyThreshold,
+    required this.reassessmentDays,
+    required this.skills,
+  });
+
+  factory DepartmentSkillMastery.fromJson(Map<String, dynamic> json) {
+    final settings = json['settings'] is Map
+        ? Map<String, dynamic>.from(json['settings'] as Map)
+        : const <String, dynamic>{};
+    return DepartmentSkillMastery(
+      proficiencyThreshold:
+          _asInt(settings['proficiencyThreshold'], fallback: 80),
+      reassessmentDays: _asInt(settings['reassessmentDays'], fallback: 180),
+      skills: (json['skills'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => DepartmentSkillMasteryItem.fromJson(
+                Map<String, dynamic>.from(item),
+              ))
+          .toList(growable: false),
+    );
+  }
+}
+
+int _asInt(Object? value, {int fallback = 0}) {
+  if (value is int) return value;
+  if (value is num) return value.round();
+  return int.tryParse(value?.toString() ?? '') ?? fallback;
+}
+
+class ResponderRoadmapApi {
+  ResponderRoadmapApi({
+    http.Client? client,
+    FlutterSecureStorage? secureStorage,
+  })  : _client = client ?? http.Client(),
+        _secureStorage = secureStorage ?? const FlutterSecureStorage();
+
+  // Compile-time override for isolated device acceptance against the matching
+  // backend preview. Production builds retain the official endpoint by default.
+  static const String baseUrl = String.fromEnvironment(
+    'ROADMAP_API_BASE_URL',
+    defaultValue: 'https://responderroadmap.com/api/v1',
+  );
+  static const String dashboardUrl = 'https://responderroadmap.com/';
+  static const String _tokenKey = 'fireops.responderRoadmap.token.v1';
+  static const String _pendingSubmissionsKey = 'fireops.responderRoadmap.pendingSubmissions.v1';
+  static const String _pendingClassMutationsKey = 'fireops.responderRoadmap.pendingClassMutations.v1';
+
+  final http.Client _client;
+  final FlutterSecureStorage _secureStorage;
+
+  Future<bool> get hasStoredToken async =>
+      ((await _secureStorage.read(key: _tokenKey)) ?? '').isNotEmpty;
+
+  Future<ResponderRoadmapSession> login({
+    required String email,
+    required String password,
+  }) async {
+    final data = await _request(
+      'POST',
+      'auth/app-login',
+      body: <String, dynamic>{'email': email.trim(), 'password': password},
+      authenticated: false,
+    );
+    final map = _asMap(data);
+    final token = (map['token'] as String?)?.trim() ?? '';
+    if (token.isEmpty) {
+      throw const ResponderRoadmapApiException(
+        'ResponderRoadmap did not return an app session token.',
+      );
+    }
+    await _secureStorage.write(key: _tokenKey, value: token);
+    return ResponderRoadmapSession.fromJson(_asMap(map['session']));
+  }
+
+  Future<ResponderRoadmapSession> currentSession() async {
+    final data = await _request('GET', 'auth/me');
+    return ResponderRoadmapSession.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassRegistrationPreview> previewClassRegistration(String token) async {
+    final normalized = token.trim().toLowerCase();
+    if (!RegExp(r'^[a-f0-9]{64}$').hasMatch(normalized)) {
+      throw const ResponderRoadmapApiException('That is not a valid class QR code.');
+    }
+    final data = await _request(
+      'GET',
+      'public/classes/${Uri.encodeComponent(normalized)}',
+      authenticated: false,
+    );
+    return DepartmentClassRegistrationPreview.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentClassRegistrationResult> registerForClass(String token) async {
+    final normalized = token.trim().toLowerCase();
+    if (!RegExp(r'^[a-f0-9]{64}$').hasMatch(normalized)) {
+      throw const ResponderRoadmapApiException('That is not a valid class QR code.');
+    }
+    final data = await _request(
+      'POST',
+      'app/classes/register/${Uri.encodeComponent(normalized)}',
+      body: const <String, dynamic>{},
+    );
+    return DepartmentClassRegistrationResult.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentCodeValidation> validateDepartmentCode(String joinCode) async {
+    final data = await _request(
+      'POST',
+      'auth/department-code',
+      body: <String, dynamic>{'joinCode': joinCode.trim().toUpperCase()},
+      authenticated: false,
+    );
+    return DepartmentCodeValidation.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentRegistrationResult> registerWithDepartmentCode({
+    required String joinCode,
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    final data = await _request(
+      'POST',
+      'auth/app-register',
+      body: <String, dynamic>{
+        'joinCode': joinCode.trim().toUpperCase(),
+        'name': name.trim(),
+        'email': email.trim(),
+        'password': password,
+      },
+      authenticated: false,
+    );
+    return DepartmentRegistrationResult.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentJoinResult> joinDepartment(String joinCode) async {
+    final data = await _request(
+      'POST',
+      'join',
+      body: <String, dynamic>{'joinCode': joinCode.trim().toUpperCase()},
+    );
+    return DepartmentJoinResult.fromJson(_asMap(data));
+  }
+
+  Future<List<DepartmentTaskBookAssignment>> listAssignments() async {
+    final data = await _request('GET', 'app/assignments');
+    final list = data is List ? data : const <dynamic>[];
+    return list
+        .whereType<Map>()
+        .map((item) => DepartmentTaskBookAssignment.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList(growable: false);
+  }
+
+  Future<DepartmentWorkQueue> getWorkQueue() async =>
+      DepartmentWorkQueue.fromJson(_asMap(await _request('GET', 'app/work-queue')));
+
+  Future<DepartmentSkillMastery> getMySkillMastery() async {
+    final data = await _request('GET', 'app/skill-mastery');
+    return DepartmentSkillMastery.fromJson(_asMap(data));
+  }
+
+  Future<DepartmentTaskBookAssignment> getAssignment(String assignmentId) async {
+    final data = await _request(
+      'GET',
+      'app/assignments/${Uri.encodeComponent(assignmentId)}',
+    );
+    return DepartmentTaskBookAssignment.fromJson(_asMap(data));
+  }
+
+  Future<List<Map<String, dynamic>>> getTrainingEvidence(String assignmentId) async {
+    final data = _asMap(await _request('GET', 'app/assignments/${Uri.encodeComponent(assignmentId)}/training-evidence'));
+    return (data['items'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
+  }
+
+  Future<DepartmentSubmissionResult> submitRequirement({
+    required String assignmentId,
+    required String requirementId,
+    String memberNotes = '',
+    String evidenceDescription = '',
+    String? evidenceType,
+    String? clientRequestId,
+    String? evaluatorId,
+    List<String> checkedStepIds = const [],
+    bool memberAttested = false,
+    String? classSkillResultId,
+  }) async {
+    final requestId = clientRequestId ?? 'submission-${DateTime.now().microsecondsSinceEpoch}';
+    final pending = <String, dynamic>{
+      'clientRequestId': requestId,
+      'assignmentId': assignmentId,
+      'requirementId': requirementId,
+      'memberNotes': memberNotes,
+      'evidenceDescription': evidenceDescription,
+      if (evidenceType != null) 'evidenceType': evidenceType,
+      if (evaluatorId != null) 'evaluatorId': evaluatorId,
+      'checkedStepIds': checkedStepIds,
+      'memberAttested': memberAttested,
+      if (classSkillResultId != null) 'classSkillResultId': classSkillResultId,
+    };
+    await _savePendingSubmission(pending);
+    dynamic data;
+    try {
+      data = await _request(
+        'POST',
+        'app/assignments/${Uri.encodeComponent(assignmentId)}/requirements/${Uri.encodeComponent(requirementId)}/submit',
+        body: <String, dynamic>{
+          'memberNotes': memberNotes.trim(),
+          'evidenceDescription': evidenceDescription.trim(),
+          if (evidenceType != null) 'evidenceType': evidenceType,
+          'clientRequestId': requestId,
+          if (evaluatorId != null) 'evaluatorId': evaluatorId,
+          'checkedStepIds': checkedStepIds,
+          'memberAttested': memberAttested,
+          if (classSkillResultId != null) 'classSkillResultId': classSkillResultId,
+        },
+      );
+    } on ResponderRoadmapApiException catch (error) {
+      if (_isNonRetryableRequestFailure(error)) {
+        await _removePendingSubmission(requestId);
+      }
+      rethrow;
+    }
+    await _removePendingSubmission(requestId);
+    final map = _asMap(data);
+    return DepartmentSubmissionResult(
+      assignment: DepartmentTaskBookAssignment.fromJson(_asMap(map['assignment'])),
+      receipt: DepartmentSubmissionReceipt.fromJson(_asMap(map['receipt'])),
+    );
+  }
+
+  Future<List<DepartmentSubmissionResult>> retryPendingSubmissions() async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    dynamic decoded;
+    try {
+      decoded = raw == null ? const <dynamic>[] : jsonDecode(raw);
+    } catch (_) {
+      decoded = const <dynamic>[];
+    }
+    final rows = decoded is List ? decoded.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList() : <Map<String, dynamic>>[];
+    final completed = <DepartmentSubmissionResult>[];
+    for (final row in rows) {
+      try {
+        completed.add(await submitRequirement(
+          assignmentId: (row['assignmentId'] as String?) ?? '',
+          requirementId: (row['requirementId'] as String?) ?? '',
+          memberNotes: (row['memberNotes'] as String?) ?? '',
+          evidenceDescription: (row['evidenceDescription'] as String?) ?? '',
+          evidenceType: row['evidenceType'] as String?,
+          clientRequestId: row['clientRequestId'] as String?,
+          evaluatorId: row['evaluatorId'] as String?,
+          checkedStepIds: (row['checkedStepIds'] as List? ?? const []).whereType<String>().toList(growable: false),
+          memberAttested: row['memberAttested'] == true,
+          classSkillResultId: row['classSkillResultId'] as String?,
+        ));
+      } on ResponderRoadmapApiException {
+        // Leave the durable queue intact for the next automatic retry.
+      }
+    }
+    return completed;
+  }
+
+  Future<int> pendingSubmissionCount() async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    if (raw == null) return 0;
+    try { final value = jsonDecode(raw); return value is List ? value.length : 0; } catch (_) { return 0; }
+  }
+
+  Future<void> _savePendingSubmission(Map<String, dynamic> submission) async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    List<dynamic> rows;
+    try { final value = raw == null ? null : jsonDecode(raw); rows = value is List ? value : <dynamic>[]; } catch (_) { rows = <dynamic>[]; }
+    rows.removeWhere((item) => item is Map && item['clientRequestId'] == submission['clientRequestId']);
+    rows.add(submission);
+    await _secureStorage.write(key: _pendingSubmissionsKey, value: jsonEncode(rows));
+  }
+
+  Future<void> _removePendingSubmission(String requestId) async {
+    final raw = await _secureStorage.read(key: _pendingSubmissionsKey);
+    if (raw == null) return;
+    try {
+      final value = jsonDecode(raw);
+      if (value is! List) return;
+      value.removeWhere((item) => item is Map && item['clientRequestId'] == requestId);
+      await _secureStorage.write(key: _pendingSubmissionsKey, value: jsonEncode(value));
+    } catch (_) {}
+  }
+
+  Future<DepartmentInbox> getInbox() async => DepartmentInbox.fromJson(_asMap(await _request('GET', 'app/inbox')));
+
+  Future<List<DepartmentEvaluator>> listEvaluators() async {
+    final data = await _request('GET', 'app/evaluators');
+    return (data is List ? data : const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => DepartmentEvaluator.fromJson(Map<String, dynamic>.from(item)))
+        .where((item) => item.id.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  Future<DepartmentCertificationSharing> getCertificationSharing() async {
+    final data = await _request('GET', 'app/certifications/sharing');
+    return DepartmentCertificationSharing.fromJson(_asMap(data));
   }
 
   Future<DepartmentCertificationSharing> syncCertificationSharing(
