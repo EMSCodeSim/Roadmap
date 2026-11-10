@@ -62,6 +62,7 @@ void main() {
       expect(find.text('Credentials'), findsOneWidget);
       expect(find.text('Unfinished records'), findsOneWidget);
       expect(find.text('Department attention'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Open My Roadmap'), 300);
       expect(find.text('Open My Roadmap'), findsOneWidget);
       expect(find.text('Quick actions'), findsNothing);
       expect(find.text('My Progress'), findsNothing);
