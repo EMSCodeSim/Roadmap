@@ -26,6 +26,33 @@ const _emsCeCategories = <String>[
   'Pediatric / Obstetrics', 'Local / State', 'Individual',
 ];
 
+String _trainingTemplateSummary(DepartmentTrainingSheetTemplate template) {
+  final rosterFields = template.customFields
+      .where((field) => field['appliesTo'] == 'ROSTER')
+      .map((field) => field['label']?.toString() ?? 'Roster field')
+      .toList(growable: false);
+  final resultFields = template.customFields
+      .where((field) => field['appliesTo'] != 'ROSTER')
+      .map((field) => field['label']?.toString() ?? 'Result field')
+      .toList(growable: false);
+  final setup = <String>[
+    if (template.checklistVersionId.isNotEmpty) 'Skills checklist',
+    if (template.gradingConfig['writtenTestEnabled'] == true) 'Written test',
+    if (template.gradingConfig['ccfEnabled'] == true) 'CCF score',
+    if (rosterFields.isNotEmpty) 'Roster fields: ${rosterFields.join(', ')}',
+    if (resultFields.isNotEmpty) 'Result fields: ${resultFields.join(', ')}',
+    if (template.ceCredits.isNotEmpty)
+      'EMS CE: ${template.ceCredits.map((credit) => '${credit['category']} ${credit['hours']} hr').join(', ')}',
+    if (template.creditHours > 0) '${template.creditHours} training hr',
+    if (template.selfRegistration) 'QR roster',
+  ];
+  return [
+    if (template.defaultTitle.trim().isNotEmpty) template.defaultTitle.trim(),
+    template.trainingCategory.replaceAll('_', ' '),
+    ...setup,
+  ].join(' · ');
+}
+
 class DepartmentClassesPage extends StatefulWidget {
   const DepartmentClassesPage({super.key, this.openCreateTraining = false});
   final bool openCreateTraining;
@@ -103,7 +130,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
                 ListTile(leading: const Icon(Icons.note_add_outlined), title: const Text('Blank Training Sheet'), onTap: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(null)),
                 ...templates.where((t) => category.isEmpty || t.topic == category).map((t) =>
                   ListTile(leading: const Icon(Icons.copy_all_outlined), title: Text(t.name),
-                    subtitle: Text(t.defaultTitle.isEmpty ? t.trainingCategory.replaceAll('_', ' ') : t.defaultTitle),
+                    subtitle: Text(_trainingTemplateSummary(t), maxLines: 3, overflow: TextOverflow.ellipsis),
                     onTap: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(t))),
               ])),
             ]),
@@ -358,6 +385,17 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         ),
       ]),
       const SizedBox(height:6), const Text('Create the class quickly, then collect student results and finish RMS documentation after training.'),
+      if (widget.template != null) ...[
+        const SizedBox(height: 12),
+        Card(
+          color: Theme.of(context).colorScheme.secondaryContainer,
+          child: ListTile(
+            leading: const Icon(Icons.fact_check_outlined),
+            title: const Text('Selected instructor setup'),
+            subtitle: Text(_trainingTemplateSummary(widget.template!)),
+          ),
+        ),
+      ],
       if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
       const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const [
@@ -1132,8 +1170,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final hours = TextEditingController(text:d.creditHours > 0 ? d.creditHours.toString() : '');
     String trainingCategory = d.trainingCategory;
     String shift = d.shift;
+    final ceCategories = <String>{
+      ..._emsCeCategories,
+      ...d.ceCredits.map((item) => item['category']?.toString() ?? '').where((category) => category.isNotEmpty),
+    }.toList(growable: false);
     final ceControllers = <String, TextEditingController>{
-      for (final category in _emsCeCategories)
+      for (final category in ceCategories)
         category: TextEditingController(text: d.ceCredits.where((item) => item['category'] == category).map((item) => item['hours']).firstOrNull?.toString() ?? ''),
     };
 
@@ -1302,7 +1344,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                       Text('EMS CE categories', style: Theme.of(dialogContext).textTheme.titleMedium),
                       const SizedBox(height: 4),
                       const Text('Allocate time-based credit (total cannot exceed class duration).'),
-                      ..._emsCeCategories.map((category) => Padding(
+                      ...ceCategories.map((category) => Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: TextField(
                           controller: ceControllers[category],
@@ -2483,22 +2525,30 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               const Text('Choose a prebuilt Training Sheet setup or a department checklist. It is copied to this class.'),
               const SizedBox(height: 18),
               if (templates.isNotEmpty) ...[
-                Text('Training Sheet templates', style: Theme.of(sheetContext).textTheme.titleMedium),
+                Text('Saved class packages', style: Theme.of(sheetContext).textTheme.titleMedium),
+                const Text('Selecting a package copies its checklist, grading rules, custom result fields, and EMS CE allocation onto this sheet.'),
                 for (final template in templates.where((item) =>
-                    item.checklistVersionId.isNotEmpty || item.gradingConfig.isNotEmpty || item.customFields.isNotEmpty))
+                    item.checklistVersionId.isNotEmpty || item.gradingConfig.isNotEmpty || item.customFields.isNotEmpty || item.ceCredits.isNotEmpty))
                   ListTile(
                     leading: const Icon(Icons.fact_check_outlined),
                     title: Text(template.name),
-                    subtitle: Text([
-                      if (template.checklistVersionId.isNotEmpty) 'Skills checklist',
-                      if (template.gradingConfig['writtenTestEnabled'] == true) 'Written score',
-                      if (template.gradingConfig['ccfEnabled'] == true) 'CCF score',
-                      if (template.customFields.isNotEmpty) '${template.customFields.length} grading field(s)',
-                    ].join(' · ')),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => Navigator.pop(sheetContext, {
-                      'trainingSheetTemplateId': template.id,
-                    }),
+                    subtitle: Text(
+                      template.ceCredits.isNotEmpty && detail.trainingCategory != 'EMS'
+                          ? '${_trainingTemplateSummary(template)} · Set this sheet to EMS before applying its CE allocation.'
+                          : _trainingTemplateSummary(template),
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: Icon(
+                      template.ceCredits.isNotEmpty && detail.trainingCategory != 'EMS'
+                          ? Icons.info_outline_rounded
+                          : Icons.chevron_right_rounded,
+                    ),
+                    onTap: template.ceCredits.isNotEmpty && detail.trainingCategory != 'EMS'
+                        ? null
+                        : () => Navigator.pop(sheetContext, {
+                            'trainingSheetTemplateId': template.id,
+                          }),
                   ),
                 const Divider(),
               ],
@@ -2518,6 +2568,25 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ),
       );
       if (choice == null || !mounted) return;
+      final selectedTemplate = templates.where((item) => item.id == choice['trainingSheetTemplateId']).firstOrNull;
+      final hasExistingSetup = detail.templateName.isNotEmpty ||
+          detail.gradingConfig.isNotEmpty ||
+          detail.customFields.isNotEmpty ||
+          detail.ceCredits.isNotEmpty;
+      if (selectedTemplate != null && hasExistingSetup) {
+        final replace = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Apply this class package?'),
+            content: const Text('This replaces the current grading rules and custom result fields. If the package has an EMS CE allocation, it replaces the current CE breakdown too. Existing student records remain attached to the class.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Keep current setup')),
+              FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Apply package')),
+            ],
+          ),
+        );
+        if (replace != true || !mounted) return;
+      }
       setState(() => _busy = true);
       final updated = await _api.updateClassEvaluationSetup(
         classId: detail.id,
@@ -2527,7 +2596,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       _setDetail(updated);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Skills & evaluation setup added')),
+          const SnackBar(content: Text('Instructor setup copied to this Training Sheet')),
         );
       }
     } catch (error) {
