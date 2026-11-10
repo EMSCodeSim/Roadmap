@@ -429,7 +429,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       ],
       if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
       const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
-      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const [
+      const SizedBox(height:12),DropdownButtonFormField<String>(key: ValueKey('training-category-$category'),initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const [
         DropdownMenuItem(value:'COMPANY',child:Text('Fire / Company')),
         DropdownMenuItem(value:'EMS',child:Text('EMS')),
         DropdownMenuItem(value:'HAZMAT',child:Text('HazMat')),
