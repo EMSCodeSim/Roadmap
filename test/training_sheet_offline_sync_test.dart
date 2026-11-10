@@ -40,6 +40,7 @@ void main() {
           'startsAt': '2026-10-23T14:00:00.000Z',
           'endsAt': '2026-10-23T15:30:00.000Z',
           'notes': 'Ten-member training. RMS code EMS-TRAIN',
+          'location': 'Training station',
           'status': 'ACTIVE',
         },
       }), 200);
@@ -58,6 +59,45 @@ void main() {
     expect(sent?['endsAt'], '2026-10-23T15:30:00.000Z');
     expect(result.endsAt, isNotNull);
     expect(result.notes, contains('EMS-TRAIN'));
+  });
+
+  test('closeout reloads and verifies fields after a partial PATCH response', () async {
+    final methods = <String>[];
+    final client = MockClient((request) async {
+      methods.add(request.method);
+      if (request.method == 'PATCH') {
+        expect(request.url.path,
+            '/api/v1/app/training-sheets/class-11/documentation');
+        return http.Response('{"data":{"saved":true}}', 200);
+      }
+      expect(request.method, 'GET');
+      expect(request.url.path, '/api/v1/app/training-sheets/class-11');
+      return http.Response(jsonEncode(<String, dynamic>{
+        'data': <String, dynamic>{
+          'id': 'class-11',
+          'startsAt': '2026-10-23T14:00:00.000Z',
+          'endsAt': '2026-10-23T15:30:00.000Z',
+          'notes': 'Class description',
+          'location': 'Station 181',
+          'status': 'ACTIVE',
+        },
+      }), 200);
+    });
+
+    final api = ResponderRoadmapApi(client: client);
+    final result = await api.updateTrainingSheetDocumentation(
+      'class-11',
+      startsAt: DateTime.utc(2026, 10, 23, 14),
+      endsAt: DateTime.utc(2026, 10, 23, 15, 30),
+      notes: 'Class description',
+      location: 'Station 181',
+      creditHours: 1.5,
+    );
+
+    expect(methods, ['PATCH', 'GET']);
+    expect(result.endsAt, DateTime.utc(2026, 10, 23, 15, 30));
+    expect(result.notes, 'Class description');
+    expect(result.location, 'Station 181');
   });
 
   test('ten-member offline batch is stored and replayed with expected revisions', () async {

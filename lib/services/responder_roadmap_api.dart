@@ -1592,7 +1592,33 @@ class ResponderRoadmapApi {
         'ceCredits': ceCredits,
       },
     );
-    return DepartmentClassDetail.fromJson(_asMap(data));
+    final response = _asMap(data);
+    final responseDetail = DepartmentClassDetail.fromJson(response);
+    bool sameInstant(DateTime? actual, DateTime? expected) =>
+        actual?.millisecondsSinceEpoch == expected?.millisecondsSinceEpoch;
+    bool confirmsDocumentation(DepartmentClassDetail detail) =>
+        detail.id == classId &&
+        sameInstant(detail.startsAt, startsAt) &&
+        sameInstant(detail.endsAt, endsAt) &&
+        detail.notes == notes.trim() &&
+        detail.location == location.trim() &&
+        (station == null || detail.station == station.trim()) &&
+        (shift == null || detail.shift == shift.trim()) &&
+        (trainingCategory == null || detail.trainingCategory == trainingCategory);
+
+    // Some API deployments return a partial PATCH acknowledgement. Never
+    // replace the live class detail with that partial body: load the canonical
+    // record and confirm the fields used for final closeout were persisted.
+    if (confirmsDocumentation(responseDetail)) return responseDetail;
+
+    final saved = await getTrainingSheet(classId);
+    if (!confirmsDocumentation(saved)) {
+      throw const ResponderRoadmapApiException(
+        'The server did not confirm the saved end time and class description. '
+        'Your Training Sheet is still open; refresh and try saving again.',
+      );
+    }
+    return saved;
   }
 
   Future<DepartmentClassDetail> addTrainingSheetRosterMembers(

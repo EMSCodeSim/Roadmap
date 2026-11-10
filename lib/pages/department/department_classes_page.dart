@@ -1424,6 +1424,11 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         creditHours:result['hours'] as double,
         ceCredits:ceCredits,
       ));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Training time and class description saved.')),
+        );
+      }
       return true;
     } catch (error) {
       if(mounted)setState(()=>_error='Unable to save training documentation: $error');
