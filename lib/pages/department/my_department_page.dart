@@ -496,12 +496,10 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     return result;
   }
 
-  Future<void> _openPersonalCareerRoad() async {
+  Future<void> _openMyRoadmap() async {
     await context.read<AppState>().taskBookController.setActiveTaskBook(null);
     if (!mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const TaskBookPage()),
-    );
+    context.go(AppRoutes.myPath);
   }
 
   Future<void> _openPersonalCustomBook(CustomTaskBook book) async {
@@ -588,7 +586,7 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                     if (widget.taskBooksOnly) ...[
                       _PersonalTaskBooksSection(
                         state: app,
-                        onOpenCareerRoad: _openPersonalCareerRoad,
+                        onOpenMyRoadmap: _openMyRoadmap,
                         onOpenCustom: _openPersonalCustomBook,
                       ),
                       const SizedBox(height: 20),
@@ -707,12 +705,12 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
 class _PersonalTaskBooksSection extends StatelessWidget {
   const _PersonalTaskBooksSection({
     required this.state,
-    required this.onOpenCareerRoad,
+    required this.onOpenMyRoadmap,
     required this.onOpenCustom,
   });
 
   final AppState state;
-  final VoidCallback onOpenCareerRoad;
+  final VoidCallback onOpenMyRoadmap;
   final void Function(CustomTaskBook book) onOpenCustom;
 
   @override
@@ -742,7 +740,7 @@ class _PersonalTaskBooksSection extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Personal Task Books',
+                'My Roadmap & Personal Task Books',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
@@ -759,7 +757,7 @@ class _PersonalTaskBooksSection extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Your career roadmap and personal/custom Task Books. These stay separate from official department records.',
+          'Open your career plan in My Roadmap. Personal Task Books are separate from official department assignments.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: cs.onSurfaceVariant,
               ),
@@ -768,11 +766,11 @@ class _PersonalTaskBooksSection extends StatelessWidget {
         if (roadmap != null)
           _PersonalTaskBookCard(
             title: roadmap.goal.title,
-            subtitle: 'Personal Career Road',
+            subtitle: 'Open My Roadmap',
             percent: (roadmap.percentComplete * 100).round(),
             completed: roadmap.completedCount,
             total: roadmap.totalCount,
-            onTap: onOpenCareerRoad,
+            onTap: onOpenMyRoadmap,
           ),
         ...personalCustom.map((book) {
           final completed = completedFor(book);

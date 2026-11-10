@@ -23,15 +23,15 @@ class MyPathPage extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('My Career Journey'),
+          title: const Text('My Roadmap'),
           centerTitle: false,
           bottom: roadmap == null
               ? null
               : const TabBar(
                   isScrollable: false,
                   tabs: [
-                    Tab(text: 'Path'),
-                    Tab(text: 'Timeline'),
+                    Tab(text: 'Plan'),
+                    Tab(text: 'Progress'),
                   ],
                 ),
           actions: [
@@ -52,7 +52,7 @@ class MyPathPage extends StatelessWidget {
                     value: 'change_goal',
                     child: ListTile(
                       leading: Icon(Icons.swap_horiz_rounded),
-                      title: Text('Change end path'),
+                      title: Text('Change career goal'),
                       subtitle: Text('Keep your records and choose a new goal'),
                     ),
                   ),
@@ -119,8 +119,8 @@ class MyPathPage extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.trending_up_rounded),
-                title: const Text('Growth tools'),
-                subtitle: const Text('Evidence, development, and longer-term planning'),
+                title: const Text('Growth plan'),
+                subtitle: const Text('Turn gaps into practical development steps'),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   context.push(AppRoutes.growthDetails);
@@ -133,6 +133,25 @@ class MyPathPage extends StatelessWidget {
                 onTap: () {
                   Navigator.pop(sheetContext);
                   context.push(AppRoutes.departmentTransfer);
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.workspace_premium_outlined),
+                title: const Text('Credential records'),
+                subtitle: const Text('Certificates you hold and their expiration dates'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push(AppRoutes.certifications);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.folder_copy_outlined),
+                title: const Text('Experience and activity records'),
+                subtitle: const Text('Add and review the events behind your progress'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push(AppRoutes.training);
                 },
               ),
             ],
@@ -408,7 +427,7 @@ class _PathTab extends StatelessWidget {
             child: ListTile(
               leading: const Icon(Icons.flag_outlined),
               title: const Text('Your career, your direction'),
-              subtitle: const Text('Focus on your next milestone. Customize your personal plan whenever your goals change. Department assignments remain in Department.'),
+              subtitle: const Text('This plan shows credentials and experience commonly needed for your goal. Records stores certificates you hold and the events behind your progress. Check your state site for current credential requirements.'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push(AppRoutes.goalSetup),
             ),
