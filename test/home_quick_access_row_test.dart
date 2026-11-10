@@ -12,7 +12,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('home stays focused on personal career growth', (tester) async {
+  testWidgets('home stays focused on daily priorities', (tester) async {
     final app = AppState();
     await tester.runAsync(app.bootstrap);
 
@@ -29,13 +29,14 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Department'), findsNothing);
-    expect(find.text('Personal'), findsNothing);
-    expect(find.text('Quick actions'), findsNothing);
-    expect(find.text('Start my roadmap'), findsOneWidget);
-    expect(find.text('My Progress'), findsOneWidget);
-    expect(find.text('My Goals'), findsOneWidget);
-    expect(find.text('My Learning'), findsOneWidget);
-    expect(find.text('My Achievements'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Next action'), findsOneWidget);
+    expect(find.text('Credentials'), findsOneWidget);
+    expect(find.text('Unfinished records'), findsOneWidget);
+    expect(find.text('Department attention'), findsOneWidget);
+    expect(find.text('Start my roadmap'), findsNothing);
+
+    await tester.scrollUntilVisible(find.text('Open My Roadmap'), 300);
+    expect(find.text('Open My Roadmap'), findsOneWidget);
   });
 }
