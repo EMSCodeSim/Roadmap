@@ -167,5 +167,5 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build iOS release simulator (no signing required)
-        run: flutter build ios --release --simulator
+      - name: Build iOS simulator (no signing required)
+        run: flutter build ios --debug --simulator
