@@ -53,6 +53,17 @@ String _trainingTemplateSummary(DepartmentTrainingSheetTemplate template) {
   ].join(' · ');
 }
 
+List<DepartmentTrainingSheetTemplate> _trainingSheetChecklistTemplates(
+  List<DepartmentTrainingSheetTemplate> templates,
+) {
+  final seenChecklistIds = <String>{};
+  return templates
+      .where((template) =>
+          template.checklistVersionId.isNotEmpty &&
+          seenChecklistIds.add(template.checklistVersionId))
+      .toList(growable: false);
+}
+
 
 String _trainingComponentSummary(DepartmentTrainingSheetComponentTemplate component) {
   final data = component.data;
@@ -180,7 +191,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
       }
     }
     if (!mounted) return;
-    final created = await showModalBottomSheet<String>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected, components: components));
+    final created = await showModalBottomSheet<String>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, templates: templates, template: selected, components: components));
     if (created != null && mounted) {
       // Open the new class immediately. The detail route uses qr=1 to display
       // the live QR and Print QR Code actions as soon as the class loads.
@@ -289,7 +300,7 @@ class _TrainingSheetTemplatesPageState extends State<_TrainingSheetTemplatesPage
         TextField(controller:name,decoration:const InputDecoration(labelText:'Template name *')),
         const SizedBox(height:10),TextField(controller:title,decoration:const InputDecoration(labelText:'Default training title')),
         const SizedBox(height:10),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Category'),items:const ['COMPANY','EMS','FACILITY','DRIVER','HAZMAT','OFFICER','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setLocal(()=>category=v??'COMPANY')),
-        const SizedBox(height:10),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Checklist'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v)=>setLocal(()=>checklist=v??'')),
+        const SizedBox(height:10),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Checklist'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),..._trainingSheetChecklistTemplates(rows ?? const []).map((template)=>DropdownMenuItem(value:template.checklistVersionId,child:Text(template.name)))],onChanged:(v)=>setLocal(()=>checklist=v??'')),
         const SizedBox(height:10),TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Default hours')),
         const SizedBox(height:10),TextField(controller:location,decoration:const InputDecoration(labelText:'Default location')),
         const SizedBox(height:10),TextField(controller:notes,maxLines:3,decoration:const InputDecoration(labelText:'Default notes')),
@@ -309,9 +320,10 @@ class _TrainingSheetTemplatesPageState extends State<_TrainingSheetTemplatesPage
 }
 
 class _CreateTrainingSheet extends StatefulWidget {
-  const _CreateTrainingSheet({required this.api, required this.setup, required this.components, this.template});
+  const _CreateTrainingSheet({required this.api, required this.setup, required this.templates, required this.components, this.template});
   final ResponderRoadmapApi api;
   final DepartmentClassSetup setup;
+  final List<DepartmentTrainingSheetTemplate> templates;
   final List<DepartmentTrainingSheetComponentTemplate> components;
   final DepartmentTrainingSheetTemplate? template;
   @override State<_CreateTrainingSheet> createState() => _CreateTrainingSheetState();
@@ -381,7 +393,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      final stations = stationProctors.entries.map((entry) => <String, String>{'checklistVersionId': entry.key, 'title': widget.setup.checklists.firstWhere((v) => v['id']?.toString() == entry.key)['title']?.toString() ?? 'Skills station', 'proctorUserId': entry.value}).toList(growable:false);
+      final stations = stationProctors.entries.map((entry) => <String, String>{'checklistVersionId': entry.key, 'title': _trainingSheetChecklistTemplates(widget.templates).firstWhere((template) => template.checklistVersionId == entry.key).name, 'proctorUserId': entry.value}).toList(growable:false);
       final created = await widget.api.createTrainingSheet(title:title.text, startsAt:startTime.toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', gradingComponentId:gradingComponentId, ceComponentId:ceComponentId, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, membershipIds:selectedMembers.toList(), selfRegistration:qr, stations:stations);
       if (mounted) {
         setState(() => _dirty = false);
@@ -438,7 +450,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         DropdownMenuItem(value:'OFFICER',child:Text('Officer')),
         DropdownMenuItem(value:'OTHER',child:Text('Other / Rescue')),
       ],onChanged:(v){setState(()=>category=v??'COMPANY');_markDirty();}),
-      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v){setState(()=>checklist=v??'');_markDirty();}),
+      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),..._trainingSheetChecklistTemplates(widget.templates).map((template)=>DropdownMenuItem(value:template.checklistVersionId,child:Text(template.name)))],onChanged:(v){setState(()=>checklist=v??'');_markDirty();}),
       if (widget.components.isNotEmpty) ...[
         const SizedBox(height:14),
         Card(
@@ -496,15 +508,15 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       if (advanced)
         ExpansionTile(
           title: Text('Multiple skill stations (${stationProctors.length})'),
-          subtitle: const Text('Assign a published checklist and authorized proctor to each station.'),
-          children: widget.setup.checklists.map<Widget>((item) {
-            final id = item['id']?.toString() ?? '';
+          subtitle: const Text('Choose a checklist saved in a Training Sheet template and an authorized proctor.'),
+          children: _trainingSheetChecklistTemplates(widget.templates).map<Widget>((item) {
+            final id = item.checklistVersionId;
             final selected = stationProctors.containsKey(id);
             return Column(
               children: [
                 CheckboxListTile(
                   dense: true,
-                  title: Text(item['title']?.toString() ?? 'Checklist'),
+                  title: Text(item.name),
                   subtitle: Text('${item['skillCount'] ?? 0} skills'),
                   value: selected,
                   onChanged: (value) {
