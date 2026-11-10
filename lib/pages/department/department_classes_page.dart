@@ -622,7 +622,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _studentId;
   String? _error;
   bool _busy = false;
-  String? _groupSkillId;
   bool _showGrading = false;
   bool _missingOnly = false;
   bool _selectAttendance = false;
@@ -2145,42 +2144,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       }
     } catch (e) {
       if (mounted) setState(() => _error = 'No staged results were cleared. Review the connection and submit again: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _passGroupSkill(DepartmentClassStudent member, DepartmentClassSkill skill) async {
-    final detail = _detail;
-    if (detail == null || _busy || detail.status == 'COMPLETE') return;
-    if (member.attendance != 'PRESENT') {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Confirm attendance before recording a pass.')));
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final previous = member.results
-          .where((item) => item.requirementId == skill.id)
-          .firstOrNull;
-      final saved = await _api.recordClassSkillBatchDurable(
-        classId: detail.id,
-        requirementId: skill.id,
-        results: [
-          <String, dynamic>{
-            'enrollmentId': member.id,
-            'result': 'PASS',
-            'notes': '',
-            'expectedUpdatedAt': previous?.updatedAt,
-          },
-        ],
-      );
-      if (saved.detail != null) _setDetail(saved.detail!);
-      if (saved.queued && mounted) {
-        context.read<DepartmentInboxController>().submissionQueued();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Waiting to Sync — ${member.name} skill result saved on this device.')));
-      }
-    } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
