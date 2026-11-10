@@ -3192,9 +3192,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           Padding(padding: const EdgeInsets.all(12), child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Quick roster recorder', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+          Text('Attendance tools', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
-          const Text('Choose attendance or grading. Select a member, record the result, then move to the next.'),
+          const Text('Confirm attendance and filter the roster to find members who still need attention.'),
           const SizedBox(height: 10),
           const Text('Attendance tools. Skills and grading are available from the guided closeout list above.'),
           if (!_showGrading && detail.status != 'COMPLETE' &&
