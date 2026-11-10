@@ -26,6 +26,68 @@ const _emsCeCategories = <String>[
   'Pediatric / Obstetrics', 'Local / State', 'Individual',
 ];
 
+String _trainingTemplateSummary(DepartmentTrainingSheetTemplate template) {
+  final rosterFields = template.customFields
+      .where((field) => field['appliesTo'] == 'ROSTER')
+      .map((field) => field['label']?.toString() ?? 'Roster field')
+      .toList(growable: false);
+  final resultFields = template.customFields
+      .where((field) => field['appliesTo'] != 'ROSTER')
+      .map((field) => field['label']?.toString() ?? 'Result field')
+      .toList(growable: false);
+  final setup = <String>[
+    if (template.checklistVersionId.isNotEmpty) 'Skills checklist',
+    if (template.gradingConfig['writtenTestEnabled'] == true) 'Written test',
+    if (template.gradingConfig['ccfEnabled'] == true) 'CCF score',
+    if (rosterFields.isNotEmpty) 'Roster fields: ${rosterFields.join(', ')}',
+    if (resultFields.isNotEmpty) 'Result fields: ${resultFields.join(', ')}',
+    if (template.ceCredits.isNotEmpty)
+      'EMS CE: ${template.ceCredits.map((credit) => '${credit['category']} ${credit['hours']} hr').join(', ')}',
+    if (template.creditHours > 0) '${template.creditHours} training hr',
+    if (template.selfRegistration) 'QR roster',
+  ];
+  return [
+    if (template.defaultTitle.trim().isNotEmpty) template.defaultTitle.trim(),
+    template.trainingCategory.replaceAll('_', ' '),
+    ...setup,
+  ].join(' · ');
+}
+
+List<DepartmentTrainingSheetTemplate> _trainingSheetChecklistTemplates(
+  List<DepartmentTrainingSheetTemplate> templates,
+) {
+  final seenChecklistIds = <String>{};
+  return templates
+      .where((template) =>
+          template.checklistVersionId.isNotEmpty &&
+          seenChecklistIds.add(template.checklistVersionId))
+      .toList(growable: false);
+}
+
+
+String _trainingComponentSummary(DepartmentTrainingSheetComponentTemplate component) {
+  final data = component.data;
+  if (component.kind == 'EMS_CE_LIST') {
+    final credits = data['ceCredits'] as List? ?? const [];
+    return credits.whereType<Map>().map((credit) =>
+      '${credit['category']} ${credit['hours']} hr').join(' · ');
+  }
+  final config = data['gradingConfig'] is Map
+      ? Map<String, dynamic>.from(data['gradingConfig'] as Map)
+      : <String, dynamic>{};
+  final fields = data['customFields'] is List
+      ? (data['customFields'] as List).whereType<Map>()
+          .map((field) => field['label']?.toString() ?? '')
+          .where((label) => label.isNotEmpty)
+          .toList(growable: false)
+      : const <String>[];
+  return [
+    if (config['writtenTestEnabled'] == true) 'Written test',
+    if (config['ccfEnabled'] == true) 'CCF score',
+    ...fields,
+  ].join(' · ');
+}
+
 class DepartmentClassesPage extends StatefulWidget {
   const DepartmentClassesPage({super.key, this.openCreateTraining = false});
   final bool openCreateTraining;
@@ -64,8 +126,15 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
     final setup = _setup;
     if (setup == null) return;
     DepartmentTrainingSheetTemplate? selected;
+    List<DepartmentTrainingSheetTemplate> templates = const [];
+    List<DepartmentTrainingSheetComponentTemplate> components = const [];
     try {
-      final templates = await _api.listTrainingSheetTemplates();
+      templates = await _api.listTrainingSheetTemplates();
+      try {
+        components = await _api.listTrainingSheetComponents();
+      } catch (_) {
+        // Keep class creation available if reusable components cannot load.
+      }
       if (!mounted) return;
       String category = '';
       selected = await showModalBottomSheet<DepartmentTrainingSheetTemplate?>(
@@ -103,7 +172,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
                 ListTile(leading: const Icon(Icons.note_add_outlined), title: const Text('Blank Training Sheet'), onTap: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(null)),
                 ...templates.where((t) => category.isEmpty || t.topic == category).map((t) =>
                   ListTile(leading: const Icon(Icons.copy_all_outlined), title: Text(t.name),
-                    subtitle: Text(t.defaultTitle.isEmpty ? t.trainingCategory.replaceAll('_', ' ') : t.defaultTitle),
+                    subtitle: Text(_trainingTemplateSummary(t), maxLines: 3, overflow: TextOverflow.ellipsis),
                     onTap: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(t))),
               ])),
             ]),
@@ -123,7 +192,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
       }
     }
     if (!mounted) return;
-    final created = await showModalBottomSheet<String>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, template: selected));
+    final created = await showModalBottomSheet<String>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _CreateTrainingSheet(api: _api, setup: setup, templates: templates, template: selected, components: components));
     if (created != null && mounted) {
       // Open the new class immediately. The detail route uses qr=1 to display
       // the live QR and Print QR Code actions as soon as the class loads.
@@ -232,7 +301,7 @@ class _TrainingSheetTemplatesPageState extends State<_TrainingSheetTemplatesPage
         TextField(controller:name,decoration:const InputDecoration(labelText:'Template name *')),
         const SizedBox(height:10),TextField(controller:title,decoration:const InputDecoration(labelText:'Default training title')),
         const SizedBox(height:10),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Category'),items:const ['COMPANY','EMS','FACILITY','DRIVER','HAZMAT','OFFICER','OTHER'].map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>setLocal(()=>category=v??'COMPANY')),
-        const SizedBox(height:10),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Checklist'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v)=>setLocal(()=>checklist=v??'')),
+        const SizedBox(height:10),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Checklist'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),..._trainingSheetChecklistTemplates(rows ?? const []).map((template)=>DropdownMenuItem(value:template.checklistVersionId,child:Text(template.name)))],onChanged:(v)=>setLocal(()=>checklist=v??'')),
         const SizedBox(height:10),TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Default hours')),
         const SizedBox(height:10),TextField(controller:location,decoration:const InputDecoration(labelText:'Default location')),
         const SizedBox(height:10),TextField(controller:notes,maxLines:3,decoration:const InputDecoration(labelText:'Default notes')),
@@ -252,16 +321,18 @@ class _TrainingSheetTemplatesPageState extends State<_TrainingSheetTemplatesPage
 }
 
 class _CreateTrainingSheet extends StatefulWidget {
-  const _CreateTrainingSheet({required this.api, required this.setup, this.template});
+  const _CreateTrainingSheet({required this.api, required this.setup, required this.templates, required this.components, this.template});
   final ResponderRoadmapApi api;
   final DepartmentClassSetup setup;
+  final List<DepartmentTrainingSheetTemplate> templates;
+  final List<DepartmentTrainingSheetComponentTemplate> components;
   final DepartmentTrainingSheetTemplate? template;
   @override State<_CreateTrainingSheet> createState() => _CreateTrainingSheetState();
 }
 
 class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
-  bool busy = false, qr = true, advanced = false; String? error; DateTime startTime = DateTime.now(); String category = 'COMPANY'; String checklist = ''; final Set<String> selectedMembers = <String>{}; final Map<String, String> stationProctors = <String, String>{};
+  bool busy = false, qr = true, advanced = false; String? error; DateTime startTime = DateTime.now(); String category = 'COMPANY'; String checklist = ''; String gradingComponentId = ''; String ceComponentId = ''; final Set<String> selectedMembers = <String>{}; final Map<String, String> stationProctors = <String, String>{};
   bool _dirty = false;
   bool get _isEmsCe => widget.template?.ceCredits.isNotEmpty == true;
 
@@ -323,8 +394,8 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     if(proctors.isEmpty){setState(()=>error='Choose an approved proctor before starting this training.'); return;}
     setState((){busy=true;error=null;});
     try {
-      final stations = stationProctors.entries.map((entry) => <String, String>{'checklistVersionId': entry.key, 'title': widget.setup.checklists.firstWhere((v) => v['id']?.toString() == entry.key)['title']?.toString() ?? 'Skills station', 'proctorUserId': entry.value}).toList(growable:false);
-      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:startTime.toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, membershipIds:selectedMembers.toList(), selfRegistration:qr, stations:stations);
+      final stations = stationProctors.entries.map((entry) => <String, String>{'checklistVersionId': entry.key, 'title': _trainingSheetChecklistTemplates(widget.templates).firstWhere((template) => template.checklistVersionId == entry.key).name, 'proctorUserId': entry.value}).toList(growable:false);
+      final created = await widget.api.createTrainingSheet(title:title.text, startsAt:startTime.toUtc().toIso8601String(), trainingCategory:category, classType:widget.template?.classType ?? 'GENERAL', checklistVersionId:checklist, trainingSheetTemplateId:widget.template?.id ?? '', gradingComponentId:gradingComponentId, ceComponentId:ceComponentId, creditHours:h, location:location.text, notes:notes.text, proctorUserIds:proctors, membershipIds:selectedMembers.toList(), selfRegistration:qr, stations:stations);
       if (mounted) {
         setState(() => _dirty = false);
         context.pop(created.id);
@@ -358,9 +429,20 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         ),
       ]),
       const SizedBox(height:6), const Text('Create the class quickly, then collect student results and finish RMS documentation after training.'),
+      if (widget.template != null) ...[
+        const SizedBox(height: 12),
+        Card(
+          color: Theme.of(context).colorScheme.secondaryContainer,
+          child: ListTile(
+            leading: const Icon(Icons.fact_check_outlined),
+            title: const Text('Selected instructor setup'),
+            subtitle: Text(_trainingTemplateSummary(widget.template!)),
+          ),
+        ),
+      ],
       if(error!=null)...[const SizedBox(height:10),Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))],
       const SizedBox(height:16),TextField(controller:title,decoration:const InputDecoration(labelText:'Training title *')),
-      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const [
+      const SizedBox(height:12),DropdownButtonFormField<String>(key: ValueKey('training-category-$category'),initialValue:category,decoration:const InputDecoration(labelText:'Training category'),items:const [
         DropdownMenuItem(value:'COMPANY',child:Text('Fire / Company')),
         DropdownMenuItem(value:'EMS',child:Text('EMS')),
         DropdownMenuItem(value:'HAZMAT',child:Text('HazMat')),
@@ -369,20 +451,74 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         DropdownMenuItem(value:'OFFICER',child:Text('Officer')),
         DropdownMenuItem(value:'OTHER',child:Text('Other / Rescue')),
       ],onChanged:(v){setState(()=>category=v??'COMPANY');_markDirty();}),
-      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),...widget.setup.checklists.map((v)=>DropdownMenuItem(value:v['id']?.toString()??'',child:Text(v['title']?.toString()??'Checklist')))],onChanged:(v){setState(()=>checklist=v??'');_markDirty();}),
+      const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),..._trainingSheetChecklistTemplates(widget.templates).map((template)=>DropdownMenuItem(value:template.checklistVersionId,child:Text(template.name)))],onChanged:(v){setState(()=>checklist=v??'');_markDirty();}),
+      if (widget.components.isNotEmpty) ...[
+        const SizedBox(height:14),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const Text('Saved instructor components', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height:4),
+              const Text('Choose reusable grading rules or an EMS CE allocation. A selected component takes precedence over that section of the class package.'),
+              const SizedBox(height:10),
+              DropdownButtonFormField<String>(
+                initialValue: gradingComponentId,
+                decoration: const InputDecoration(labelText: 'Grading system (optional)'),
+                items: [
+                  const DropdownMenuItem(value: '', child: Text('Use class package / default')),
+                  ...widget.components.where((component) => component.kind == 'GRADING').map((component) =>
+                    DropdownMenuItem(value: component.id, child: Text(
+                      _trainingComponentSummary(component).isEmpty
+                        ? component.name
+                        : '${component.name} · ${_trainingComponentSummary(component)}',
+                      overflow: TextOverflow.ellipsis,
+                    ))),
+                ],
+                onChanged: (value) {
+                  setState(() => gradingComponentId = value ?? '');
+                  _markDirty();
+                },
+              ),
+              const SizedBox(height:8),
+              DropdownButtonFormField<String>(
+                initialValue: ceComponentId,
+                decoration: const InputDecoration(labelText: 'EMS CE allocation (optional)'),
+                items: [
+                  const DropdownMenuItem(value: '', child: Text('Use class package / enter at closeout')),
+                  ...widget.components.where((component) => component.kind == 'EMS_CE_LIST').map((component) =>
+                    DropdownMenuItem(value: component.id, child: Text(
+                      _trainingComponentSummary(component).isEmpty
+                        ? component.name
+                        : '${component.name} · ${_trainingComponentSummary(component)}',
+                      overflow: TextOverflow.ellipsis,
+                    ))),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    ceComponentId = value ?? '';
+                    if (ceComponentId.isNotEmpty) category = 'EMS';
+                  });
+                  _markDirty();
+                },
+              ),
+            ]),
+          ),
+        ),
+      ],
       if (advanced)
         ExpansionTile(
           title: Text('Multiple skill stations (${stationProctors.length})'),
-          subtitle: const Text('Assign a published checklist and authorized proctor to each station.'),
-          children: widget.setup.checklists.map<Widget>((item) {
-            final id = item['id']?.toString() ?? '';
+          subtitle: const Text('Choose a checklist saved in a Training Sheet template and an authorized proctor.'),
+          children: _trainingSheetChecklistTemplates(widget.templates).map<Widget>((item) {
+            final id = item.checklistVersionId;
             final selected = stationProctors.containsKey(id);
             return Column(
               children: [
                 CheckboxListTile(
                   dense: true,
-                  title: Text(item['title']?.toString() ?? 'Checklist'),
-                  subtitle: Text('${item['skillCount'] ?? 0} skills'),
+                  title: Text(item.name),
+                  subtitle: const Text('Checklist saved in a Training Sheet template'),
                   value: selected,
                   onChanged: (value) {
                     setState(() {
@@ -1132,8 +1268,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final hours = TextEditingController(text:d.creditHours > 0 ? d.creditHours.toString() : '');
     String trainingCategory = d.trainingCategory;
     String shift = d.shift;
+    final ceCategories = <String>{
+      ..._emsCeCategories,
+      ...d.ceCredits.map((item) => item['category']?.toString() ?? '').where((category) => category.isNotEmpty),
+    }.toList(growable: false);
     final ceControllers = <String, TextEditingController>{
-      for (final category in _emsCeCategories)
+      for (final category in ceCategories)
         category: TextEditingController(text: d.ceCredits.where((item) => item['category'] == category).map((item) => item['hours']).firstOrNull?.toString() ?? ''),
     };
 
@@ -1302,7 +1442,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                       Text('EMS CE categories', style: Theme.of(dialogContext).textTheme.titleMedium),
                       const SizedBox(height: 4),
                       const Text('Allocate time-based credit (total cannot exceed class duration).'),
-                      ..._emsCeCategories.map((category) => Padding(
+                      ...ceCategories.map((category) => Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: TextField(
                           controller: ceControllers[category],
@@ -2483,22 +2623,30 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               const Text('Choose a prebuilt Training Sheet setup or a department checklist. It is copied to this class.'),
               const SizedBox(height: 18),
               if (templates.isNotEmpty) ...[
-                Text('Training Sheet templates', style: Theme.of(sheetContext).textTheme.titleMedium),
+                Text('Saved class packages', style: Theme.of(sheetContext).textTheme.titleMedium),
+                const Text('Selecting a package copies its checklist, grading rules, custom result fields, and EMS CE allocation onto this sheet.'),
                 for (final template in templates.where((item) =>
-                    item.checklistVersionId.isNotEmpty || item.gradingConfig.isNotEmpty || item.customFields.isNotEmpty))
+                    item.checklistVersionId.isNotEmpty || item.gradingConfig.isNotEmpty || item.customFields.isNotEmpty || item.ceCredits.isNotEmpty))
                   ListTile(
                     leading: const Icon(Icons.fact_check_outlined),
                     title: Text(template.name),
-                    subtitle: Text([
-                      if (template.checklistVersionId.isNotEmpty) 'Skills checklist',
-                      if (template.gradingConfig['writtenTestEnabled'] == true) 'Written score',
-                      if (template.gradingConfig['ccfEnabled'] == true) 'CCF score',
-                      if (template.customFields.isNotEmpty) '${template.customFields.length} grading field(s)',
-                    ].join(' · ')),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => Navigator.pop(sheetContext, {
-                      'trainingSheetTemplateId': template.id,
-                    }),
+                    subtitle: Text(
+                      template.ceCredits.isNotEmpty && detail.trainingCategory != 'EMS'
+                          ? '${_trainingTemplateSummary(template)} · Set this sheet to EMS before applying its CE allocation.'
+                          : _trainingTemplateSummary(template),
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: Icon(
+                      template.ceCredits.isNotEmpty && detail.trainingCategory != 'EMS'
+                          ? Icons.info_outline_rounded
+                          : Icons.chevron_right_rounded,
+                    ),
+                    onTap: template.ceCredits.isNotEmpty && detail.trainingCategory != 'EMS'
+                        ? null
+                        : () => Navigator.pop(sheetContext, {
+                            'trainingSheetTemplateId': template.id,
+                          }),
                   ),
                 const Divider(),
               ],
@@ -2518,6 +2666,25 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ),
       );
       if (choice == null || !mounted) return;
+      final selectedTemplate = templates.where((item) => item.id == choice['trainingSheetTemplateId']).firstOrNull;
+      final hasExistingSetup = detail.checklistVersionId.isNotEmpty ||
+          detail.gradingConfig.isNotEmpty ||
+          detail.customFields.isNotEmpty ||
+          detail.ceCredits.isNotEmpty;
+      if (selectedTemplate != null && hasExistingSetup) {
+        final replace = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Apply this class package?'),
+            content: const Text('This replaces the current grading rules and custom result fields. If the package has an EMS CE allocation, it replaces the current CE breakdown too. Existing student records remain attached to the class.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Keep current setup')),
+              FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Apply package')),
+            ],
+          ),
+        );
+        if (replace != true || !mounted) return;
+      }
       setState(() => _busy = true);
       final updated = await _api.updateClassEvaluationSetup(
         classId: detail.id,
@@ -2527,7 +2694,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       _setDetail(updated);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Skills & evaluation setup added')),
+          const SnackBar(content: Text('Instructor setup copied to this Training Sheet')),
         );
       }
     } catch (error) {

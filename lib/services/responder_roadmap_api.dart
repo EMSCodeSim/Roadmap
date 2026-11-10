@@ -757,6 +757,34 @@ class DepartmentTrainingSheetTemplate {
       );
 }
 
+class DepartmentTrainingSheetComponentTemplate {
+  final String id;
+  final String kind;
+  final String name;
+  final Map<String, dynamic> data;
+  final bool archived;
+  final int revision;
+
+  const DepartmentTrainingSheetComponentTemplate({
+    required this.id,
+    required this.kind,
+    required this.name,
+    required this.data,
+    required this.archived,
+    required this.revision,
+  });
+
+  factory DepartmentTrainingSheetComponentTemplate.fromJson(Map<String, dynamic> json) =>
+      DepartmentTrainingSheetComponentTemplate(
+        id: (json['id'] as String?) ?? '',
+        kind: (json['kind'] as String?) ?? '',
+        name: (json['name'] as String?) ?? 'Saved component',
+        data: Map<String, dynamic>.from(json['data'] as Map? ?? const {}),
+        archived: json['archived'] == true,
+        revision: (json['revision'] as num?)?.toInt() ?? 1,
+      );
+}
+
 class DepartmentClassMutationResult {
   final DepartmentClassDetail? detail;
   final bool queued;
@@ -1439,6 +1467,15 @@ class ResponderRoadmapApi {
     return (data is List ? data : const <dynamic>[]).whereType<Map>().map((item) => DepartmentTrainingSheetTemplate.fromJson(Map<String, dynamic>.from(item))).toList(growable: false);
   }
 
+  Future<List<DepartmentTrainingSheetComponentTemplate>> listTrainingSheetComponents() async {
+    final data = await _request('GET', 'app/training-sheet-components');
+    return (data is List ? data : const <dynamic>[])
+        .whereType<Map>()
+        .map((item) => DepartmentTrainingSheetComponentTemplate.fromJson(Map<String, dynamic>.from(item)))
+        .where((item) => !item.archived)
+        .toList(growable: false);
+  }
+
   Future<DepartmentTrainingSheetTemplate> createTrainingSheetTemplate({
     required String name, String defaultTitle = '', String classType = 'GENERAL',
     String trainingCategory = 'COMPANY', double creditHours = 0,
@@ -1498,6 +1535,8 @@ class ResponderRoadmapApi {
     List<Map<String, String>> stations = const [],
     bool selfRegistration = true,
     String trainingSheetTemplateId = '',
+    String gradingComponentId = '',
+    String ceComponentId = '',
   }) async {
     final data = await _request('POST', 'classes', body: {
       'title': title.trim(),
@@ -1514,6 +1553,8 @@ class ResponderRoadmapApi {
       'stations': stations,
       'selfRegistration': selfRegistration,
       if (trainingSheetTemplateId.isNotEmpty) 'trainingSheetTemplateId': trainingSheetTemplateId,
+      if (gradingComponentId.isNotEmpty) 'gradingComponentId': gradingComponentId,
+      if (ceComponentId.isNotEmpty) 'ceComponentId': ceComponentId,
     });
     final map = _asMap(data);
     // Creation returns the canonical class id; fetch the scoped server summary

@@ -37,7 +37,7 @@ void main() {
   });
 
   testWidgets(
-    'Home retains My Roadmap and separates personal and department overview',
+    'Home shows a daily overview and links to My Roadmap separately',
     (tester) async {
       final app = AppState();
       await tester.runAsync(app.bootstrap);
@@ -57,14 +57,18 @@ void main() {
       // Avoid waiting indefinitely for progress indicators and asynchronous sync.
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('My Roadmap'), findsOneWidget);
-      expect(find.text('Start my roadmap'), findsOneWidget);
+      expect(find.text('Today'), findsOneWidget);
+      expect(find.text('Next action'), findsOneWidget);
+      expect(find.text('Credentials'), findsOneWidget);
+      expect(find.text('Unfinished records'), findsOneWidget);
+      expect(find.text('Department attention'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Open My Roadmap'), 300);
+      expect(find.text('Open My Roadmap'), findsOneWidget);
       expect(find.text('Quick actions'), findsNothing);
-      expect(find.text('What should I work on next?'), findsNothing);
-      expect(find.text('My Progress'), findsOneWidget);
-      expect(find.text('My Goals'), findsOneWidget);
-      expect(find.text('My Learning'), findsOneWidget);
-      expect(find.text('My Achievements'), findsOneWidget);
+      expect(find.text('My Progress'), findsNothing);
+      expect(find.text('My Goals'), findsNothing);
+      expect(find.text('My Learning'), findsNothing);
+      expect(find.text('My Achievements'), findsNothing);
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );
