@@ -623,6 +623,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _error;
   bool _busy = false;
   bool _showGrading = false;
+  bool _showAdditionalDetails = false;
   bool _missingOnly = false;
   bool _selectAttendance = false;
   final Set<String> _selectedAttendanceIds = <String>{};
@@ -985,6 +986,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   void _jumpToMember(DepartmentClassStudent member, {required bool grading}) {
     setState(() {
       _studentId = member.id;
+      _showAdditionalDetails = true;
       _showGrading = grading;
       _missingOnly = false;
     });
@@ -2612,6 +2614,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final detail = _detail;
     if (detail == null) return;
     if (detail.status == 'COMPLETE') {
+      if (mounted) setState(() => _showAdditionalDetails = true);
       await _focusRoster();
       return;
     }
@@ -2979,6 +2982,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
       children: [
       _closeoutChecklist(detail, canRecordRmsEntry: canRecordRmsEntry),
+      TextButton.icon(
+        onPressed: () => setState(() => _showAdditionalDetails = !_showAdditionalDetails),
+        icon: Icon(_showAdditionalDetails ? Icons.expand_less_rounded : Icons.more_horiz_rounded),
+        label: Text(_showAdditionalDetails ? 'Hide class details and tools' : 'More class details and tools'),
+      ),
+      if (_showAdditionalDetails) ...[
       const SizedBox(height: 10),
       TrainingSheetHeaderCard(detail: detail),
       const SizedBox(height: 10),
@@ -3431,6 +3440,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ])); }),
         ]))),
         ],
+      ],
       ],
     ]));
   }
