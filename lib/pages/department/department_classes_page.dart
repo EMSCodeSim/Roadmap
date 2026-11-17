@@ -42,7 +42,7 @@ String _trainingTemplateSummary(DepartmentTrainingSheetTemplate template) {
     if (rosterFields.isNotEmpty) 'Roster fields: ${rosterFields.join(', ')}',
     if (resultFields.isNotEmpty) 'Result fields: ${resultFields.join(', ')}',
     if (template.ceCredits.isNotEmpty)
-      'EMS CE: ${template.ceCredits.map((credit) => '${credit['category']} ${credit['hours']} hr').join(', ')}',
+      'CE: ${template.ceCredits.map((credit) => '${credit['category']} ${credit['hours']} hr').join(', ')}',
     if (template.creditHours > 0) '${template.creditHours} training hr',
     if (template.selfRegistration) 'QR roster',
   ];
@@ -1321,7 +1321,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     String trainingCategory = d.trainingCategory;
     String shift = d.shift;
     final ceCategories = <String>{
-      ..._emsCeCategories,
+      ...(d.ceCredits.isEmpty && trainingCategory == 'EMS' ? _emsCeCategories : <String>[]),
       ...d.ceCredits.map((item) => item['category']?.toString() ?? '').where((category) => category.isNotEmpty),
     }.toList(growable: false);
     final ceControllers = <String, TextEditingController>{
@@ -1367,7 +1367,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, update) {
-          final isEms = trainingCategory == 'EMS';
+          final hasCeCategories = ceCategories.isNotEmpty;
           final elapsedMinutes = TrainingTimeCalculator.elapsedMinutes(start, end);
           final split = (elapsedMinutes == null)
               ? null
@@ -1376,7 +1376,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   endLocal: end!,
                   definition: TrainingTimeCalculator.defaultDayNight,
                 );
-          final allocatedMinutes = isEms
+          final allocatedMinutes = hasCeCategories
               ? ceControllers.values.fold<int>(0, (sum, c) => sum + parseHoursToMinutes(c.text))
               : 0;
           final overAllocated = elapsedMinutes != null && allocatedMinutes > elapsedMinutes;
@@ -1489,9 +1489,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                         hintText: 'Briefly describe what was taught and practiced',
                       ),
                     ),
-                    if (isEms) ...[
+                    if (hasCeCategories) ...[
                       const SizedBox(height: 14),
-                      Text('Assign EMS CE hours by category', style: Theme.of(dialogContext).textTheme.titleMedium),
+                      Text('Assign CE hours by category', style: Theme.of(dialogContext).textTheme.titleMedium),
                       const SizedBox(height: 4),
                       const Text('Enter hours under the correct CE category. Use 0 for categories not covered; total credit cannot exceed class duration.'),
                       ...ceCategories.map((category) => Padding(
@@ -1589,17 +1589,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       return false;
     }
     final savedCategory = result['trainingCategory'] as String;
-    final isEms = savedCategory == 'EMS';
-    if(isEms && (result['notes'] as String).trim().isEmpty){setState(()=>_error='Enter a short class description before closing EMS CE.');return false;}
+    final requiresCe = ceCategories.isNotEmpty;
+    if(savedCategory == 'EMS' && (result['notes'] as String).trim().isEmpty){setState(()=>_error='Enter a short class description before closing EMS CE.');return false;}
     final ceCredits=result['ceCredits'] as Map<String,double>;
-    if(isEms && !ceCredits.values.any((hours)=>hours>0)){setState(()=>_error='Assign EMS CE credit to at least one category before closing.');return false;}
+    if(requiresCe && !ceCredits.values.any((hours)=>hours>0)){setState(()=>_error='Assign CE credit to at least one category before closing.');return false;}
 
     final elapsedMinutes = TrainingTimeCalculator.elapsedMinutes(savedStart, savedEnd);
     if (elapsedMinutes == null) {
       setState(() => _error = 'End Time must be after Start Time.');
       return false;
     }
-    if (isEms) {
+    if (requiresCe) {
       final allocatedMinutes = ceCredits.values.fold<int>(0, (sum, value) => sum + parseHoursToMinutes(value.toString()));
       if (allocatedMinutes > elapsedMinutes) {
         setState(() => _error = 'Assigned CE credit cannot exceed class duration (${formatMinutesAsHoursMinutes(elapsedMinutes)}).');
@@ -2667,29 +2667,23 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               const SizedBox(height: 18),
               if (templates.isNotEmpty) ...[
                 Text('Saved class packages', style: Theme.of(sheetContext).textTheme.titleMedium),
-                const Text('Selecting a package copies its checklist, grading rules, custom result fields, and EMS CE allocation onto this sheet.'),
+                const Text('Selecting a package copies its checklist, grading rules, custom result fields, and CE allocation onto this sheet.'),
                 for (final template in templates.where((item) =>
                     item.checklistVersionId.isNotEmpty || item.gradingConfig.isNotEmpty || item.customFields.isNotEmpty || item.ceCredits.isNotEmpty))
                   ListTile(
                     leading: const Icon(Icons.fact_check_outlined),
                     title: Text(template.name),
                     subtitle: Text(
-                      template.ceCredits.isNotEmpty && detail.trainingCategory != 'EMS'
-                          ? '${_trainingTemplateSummary(template)} · Set this sheet to EMS before applying its CE allocation.'
-                          : _trainingTemplateSummary(template),
+                      _trainingTemplateSummary(template),
                       maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: Icon(
-                      template.ceCredits.isNotEmpty && detail.trainingCategory != 'EMS'
-                          ? Icons.info_outline_rounded
-                          : Icons.chevron_right_rounded,
+                      Icons.chevron_right_rounded,
                     ),
-                    onTap: template.ceCredits.isNotEmpty && detail.trainingCategory != 'EMS'
-                        ? null
-                        : () => Navigator.pop(sheetContext, {
-                            'trainingSheetTemplateId': template.id,
-                          }),
+                    onTap: () => Navigator.pop(sheetContext, {
+                      'trainingSheetTemplateId': template.id,
+                    }),
                   ),
                 const Divider(),
               ],
