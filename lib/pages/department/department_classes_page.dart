@@ -954,7 +954,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               DropdownButtonFormField<String>(
                 initialValue: const ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F'].contains(values[field['id']]) ? values[field['id']].toString() : '',
                 decoration: InputDecoration(labelText: field['label']?.toString() ?? 'Letter Grade'),
-                items: const [DropdownMenuItem(value:'',child:Text('Not recorded')),...['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F'].map((grade)=>DropdownMenuItem(value:grade,child:Text(grade)))],
+                items: [const DropdownMenuItem(value:'',child:Text('Not recorded')),...['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F'].map((grade)=>DropdownMenuItem(value:grade,child:Text(grade)))],
                 onChanged: (value) => update(() => values[field['id'].toString()] = value ?? ''),
               )
             else TextField(
