@@ -1635,14 +1635,42 @@ class ResponderRoadmapApi {
     );
     final response = _asMap(data);
     final responseDetail = DepartmentClassDetail.fromJson(response);
+    final expectedCredits = ceCredits.entries
+        .where((entry) => entry.value > 0)
+        .map((entry) => MapEntry(entry.key, entry.value))
+        .toList()
+      ..sort((left, right) => left.key.compareTo(right.key));
+    final expectedCreditHours = expectedCredits.isEmpty
+        ? creditHours
+        : expectedCredits.fold<double>(0, (sum, item) => sum + item.value);
     bool sameInstant(DateTime? actual, DateTime? expected) =>
         actual?.millisecondsSinceEpoch == expected?.millisecondsSinceEpoch;
+    bool sameCredits(DepartmentClassDetail detail) {
+      final actualCredits = detail.ceCredits
+          .where((item) => ((item['hours'] as num?)?.toDouble() ?? 0) > 0)
+          .map((item) => MapEntry(
+                item['category']?.toString() ?? '',
+                (item['hours'] as num).toDouble(),
+              ))
+          .toList()
+        ..sort((left, right) => left.key.compareTo(right.key));
+      if (actualCredits.length != expectedCredits.length) return false;
+      for (var index = 0; index < expectedCredits.length; index++) {
+        if (actualCredits[index].key != expectedCredits[index].key ||
+            (actualCredits[index].value - expectedCredits[index].value).abs() > 0.005) {
+          return false;
+        }
+      }
+      return true;
+    }
     bool confirmsDocumentation(DepartmentClassDetail detail) =>
         detail.id == classId &&
         sameInstant(detail.startsAt, startsAt) &&
         sameInstant(detail.endsAt, endsAt) &&
         detail.notes == notes.trim() &&
         detail.location == location.trim() &&
+        (detail.creditHours - expectedCreditHours).abs() <= 0.005 &&
+        sameCredits(detail) &&
         (station == null || detail.station == station.trim()) &&
         (shift == null || detail.shift == shift.trim()) &&
         (trainingCategory == null || detail.trainingCategory == trainingCategory);
