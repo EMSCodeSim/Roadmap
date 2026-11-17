@@ -950,10 +950,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 items: const [DropdownMenuItem(value:'',child:Text('Not recorded')),DropdownMenuItem(value:'PASS',child:Text('Pass')),DropdownMenuItem(value:'FAIL',child:Text('Fail'))],
                 onChanged: (value) => update(() => values[field['id'].toString()] = value ?? ''),
               )
+            else if (field['type'] == 'LETTER_GRADE')
+              DropdownButtonFormField<String>(
+                initialValue: const ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F'].contains(values[field['id']]) ? values[field['id']].toString() : '',
+                decoration: InputDecoration(labelText: field['label']?.toString() ?? 'Letter Grade'),
+                items: const [DropdownMenuItem(value:'',child:Text('Not recorded')),...['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F'].map((grade)=>DropdownMenuItem(value:grade,child:Text(grade)))],
+                onChanged: (value) => update(() => values[field['id'].toString()] = value ?? ''),
+              )
             else TextField(
               controller: controllers[field['id']?.toString() ?? ''],
-              keyboardType: field['type'] == 'PERCENT' || field['type'] == 'NUMBER' ? const TextInputType.numberWithOptions(decimal:true) : TextInputType.text,
-              decoration: InputDecoration(labelText: '${field['label']}${field['required']==true?' *':''}'),
+              keyboardType: field['type'] == 'SCORE_1_10' ? TextInputType.number : field['type'] == 'PERCENT' || field['type'] == 'NUMBER' ? const TextInputType.numberWithOptions(decimal:true) : TextInputType.text,
+              decoration: InputDecoration(labelText: '${field['label']}${field['required']==true?' *':''}', hintText: field['type'] == 'SCORE_1_10' ? '1–10' : null),
             ),
           ],
         ]),
@@ -966,9 +973,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     if (save == true) {
       for (final field in fields) {
         final id = field['id']?.toString() ?? '';
-        if (field['type'] == 'CHECKBOX' || field['type'] == 'PASS_FAIL') continue;
+        if (field['type'] == 'CHECKBOX' || field['type'] == 'PASS_FAIL' || field['type'] == 'LETTER_GRADE') continue;
         final raw = controllers[id]?.text.trim() ?? '';
-        values[id] = raw.isEmpty ? null : (field['type'] == 'NUMBER' || field['type'] == 'PERCENT') ? (double.tryParse(raw) ?? raw) : raw;
+        values[id] = raw.isEmpty ? null : field['type'] == 'SCORE_1_10' ? (int.tryParse(raw) ?? raw) : (field['type'] == 'NUMBER' || field['type'] == 'PERCENT') ? (double.tryParse(raw) ?? raw) : raw;
       }
       setState(() => _busy = true);
       try {
