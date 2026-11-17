@@ -690,6 +690,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     if (config['writtenTestEnabled'] == true && (member.writtenScore == null || (writtenThreshold != null && member.writtenScore! < writtenThreshold))) issues.add('written test score needed');
     final ccfThreshold = (config['ccfPassPercent'] as num?)?.toDouble();
     if (config['ccfEnabled'] == true && (member.ccfScore == null || (ccfThreshold != null && member.ccfScore! < ccfThreshold))) issues.add('CCF score needed');
+    for (final field in detail.customFields.where((item) => item['required'] == true)) {
+      final id = field['id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      final value = member.customValues[id];
+      final isRequiredRosterCheckbox = field['appliesTo'] == 'ROSTER' &&
+          field['type'] == 'CHECKBOX' && value != true;
+      if (value == null || value == '' || isRequiredRosterCheckbox) {
+        final label = field['label']?.toString() ?? 'Student result';
+        issues.add('$label needed');
+      }
+    }
     return issues.join('; ');
   }
 
@@ -1129,7 +1140,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   child: SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () => Navigator.pop(sheetContext, hasMissingItems ? 'edit' : 'continue'),
+                      onPressed: () => Navigator.pop(
+                        sheetContext,
+                        hasMissingItems
+                            ? (memberIssues.isNotEmpty ? memberIssues.first : 'edit')
+                            : 'continue',
+                      ),
                       icon: Icon(
                         hasMissingItems
                             ? Icons.edit_note_rounded
@@ -1137,7 +1153,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                       ),
                       label: Text(
                         hasMissingItems
-                            ? 'Fill required information now'
+                            ? (memberIssues.isNotEmpty
+                                ? 'Enter student scores / results'
+                                : 'Complete training details')
                             : 'Review details & continue',
                       ),
                     ),
@@ -1438,9 +1456,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     ),
                     if (isEms) ...[
                       const SizedBox(height: 14),
-                      Text('EMS CE categories', style: Theme.of(dialogContext).textTheme.titleMedium),
+                      Text('Assign EMS CE hours by category', style: Theme.of(dialogContext).textTheme.titleMedium),
                       const SizedBox(height: 4),
-                      const Text('Allocate time-based credit (total cannot exceed class duration).'),
+                      const Text('Enter hours under the correct CE category. Use 0 for categories not covered; total credit cannot exceed class duration.'),
                       ...ceCategories.map((category) => Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: TextField(
