@@ -1672,11 +1672,11 @@ class ResponderRoadmapApi {
   }
 
   Future<DepartmentClassDetail> addManualTrainingSheetStudent(
-    String classId, {required String name, String email = '', String organization = ''}
+    String classId, {required String name, String email = '', String organization = '', String attendance = 'PRESENT'}
   ) async {
     await _request('POST',
       'classes/${Uri.encodeComponent(classId)}/roster/manual',
-      body: <String, dynamic>{'name': name.trim(), 'email': email.trim(), 'organization': organization.trim()});
+      body: <String, dynamic>{'name': name.trim(), 'email': email.trim(), 'organization': organization.trim(), 'attendance': attendance});
     return getClass(classId);
   }
 
