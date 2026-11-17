@@ -697,7 +697,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       final isRequiredRosterCheckbox = field['appliesTo'] == 'ROSTER' &&
           field['type'] == 'CHECKBOX' && value != true;
       if (value == null || value == '' || isRequiredRosterCheckbox) {
-        issues.add('\u0024{field['label'] ?? 'Student result'} needed');
+        final label = field['label']?.toString() ?? 'Student result';
+        issues.add('$label needed');
       }
     }
     return issues.join('; ');
