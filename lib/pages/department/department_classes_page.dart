@@ -1058,6 +1058,32 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               ]),
             ),
           ),
+          Card(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Class roster (${detail.roster.length})', style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                if (detail.roster.isEmpty)
+                  const Text('No students are on the roster yet.')
+                else
+                  for (final member in detail.roster)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: Text(member.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      subtitle: Text([
+                        member.attendance.replaceAll('_', ' '),
+                        if (member.writtenScore != null) 'Test ${member.writtenScore!.toStringAsFixed(1)}%',
+                        if (member.ccfScore != null) 'CCF ${member.ccfScore!.toStringAsFixed(1)}%',
+                        '${member.results.length} skill result${member.results.length == 1 ? '' : 's'}',
+                        'Result: ${member.finalResult.replaceAll('_', ' ')}',
+                      ].join(' · ')),
+                    ),
+              ]),
+            ),
+          ),
           if (hasMissingItems)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 6),
