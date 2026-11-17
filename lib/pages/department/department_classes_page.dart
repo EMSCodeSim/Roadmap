@@ -1920,10 +1920,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ]);
       }
     }
-    final ceSummary = detail.ceCredits
+    final ceRows = detail.ceCredits
         .where((item) => (item['hours'] as num?)?.toDouble() != null && (item['hours'] as num).toDouble() > 0)
-        .map((item) => '${item['category']}: ${(item['hours'] as num).toDouble().toStringAsFixed(2)} hr')
-        .join(' | ');
+        .map((item) => <String>[
+              item['category']?.toString() ?? 'Other',
+              (item['hours'] as num).toDouble().toStringAsFixed(2),
+            ])
+        .toList(growable: false);
+    final totalCeHours = detail.ceCredits.fold<double>(
+      0,
+      (sum, item) => sum + ((item['hours'] as num?)?.toDouble() ?? 0),
+    );
 
     pw.Widget line(String label, String value) => pw.Padding(
       padding: const pw.EdgeInsets.only(bottom: 4),
@@ -1962,7 +1969,22 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         line('Start', _recordDate(detail.startsAt)),
         line('Finish', _recordDate(detail.endsAt)),
         line('Training hours', detail.creditHours.toStringAsFixed(2)),
-        if (ceSummary.isNotEmpty) line('EMS CE credits', ceSummary),
+        if (ceRows.isNotEmpty) ...[
+          pw.SizedBox(height: 10),
+          pw.Text('EMS CE category breakdown', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 6),
+          pw.TableHelper.fromTextArray(
+            headers: const ['CE category', 'Hours'],
+            data: <List<String>>[
+              ...ceRows,
+              <String>['Total CE hours', totalCeHours.toStringAsFixed(2)],
+            ],
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            cellPadding: const pw.EdgeInsets.all(5),
+          ),
+        ],
         line('Status', detail.status),
         line('Instructor approval', _recordDate(detail.instructorApprovedAt)),
         line('RMS status', detail.rmsStatus.replaceAll('_', ' ')),
