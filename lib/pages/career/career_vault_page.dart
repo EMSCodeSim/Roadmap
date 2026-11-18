@@ -973,16 +973,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final highlights = _records.where((e) => e.highlight).length;
     final timelineEntries = _timelineEntries(app);
 
-    final requirementIds = <String>{};
-    if (roadmap != null) {
-      requirementIds.addAll(roadmap.included.map((e) => e.requirement.id));
-    }
-    final coveredRequirementIds = _records
-        .map((e) => e.relatedRequirementId)
-        .whereType<String>()
-        .where(requirementIds.contains)
-        .toSet();
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF09213D),
