@@ -12,6 +12,33 @@ class TrainingTimeCalculator {
     label: 'Default day/night: 06:00–18:00',
   );
 
+  static int roundMinutesToQuarterHour(int minutes) {
+    if (minutes <= 0) return 0;
+    return (minutes / 15).round() * 15;
+  }
+
+  static double quarterHoursFromMinutes(int minutes) {
+    return roundMinutesToQuarterHour(minutes) / 60.0;
+  }
+
+  static DayNightSplit roundDayNightSplitToQuarterHour(DayNightSplit split) {
+    final totalMinutes = roundMinutesToQuarterHour(split.totalMinutes);
+    if (split.totalMinutes <= 0 || totalMinutes <= 0) {
+      return const DayNightSplit(totalMinutes: 0, dayMinutes: 0, nightMinutes: 0);
+    }
+    final totalQuarters = totalMinutes ~/ 15;
+    final dayQuarters =
+        ((split.dayMinutes / split.totalMinutes) * totalQuarters)
+            .round()
+            .clamp(0, totalQuarters)
+            .toInt();
+    return DayNightSplit(
+      totalMinutes: totalMinutes,
+      dayMinutes: dayQuarters * 15,
+      nightMinutes: (totalQuarters - dayQuarters) * 15,
+    );
+  }
+
   static int? elapsedMinutes(DateTime startLocal, DateTime? endLocal) {
     if (endLocal == null) return null;
     final minutes = endLocal.difference(startLocal).inMinutes;
@@ -111,4 +138,8 @@ String formatMinutesAsHoursMinutes(int minutes) {
   if (h <= 0) return '${m}m';
   if (m == 0) return '${h}h';
   return '${h}h ${m}m';
+}
+
+String formatQuarterHoursFromMinutes(int minutes) {
+  return '${TrainingTimeCalculator.quarterHoursFromMinutes(minutes).toStringAsFixed(2)} hr';
 }
