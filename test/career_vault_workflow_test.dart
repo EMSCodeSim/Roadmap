@@ -58,6 +58,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(AlertDialog), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('EMT instructor course'),
+      250,
+    );
     expect(find.text('EMT instructor course'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
