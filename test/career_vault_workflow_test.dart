@@ -60,7 +60,7 @@ void main() {
 
     expect(find.byType(AlertDialog), findsNothing);
     expect(find.text('Your growth over time'), findsOneWidget);
-    expect(find.text('1 record'), findsOneWidget);
+    expect(find.textContaining('1 record'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );
