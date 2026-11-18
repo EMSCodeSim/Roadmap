@@ -9,6 +9,7 @@ import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_state.dart';
 
 class CareerVaultPage extends StatefulWidget {
@@ -26,11 +27,14 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
   List<CareerRecord> _records = <CareerRecord>[];
   CareerRecordType? _filter;
   bool _loading = true;
+  List<DepartmentClassDetail> _departmentTraining = const [];
+  bool _departmentLoading = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadDepartmentTraining();
   }
 
   @override
@@ -60,6 +64,43 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
           initialTags: prefill.tags,
         );
       });
+    }
+  }
+
+  Future<void> _loadDepartmentTraining() async {
+    if (_departmentLoading) return;
+    setState(() => _departmentLoading = true);
+    try {
+      final api = ResponderRoadmapApi();
+      final session = await api.currentSession();
+      if (!session.hasDepartment || session.membershipId == null) return;
+      final summaries = await api.listClasses();
+      final approved = <DepartmentClassDetail>[];
+      for (final summary in summaries) {
+        if (summary.id.isEmpty) continue;
+        try {
+          final detail = await api.getTrainingSheet(summary.id);
+          final isMember = detail.roster.any((student) =>
+              student.membershipId == session.membershipId &&
+              student.attendance.toUpperCase() == 'PRESENT');
+          // Only show final, instructor-approved and RMS-entered records.
+          // Never infer an individual PASS from a class-level approval.
+          if (isMember &&
+              detail.instructorApprovedAt != null &&
+              detail.rmsEnteredAt != null &&
+              detail.startsAt != null) {
+            approved.add(detail);
+          }
+        } catch (_) {
+          // One inaccessible training sheet must not hide other records.
+        }
+      }
+      approved.sort((a, b) => b.startsAt!.compareTo(a.startsAt!));
+      if (mounted) setState(() => _departmentTraining = approved);
+    } catch (_) {
+      // Personal career history remains available when offline or signed out.
+    } finally {
+      if (mounted) setState(() => _departmentLoading = false);
     }
   }
 
@@ -923,6 +964,29 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
+                if (_departmentLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: LinearProgressIndicator(),
+                  ),
+                if (_departmentTraining.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12, bottom: 8),
+                    child: Text('Verified department training',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  ..._departmentTraining.map((training) => Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.verified_outlined),
+                      title: Text(training.title),
+                      subtitle: Text(
+                        '${training.startsAt!.year}-${training.startsAt!.month.toString().padLeft(2, '0')}-${training.startsAt!.day.toString().padLeft(2, '0')} · ${training.trainingCategory} · ${training.creditHours} hours · Department record',
+                      ),
+                      trailing: const Icon(Icons.lock_outline, size: 18),
+                    ),
+                  )),
+                  const SizedBox(height: 12),
+                ],
                 if (_filteredRecords.isEmpty)
                   _EmptyState(
                     hasRecords: _records.isNotEmpty,
