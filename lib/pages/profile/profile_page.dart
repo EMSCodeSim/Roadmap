@@ -105,7 +105,7 @@ class ProfilePage extends StatelessWidget {
               icon: Icons.route_rounded,
               title: 'My Roadmap',
               subtitle: 'Goals and next steps',
-              onTap: () => context.go(AppRoutes.myPath),
+              onTap: () => context.go(AppRoutes.careerGoals),
             ),
             const SizedBox(height: 10),
             _ProfileLinkCard(

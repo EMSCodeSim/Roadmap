@@ -103,7 +103,7 @@ class _CareerHubPageState extends State<CareerHubPage> {
     switch (recommendation.kind) {
       case AdvancementActionKind.chooseGoal:
       case AdvancementActionKind.workRoadmap:
-        context.go(AppRoutes.myPath);
+        context.go(AppRoutes.careerGoals);
         return;
       case AdvancementActionKind.documentRequirement:
         final status = analysis.requirementStatuses
@@ -387,7 +387,7 @@ class _CareerHubPageState extends State<CareerHubPage> {
                 children: [
                   _ReadinessHero(
                     analysis: analysis,
-                    onChangeGoal: () => context.go(AppRoutes.myPath),
+                    onChangeGoal: () => context.go(AppRoutes.careerGoals),
                   ),
                   const SizedBox(height: 12),
                   _NextMoveCard(
@@ -455,7 +455,7 @@ class _CareerHubPageState extends State<CareerHubPage> {
                     children: [
                       const SizedBox(height: 8),
                       _QuickNavigation(
-                        onRoadmap: () => context.go(AppRoutes.myPath),
+                        onRoadmap: () => context.go(AppRoutes.careerGoals),
                         onVault: _openVault,
                         onBrief: () => _showBrief(app),
                         onCerts: () => context.go(AppRoutes.certifications),
@@ -478,7 +478,7 @@ class _CareerHubPageState extends State<CareerHubPage> {
                       text:
                           'Once a target is selected, Responder Roadmap can compare your roadmap with your Career Record and prioritize missing proof.',
                       actionLabel: 'Choose roadmap',
-                      onAction: () => context.go(AppRoutes.myPath),
+                      onAction: () => context.go(AppRoutes.careerGoals),
                     )
                   else if (analysis.evidenceGaps.isEmpty)
                     const _PositiveCard(

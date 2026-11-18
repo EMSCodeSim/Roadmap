@@ -9,11 +9,19 @@ import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_state.dart';
 
 class CareerVaultPage extends StatefulWidget {
   final EvidencePrefill? prefill;
-  const CareerVaultPage({super.key, this.prefill});
+  final bool openEditorOnLoad;
+  final ResponderRoadmapApi? api;
+  const CareerVaultPage({
+    super.key,
+    this.prefill,
+    this.openEditorOnLoad = false,
+    this.api,
+  });
 
   @override
   State<CareerVaultPage> createState() => _CareerVaultPageState();
@@ -26,11 +34,14 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
   List<CareerRecord> _records = <CareerRecord>[];
   CareerRecordType? _filter;
   bool _loading = true;
+  List<DepartmentClassDetail> _departmentTraining = const [];
+  bool _departmentLoading = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadDepartmentTraining();
   }
 
   @override
@@ -48,18 +59,59 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     });
 
     final prefill = widget.prefill;
-    if (prefill != null && mounted) {
+    if ((prefill != null || widget.openEditorOnLoad) && mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _openEditor(
-          initialType: CareerRecordType.taskBookEvidence,
-          initialTitle: prefill.title,
-          initialCategory: prefill.category,
-          initialRelatedGoalId: prefill.relatedGoalId,
-          initialRelatedRequirementId: prefill.relatedRequirementId,
-          initialTags: prefill.tags,
-        );
+        if (prefill != null) {
+          _openEditor(
+            initialType: CareerRecordType.taskBookEvidence,
+            initialTitle: prefill.title,
+            initialCategory: prefill.category,
+            initialRelatedGoalId: prefill.relatedGoalId,
+            initialRelatedRequirementId: prefill.relatedRequirementId,
+            initialTags: prefill.tags,
+          );
+        } else {
+          _openEditor();
+        }
       });
+    }
+  }
+
+  Future<void> _loadDepartmentTraining() async {
+    if (_departmentLoading) return;
+    setState(() => _departmentLoading = true);
+    try {
+      final api = widget.api ?? ResponderRoadmapApi();
+      final session = await api.currentSession();
+      if (!session.hasDepartment || session.membershipId == null) return;
+      final summaries = await api.listClasses();
+      final approved = <DepartmentClassDetail>[];
+      for (final summary in summaries) {
+        if (summary.id.isEmpty) continue;
+        try {
+          final detail = await api.getTrainingSheet(summary.id);
+          final isMember = detail.roster.any((student) =>
+              student.membershipId == session.membershipId &&
+              student.attendance.toUpperCase() == 'PRESENT');
+          // Only show final, instructor-approved and RMS-entered records.
+          // Never infer an individual PASS from a class-level approval.
+          if (isMember &&
+              detail.instructorApprovedAt != null &&
+              detail.rmsEnteredAt != null &&
+              detail.startsAt != null) {
+            approved.add(detail);
+          }
+        } catch (_) {
+          // One inaccessible training sheet must not hide other records.
+        }
+      }
+      approved.sort((a, b) => b.startsAt!.compareTo(a.startsAt!));
+      if (mounted) setState(() => _departmentTraining = approved);
+    } catch (_) {
+      // Personal career history remains available when offline or signed out.
+    } finally {
+      if (mounted) setState(() => _departmentLoading = false);
     }
   }
 
@@ -121,7 +173,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         record.date.year.toString(),
       ].join(' ').toLowerCase();
       return haystack.contains(q);
-    }).toList();
+    }).toList()..sort((a, b) => b.date.compareTo(a.date));
   }
 
   Future<void> _openEditor({
@@ -148,6 +200,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     var selectedRequirementId =
         existing?.relatedRequirementId ?? (initialRelatedRequirementId ?? '');
     var highlight = existing?.highlight ?? false;
+    var showAdvanced = existing != null;
 
     final title = TextEditingController(
       text: existing?.title ?? (initialTitle ?? ''),
@@ -171,14 +224,13 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       text: existing?.tags.join(', ') ?? (initialTags?.join(', ') ?? ''),
     );
     final formKey = GlobalKey<FormState>();
-
     final result = await showDialog<CareerRecord>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           return AlertDialog(
             title: Text(
-              existing == null ? 'Add career evidence' : 'Edit career evidence',
+              existing == null ? 'Add career record' : 'Edit career record',
             ),
             content: SizedBox(
               width: 620,
@@ -218,10 +270,11 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: const ValueKey('career_record_title'),
                         controller: title,
                         autofocus: existing == null,
                         decoration: const InputDecoration(
-                          labelText: 'What did you do?',
+                          labelText: 'Title *',
                           hintText:
                               'Led first-due company drill, completed FO1 module, received award…',
                         ),
@@ -237,7 +290,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                             child: TextFormField(
                               controller: category,
                               decoration: const InputDecoration(
-                                labelText: 'Category / skill area',
+                                labelText: 'Category (optional)',
                                 hintText: 'Leadership, pumps, EMS, hazmat…',
                               ),
                             ),
@@ -266,23 +319,35 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
-                        controller: role,
-                        decoration: const InputDecoration(
-                          labelText: 'Your role / assignment',
-                          hintText:
-                              'Acting officer, nozzle firefighter, instructor, project lead…',
-                        ),
-                      ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: summary,
                         minLines: 2,
                         maxLines: 4,
                         decoration: const InputDecoration(
-                          labelText: 'What happened / what you did',
+                          labelText: 'Description (optional)',
                           hintText:
                               'Write the context and your actions so you can recall the example later.',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        onPressed: () => setDialogState(
+                          () => showAdvanced = !showAdvanced,
+                        ),
+                        icon: Icon(showAdvanced
+                            ? Icons.expand_less : Icons.expand_more),
+                        label: Text(showAdvanced
+                            ? 'Hide additional details'
+                            : 'Add hours, evidence, and more details'),
+                      ),
+                      if (showAdvanced) ...[
+                      TextFormField(
+                        controller: role,
+                        decoration: const InputDecoration(
+                          labelText: 'Your role / assignment',
+                          hintText:
+                              'Acting officer, nozzle firefighter, instructor, project lead…',
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -389,6 +454,8 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                           'Prioritize this record in promotion, resume, and interview summaries.',
                         ),
                       ),
+
+                      ],
                     ],
                   ),
                 ),
@@ -457,6 +524,11 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       ),
     );
 
+    // Persist before cleanup, then leave the controllers alive through the
+    // dialog's reverse transition so its form fields are not listening to
+    // disposed controllers while the route animates out.
+    if (result != null) await _saveRecord(result);
+    await Future<void>.delayed(const Duration(milliseconds: 250));
     title.dispose();
     category.dispose();
     role.dispose();
@@ -467,7 +539,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     repetitions.dispose();
     tags.dispose();
 
-    if (result != null) await _saveRecord(result);
   }
 
   Future<void> _showCareerBrief(AppState app) async {
@@ -706,17 +777,27 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFF09213D),
+        foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         leading: const AppBackButton.toAdvance(),
-
-        title: const Text('Career Vault'),
+        title: const Text(
+          'Responder Roadmap',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
         actions: [
+          IconButton(
+            tooltip: 'Career Goals',
+            onPressed: () => context.go(AppRoutes.careerGoals),
+            icon: const Icon(Icons.flag_outlined),
+          ),
           IconButton(
             tooltip: 'Career advancement brief',
             onPressed: () => _showCareerBrief(app),
             icon: const Icon(Icons.description_outlined),
           ),
           IconButton(
-            tooltip: 'Add career evidence',
+            tooltip: 'Add career record',
             onPressed: () => _openEditor(),
             icon: const Icon(Icons.add_circle_outline),
           ),
@@ -755,7 +836,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Build the record your future self will need',
+                                    'Your career, all in one place',
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleLarge
@@ -763,7 +844,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Keep skills, calls, training, leadership work, awards, projects, teaching, and task-book evidence tied to your advancement path.',
+                                    'Collect years of training, qualifications, experience, and accomplishments in one place.',
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodyMedium
@@ -820,7 +901,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                               child: FilledButton.icon(
                                 onPressed: () => _openEditor(),
                                 icon: const Icon(Icons.add),
-                                label: const Text('Add evidence'),
+                                label: const Text('Add career record'),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -838,9 +919,21 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                   ),
                 ),
                 const SizedBox(height: 14),
+                Card(
+                  color: const Color(0xFFF1F5FA),
+                  child: ListTile(
+                    leading: const Icon(Icons.verified_user_outlined,
+                        color: Color(0xFF09213D)),
+                    title: const Text('Personal career history'),
+                    subtitle: const Text(
+                      'Your own entries remain editable. Approved department '
+                      'training is displayed as verified, read-only evidence.',
+                    ),
+                  ),
+                ),
                 const _SectionTitle(
                   title: 'Career snapshot',
-                  subtitle: 'A long-term view across roles and departments.',
+                  subtitle: 'Your personal records at a glance.',
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -869,6 +962,118 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 20),
+                const _SectionTitle(
+                  title: 'My Career Timeline',
+                  subtitle:
+                      'Your professional history in one place.',
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'Search career history',
+                    suffixIcon: _searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                            icon: const Icon(Icons.clear),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 42,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: FilterChip(
+                          label: const Text('All'),
+                          selected: _filter == null,
+                          onSelected: (_) => setState(() => _filter = null),
+                        ),
+                      ),
+                      ...CareerRecordType.values.map(
+                        (type) => Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: FilterChip(
+                            label: Text(type.shortLabel),
+                            selected: _filter == type,
+                            onSelected: (_) => setState(
+                              () => _filter = _filter == type ? null : type,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (_departmentLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: LinearProgressIndicator(),
+                  ),
+                if (_departmentTraining.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12, bottom: 8),
+                    child: Text('Verified department training',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  ..._departmentTraining.map((training) => Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.verified_outlined),
+                      title: Text(training.title),
+                      subtitle: Text(
+                        '${training.startsAt!.year}-${training.startsAt!.month.toString().padLeft(2, '0')}-${training.startsAt!.day.toString().padLeft(2, '0')} · ${training.trainingCategory} · ${training.creditHours} hours · Department record',
+                      ),
+                      trailing: const Icon(Icons.lock_outline, size: 18),
+                    ),
+                  )),
+                  const SizedBox(height: 12),
+                ],
+                if (_filteredRecords.isEmpty)
+                  _EmptyState(
+                    hasRecords: _records.isNotEmpty,
+                    onAdd: () => _openEditor(),
+                  )
+                else
+                  ..._filteredRecords.asMap().entries.expand((entry) {
+                    final index = entry.key;
+                    final record = entry.value;
+                    final startsYear = index == 0 ||
+                        _filteredRecords[index - 1].date.year != record.date.year;
+                    return <Widget>[
+                      if (startsYear)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
+                          child: Text(
+                            '${record.date.year}',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _RecordCard(
+                          record: record,
+                          requirementName: _requirementName(
+                            app,
+                            record.relatedRequirementId,
+                          ),
+                          onEdit: () => _openEditor(existing: record),
+                          onDelete: () => _deleteRecord(record),
+                        ),
+                      ),
+                    ];
+                  }),
                 const SizedBox(height: 18),
                 const _SectionTitle(
                   title: 'Quick capture',
@@ -961,80 +1166,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                const _SectionTitle(
-                  title: 'Career timeline',
-                  subtitle:
-                      'Search years of evidence by skill, project, role, tag, or year.',
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _searchController,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: 'Search career history',
-                    suffixIcon: _searchController.text.isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.clear),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 42,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: FilterChip(
-                          label: const Text('All'),
-                          selected: _filter == null,
-                          onSelected: (_) => setState(() => _filter = null),
-                        ),
-                      ),
-                      ...CareerRecordType.values.map(
-                        (type) => Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: FilterChip(
-                            label: Text(type.shortLabel),
-                            selected: _filter == type,
-                            onSelected: (_) => setState(
-                              () => _filter = _filter == type ? null : type,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                if (_filteredRecords.isEmpty)
-                  _EmptyState(
-                    hasRecords: _records.isNotEmpty,
-                    onAdd: () => _openEditor(),
-                  )
-                else
-                  ..._filteredRecords.map(
-                    (record) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _RecordCard(
-                        record: record,
-                        requirementName: _requirementName(
-                          app,
-                          record.relatedRequirementId,
-                        ),
-                        onEdit: () => _openEditor(existing: record),
-                        onDelete: () => _deleteRecord(record),
-                      ),
-                    ),
-                  ),
               ],
             ),
     );

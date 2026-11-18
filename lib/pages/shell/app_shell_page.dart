@@ -9,7 +9,7 @@ import 'package:firepath/state/department_inbox_controller.dart';
 ///
 /// Keep the navigation focused on the responder's core jobs:
 /// - Home: what needs attention now
-/// - My Roadmap: personal progression and next requirements
+/// - Timeline: lifelong career history, with goals as a secondary tool
 /// - Record: durable personal evidence and activity history
 /// - Credentials: licenses/certifications and expiration upkeep
 /// - Department: official assignments, evaluations, and department work
@@ -31,6 +31,7 @@ class AppShellPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    const roadmapRed = Color(0xFFC8102E);
     final inbox = context.watch<DepartmentInboxController>();
     final unreadLabel = inbox.unreadCount > 99 ? '99+' : '${inbox.unreadCount}';
     final isTrainingSheetDetail = GoRouterState.of(context)
@@ -64,6 +65,8 @@ class AppShellPage extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.only(bottom: 2),
             child: NavigationBar(
+              backgroundColor: cs.surface,
+              indicatorColor: roadmapRed.withValues(alpha: 0.10),
               selectedIndex: navigationShell.currentIndex,
               onDestinationSelected: _go,
               height: 64,
@@ -75,9 +78,9 @@ class AppShellPage extends StatelessWidget {
                   label: 'Home',
                 ),
                 const NavigationDestination(
-                  icon: Icon(Icons.route_outlined),
-                  selectedIcon: Icon(Icons.route_rounded),
-                  label: 'My Roadmap',
+                  icon: Icon(Icons.timeline_outlined),
+                  selectedIcon: Icon(Icons.timeline_rounded),
+                  label: 'Timeline',
                 ),
                 const NavigationDestination(
                   icon: Icon(Icons.folder_copy_outlined),

@@ -11,7 +11,7 @@ import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
 
-/// A compact daily overview. Long-term personal development lives in My Roadmap.
+/// A compact daily overview. Lifelong history lives in Career Timeline.
 class VisualHomePage extends StatefulWidget {
   const VisualHomePage({super.key});
 
@@ -44,6 +44,8 @@ class _VisualHomePageState extends State<VisualHomePage> {
     final app = context.watch<AppState>();
     final department = context.watch<DepartmentInboxController>();
     final colors = Theme.of(context).colorScheme;
+    const navy = Color(0xFF09213D);
+    const red = Color(0xFFC8102E);
     final roadmap = app.roadmap;
     final nextStep = roadmap?.nextStep;
     final credentials = CertificationUrgency.urgent(
@@ -56,6 +58,9 @@ class _VisualHomePageState extends State<VisualHomePage> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: navy,
+        foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         title: const FirefighterRoadmapWordmark(),
         actions: [
           IconButton(
@@ -83,6 +88,57 @@ class _VisualHomePageState extends State<VisualHomePage> {
               style: TextStyle(color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
+            Card(
+              color: navy,
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('YOUR CAREER',
+                        style: TextStyle(color: Colors.white70,
+                            fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+                    const SizedBox(height: 8),
+                    Text(
+                      _loadingRecords
+                          ? 'Loading your career history…'
+                          : '${_records.length} personal career records',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Colors.white, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'Training, experience and accomplishments — all in one place.',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                            backgroundColor: red, foregroundColor: Colors.white),
+                        onPressed: () => context.push(
+                          '${AppRoutes.careerEvidence}?create=1',
+                        ),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Career Record'),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => context.go(AppRoutes.growth),
+                        child: const Text('View Career Timeline',
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
             _sectionTitle(context, 'Next action'),
             Card(
               margin: EdgeInsets.zero,
@@ -103,14 +159,14 @@ class _VisualHomePageState extends State<VisualHomePage> {
                 ),
                 subtitle: Text(
                   roadmap == null
-                      ? 'Set a goal in My Roadmap to get a recommended next step.'
+                      ? 'Set an optional career goal to see a recommended next step.'
                       : nextStep == null
                           ? 'Review your personal growth plan.'
                           : 'Recommended step in your personal plan.',
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => context.go(
-                  roadmap == null ? AppRoutes.goalSetup : AppRoutes.myPath,
+                  roadmap == null ? AppRoutes.goalSetup : AppRoutes.careerGoals,
                 ),
               ),
             ),
@@ -189,9 +245,9 @@ class _VisualHomePageState extends State<VisualHomePage> {
             ),
             const SizedBox(height: 20),
             OutlinedButton.icon(
-              onPressed: () => context.go(AppRoutes.myPath),
+              onPressed: () => context.go(AppRoutes.careerGoals),
               icon: const Icon(Icons.route_rounded),
-              label: const Text('Open My Roadmap'),
+              label: const Text('Open Career Goals'),
             ),
           ],
         ),

@@ -140,7 +140,7 @@ class _GrowthOverviewPageState extends State<GrowthOverviewPage> {
       case AdvancementActionKind.chooseGoal:
         context.push(AppRoutes.goalSetup);
       case AdvancementActionKind.workRoadmap:
-        context.go(AppRoutes.myPath);
+        context.go(AppRoutes.careerGoals);
       case AdvancementActionKind.documentRequirement:
       case AdvancementActionKind.buildCompetency:
         context.push(AppRoutes.growthDetails);

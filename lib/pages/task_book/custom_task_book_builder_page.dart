@@ -299,7 +299,7 @@ class _CustomTaskBookBuilderScaffoldState extends State<_CustomTaskBookBuilderSc
                   onTap: () async {
                     context.pop();
                     await context.read<AppState>().taskBookController.archiveCustomTaskBook(taskBookId: book.id, archived: !book.archived);
-                    if (mounted) context.go(AppRoutes.myPath);
+                    if (mounted) context.go(AppRoutes.careerGoals);
                   },
                 ),
               ],

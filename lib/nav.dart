@@ -28,7 +28,6 @@ import 'package:firepath/pages/department/department_tab_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/pages/department/department_settings_page.dart';
 import 'package:firepath/pages/department/department_class_qr_scanner_page.dart';
-import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/competency_map_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_v2_page.dart';
@@ -256,7 +255,15 @@ class AppRouter {
                 path: AppRoutes.myPath,
                 name: 'my_path',
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: TaskBookEntryPage()),
+                    const NoTransitionPage(child: CareerVaultPage()),
+                routes: [
+                  GoRoute(
+                    path: 'goals',
+                    name: 'career_goals',
+                    pageBuilder: (context, state) =>
+                        const MaterialPage(child: TaskBookEntryPage()),
+                  ),
+                ],
               ),
             ],
           ),
@@ -336,7 +343,7 @@ class AppRouter {
         path: AppRoutes.growth,
         name: 'growth',
         pageBuilder: (context, state) =>
-            const MaterialPage(child: GrowthOverviewPage()),
+            const MaterialPage(child: CareerVaultPage()),
       ),
 
       GoRoute(path: '/career', redirect: (context, state) => AppRoutes.growth),
@@ -462,7 +469,12 @@ class AppRouter {
         path: AppRoutes.careerEvidence,
         name: 'career_evidence',
         pageBuilder: (context, state) => MaterialPage(
-          child: CareerVaultPage(prefill: state.extra as EvidencePrefill?),
+          child: CareerVaultPage(
+            prefill: state.extra is EvidencePrefill
+                ? state.extra as EvidencePrefill
+                : null,
+            openEditorOnLoad: state.uri.queryParameters['create'] == '1',
+          ),
         ),
       ),
       GoRoute(
@@ -601,6 +613,7 @@ class AppRoutes {
 
   static const String home = '/home';
   static const String myPath = '/path';
+  static const String careerGoals = '/path/goals';
   static const String myPathLegacy = '/task-book/customize';
   static const String training = '/training';
   static const String profile = '/profile';

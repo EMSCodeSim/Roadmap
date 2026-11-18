@@ -250,6 +250,8 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
     final app = context.watch<AppState>();
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    const navy = Color(0xFF09213D);
+    const red = Color(0xFFC8102E);
     final records = _personalRecords;
     final training = _trainingRecords;
     final certs = app.certifications;
@@ -259,7 +261,11 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Records'),
+        backgroundColor: navy,
+        foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        title: const Text('My Records',
+            style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           IconButton(
             tooltip: 'Export or print records',
@@ -285,6 +291,46 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                 style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 14),
+              Card(
+                margin: EdgeInsets.zero,
+                color: navy,
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('YOUR PERSONAL RECORDS',
+                          style: TextStyle(color: Colors.white70,
+                              fontWeight: FontWeight.w700, letterSpacing: 1)),
+                      const SizedBox(height: 8),
+                      Text(
+                        _loading ? 'Loading records…'
+                            : '${records.length} saved activities',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                            color: Colors.white, fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Quick logs, training, credentials and career evidence.',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                              backgroundColor: red,
+                              foregroundColor: Colors.white),
+                          onPressed: () => QuickLogLauncher.open(context),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Quick Add Record'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               _QuickActionsRow(
                 onQuickAdd: () => QuickLogLauncher.open(context),
                 onOpenCertificates: () => context.push(AppRoutes.certifications),
