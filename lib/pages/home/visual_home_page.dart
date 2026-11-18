@@ -52,7 +52,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
     final nextStep = roadmap?.nextStep;
     final hasDepartment = appMode.departmentLink != null;
     final firstRecordQuery =
-        _records.isEmpty ? '?create=1&first=1' : '?create=1';
+        !_loadingRecords && _records.isEmpty ? '?create=1&first=1' : '?create=1';
     final credentials = CertificationUrgency.urgent(
       app.certifications,
       withinDays: 90,
