@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firepath/pages/home/visual_home_page.dart';
+import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
@@ -46,6 +47,9 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
+            ChangeNotifierProvider<AppModeController>(
+              create: (_) => AppModeController(),
+            ),
             ChangeNotifierProvider<AppState>.value(value: app),
             ChangeNotifierProvider<DepartmentInboxController>.value(
               value: department,
@@ -56,16 +60,22 @@ void main() {
       );
       // Avoid waiting indefinitely for progress indicators and asynchronous sync.
       await tester.pump(const Duration(milliseconds: 300));
-
       expect(find.text('Today'), findsOneWidget);
       expect(find.text('YOUR CAREER'), findsOneWidget);
-      expect(find.text('Add Career Record'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              (widget.data == 'Add my first record' ||
+                  widget.data == 'Add Career Record'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Next action'), findsOneWidget);
       expect(find.text('Credentials'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Unfinished records'), 200);
       expect(find.text('Unfinished records'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Department attention'), 200);
-      expect(find.text('Department attention'), findsOneWidget);
+      expect(find.text('Department attention'), findsNothing);
       await tester.scrollUntilVisible(find.text('Open Career Goals'), 200);
       expect(find.text('Open Career Goals'), findsOneWidget);
       expect(find.text('Quick actions'), findsNothing);

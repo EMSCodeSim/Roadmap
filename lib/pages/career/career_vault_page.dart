@@ -12,14 +12,18 @@ import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_state.dart';
 
+enum _FirstRecordChoice { training, certification, experience, accomplishment }
+
 class CareerVaultPage extends StatefulWidget {
   final EvidencePrefill? prefill;
   final bool openEditorOnLoad;
+  final bool showFirstRecordPicker;
   final ResponderRoadmapApi? api;
   const CareerVaultPage({
     super.key,
     this.prefill,
     this.openEditorOnLoad = false,
+    this.showFirstRecordPicker = false,
     this.api,
   });
 
@@ -72,9 +76,101 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
             initialTags: prefill.tags,
           );
         } else {
-          _openEditor();
+          if (widget.showFirstRecordPicker) {
+            _showFirstRecordPicker();
+          } else {
+            _openEditor();
+          }
         }
       });
+    }
+  }
+
+  Future<void> _showFirstRecordPicker() async {
+    final choice = await showModalBottomSheet<_FirstRecordChoice>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final cs = Theme.of(sheetContext).colorScheme;
+        final textTheme = Theme.of(sheetContext).textTheme;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'What would you like to add?',
+                  style: textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Choose one to get a form started. You can add details later.',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _FirstRecordOption(
+                  icon: Icons.school_outlined,
+                  title: 'Training or class',
+                  detail: 'Course, drill, CE, or skill practice',
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _FirstRecordChoice.training,
+                  ),
+                ),
+                _FirstRecordOption(
+                  icon: Icons.verified_outlined,
+                  title: 'Certification or qualification',
+                  detail: 'EMT, paramedic, fire, or other credential',
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _FirstRecordChoice.certification,
+                  ),
+                ),
+                _FirstRecordOption(
+                  icon: Icons.local_fire_department_outlined,
+                  title: 'Experience or assignment',
+                  detail: 'Response experience, ride time, or acting role',
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _FirstRecordChoice.experience,
+                  ),
+                ),
+                _FirstRecordOption(
+                  icon: Icons.workspace_premium_outlined,
+                  title: 'Accomplishment or leadership',
+                  detail: 'Award, mentoring, project, or milestone',
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _FirstRecordChoice.accomplishment,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (!mounted || choice == null) return;
+
+    switch (choice) {
+      case _FirstRecordChoice.training:
+        await _openEditor(initialType: CareerRecordType.training);
+        return;
+      case _FirstRecordChoice.certification:
+        await context.push(AppRoutes.certificationAdd);
+        return;
+      case _FirstRecordChoice.experience:
+        await _openEditor(initialType: CareerRecordType.operationalExperience);
+        return;
+      case _FirstRecordChoice.accomplishment:
+        await _openEditor(initialType: CareerRecordType.achievement);
+        return;
     }
   }
 
@@ -230,7 +326,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         builder: (dialogContext, setDialogState) {
           return AlertDialog(
             title: Text(
-              existing == null ? 'Add career record' : 'Edit career record',
+              existing == null ? _editorTitleFor(type) : 'Edit career record',
             ),
             content: SizedBox(
               width: 620,
@@ -242,7 +338,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Capture enough context that this still makes sense years from now. Avoid patient names, addresses, DOBs, or other identifying information.',
+                        _editorGuidanceFor(type),
                         style: Theme.of(dialogContext).textTheme.bodySmall
                             ?.copyWith(
                               color: Theme.of(
@@ -1285,6 +1381,32 @@ class _QuickAdd extends StatelessWidget {
   }
 }
 
+class _FirstRecordOption extends StatelessWidget {
+  const _FirstRecordOption({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(child: Icon(icon)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: Text(detail),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: onTap,
+    );
+  }
+}
+
 class _RecordCard extends StatelessWidget {
   final CareerRecord record;
   final String? requirementName;
@@ -1516,6 +1638,39 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
+
+String _editorTitleFor(CareerRecordType type) => switch (type) {
+  CareerRecordType.operationalExperience => 'Add experience record',
+  CareerRecordType.skill => 'Add skill or competency',
+  CareerRecordType.training => 'Add training or class',
+  CareerRecordType.achievement => 'Add accomplishment',
+  CareerRecordType.leadership => 'Add leadership record',
+  CareerRecordType.teaching => 'Add teaching or mentoring record',
+  CareerRecordType.project => 'Add project record',
+  CareerRecordType.education => 'Add education record',
+  CareerRecordType.taskBookEvidence => 'Add task book evidence',
+};
+
+String _editorGuidanceFor(CareerRecordType type) => switch (type) {
+  CareerRecordType.operationalExperience =>
+    'Describe the call, ride time, or assignment. Do not include patient names, addresses, dates of birth, or other identifying information.',
+  CareerRecordType.skill =>
+    'Capture a skill or competency you practiced or demonstrated. Add the date and useful context.',
+  CareerRecordType.training =>
+    'Record a class, drill, course, or continuing education. Add hours and a document reference when you have them.',
+  CareerRecordType.achievement =>
+    'Describe the accomplishment, award, or milestone and why it mattered.',
+  CareerRecordType.leadership =>
+    'Capture a leadership role, acting assignment, or responsibility and what you accomplished.',
+  CareerRecordType.teaching =>
+    'Record instruction, mentoring, or evaluation work and who it supported without adding private details.',
+  CareerRecordType.project =>
+    'Describe the project or committee work, your role, and the result.',
+  CareerRecordType.education =>
+    'Record a degree, course of study, or other formal education.',
+  CareerRecordType.taskBookEvidence =>
+    'Add the performance evidence for this task book item. Avoid patient identifying information.',
+};
 
 IconData _iconFor(CareerRecordType type) => switch (type) {
   CareerRecordType.operationalExperience =>

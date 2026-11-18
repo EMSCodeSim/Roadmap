@@ -7,6 +7,7 @@ import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/career_inbox.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/certification_urgency.dart';
+import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
@@ -42,12 +43,16 @@ class _VisualHomePageState extends State<VisualHomePage> {
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final appMode = context.watch<AppModeController>();
     final department = context.watch<DepartmentInboxController>();
     final colors = Theme.of(context).colorScheme;
     const navy = Color(0xFF09213D);
     const red = Color(0xFFC8102E);
     final roadmap = app.roadmap;
     final nextStep = roadmap?.nextStep;
+    final hasDepartment = appMode.departmentLink != null;
+    final firstRecordQuery =
+        !_loadingRecords && _records.isEmpty ? '?create=1&first=1' : '?create=1';
     final credentials = CertificationUrgency.urgent(
       app.certifications,
       withinDays: 90,
@@ -103,7 +108,9 @@ class _VisualHomePageState extends State<VisualHomePage> {
                     Text(
                       _loadingRecords
                           ? 'Loading your career history…'
-                          : '${_records.length} personal career records',
+                          : _records.isEmpty
+                              ? 'Your record is ready to build'
+                              : '${_records.length} personal career records',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Colors.white, fontWeight: FontWeight.w800),
                     ),
@@ -112,6 +119,13 @@ class _VisualHomePageState extends State<VisualHomePage> {
                       'Training, experience and accomplishments — all in one place.',
                       style: TextStyle(color: Colors.white70),
                     ),
+                    if (!_loadingRecords && _records.isEmpty) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Start with a certification, recent class, experience, or accomplishment. You can add older records anytime.',
+                        style: TextStyle(color: Colors.white70, height: 1.4),
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     SizedBox(
                       width: double.infinity,
@@ -119,10 +133,14 @@ class _VisualHomePageState extends State<VisualHomePage> {
                         style: FilledButton.styleFrom(
                             backgroundColor: red, foregroundColor: Colors.white),
                         onPressed: () => context.push(
-                          '${AppRoutes.careerEvidence}?create=1',
+                          '${AppRoutes.careerEvidence}$firstRecordQuery',
                         ),
                         icon: const Icon(Icons.add),
-                        label: const Text('Add Career Record'),
+                        label: Text(
+                          !_loadingRecords && _records.isEmpty
+                              ? 'Add my first record'
+                              : 'Add Career Record',
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -153,13 +171,13 @@ class _VisualHomePageState extends State<VisualHomePage> {
                 title: Text(
                   nextStep?.requirement.name ??
                       (roadmap == null
-                          ? 'Choose a career goal'
+                          ? 'Set a career goal (optional)'
                           : 'No immediate roadmap step'),
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 subtitle: Text(
                   roadmap == null
-                      ? 'Set an optional career goal to see a recommended next step.'
+                      ? 'Your personal record works without a goal. Add one later for suggested next steps.'
                       : nextStep == null
                           ? 'Review your personal growth plan.'
                           : 'Recommended step in your personal plan.',
@@ -226,23 +244,25 @@ class _VisualHomePageState extends State<VisualHomePage> {
                       : followUps.first.title,
               onTap: () => context.go(AppRoutes.training),
             ),
-            const SizedBox(height: 16),
-            _sectionTitle(
-              context,
-              'Department attention',
-              actionLabel: 'Open',
-              onAction: () => context.go(AppRoutes.department),
-            ),
-            _statusCard(
-              icon: Icons.apartment_rounded,
-              title: department.actionCount == 0
-                  ? 'No department actions waiting'
-                  : '${department.actionCount} item${department.actionCount == 1 ? '' : 's'} need attention',
-              detail: department.unreadCount == 0
-                  ? 'Department requests and updates appear here.'
-                  : '${department.unreadCount} unread update${department.unreadCount == 1 ? '' : 's'}',
-              onTap: () => context.go(AppRoutes.department),
-            ),
+            if (hasDepartment) ...[
+              const SizedBox(height: 16),
+              _sectionTitle(
+                context,
+                'Department attention',
+                actionLabel: 'Open',
+                onAction: () => context.go(AppRoutes.department),
+              ),
+              _statusCard(
+                icon: Icons.apartment_rounded,
+                title: department.actionCount == 0
+                    ? 'No department actions waiting'
+                    : '${department.actionCount} item${department.actionCount == 1 ? '' : 's'} need attention',
+                detail: department.unreadCount == 0
+                    ? 'Department requests and updates appear here.'
+                    : '${department.unreadCount} unread update${department.unreadCount == 1 ? '' : 's'}',
+                onTap: () => context.go(AppRoutes.department),
+              ),
+            ],
             const SizedBox(height: 20),
             OutlinedButton.icon(
               onPressed: () => context.go(AppRoutes.careerGoals),

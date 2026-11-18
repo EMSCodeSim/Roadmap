@@ -474,6 +474,7 @@ class AppRouter {
                 ? state.extra as EvidencePrefill
                 : null,
             openEditorOnLoad: state.uri.queryParameters['create'] == '1',
+            showFirstRecordPicker: state.uri.queryParameters['first'] == '1',
           ),
         ),
       ),

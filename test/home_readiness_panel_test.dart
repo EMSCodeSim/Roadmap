@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/pages/home/visual_home_page.dart';
+import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
@@ -52,6 +53,9 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          ChangeNotifierProvider<AppModeController>(
+            create: (_) => AppModeController(),
+          ),
           ChangeNotifierProvider<AppState>.value(value: app),
           ChangeNotifierProvider<DepartmentInboxController>(
             create: (_) => DepartmentInboxController(),
@@ -80,6 +84,7 @@ void main() {
 
     expect(find.text('Today'), findsOneWidget);
     expect(find.text('Next action'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Credentials'), 200);
     expect(find.text('Credentials'), findsOneWidget);
     expect(find.text('My Roadmap'), findsNothing);
     await tester.scrollUntilVisible(find.text('Open Career Goals'), 300);
@@ -93,9 +98,11 @@ void main() {
 
     await pumpHome(tester, app);
 
-    expect(find.text('Choose a career goal'), findsOneWidget);
+    expect(find.text('Set a career goal (optional)'), findsOneWidget);
     expect(
-      find.text('Set an optional career goal to see a recommended next step.'),
+      find.text(
+        'Your personal record works without a goal. Add one later for suggested next steps.',
+      ),
       findsOneWidget,
     );
     expect(find.text('Start my roadmap'), findsNothing);

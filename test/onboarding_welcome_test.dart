@@ -3,19 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('welcome explains both personal and department workflows',
+  testWidgets('welcome offers a clear standalone starting point',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(home: OnboardingV2Page()),
     );
 
-    expect(find.text('Your career roadmap, organized.'), findsOneWidget);
-    expect(find.text('Build your personal roadmap'), findsOneWidget);
-    expect(find.text('Build on your next steps'), findsOneWidget);
-    expect(find.text('Connect with your department'), findsOneWidget);
-    expect(find.text('Set up my roadmap'), findsOneWidget);
-    expect(find.textContaining('Connecting a department is optional'),
-        findsOneWidget);
+    expect(
+      find.text('Your Fire & EMS career record starts here.'),
+      findsOneWidget,
+    );
+    expect(find.text('Start with my personal record'), findsOneWidget);
+    expect(find.text('Set up my roadmap first'), findsOneWidget);
+    expect(find.text('A class or training'), findsOneWidget);
+    expect(find.text('A certification'), findsOneWidget);
+    expect(find.text('Experience or an accomplishment'), findsOneWidget);
+    expect(
+      find.textContaining('You do not need a career goal or department'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('setup starts with career path then recruit shortcut',
@@ -24,7 +30,8 @@ void main() {
       const MaterialApp(home: OnboardingV2Page()),
     );
 
-    await tester.tap(find.text('Set up my roadmap'));
+    await tester.ensureVisible(find.text('Set up my roadmap first'));
+    await tester.tap(find.text('Set up my roadmap first'));
     await tester.pumpAndSettle();
 
     expect(find.text('Career Path'), findsOneWidget);
