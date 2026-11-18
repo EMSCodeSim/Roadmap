@@ -9,6 +9,7 @@ import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/prefill.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_state.dart';
 
@@ -33,11 +34,8 @@ class CareerVaultPage extends StatefulWidget {
 
 class _CareerVaultPageState extends State<CareerVaultPage> {
   final CareerRecordStore _store = CareerRecordStore();
-  final TextEditingController _searchController = TextEditingController();
 
   List<CareerRecord> _records = <CareerRecord>[];
-  CareerRecordType? _filter;
-  bool _credentialsOnly = false;
   bool _loading = true;
   List<DepartmentClassDetail> _departmentTraining = const [];
   bool _departmentLoading = false;
@@ -47,12 +45,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     super.initState();
     _load();
     _loadDepartmentTraining();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -253,134 +245,173 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     setState(() => _records = next);
   }
 
-  List<_CareerTimelineEntry> _timelineEntries(AppState app) {
-    final query = _searchController.text.trim().toLowerCase();
-    final entries = <_CareerTimelineEntry>[];
-
-    if (!_credentialsOnly) {
-      for (final record in _records) {
-        if (_filter != null && record.type != _filter) continue;
-        final searchable = <String>[
-          record.title,
-          record.category,
-          record.type.label,
-          record.roleOrAssignment ?? '',
-          record.summary ?? '',
-          record.impact ?? '',
-          record.evidenceReference ?? '',
-          ...record.tags,
-          record.date.year.toString(),
-        ].join(' ').toLowerCase();
-        if (query.isNotEmpty && !searchable.contains(query)) continue;
-        entries.add(
-          _CareerTimelineEntry(
-            kind: _CareerTimelineEntryKind.careerRecord,
-            date: record.date,
-            record: record,
-          ),
-        );
-      }
+  List<_GrowthYear> _growthYears(AppState app) {
+    final byYear = <int, _GrowthYear>{};
+    for (final record in _records) {
+      (byYear[record.date.year] ??= _GrowthYear(record.date.year))
+          .records
+          .add(record);
     }
-
-    if (_credentialsOnly || _filter == null) {
-      for (final certification in app.certifications) {
-        final searchable = <String>[
-          app.certificationDisplayName(certification),
-          certification.issuingOrganization ?? '',
-          certification.doesNotExpire
-              ? 'does not expire'
-              : certification.expirationDate == null
-                  ? 'expiration not recorded'
-                  : 'expires ${certification.expirationDate!.year}',
-          certification.status.name,
-        ].join(' ').toLowerCase();
-        if (query.isNotEmpty && !searchable.contains(query)) continue;
-        entries.add(
-          _CareerTimelineEntry(
-            kind: _CareerTimelineEntryKind.certification,
-            date: certification.issueDate ?? certification.createdAt,
-            certification: certification,
-          ),
-        );
-      }
+    for (final certification in app.certifications) {
+      final date = certification.issueDate ?? certification.createdAt;
+      (byYear[date.year] ??= _GrowthYear(date.year))
+          .certifications
+          .add(certification);
     }
-
-    final includeDepartmentTraining = !_credentialsOnly &&
-        (_filter == null || _filter == CareerRecordType.training);
-    if (includeDepartmentTraining) {
-      for (final training in _departmentTraining) {
-        final start = training.startsAt;
-        if (start == null) continue;
-        final searchable = <String>[
-          training.title,
-          training.trainingCategory,
-          'verified department training',
-          '${training.creditHours}',
-          start.year.toString(),
-        ].join(' ').toLowerCase();
-        if (query.isNotEmpty && !searchable.contains(query)) continue;
-        entries.add(
-          _CareerTimelineEntry(
-            kind: _CareerTimelineEntryKind.departmentTraining,
-            date: start,
-            departmentTraining: training,
-          ),
-        );
-      }
+    for (final training in _departmentTraining) {
+      final date = training.startsAt;
+      if (date == null) continue;
+      (byYear[date.year] ??= _GrowthYear(date.year))
+          .departmentTraining
+          .add(training);
     }
-
-    entries.sort((a, b) => b.date.compareTo(a.date));
-    return entries;
+    final years = byYear.values.toList()
+      ..sort((a, b) => b.year.compareTo(a.year));
+    return years;
   }
 
-  Widget _timelineCard(AppState app, _CareerTimelineEntry entry) {
-    switch (entry.kind) {
-      case _CareerTimelineEntryKind.careerRecord:
-        final record = entry.record!;
-        return _RecordCard(
-          record: record,
-          requirementName: _requirementName(app, record.relatedRequirementId),
-          onEdit: () => _openEditor(existing: record),
-          onDelete: () => _deleteRecord(record),
-        );
-      case _CareerTimelineEntryKind.certification:
-        final certification = entry.certification!;
-        final expiration = certification.doesNotExpire
-            ? 'Does not expire'
-            : certification.expirationDate == null
-                ? 'Expiration date not recorded'
-                : 'Expires ${_formatDate(certification.expirationDate!)}';
-        final issuer = certification.issuingOrganization?.trim();
-        return Card(
-          child: ListTile(
-            leading: Icon(
-              certification.status == CertificationStatus.expired
-                  ? Icons.warning_amber_rounded
-                  : Icons.verified_outlined,
-            ),
-            title: Text(app.certificationDisplayName(certification)),
-            subtitle: Text(
-              'Credential · ${entry.date.year} · $expiration${issuer == null || issuer.isEmpty ? '' : ' · $issuer'}',
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(
-              '${AppRoutes.certificationDetail}/${certification.id}',
-            ),
-          ),
-        );
-      case _CareerTimelineEntryKind.departmentTraining:
-        final training = entry.departmentTraining!;
-        return Card(
-          child: ListTile(
-            leading: const Icon(Icons.apartment_rounded),
-            title: Text(training.title),
-            subtitle: Text(
-              '${_formatDate(entry.date)} · Department training · ${training.trainingCategory} · ${_trimNumber(training.creditHours)} hours · Verified',
-            ),
-            trailing: const Icon(Icons.verified_outlined, size: 20),
-          ),
-        );
+  String _growthFocus(_GrowthYear year) {
+    final types = <CareerRecordType, int>{};
+    for (final record in year.records) {
+      types[record.type] = (types[record.type] ?? 0) + 1;
     }
+    if (year.certifications.isNotEmpty) return 'Building qualifications';
+    if ((types[CareerRecordType.leadership] ?? 0) > 0 ||
+        (types[CareerRecordType.teaching] ?? 0) > 0 ||
+        (types[CareerRecordType.project] ?? 0) > 0) {
+      return 'Growing leadership and influence';
+    }
+    if ((types[CareerRecordType.training] ?? 0) > 0 ||
+        year.departmentTraining.isNotEmpty) {
+      return 'Expanding knowledge and skills';
+    }
+    if ((types[CareerRecordType.operationalExperience] ?? 0) > 0) {
+      return 'Building operational experience';
+    }
+    if ((types[CareerRecordType.skill] ?? 0) > 0) {
+      return 'Strengthening practical skills';
+    }
+    return 'Recording career milestones';
+  }
+
+  Widget _growthYearCard(AppState app, _GrowthYear year) {
+    final stats = CareerStats.fromRecords(year.records);
+    final highlights = year.records.where((record) => record.highlight).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    final credentials = year.certifications.toList()
+      ..sort((a, b) => (b.issueDate ?? b.createdAt)
+          .compareTo(a.issueDate ?? a.createdAt));
+    final cs = Theme.of(context).colorScheme;
+    final hasDetails = year.records.isNotEmpty ||
+        year.certifications.isNotEmpty ||
+        year.departmentTraining.isNotEmpty;
+    final recordedHours = stats.trainingHours + stats.teachingHours;
+    final facts = <String>[
+      if (year.records.isNotEmpty)
+        '${year.records.length} record${year.records.length == 1 ? '' : 's'}',
+      if (recordedHours > 0)
+        '${CareerStats.formatDurationHours(recordedHours)} learning and teaching',
+      if (year.certifications.isNotEmpty)
+        '${year.certifications.length} credential${year.certifications.length == 1 ? '' : 's'}',
+      if (year.departmentTraining.isNotEmpty)
+        '${year.departmentTraining.length} verified department class${year.departmentTraining.length == 1 ? '' : 'es'}',
+      if (stats.leadershipCount + stats.projects + stats.teachingHours > 0)
+        'Leadership and service documented',
+      if (stats.calls + stats.skillRepetitions > 0)
+        'Experience and skills recorded',
+    ];
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    '${year.year}',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: cs.onPrimaryContainer,
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _growthFocus(year),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        facts.isEmpty
+                            ? 'No career entries recorded for this year yet.'
+                            : facts.join(' · '),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                              height: 1.4,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (highlights.isNotEmpty || credentials.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              const Divider(height: 1),
+              const SizedBox(height: 10),
+              ...highlights.take(3).map(
+                    (record) => _GrowthMilestone(
+                      icon: Icons.star_rounded,
+                      title: record.title,
+                      detail: record.impact?.trim().isNotEmpty == true
+                          ? record.impact!.trim()
+                          : record.summary?.trim().isNotEmpty == true
+                              ? record.summary!.trim()
+                              : record.type.label,
+                    ),
+                  ),
+              ...credentials.take(2).map(
+                    (certification) => _GrowthMilestone(
+                      icon: Icons.verified_outlined,
+                      title: app.certificationDisplayName(certification),
+                      detail: 'Credential added',
+                    ),
+                  ),
+            ],
+            if (hasDetails) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => context.go(AppRoutes.personalLog),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  label: const Text('View full records'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _openEditor({
@@ -950,7 +981,10 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final cs = Theme.of(context).colorScheme;
     final roadmap = app.roadmap;
     final goal = app.selectedGoal;
-    final timelineEntries = _timelineEntries(app);
+    final growthYears = _growthYears(app);
+    final highlights = _records.where((record) => record.highlight).length;
+    final activeYears = growthYears.length;
+    final currentStats = CareerStats.fromRecords(_records);
 
     return Scaffold(
       appBar: AppBar(
@@ -959,7 +993,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         surfaceTintColor: Colors.transparent,
         leading: const AppBackButton.toAdvance(),
         title: const Text(
-          'Responder Roadmap',
+          'Career Timeline',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         actions: [
@@ -977,193 +1011,119 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
               children: [
                 Card(
                   clipBehavior: Clip.antiAlias,
-                  child: Padding(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFFE7EFFC), Color(0xFFC8D9F8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
                     padding: const EdgeInsets.all(18),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        const Icon(Icons.trending_up_rounded, size: 28),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Your growth over time',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'See how your experience, skills, learning, and leadership have developed year by year.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: cs.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                        ),
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: cs.primaryContainer,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.work_history_outlined,
-                                color: cs.onPrimaryContainer,
-                              ),
+                            _GrowthMetric(
+                              value: '$activeYears',
+                              label: activeYears == 1 ? 'year documented' : 'years documented',
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Your career, all in one place',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge
-                                        ?.copyWith(fontWeight: FontWeight.w700),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Collect years of training, qualifications, experience, and accomplishments in one place.',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(color: cs.onSurfaceVariant),
-                                  ),
-                                ],
-                              ),
+                            _GrowthMetric(
+                              value: '${_records.length}',
+                              label: 'career records',
+                            ),
+                            _GrowthMetric(
+                              value: '${app.certifications.length}',
+                              label: 'credentials',
+                            ),
+                            _GrowthMetric(
+                              value: '$highlights',
+                              label: 'career highlights',
                             ),
                           ],
                         ),
-                        const SizedBox(height: 18),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerHighest.withValues(
-                              alpha: 0.45,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                goal == null
-                                    ? 'Career goal (optional)'
-                                    : 'Your goal: ${goal.title}',
-                                style: const TextStyle(
+                        if (_records.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Learning in personal records: ${CareerStats.formatDurationHours(currentStats.trainingHours + currentStats.teachingHours)}',
+                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                roadmap == null
-                                    ? 'Your timeline works on its own. Add a goal when you want guidance toward a next step.'
-                                    : '${roadmap.completedCount} of ${roadmap.totalCount} steps complete. Your career records can support this goal.',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: cs.onSurfaceVariant),
-                              ),
-                              if (roadmap != null &&
-                                  roadmap.totalCount > 0) ...[
-                                const SizedBox(height: 10),
-                                LinearProgressIndicator(
-                                  value: roadmap.percentComplete,
-                                ),
-                              ],
-                            ],
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: () => _openEditor(),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Add detailed career history'),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _showCareerBrief(app),
-                                icon: const Icon(Icons.description_outlined),
-                                label: const Text('Career brief'),
-                              ),
-                            ),
-                          ],
-                        ),
+                        ],
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 Card(
-                  color: const Color(0xFFF1F5FA),
-                  child: ListTile(
-                    leading: const Icon(Icons.verified_user_outlined,
-                        color: Color(0xFF09213D)),
-                    title: const Text('Personal career history'),
-                    subtitle: const Text(
-                      'Your own entries remain editable. Approved department '
-                      'training is displayed as verified, read-only evidence.',
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.flag_outlined),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                goal == null
+                                    ? 'Career direction is optional'
+                                    : 'Your goal: ${goal.title}',
+                                style: const TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => context.go(AppRoutes.careerGoals),
+                              child: Text(goal == null ? 'Set goal' : 'Update'),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          roadmap == null
+                              ? 'Use Timeline to reflect on the career you are building. Add a goal when you are ready to plan a next step.'
+                              : '${roadmap.completedCount} of ${roadmap.totalCount} roadmap steps complete. Your milestones can show how you are growing toward this goal.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                        ),
+                        if (roadmap != null && roadmap.totalCount > 0) ...[
+                          const SizedBox(height: 10),
+                          LinearProgressIndicator(value: roadmap.percentComplete),
+                        ],
+                      ],
                     ),
                   ),
                 ),
+                const SizedBox(height: 18),
                 const _SectionTitle(
-                  title: 'My Career Timeline',
+                  title: 'Your career story',
                   subtitle:
-                      'Your professional history in one place.',
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _searchController,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: 'Search career history',
-                    suffixIcon: _searchController.text.isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.clear),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 42,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: FilterChip(
-                          label: const Text('All'),
-                          selected: _filter == null && !_credentialsOnly,
-                          onSelected: (_) => setState(() {
-                            _filter = null;
-                            _credentialsOnly = false;
-                          }),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: FilterChip(
-                          label: const Text('Credentials'),
-                          selected: _credentialsOnly,
-                          onSelected: (selected) => setState(() {
-                            _credentialsOnly = selected;
-                            _filter = null;
-                          }),
-                        ),
-                      ),
-                      ...CareerRecordType.values.map(
-                        (type) => Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: FilterChip(
-                            label: Text(type.shortLabel),
-                            selected: _filter == type,
-                            onSelected: (_) => setState(() {
-                              _filter = _filter == type ? null : type;
-                              _credentialsOnly = false;
-                            }),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                      'A high-level view of how your career has developed. Open Records for the full, searchable history and editing tools.',
                 ),
                 const SizedBox(height: 10),
                 if (_departmentLoading)
@@ -1171,71 +1131,136 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     padding: EdgeInsets.symmetric(vertical: 8),
                     child: LinearProgressIndicator(),
                   ),
-                if (timelineEntries.isEmpty)
-                  _EmptyState(
-                    hasRecords: _records.isNotEmpty ||
-                        app.certifications.isNotEmpty ||
-                        _departmentTraining.isNotEmpty,
-                    onAdd: () => _openEditor(),
+                if (growthYears.isEmpty)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(22),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.timeline_rounded, size: 36),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Your growth story starts with a milestone',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Add training, a new skill, an assignment, a credential, or a moment you are proud of. Over time, Timeline will show the bigger picture.',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                  height: 1.4,
+                                ),
+                          ),
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            onPressed: () => context.go(AppRoutes.personalLog),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add a career record'),
+                          ),
+                        ],
+                      ),
+                    ),
                   )
                 else
-                  ...timelineEntries.asMap().entries.expand((entry) {
-                    final index = entry.key;
-                    final item = entry.value;
-                    final startsYear = index == 0 ||
-                        timelineEntries[index - 1].date.year != item.date.year;
-                    return <Widget>[
-                      if (startsYear)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
-                          child: Text(
-                            '${item.date.year}',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _timelineCard(app, item),
-                      ),
-                    ];
-                  }),
+                  ...growthYears.map((year) => _growthYearCard(app, year)),
+                const SizedBox(height: 4),
+                Card(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                  child: ListTile(
+                    leading: const Icon(Icons.inventory_2_outlined),
+                    title: const Text('Need a specific detail?'),
+                    subtitle: const Text(
+                      'Records is the searchable log for training, experience, skills, and achievements. Edit entries and mark career milestones there.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => context.go(AppRoutes.personalLog),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _showCareerBrief(app),
+                  icon: const Icon(Icons.description_outlined),
+                  label: const Text('Create career brief'),
+                ),
               ],
             ),
     );
   }
 
-  String? _requirementName(AppState app, String? id) {
-    if (id == null) return null;
-    final roadmap = app.roadmap;
-    if (roadmap == null) return null;
-    for (final item in roadmap.all) {
-      if (item.requirement.id == id) return item.requirement.name;
-    }
-    return null;
+}
+
+class _GrowthYear {
+  final int year;
+  final List<CareerRecord> records = [];
+  final List<Certification> certifications = [];
+  final List<DepartmentClassDetail> departmentTraining = [];
+
+  _GrowthYear(this.year);
+}
+
+class _GrowthMetric extends StatelessWidget {
+  final String value;
+  final String label;
+
+  const _GrowthMetric({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+          Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant)),
+        ],
+      ),
+    );
   }
 }
 
-enum _CareerTimelineEntryKind {
-  careerRecord,
-  certification,
-  departmentTraining,
-}
+class _GrowthMilestone extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String detail;
 
-class _CareerTimelineEntry {
-  final _CareerTimelineEntryKind kind;
-  final DateTime date;
-  final CareerRecord? record;
-  final Certification? certification;
-  final DepartmentClassDetail? departmentTraining;
-
-  const _CareerTimelineEntry({
-    required this.kind,
-    required this.date,
-    this.record,
-    this.certification,
-    this.departmentTraining,
+  const _GrowthMilestone({
+    required this.icon,
+    required this.title,
+    required this.detail,
   });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(detail, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -1293,238 +1318,6 @@ class _FirstRecordOption extends StatelessWidget {
   }
 }
 
-class _RecordCard extends StatelessWidget {
-  final CareerRecord record;
-  final String? requirementName;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const _RecordCard({
-    required this.record,
-    required this.requirementName,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: cs.secondaryContainer.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                _iconFor(record.type),
-                size: 21,
-                color: cs.onSecondaryContainer,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          record.title,
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      if (record.highlight)
-                        Icon(Icons.star, size: 18, color: cs.primary),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '${record.type.label} • ${_formatDate(record.date)}${record.category.trim().isEmpty ? '' : ' • ${record.category.trim()}'}',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  if ((record.roleOrAssignment ?? '').trim().isNotEmpty) ...[
-                    const SizedBox(height: 7),
-                    Text(
-                      record.roleOrAssignment!,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                  if ((record.summary ?? '').trim().isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      record.summary!,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  if ((record.impact ?? '').trim().isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'Impact: ${record.impact!}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: cs.onSurfaceVariant),
-                    ),
-                  ],
-                  const SizedBox(height: 9),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      if (record.hours != null)
-                        _MiniTag(text: '${_trimNumber(record.hours!)} hr'),
-                      if (record.repetitions > 1)
-                        _MiniTag(text: '${record.repetitions} reps'),
-                      if (requirementName != null)
-                        _MiniTag(
-                          text: 'Task Book: $requirementName',
-                          icon: Icons.fact_check_outlined,
-                        ),
-                      if ((record.evidenceReference ?? '').trim().isNotEmpty)
-                        const _MiniTag(
-                          text: 'Evidence noted',
-                          icon: Icons.attach_file,
-                        ),
-                      ...record.tags.take(4).map((tag) => _MiniTag(text: tag)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuButton<String>(
-              tooltip: 'Record actions',
-              onSelected: (value) {
-                if (value == 'edit') onEdit();
-                if (value == 'delete') onDelete();
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: 'edit',
-                  child: ListTile(
-                    leading: Icon(Icons.edit_outlined),
-                    title: Text('Edit'),
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: ListTile(
-                    leading: Icon(Icons.delete_outline),
-                    title: Text('Delete'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MiniTag extends StatelessWidget {
-  final String text;
-  final IconData? icon;
-
-  const _MiniTag({required this.text, this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 250),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 13, color: cs.onSurfaceVariant),
-            const SizedBox(width: 4),
-          ],
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final bool hasRecords;
-  final VoidCallback onAdd;
-
-  const _EmptyState({required this.hasRecords, required this.onAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Icon(
-              hasRecords ? Icons.search_off : Icons.inventory_2_outlined,
-              size: 38,
-              color: cs.onSurfaceVariant,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              hasRecords
-                  ? 'No matching career records'
-                  : 'Start building your career history',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              hasRecords
-                  ? 'Try a different search or category.'
-                  : 'Record important skills, training, leadership examples, awards, projects, teaching, and operational experience as they happen.',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            if (!hasRecords) ...[
-              const SizedBox(height: 14),
-              FilledButton.icon(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add),
-                label: const Text('Add first record'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 String _editorTitleFor(CareerRecordType type) => switch (type) {
   CareerRecordType.operationalExperience => 'Add experience record',
   CareerRecordType.skill => 'Add skill or competency',
@@ -1556,19 +1349,6 @@ String _editorGuidanceFor(CareerRecordType type) => switch (type) {
     'Record a degree, course of study, or other formal education.',
   CareerRecordType.taskBookEvidence =>
     'Add the performance evidence for this task book item. Avoid patient identifying information.',
-};
-
-IconData _iconFor(CareerRecordType type) => switch (type) {
-  CareerRecordType.operationalExperience =>
-    Icons.local_fire_department_outlined,
-  CareerRecordType.skill => Icons.handyman_outlined,
-  CareerRecordType.training => Icons.school_outlined,
-  CareerRecordType.achievement => Icons.emoji_events_outlined,
-  CareerRecordType.leadership => Icons.groups_outlined,
-  CareerRecordType.teaching => Icons.record_voice_over_outlined,
-  CareerRecordType.project => Icons.assignment_outlined,
-  CareerRecordType.education => Icons.menu_book_outlined,
-  CareerRecordType.taskBookEvidence => Icons.fact_check_outlined,
 };
 
 String _formatDate(DateTime date) {
