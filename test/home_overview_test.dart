@@ -69,6 +69,7 @@ void main() {
           (widget) =>
               widget is Text &&
               (widget.data == 'Add my first record' ||
+                  widget.data == 'Add detailed career history' ||
                   widget.data == 'Add a career record' ||
                   widget.data == 'Add Career Record'),
         ),
