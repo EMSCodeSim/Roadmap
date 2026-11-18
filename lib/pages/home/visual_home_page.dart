@@ -118,7 +118,9 @@ class _VisualHomePageState extends State<VisualHomePage> {
                       child: FilledButton.icon(
                         style: FilledButton.styleFrom(
                             backgroundColor: red, foregroundColor: Colors.white),
-                        onPressed: () => context.push(AppRoutes.careerEvidence),
+                        onPressed: () => context.push(
+                          '${AppRoutes.careerEvidence}?create=1',
+                        ),
                         icon: const Icon(Icons.add),
                         label: const Text('Add Career Record'),
                       ),
@@ -164,7 +166,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => context.go(
-                  roadmap == null ? AppRoutes.goalSetup : AppRoutes.myPath,
+                  roadmap == null ? AppRoutes.goalSetup : AppRoutes.careerGoals,
                 ),
               ),
             ),
@@ -243,7 +245,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
             ),
             const SizedBox(height: 20),
             OutlinedButton.icon(
-              onPressed: () => context.go(AppRoutes.myPath),
+              onPressed: () => context.go(AppRoutes.careerGoals),
               icon: const Icon(Icons.route_rounded),
               label: const Text('Open Career Goals'),
             ),

@@ -123,7 +123,7 @@ class _CareerInboxPageState extends State<CareerInboxPage> {
   Future<void> _handle(CareerInboxItem item) async {
     switch (item.kind) {
       case CareerInboxKind.chooseGoal:
-        context.go(AppRoutes.myPath);
+        context.go(AppRoutes.careerGoals);
         return;
       case CareerInboxKind.certification:
         final id = item.certificationId;

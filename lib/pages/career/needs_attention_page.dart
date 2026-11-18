@@ -63,7 +63,7 @@ class _NeedsAttentionPageState extends State<NeedsAttentionPage> {
                           message:
                               'This screen flags items that could block progress: expiring credentials, missing expiration dates, certifications that need matching, and Task Book progress that has stalled.',
                           primaryAction: FilledButton.icon(
-                            onPressed: () => context.go(AppRoutes.myPath),
+                            onPressed: () => context.go(AppRoutes.careerGoals),
                             icon: const Icon(Icons.route_outlined),
                             label: const Text('Open Career Road'),
                           ),
@@ -145,7 +145,7 @@ class _NeedsAttentionPageState extends State<NeedsAttentionPage> {
         }
         return;
       case NeedsAttentionKind.stalledTaskBook:
-        context.go(AppRoutes.myPath);
+        context.go(AppRoutes.careerGoals);
         return;
     }
   }

@@ -14,7 +14,14 @@ import 'package:firepath/state/app_state.dart';
 
 class CareerVaultPage extends StatefulWidget {
   final EvidencePrefill? prefill;
-  const CareerVaultPage({super.key, this.prefill});
+  final bool openEditorOnLoad;
+  final ResponderRoadmapApi? api;
+  const CareerVaultPage({
+    super.key,
+    this.prefill,
+    this.openEditorOnLoad = false,
+    this.api,
+  });
 
   @override
   State<CareerVaultPage> createState() => _CareerVaultPageState();
@@ -52,17 +59,21 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     });
 
     final prefill = widget.prefill;
-    if (prefill != null && mounted) {
+    if ((prefill != null || widget.openEditorOnLoad) && mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _openEditor(
-          initialType: CareerRecordType.taskBookEvidence,
-          initialTitle: prefill.title,
-          initialCategory: prefill.category,
-          initialRelatedGoalId: prefill.relatedGoalId,
-          initialRelatedRequirementId: prefill.relatedRequirementId,
-          initialTags: prefill.tags,
-        );
+        if (prefill != null) {
+          _openEditor(
+            initialType: CareerRecordType.taskBookEvidence,
+            initialTitle: prefill.title,
+            initialCategory: prefill.category,
+            initialRelatedGoalId: prefill.relatedGoalId,
+            initialRelatedRequirementId: prefill.relatedRequirementId,
+            initialTags: prefill.tags,
+          );
+        } else {
+          _openEditor();
+        }
       });
     }
   }
@@ -71,7 +82,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     if (_departmentLoading) return;
     setState(() => _departmentLoading = true);
     try {
-      final api = ResponderRoadmapApi();
+      final api = widget.api ?? ResponderRoadmapApi();
       final session = await api.currentSession();
       if (!session.hasDepartment || session.membershipId == null) return;
       final summaries = await api.listClasses();
@@ -771,6 +782,11 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Career Goals',
+            onPressed: () => context.go(AppRoutes.careerGoals),
+            icon: const Icon(Icons.flag_outlined),
+          ),
           IconButton(
             tooltip: 'Career advancement brief',
             onPressed: () => _showCareerBrief(app),

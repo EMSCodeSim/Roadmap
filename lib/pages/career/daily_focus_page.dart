@@ -139,7 +139,7 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
                 ),
                 const SizedBox(height: 18),
                 if (next == null)
-                  _EmptyFocus(onChooseGoal: () => context.go(AppRoutes.myPath))
+                  _EmptyFocus(onChooseGoal: () => context.go(AppRoutes.careerGoals))
                 else
                   _FocusPlan(
                     mode: _mode,

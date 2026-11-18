@@ -255,7 +255,15 @@ class AppRouter {
                 path: AppRoutes.myPath,
                 name: 'my_path',
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: TaskBookEntryPage()),
+                    const NoTransitionPage(child: CareerVaultPage()),
+                routes: [
+                  GoRoute(
+                    path: 'goals',
+                    name: 'career_goals',
+                    pageBuilder: (context, state) =>
+                        const MaterialPage(child: TaskBookEntryPage()),
+                  ),
+                ],
               ),
             ],
           ),
@@ -461,7 +469,12 @@ class AppRouter {
         path: AppRoutes.careerEvidence,
         name: 'career_evidence',
         pageBuilder: (context, state) => MaterialPage(
-          child: CareerVaultPage(prefill: state.extra as EvidencePrefill?),
+          child: CareerVaultPage(
+            prefill: state.extra is EvidencePrefill
+                ? state.extra as EvidencePrefill
+                : null,
+            openEditorOnLoad: state.uri.queryParameters['create'] == '1',
+          ),
         ),
       ),
       GoRoute(
@@ -600,6 +613,7 @@ class AppRoutes {
 
   static const String home = '/home';
   static const String myPath = '/path';
+  static const String careerGoals = '/path/goals';
   static const String myPathLegacy = '/task-book/customize';
   static const String training = '/training';
   static const String profile = '/profile';
