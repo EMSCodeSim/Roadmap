@@ -37,7 +37,7 @@ void main() {
   });
 
   testWidgets(
-    'Home shows a daily overview and links to My Roadmap separately',
+    'Home shows career summary and daily priorities with separate goals',
     (tester) async {
       final app = AppState();
       await tester.runAsync(app.bootstrap);
@@ -58,12 +58,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Today'), findsOneWidget);
+      expect(find.text('YOUR CAREER'), findsOneWidget);
+      expect(find.text('Add Career Record'), findsOneWidget);
       expect(find.text('Next action'), findsOneWidget);
       expect(find.text('Credentials'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Unfinished records'), 200);
       expect(find.text('Unfinished records'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Department attention'), 200);
       expect(find.text('Department attention'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Open My Roadmap'), 300);
-      expect(find.text('Open My Roadmap'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Open Career Goals'), 200);
+      expect(find.text('Open Career Goals'), findsOneWidget);
       expect(find.text('Quick actions'), findsNothing);
       expect(find.text('My Progress'), findsNothing);
       expect(find.text('My Goals'), findsNothing);
