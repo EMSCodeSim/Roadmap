@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firepath/pages/home/visual_home_page.dart';
+import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
@@ -19,6 +20,9 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          ChangeNotifierProvider<AppModeController>(
+            create: (_) => AppModeController(),
+          ),
           ChangeNotifierProvider<AppState>.value(value: app),
           ChangeNotifierProvider<DepartmentInboxController>(
             create: (_) => DepartmentInboxController(),
@@ -35,8 +39,7 @@ void main() {
     expect(find.text('YOUR CAREER'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Unfinished records'), 200);
     expect(find.text('Unfinished records'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Department attention'), 200);
-    expect(find.text('Department attention'), findsOneWidget);
+    expect(find.text('Department attention'), findsNothing);
     expect(find.text('Start my roadmap'), findsNothing);
 
     await tester.scrollUntilVisible(find.text('Open Career Goals'), 300);
