@@ -189,6 +189,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     var selectedRequirementId =
         existing?.relatedRequirementId ?? (initialRelatedRequirementId ?? '');
     var highlight = existing?.highlight ?? false;
+    var showAdvanced = existing != null;
 
     final title = TextEditingController(
       text: existing?.title ?? (initialTitle ?? ''),
@@ -262,7 +263,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                         controller: title,
                         autofocus: existing == null,
                         decoration: const InputDecoration(
-                          labelText: 'What did you do?',
+                          labelText: 'Title *',
                           hintText:
                               'Led first-due company drill, completed FO1 module, received award…',
                         ),
@@ -278,7 +279,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                             child: TextFormField(
                               controller: category,
                               decoration: const InputDecoration(
-                                labelText: 'Category / skill area',
+                                labelText: 'Category (optional)',
                                 hintText: 'Leadership, pumps, EMS, hazmat…',
                               ),
                             ),
@@ -307,23 +308,35 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
-                        controller: role,
-                        decoration: const InputDecoration(
-                          labelText: 'Your role / assignment',
-                          hintText:
-                              'Acting officer, nozzle firefighter, instructor, project lead…',
-                        ),
-                      ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: summary,
                         minLines: 2,
                         maxLines: 4,
                         decoration: const InputDecoration(
-                          labelText: 'What happened / what you did',
+                          labelText: 'Description (optional)',
                           hintText:
                               'Write the context and your actions so you can recall the example later.',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        onPressed: () => setDialogState(
+                          () => showAdvanced = !showAdvanced,
+                        ),
+                        icon: Icon(showAdvanced
+                            ? Icons.expand_less : Icons.expand_more),
+                        label: Text(showAdvanced
+                            ? 'Hide additional details'
+                            : 'Add hours, evidence, and more details'),
+                      ),
+                      if (showAdvanced) ...[
+                      TextFormField(
+                        controller: role,
+                        decoration: const InputDecoration(
+                          labelText: 'Your role / assignment',
+                          hintText:
+                              'Acting officer, nozzle firefighter, instructor, project lead…',
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -430,6 +443,8 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                           'Prioritize this record in promotion, resume, and interview summaries.',
                         ),
                       ),
+
+                      ],
                     ],
                   ),
                 ),
