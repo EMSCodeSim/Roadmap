@@ -387,7 +387,10 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   Future<void> save() async {
     if(title.text.trim().isEmpty){setState(()=>error='Training title is required.'); return;}
     if(!qr && selectedMembers.isEmpty){setState(()=>error='Choose roster members or enable QR sign-in.');return;}
-    final h=double.tryParse(hours.text.trim())??0;
+    final enteredHours = double.tryParse(hours.text.trim()) ?? 0;
+    final h = TrainingTimeCalculator.quarterHoursFromMinutes(
+      (enteredHours * 60).round(),
+    );
     final mode=context.read<AppModeController>();
     final me=widget.setup.proctors.where((p)=>(p['userId']?.toString()??'')==mode.departmentLink?.userId).toList();
     final defaults=widget.template?.proctorUserIds.where((id)=>widget.setup.proctors.any((p)=>p['userId']?.toString()==id)).toList() ?? const <String>[];
@@ -433,10 +436,10 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       if (widget.template != null) ...[
         const SizedBox(height: 12),
         Card(
-          color: Theme.of(context).colorScheme.secondaryContainer,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: ListTile(
             leading: const Icon(Icons.fact_check_outlined),
-            title: const Text('Selected instructor setup'),
+            title: const Text('Class setup from template'),
             subtitle: Text(_trainingTemplateSummary(widget.template!)),
           ),
         ),
@@ -453,6 +456,14 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
         DropdownMenuItem(value:'OTHER',child:Text('Other / Rescue')),
       ],onChanged:(v){setState(()=>category=v??'COMPANY');_markDirty();}),
       const SizedBox(height:12),DropdownButtonFormField<String>(initialValue:checklist,decoration:const InputDecoration(labelText:'Skills checklist (optional)'),items:[const DropdownMenuItem(value:'',child:Text('Attendance only')),..._trainingSheetChecklistTemplates(widget.templates).map((template)=>DropdownMenuItem(value:template.checklistVersionId,child:Text(template.name)))],onChanged:(v){setState(()=>checklist=v??'');_markDirty();}),
+      const SizedBox(height:12),
+      TextField(
+        controller: location,
+        decoration: const InputDecoration(
+          labelText: 'Station / facility (optional)',
+          hintText: 'Station 181',
+        ),
+      ),
       if (widget.components.isNotEmpty) ...[
         const SizedBox(height:14),
         Card(
@@ -461,7 +472,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const Text('Saved instructor components', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height:4),
-              const Text('Choose reusable grading rules or an EMS CE allocation. A selected component takes precedence over that section of the class package.'),
+              const Text('Optional: override the grading or EMS CE settings included in the selected class package.'),
               const SizedBox(height:10),
               DropdownButtonFormField<String>(
                 initialValue: gradingComponentId,
@@ -558,8 +569,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
           }).toList(),
         ),
       const SizedBox(height:12),
-      if(_isEmsCe) TextField(controller:location,decoration:const InputDecoration(labelText:'Class location (optional)')),
-      if(_isEmsCe) const SizedBox(height:12),
+
       OutlinedButton.icon(
         onPressed: () async {
           final day = await showDatePicker(context:context,initialDate:startTime,firstDate:DateTime(2020),lastDate:DateTime.now().add(const Duration(days:730)));
@@ -575,7 +585,6 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
       ),
       const SizedBox(height:12),
       TextButton(onPressed:(){setState(()=>advanced=!advanced);_markDirty();},child:Text(advanced?'Hide optional details':'Show optional details')),
-      if(advanced && !_isEmsCe) TextField(controller:location,decoration:const InputDecoration(labelText:'Location (closeout optional)')),
       const SizedBox(height:12),if(advanced) TextField(controller:hours,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Training hours (finish after teaching)')),
       const SizedBox(height:12),if(advanced) TextField(controller:notes,maxLines:3,decoration:const InputDecoration(labelText:'Optional preparation notes')),
       const SizedBox(height:8),SwitchListTile(contentPadding:EdgeInsets.zero,value:qr,onChanged:(v){setState(()=>qr=v);_markDirty();},title:const Text('Allow QR self-registration'),subtitle:const Text('Crew can scan in from their phones.')),
@@ -1060,9 +1069,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 summaryRow('Total hours', detail.creditHours > 0 ? detail.creditHours.toStringAsFixed(2) : '', required: true),
                 summaryRow('Category', detail.trainingCategory.replaceAll('_', ' '), required: true),
                 if (detail.trainingCategory == 'EMS') summaryRow('CE category', ceSummary, required: true),
-                summaryRow('Station', detail.station),
                 summaryRow('Shift', detail.shift),
-                summaryRow('Location', detail.location),
+                summaryRow('Station / facility', detail.station.isNotEmpty ? detail.station : detail.location),
                 summaryRow('Checklist', detail.checklistTitle),
                 summaryRow('Roster', '${detail.roster.length} students · ${detail.roster.where((m) => m.attendance == 'PRESENT').length} present'),
                 summaryRow('Description', detail.notes, required: true),
@@ -1319,8 +1327,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     DateTime start = d.startsAt?.toLocal() ?? DateTime.now();
     DateTime? end = d.endsAt?.toLocal();
     final narrative = TextEditingController(text:d.notes);
-    final location = TextEditingController(text:d.location);
-    final station = TextEditingController(text:d.station);
+    final station = TextEditingController(
+      text: d.station.trim().isNotEmpty ? d.station : d.location,
+    );
     final hours = TextEditingController(text:d.creditHours > 0 ? d.creditHours.toString() : '');
     String trainingCategory = d.trainingCategory;
     String shift = d.shift;
@@ -1336,7 +1345,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     int parseHoursToMinutes(String raw) {
       final value = double.tryParse(raw.trim()) ?? 0;
       if (value <= 0) return 0;
-      return (value * 60).round();
+      return TrainingTimeCalculator.roundMinutesToQuarterHour(
+        (value * 60).round(),
+      );
     }
 
     String formatLocalDateTime(DateTime dateTime) {
@@ -1373,6 +1384,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         builder: (dialogContext, update) {
           final hasCeCategories = ceCategories.isNotEmpty;
           final elapsedMinutes = TrainingTimeCalculator.elapsedMinutes(start, end);
+          final roundedElapsedMinutes = elapsedMinutes == null
+              ? null
+              : TrainingTimeCalculator.roundMinutesToQuarterHour(elapsedMinutes);
           final split = (elapsedMinutes == null)
               ? null
               : TrainingTimeCalculator.splitDayNight(
@@ -1380,11 +1394,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   endLocal: end!,
                   definition: TrainingTimeCalculator.defaultDayNight,
                 );
+          final roundedSplit = split == null
+              ? null
+              : TrainingTimeCalculator.roundDayNightSplitToQuarterHour(split);
           final allocatedMinutes = hasCeCategories
               ? ceControllers.values.fold<int>(0, (sum, c) => sum + parseHoursToMinutes(c.text))
               : 0;
-          final overAllocated = elapsedMinutes != null && allocatedMinutes > elapsedMinutes;
-          final remainingMinutes = elapsedMinutes == null ? null : (elapsedMinutes - allocatedMinutes);
+          final overAllocated = roundedElapsedMinutes != null &&
+              allocatedMinutes > roundedElapsedMinutes;
+          final remainingMinutes = roundedElapsedMinutes == null
+              ? null
+              : (roundedElapsedMinutes - allocatedMinutes);
 
           return AlertDialog(
             title: const Text('Finish Training Documentation'),
@@ -1407,16 +1427,16 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                               Text('Time & hours', style: Theme.of(dialogContext).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
                               const SizedBox(height: 4),
                               Text(
-                                elapsedMinutes == null
+                                roundedElapsedMinutes == null
                                     ? 'Duration: Pending (set End Time)'
-                                    : 'Duration: ${formatMinutesAsHoursMinutes(elapsedMinutes)}',
+                                    : 'Training hours: ${formatQuarterHoursFromMinutes(roundedElapsedMinutes)}',
                                 style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
                               ),
-                              if (split != null)
+                              if (roundedSplit != null)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 2),
                                   child: Text(
-                                    'Day ${formatMinutesAsHoursMinutes(split.dayMinutes)} · Night ${formatMinutesAsHoursMinutes(split.nightMinutes)}',
+                                    'Day ${formatQuarterHoursFromMinutes(roundedSplit.dayMinutes)} · Night ${formatQuarterHoursFromMinutes(roundedSplit.nightMinutes)}',
                                     style: Theme.of(dialogContext).textTheme.bodySmall,
                                   ),
                                 ),
@@ -1463,8 +1483,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                       onChanged: (value) => update(() => trainingCategory = value ?? 'COMPANY'),
                     ),
                     const SizedBox(height: 8),
-                    TextField(controller: location, decoration: const InputDecoration(labelText: 'Training location')),
-                    const SizedBox(height: 8),
                     TextField(
                       controller: station,
                       decoration: const InputDecoration(
@@ -1497,28 +1515,30 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                       const SizedBox(height: 14),
                       Text('Assign CE hours by category', style: Theme.of(dialogContext).textTheme.titleMedium),
                       const SizedBox(height: 4),
-                      const Text('Enter hours under the correct CE category. Use 0 for categories not covered; total credit cannot exceed class duration.'),
+                      const Text('Enter CE credit in 0.25-hour increments. Total credit cannot exceed rounded training hours.'),
                       ...ceCategories.map((category) => Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: TextField(
                           controller: ceControllers[category],
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           onChanged: (_) => update(() {}),
-                          decoration: InputDecoration(labelText: '$category hours', hintText: '0'),
+                          decoration: InputDecoration(labelText: '$category hours', hintText: '0.25 increments'),
                         ),
                       )),
                       const SizedBox(height: 8),
-                      if (elapsedMinutes != null) ...[
+                      if (roundedElapsedMinutes != null) ...[
                         Row(children: [
                           Expanded(child: Text('Assigned', style: Theme.of(dialogContext).textTheme.bodySmall)),
                           Text(
-                            formatMinutesAsHoursMinutes(allocatedMinutes),
+                            formatQuarterHoursFromMinutes(allocatedMinutes),
                             style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w900, color: LightModeColors.purple),
                           ),
                         ]),
                         const SizedBox(height: 6),
                         LinearProgressIndicator(
-                          value: (allocatedMinutes / elapsedMinutes).clamp(0, 1),
+                          value: roundedElapsedMinutes == 0
+                              ? 0
+                              : (allocatedMinutes / roundedElapsedMinutes).clamp(0, 1),
                           minHeight: 8,
                           borderRadius: BorderRadius.circular(999),
                           backgroundColor: Theme.of(dialogContext).colorScheme.surfaceVariant,
@@ -1531,8 +1551,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                             remainingMinutes == null
                                 ? '—'
                                 : (remainingMinutes < 0
-                                    ? 'Over by ${formatMinutesAsHoursMinutes(-remainingMinutes)}'
-                                    : formatMinutesAsHoursMinutes(remainingMinutes)),
+                                    ? 'Over by ${formatQuarterHoursFromMinutes(-remainingMinutes)}'
+                                    : formatQuarterHoursFromMinutes(remainingMinutes)),
                             style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w900,
                               color: overAllocated ? Theme.of(dialogContext).colorScheme.error : FireOpsSemanticColors.green,
@@ -1565,14 +1585,19 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                           'start': start,
                           'end': end,
                           'notes': narrative.text,
-                          'location': location.text,
+                          'location': station.text,
                           'station': station.text,
                           'shift': shift,
                           'trainingCategory': trainingCategory,
                           // Back-compat: creditHours remains a double, derived from elapsed minutes when possible.
-                          'hours': computedMinutes == null ? (double.tryParse(hours.text.trim()) ?? 0.0) : (computedMinutes / 60.0),
+                          'hours': computedMinutes == null
+                              ? TrainingTimeCalculator.quarterHoursFromMinutes(
+                                  ((double.tryParse(hours.text.trim()) ?? 0.0) * 60).round(),
+                                )
+                              : TrainingTimeCalculator.quarterHoursFromMinutes(computedMinutes),
                           'ceCredits': <String, double>{
-                            for (final entry in ceControllers.entries) entry.key: double.tryParse(entry.value.text.trim()) ?? 0,
+                            for (final entry in ceControllers.entries)
+                              entry.key: parseHoursToMinutes(entry.value.text) / 60.0,
                           },
                         });
                       },
@@ -1583,7 +1608,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         },
       ),
     );
-    narrative.dispose(); location.dispose(); station.dispose(); hours.dispose();
+    narrative.dispose(); station.dispose(); hours.dispose();
     for(final controller in ceControllers.values){controller.dispose();}
     if (result == null || !mounted) return false;
     final savedStart = result['start'] as DateTime;
@@ -1605,8 +1630,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
     if (requiresCe) {
       final allocatedMinutes = ceCredits.values.fold<int>(0, (sum, value) => sum + parseHoursToMinutes(value.toString()));
-      if (allocatedMinutes > elapsedMinutes) {
-        setState(() => _error = 'Assigned CE credit cannot exceed class duration (${formatMinutesAsHoursMinutes(elapsedMinutes)}).');
+      final roundedElapsedMinutes =
+          TrainingTimeCalculator.roundMinutesToQuarterHour(elapsedMinutes);
+      if (allocatedMinutes > roundedElapsedMinutes) {
+        setState(() => _error = 'Assigned CE credit cannot exceed rounded training hours (${formatQuarterHoursFromMinutes(roundedElapsedMinutes)}).');
         return false;
       }
     }
@@ -1976,8 +2003,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         pw.SizedBox(height: 12),
         line('Category', detail.trainingCategory.replaceAll('_', ' ')),
         line('Checklist', detail.checklistTitle),
-        line('Location', detail.location),
-        line('Station', detail.station),
+        line('Station / facility', detail.station.isNotEmpty ? detail.station : detail.location),
         line('Shift', detail.shift),
         line('Start', _recordDate(detail.startsAt)),
         line('Finish', _recordDate(detail.endsAt)),

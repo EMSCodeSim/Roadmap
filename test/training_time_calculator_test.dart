@@ -32,6 +32,27 @@ void main() {
       expect(minutes, 240);
     });
 
+    test('rounds training time to the nearest quarter hour', () {
+      expect(TrainingTimeCalculator.roundMinutesToQuarterHour(67), 60);
+      expect(TrainingTimeCalculator.roundMinutesToQuarterHour(68), 75);
+      expect(TrainingTimeCalculator.quarterHoursFromMinutes(82), 1.25);
+      expect(formatQuarterHoursFromMinutes(98), '1.75 hr');
+    });
+
+    test('rounded day and night values still equal rounded total', () {
+      const split = DayNightSplit(
+        totalMinutes: 70,
+        dayMinutes: 35,
+        nightMinutes: 35,
+      );
+      final rounded =
+          TrainingTimeCalculator.roundDayNightSplitToQuarterHour(split);
+      expect(rounded.totalMinutes, 75);
+      expect(rounded.dayMinutes + rounded.nightMinutes, 75);
+      expect(rounded.dayMinutes % 15, 0);
+      expect(rounded.nightMinutes % 15, 0);
+    });
+
     test('Negative or zero duration returns null elapsed', () {
       final start = DateTime(2026, 1, 1, 10, 0);
       expect(TrainingTimeCalculator.elapsedMinutes(start, start), isNull);
