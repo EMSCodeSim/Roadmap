@@ -60,6 +60,10 @@ void main() {
       );
       // Avoid waiting indefinitely for progress indicators and asynchronous sync.
       await tester.pump(const Duration(milliseconds: 300));
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pump();
 
       expect(find.text('Today'), findsOneWidget);
       expect(find.text('YOUR CAREER'), findsOneWidget);
