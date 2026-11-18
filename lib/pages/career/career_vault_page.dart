@@ -763,7 +763,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Keep skills, calls, training, leadership work, awards, projects, teaching, and task-book evidence tied to your advancement path.',
+                                    'Collect years of training, qualifications, experience, and accomplishments in one place.',
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodyMedium
@@ -820,7 +820,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                               child: FilledButton.icon(
                                 onPressed: () => _openEditor(),
                                 icon: const Icon(Icons.add),
-                                label: const Text('Add evidence'),
+                                label: const Text('Add career record'),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -869,6 +869,80 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 20),
+                const _SectionTitle(
+                  title: 'Your career timeline',
+                  subtitle:
+                      'Explore your professional history by date, type, or keyword.',
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'Search career history',
+                    suffixIcon: _searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                            icon: const Icon(Icons.clear),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 42,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: FilterChip(
+                          label: const Text('All'),
+                          selected: _filter == null,
+                          onSelected: (_) => setState(() => _filter = null),
+                        ),
+                      ),
+                      ...CareerRecordType.values.map(
+                        (type) => Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: FilterChip(
+                            label: Text(type.shortLabel),
+                            selected: _filter == type,
+                            onSelected: (_) => setState(
+                              () => _filter = _filter == type ? null : type,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (_filteredRecords.isEmpty)
+                  _EmptyState(
+                    hasRecords: _records.isNotEmpty,
+                    onAdd: () => _openEditor(),
+                  )
+                else
+                  ..._filteredRecords.map(
+                    (record) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _RecordCard(
+                        record: record,
+                        requirementName: _requirementName(
+                          app,
+                          record.relatedRequirementId,
+                        ),
+                        onEdit: () => _openEditor(existing: record),
+                        onDelete: () => _deleteRecord(record),
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 18),
                 const _SectionTitle(
                   title: 'Quick capture',
@@ -961,80 +1035,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                const _SectionTitle(
-                  title: 'Career timeline',
-                  subtitle:
-                      'Search years of evidence by skill, project, role, tag, or year.',
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _searchController,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: 'Search career history',
-                    suffixIcon: _searchController.text.isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.clear),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 42,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: FilterChip(
-                          label: const Text('All'),
-                          selected: _filter == null,
-                          onSelected: (_) => setState(() => _filter = null),
-                        ),
-                      ),
-                      ...CareerRecordType.values.map(
-                        (type) => Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: FilterChip(
-                            label: Text(type.shortLabel),
-                            selected: _filter == type,
-                            onSelected: (_) => setState(
-                              () => _filter = _filter == type ? null : type,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                if (_filteredRecords.isEmpty)
-                  _EmptyState(
-                    hasRecords: _records.isNotEmpty,
-                    onAdd: () => _openEditor(),
-                  )
-                else
-                  ..._filteredRecords.map(
-                    (record) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _RecordCard(
-                        record: record,
-                        requirementName: _requirementName(
-                          app,
-                          record.relatedRequirementId,
-                        ),
-                        onEdit: () => _openEditor(existing: record),
-                        onDelete: () => _deleteRecord(record),
-                      ),
-                    ),
-                  ),
               ],
             ),
     );
