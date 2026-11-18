@@ -51,8 +51,9 @@ class _VisualHomePageState extends State<VisualHomePage> {
     final roadmap = app.roadmap;
     final nextStep = roadmap?.nextStep;
     final hasDepartment = appMode.departmentLink != null;
+    final hasPersonalHistory = _records.isNotEmpty || app.certifications.isNotEmpty;
     final firstRecordQuery =
-        !_loadingRecords && _records.isEmpty ? '?create=1&first=1' : '?create=1';
+        !_loadingRecords && !hasPersonalHistory ? '?create=1&first=1' : '?create=1';
     final credentials = CertificationUrgency.urgent(
       app.certifications,
       withinDays: 90,
@@ -108,9 +109,11 @@ class _VisualHomePageState extends State<VisualHomePage> {
                     Text(
                       _loadingRecords
                           ? 'Loading your career history…'
-                          : _records.isEmpty
+                          : !hasPersonalHistory
                               ? 'Your record is ready to build'
-                              : '${_records.length} personal career records',
+                              : _records.isEmpty
+                                  ? 'Your history is getting started'
+                                  : '${_records.length} personal career records',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Colors.white, fontWeight: FontWeight.w800),
                     ),
@@ -139,7 +142,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
                         label: Text(
                           !_loadingRecords && _records.isEmpty
                               ? 'Add my first record'
-                              : 'Add Career Record',
+                              : 'Add a career record',
                         ),
                       ),
                     ),
@@ -180,7 +183,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
                       ? 'Your personal record works without a goal. Add one later for suggested next steps.'
                       : nextStep == null
                           ? 'Review your personal growth plan.'
-                          : 'Recommended step in your personal plan.',
+                          : 'Part of your ${app.selectedGoal?.title ?? 'career'} goal. You can change your goal anytime.',
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => context.go(
