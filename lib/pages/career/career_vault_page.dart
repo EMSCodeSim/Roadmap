@@ -796,6 +796,160 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       }
     }
 
+    final currentCerts = app.certifications
+        .where((c) => c.status != CertificationStatus.expired)
+        .toList();
+    final highlights = _records.where((e) => e.highlight).take(12).toList();
+    final leadership = _records
+        .where(
+          (e) =>
+              e.type == CareerRecordType.leadership ||
+              e.type == CareerRecordType.project ||
+              e.type == CareerRecordType.teaching,
+        )
+        .take(10)
+        .toList();
+    final linked = goal == null
+        ? <CareerRecord>[]
+        : _records
+              .where(
+                (e) =>
+                    e.relatedGoalId == goal.id ||
+                    requirementNames.containsKey(e.relatedRequirementId),
+              )
+              .toList();
+    final trainingHours = _records
+        .where(
+          (e) =>
+              e.type == CareerRecordType.training ||
+              e.type == CareerRecordType.education ||
+              e.type == CareerRecordType.teaching,
+        )
+        .fold<double>(0, (sum, e) => sum + (e.hours ?? 0));
+
+    final skillCounts = <String, int>{};
+    for (final record in _records.where(
+      (e) => e.type == CareerRecordType.skill,
+    )) {
+      final key = record.category.trim().isEmpty
+          ? record.title
+          : record.category.trim();
+      skillCounts[key] = (skillCounts[key] ?? 0) + record.repetitions;
+    }
+    final topSkills = skillCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final buffer = StringBuffer();
+    buffer.writeln('PROFESSIONAL GROWTH & ADVANCEMENT BRIEF');
+    buffer.writeln('Generated ${_formatDate(DateTime.now())}');
+    if (goal != null) buffer.writeln('Target role: ${goal.title}');
+    if (roadmap != null) {
+      buffer.writeln(
+        'Task Book progress: ${roadmap.completedCount}/${roadmap.totalCount} requirements complete',
+      );
+    }
+    buffer.writeln('Career evidence records: ${_records.length}');
+    buffer.writeln(
+      'Documented training/education hours: ${_trimNumber(trainingHours)}',
+    );
+    buffer.writeln();
+
+    buffer.writeln('CURRENT CREDENTIALS');
+    if (currentCerts.isEmpty) {
+      buffer.writeln('- No current credentials recorded.');
+    } else {
+      for (final cert in currentCerts.take(20)) {
+        final expires = cert.doesNotExpire || cert.expirationDate == null
+            ? 'no expiration recorded'
+            : 'expires ${_formatDate(cert.expirationDate!)}';
+        buffer.writeln('- ${app.certificationDisplayName(cert)} — $expires');
+      }
+    }
+    buffer.writeln();
+
+    buffer.writeln('CAREER HIGHLIGHTS');
+    if (highlights.isEmpty) {
+      buffer.writeln(
+        '- Mark strong records as Career Highlights to build this section.',
+      );
+    } else {
+      for (final record in highlights) {
+        buffer.writeln(
+          '- ${_formatDate(record.date)} | ${record.title}${_briefDetail(record)}',
+        );
+      }
+    }
+    buffer.writeln();
+
+    buffer.writeln('LEADERSHIP / TEACHING / PROJECT EVIDENCE');
+    if (leadership.isEmpty) {
+      buffer.writeln(
+        '- No leadership, teaching, mentoring, or project records yet.',
+      );
+    } else {
+      for (final record in leadership) {
+        buffer.writeln(
+          '- ${_formatDate(record.date)} | ${record.title}${_briefDetail(record)}',
+        );
+      }
+    }
+    buffer.writeln();
+
+    buffer.writeln('MOST PRACTICED SKILLS');
+    if (topSkills.isEmpty) {
+      buffer.writeln('- No skill repetitions recorded yet.');
+    } else {
+      for (final entry in topSkills.take(10)) {
+        buffer.writeln(
+          '- ${entry.key}: ${entry.value} documented repetition${entry.value == 1 ? '' : 's'}',
+        );
+      }
+    }
+
+    if (goal != null) {
+      buffer.writeln();
+      buffer.writeln('EVIDENCE SUPPORTING ${goal.title.toUpperCase()}');
+      if (linked.isEmpty) {
+        buffer.writeln('- No career records linked to this roadmap yet.');
+      } else {
+        for (final record in linked.take(20)) {
+          final req = record.relatedRequirementId == null
+              ? null
+              : requirementNames[record.relatedRequirementId!];
+          buffer.writeln(
+            '- ${req == null ? record.title : '$req — ${record.title}'}${_briefDetail(record)}',
+          );
+        }
+      }
+    }
+
+    buffer.writeln();
+    buffer.writeln(
+      'Use this as a memory aid for promotion preparation, resumes, performance reviews, and interviews. Verify dates and details against official records when required.',
+    );
+    return buffer.toString().trim();
+  }
+
+  String _briefDetail(CareerRecord record) {
+    final parts = <String>[];
+    if ((record.roleOrAssignment ?? '').trim().isNotEmpty) {
+      parts.add(record.roleOrAssignment!.trim());
+    }
+    if ((record.impact ?? '').trim().isNotEmpty) {
+      parts.add(record.impact!.trim());
+    }
+    if ((record.evidenceReference ?? '').trim().isNotEmpty) {
+      parts.add('Evidence: ${record.evidenceReference!.trim()}');
+    }
+    return parts.isEmpty ? '' : ' — ${parts.join(' | ')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.watch<AppState>();
+    final cs = Theme.of(context).colorScheme;
+    final roadmap = app.roadmap;
+    final goal = app.selectedGoal;
     final timelineEntries = _timelineEntries(app);
 
     return Scaffold(
