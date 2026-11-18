@@ -121,7 +121,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         record.date.year.toString(),
       ].join(' ').toLowerCase();
       return haystack.contains(q);
-    }).toList();
+    }).toList()..sort((a, b) => b.date.compareTo(a.date));
   }
 
   Future<void> _openEditor({
@@ -929,20 +929,35 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     onAdd: () => _openEditor(),
                   )
                 else
-                  ..._filteredRecords.map(
-                    (record) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _RecordCard(
-                        record: record,
-                        requirementName: _requirementName(
-                          app,
-                          record.relatedRequirementId,
+                  ..._filteredRecords.asMap().entries.expand((entry) {
+                    final index = entry.key;
+                    final record = entry.value;
+                    final startsYear = index == 0 ||
+                        _filteredRecords[index - 1].date.year != record.date.year;
+                    return <Widget>[
+                      if (startsYear)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
+                          child: Text(
+                            '${record.date.year}',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
                         ),
-                        onEdit: () => _openEditor(existing: record),
-                        onDelete: () => _deleteRecord(record),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _RecordCard(
+                          record: record,
+                          requirementName: _requirementName(
+                            app,
+                            record.relatedRequirementId,
+                          ),
+                          onEdit: () => _openEditor(existing: record),
+                          onDelete: () => _deleteRecord(record),
+                        ),
                       ),
-                    ),
-                  ),
+                    ];
+                  }),
                 const SizedBox(height: 18),
                 const _SectionTitle(
                   title: 'Quick capture',
