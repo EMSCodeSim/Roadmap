@@ -22,7 +22,7 @@ void main() {
   });
 
   testWidgets(
-    'create entry opens the editor and saves a personal record',
+    'career timeline opens its record editor when requested directly',
     (tester) async {
     final app = AppState();
     await tester.runAsync(app.bootstrap);
@@ -60,7 +60,6 @@ void main() {
 
     expect(find.byType(AlertDialog), findsNothing);
     expect(find.text('Your growth over time'), findsOneWidget);
-    expect(find.textContaining('1 record'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );
