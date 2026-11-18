@@ -747,9 +747,14 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFF09213D),
+        foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         leading: const AppBackButton.toAdvance(),
-
-        title: const Text('My Career Timeline'),
+        title: const Text(
+          'Responder Roadmap',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
             tooltip: 'Career advancement brief',
@@ -879,9 +884,21 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                   ),
                 ),
                 const SizedBox(height: 14),
+                Card(
+                  color: const Color(0xFFF1F5FA),
+                  child: ListTile(
+                    leading: const Icon(Icons.verified_user_outlined,
+                        color: Color(0xFF09213D)),
+                    title: const Text('Personal career history'),
+                    subtitle: const Text(
+                      'Your own entries remain editable. Approved department '
+                      'training is displayed as verified, read-only evidence.',
+                    ),
+                  ),
+                ),
                 const _SectionTitle(
                   title: 'Career snapshot',
-                  subtitle: 'A long-term view across roles and departments.',
+                  subtitle: 'Your personal records at a glance.',
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -912,9 +929,9 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                 ),
                 const SizedBox(height: 20),
                 const _SectionTitle(
-                  title: 'Your career timeline',
+                  title: 'My Career Timeline',
                   subtitle:
-                      'Explore your professional history by date, type, or keyword.',
+                      'Your professional history in one place.',
                 ),
                 const SizedBox(height: 10),
                 TextField(
