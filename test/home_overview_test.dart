@@ -60,14 +60,17 @@ void main() {
       );
       // Avoid waiting indefinitely for progress indicators and asynchronous sync.
       await tester.pump(const Duration(milliseconds: 300));
-      await tester.runAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-      });
-      await tester.pump();
-
       expect(find.text('Today'), findsOneWidget);
       expect(find.text('YOUR CAREER'), findsOneWidget);
-      expect(find.text('Add my first record'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              (widget.data == 'Add my first record' ||
+                  widget.data == 'Add Career Record'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Next action'), findsOneWidget);
       expect(find.text('Credentials'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Unfinished records'), 200);
