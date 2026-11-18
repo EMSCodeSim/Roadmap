@@ -6,7 +6,7 @@ import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/pages/career/production_quick_log_sheet.dart';
 
 void main() {
-  testWidgets('Quick Add exposes responder activity categories and QR scan', (tester) async {
+  testWidgets('Log something now exposes responder activity categories and QR scan', (tester) async {
     await tester.pumpWidget(
       ChangeNotifierProvider(
         create: (_) => AppModeController(),
