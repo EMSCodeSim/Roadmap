@@ -44,10 +44,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
     expect(find.text('Add career record'), findsOneWidget);
-    final titleField = find.byWidgetPredicate(
-      (widget) =>
-          widget is TextFormField && widget.decoration?.labelText == 'Title *',
-    );
+    final titleField = find.byKey(const ValueKey('career_record_title'));
     await tester.enterText(titleField, 'EMT instructor course');
     await tester.tap(find.text('Save record'));
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
