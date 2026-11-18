@@ -45,10 +45,14 @@ void main() {
 
     expect(find.byType(AlertDialog), findsOneWidget);
     final titleField = find.byKey(const ValueKey('career_record_title'));
+    await tester.ensureVisible(titleField);
     await tester.enterText(titleField, 'EMT instructor course');
+    await tester.pump();
+    expect(find.text('EMT instructor course'), findsOneWidget);
     await tester.tap(find.text('Save record'));
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
+    expect(find.byType(AlertDialog), findsNothing);
     expect(find.text('EMT instructor course'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
