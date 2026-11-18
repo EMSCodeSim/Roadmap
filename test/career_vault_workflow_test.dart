@@ -59,7 +59,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(AlertDialog), findsNothing);
-    await tester.ensureVisible(find.text('EMT instructor course').first);
+    await tester.scrollUntilVisible(
+      find.text('EMT instructor course').first,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('EMT instructor course'), findsAtLeastNWidgets(1));
     },
     timeout: const Timeout(Duration(seconds: 45)),
@@ -103,8 +107,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      await tester.ensureVisible(
+      await tester.scrollUntilVisible(
         find.widgetWithText(ListTile, 'Paramedic').first,
+        250,
+        scrollable: find.byType(Scrollable).first,
       );
 
       expect(find.text('My Career Timeline'), findsOneWidget);
