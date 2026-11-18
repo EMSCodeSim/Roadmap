@@ -62,7 +62,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('EMT instructor course').first,
       250,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find.byType(ListView).first,
     );
     expect(find.text('EMT instructor course'), findsAtLeastNWidgets(1));
     },
@@ -110,7 +110,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.widgetWithText(ListTile, 'Paramedic').first,
         250,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: find.byType(ListView).first,
       );
 
       expect(find.text('My Career Timeline'), findsOneWidget);
