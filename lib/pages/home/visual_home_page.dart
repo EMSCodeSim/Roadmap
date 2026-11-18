@@ -66,7 +66,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
         backgroundColor: navy,
         foregroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
-        title: const FirefighterRoadmapWordmark(),
+        title: const FirefighterRoadmapWordmark(foregroundColor: Colors.white),
         actions: [
           IconButton(
             tooltip: 'Settings',
