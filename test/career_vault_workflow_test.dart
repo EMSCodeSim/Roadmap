@@ -109,6 +109,9 @@ void main() {
       await tester.scrollUntilVisible(find.widgetWithText(ListTile, 'Paramedic'), 250);
 
       expect(find.text('My Career Timeline'), findsOneWidget);
+      expect(find.text('Career snapshot'), findsNothing);
+      expect(find.text('Quick capture'), findsNothing);
+      expect(find.text('Certification radar'), findsNothing);
       expect(find.widgetWithText(ListTile, 'Paramedic'), findsOneWidget);
       expect(find.textContaining('Expires'), findsOneWidget);
 
