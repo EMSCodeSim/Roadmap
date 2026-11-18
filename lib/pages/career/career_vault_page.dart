@@ -178,7 +178,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         builder: (dialogContext, setDialogState) {
           return AlertDialog(
             title: Text(
-              existing == null ? 'Add career evidence' : 'Edit career evidence',
+              existing == null ? 'Add career record' : 'Edit career record',
             ),
             content: SizedBox(
               width: 620,
@@ -708,7 +708,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       appBar: AppBar(
         leading: const AppBackButton.toAdvance(),
 
-        title: const Text('Career Vault'),
+        title: const Text('My Career Timeline'),
         actions: [
           IconButton(
             tooltip: 'Career advancement brief',
@@ -716,7 +716,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
             icon: const Icon(Icons.description_outlined),
           ),
           IconButton(
-            tooltip: 'Add career evidence',
+            tooltip: 'Add career record',
             onPressed: () => _openEditor(),
             icon: const Icon(Icons.add_circle_outline),
           ),
@@ -755,7 +755,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Build the record your future self will need',
+                                    'Your career, all in one place',
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleLarge
