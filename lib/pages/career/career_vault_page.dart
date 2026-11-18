@@ -224,11 +224,15 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       text: existing?.tags.join(', ') ?? (initialTags?.join(', ') ?? ''),
     );
     final formKey = GlobalKey<FormState>();
+    Future<void>? editorExitTransition;
 
     final result = await showDialog<CareerRecord>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
+          editorExitTransition ??= ModalRoute.of(dialogContext)
+              ?.completed
+              .then<void>((_) {});
           return AlertDialog(
             title: Text(
               existing == null ? 'Add career record' : 'Edit career record',
@@ -525,6 +529,11 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       ),
     );
 
+    // showDialog completes as soon as the route is popped, before its reverse
+    // transition has removed the form fields. Keep their controllers alive
+    // until that transition finishes to avoid listeners touching disposed
+    // controllers during the exit animation.
+    await editorExitTransition;
     title.dispose();
     category.dispose();
     role.dispose();
