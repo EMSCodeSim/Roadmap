@@ -218,33 +218,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     setState(() => _records = next);
   }
 
-  Future<void> _deleteRecord(CareerRecord record) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete career record?'),
-        content: Text(
-          '“${record.title}” will be removed from your personal career history.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    final next = _records.where((e) => e.id != record.id).toList();
-    await _store.save(next);
-    if (!mounted) return;
-    setState(() => _records = next);
-  }
-
   List<_GrowthYear> _growthYears(AppState app) {
     final byYear = <int, _GrowthYear>{};
     for (final record in _records) {
