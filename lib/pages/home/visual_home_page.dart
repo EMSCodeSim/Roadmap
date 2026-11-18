@@ -47,13 +47,9 @@ class _VisualHomePageState extends State<VisualHomePage> {
     final department = context.watch<DepartmentInboxController>();
     final colors = Theme.of(context).colorScheme;
     const navy = Color(0xFF09213D);
-    const red = Color(0xFFC8102E);
     final roadmap = app.roadmap;
     final nextStep = roadmap?.nextStep;
     final hasDepartment = appMode.departmentLink != null;
-    final hasPersonalHistory = _records.isNotEmpty || app.certifications.isNotEmpty;
-    final firstRecordQuery =
-        !_loadingRecords && !hasPersonalHistory ? '?create=1&first=1' : '?create=1';
     final credentials = CertificationUrgency.urgent(
       app.certifications,
       withinDays: 90,
@@ -94,72 +90,6 @@ class _VisualHomePageState extends State<VisualHomePage> {
               style: TextStyle(color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
-            Card(
-              color: navy,
-              margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('YOUR CAREER',
-                        style: TextStyle(color: Colors.white70,
-                            fontWeight: FontWeight.w700, letterSpacing: 1.2)),
-                    const SizedBox(height: 8),
-                    Text(
-                      _loadingRecords
-                          ? 'Loading your career history…'
-                          : !hasPersonalHistory
-                              ? 'Your record is ready to build'
-                              : _records.isEmpty
-                                  ? 'Your history is getting started'
-                                  : '${_records.length} personal career records',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white, fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 5),
-                    const Text(
-                      'Training, experience and accomplishments — all in one place.',
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                    if (!_loadingRecords && _records.isEmpty) ...[
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Start with a certification, recent class, experience, or accomplishment. You can add older records anytime.',
-                        style: TextStyle(color: Colors.white70, height: 1.4),
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                            backgroundColor: red, foregroundColor: Colors.white),
-                        onPressed: () => context.push(
-                          '${AppRoutes.careerEvidence}$firstRecordQuery',
-                        ),
-                        icon: const Icon(Icons.add),
-                        label: Text(
-                          !_loadingRecords && _records.isEmpty
-                              ? 'Add my first record'
-                              : 'Add detailed career history',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () => context.go(AppRoutes.growth),
-                        child: const Text('View Career Timeline',
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
             _sectionTitle(context, 'Next action'),
             Card(
               margin: EdgeInsets.zero,
@@ -266,12 +196,6 @@ class _VisualHomePageState extends State<VisualHomePage> {
                 onTap: () => context.go(AppRoutes.department),
               ),
             ],
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: () => context.go(AppRoutes.careerGoals),
-              icon: const Icon(Icons.route_rounded),
-              label: const Text('Open Career Goals'),
-            ),
           ],
         ),
       ),
