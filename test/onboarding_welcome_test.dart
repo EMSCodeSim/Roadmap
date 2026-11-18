@@ -30,6 +30,7 @@ void main() {
       const MaterialApp(home: OnboardingV2Page()),
     );
 
+    await tester.ensureVisible(find.text('Set up my roadmap first'));
     await tester.tap(find.text('Set up my roadmap first'));
     await tester.pumpAndSettle();
 
