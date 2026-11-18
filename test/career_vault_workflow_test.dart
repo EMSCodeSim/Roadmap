@@ -112,8 +112,9 @@ void main() {
       expect(find.text('Paramedic'), findsOneWidget);
       expect(find.textContaining('Expires'), findsOneWidget);
 
-      await tester.scrollUntilVisible(find.text('Credentials'), 250);
-      await tester.tap(find.text('Credentials'));
+      final credentialsFilter = find.widgetWithText(FilterChip, 'Credentials');
+      await tester.ensureVisible(credentialsFilter);
+      await tester.tap(credentialsFilter);
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
       await tester.scrollUntilVisible(find.text('Paramedic'), 250);
 
