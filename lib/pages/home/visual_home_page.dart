@@ -48,6 +48,8 @@ class _VisualHomePageState extends State<VisualHomePage> {
     const red = Color(0xFFC8102E);
     final roadmap = app.roadmap;
     final nextStep = roadmap?.nextStep;
+    final firstRecordQuery =
+        _records.isEmpty ? '?create=1&first=1' : '?create=1';
     final credentials = CertificationUrgency.urgent(
       app.certifications,
       withinDays: 90,
@@ -128,11 +130,11 @@ class _VisualHomePageState extends State<VisualHomePage> {
                         style: FilledButton.styleFrom(
                             backgroundColor: red, foregroundColor: Colors.white),
                         onPressed: () => context.push(
-                          '${AppRoutes.careerEvidence}?create=1',
+                          '${AppRoutes.careerEvidence}$firstRecordQuery',
                         ),
                         icon: const Icon(Icons.add),
                         label: Text(
-                          _records.isEmpty
+                          !_loadingRecords && _records.isEmpty
                               ? 'Add my first record'
                               : 'Add Career Record',
                         ),
