@@ -51,6 +51,10 @@ void main() {
     expect(find.text('EMT instructor course'), findsOneWidget);
     await tester.tap(find.text('Save record'));
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pump();
 
     expect(find.byType(AlertDialog), findsNothing);
     expect(find.text('EMT instructor course'), findsOneWidget);
