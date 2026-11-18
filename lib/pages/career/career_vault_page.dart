@@ -37,6 +37,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
 
   List<CareerRecord> _records = <CareerRecord>[];
   CareerRecordType? _filter;
+  bool _credentialsOnly = false;
   bool _loading = true;
   List<DepartmentClassDetail> _departmentTraining = const [];
   bool _departmentLoading = false;
@@ -252,24 +253,134 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     setState(() => _records = next);
   }
 
-  List<CareerRecord> get _filteredRecords {
-    final q = _searchController.text.trim().toLowerCase();
-    return _records.where((record) {
-      if (_filter != null && record.type != _filter) return false;
-      if (q.isEmpty) return true;
-      final haystack = <String>[
-        record.title,
-        record.category,
-        record.type.label,
-        record.roleOrAssignment ?? '',
-        record.summary ?? '',
-        record.impact ?? '',
-        record.evidenceReference ?? '',
-        ...record.tags,
-        record.date.year.toString(),
-      ].join(' ').toLowerCase();
-      return haystack.contains(q);
-    }).toList()..sort((a, b) => b.date.compareTo(a.date));
+  List<_CareerTimelineEntry> _timelineEntries(AppState app) {
+    final query = _searchController.text.trim().toLowerCase();
+    final entries = <_CareerTimelineEntry>[];
+
+    if (!_credentialsOnly) {
+      for (final record in _records) {
+        if (_filter != null && record.type != _filter) continue;
+        final searchable = <String>[
+          record.title,
+          record.category,
+          record.type.label,
+          record.roleOrAssignment ?? '',
+          record.summary ?? '',
+          record.impact ?? '',
+          record.evidenceReference ?? '',
+          ...record.tags,
+          record.date.year.toString(),
+        ].join(' ').toLowerCase();
+        if (query.isNotEmpty && !searchable.contains(query)) continue;
+        entries.add(
+          _CareerTimelineEntry(
+            kind: _CareerTimelineEntryKind.careerRecord,
+            date: record.date,
+            record: record,
+          ),
+        );
+      }
+    }
+
+    if (_credentialsOnly || _filter == null) {
+      for (final certification in app.certifications) {
+        final searchable = <String>[
+          app.certificationDisplayName(certification),
+          certification.issuingOrganization ?? '',
+          certification.doesNotExpire
+              ? 'does not expire'
+              : certification.expirationDate == null
+                  ? 'expiration not recorded'
+                  : 'expires ${certification.expirationDate!.year}',
+          certification.status.name,
+        ].join(' ').toLowerCase();
+        if (query.isNotEmpty && !searchable.contains(query)) continue;
+        entries.add(
+          _CareerTimelineEntry(
+            kind: _CareerTimelineEntryKind.certification,
+            date: certification.issueDate ?? certification.createdAt,
+            certification: certification,
+          ),
+        );
+      }
+    }
+
+    final includeDepartmentTraining = !_credentialsOnly &&
+        (_filter == null || _filter == CareerRecordType.training);
+    if (includeDepartmentTraining) {
+      for (final training in _departmentTraining) {
+        final start = training.startsAt;
+        if (start == null) continue;
+        final searchable = <String>[
+          training.title,
+          training.trainingCategory,
+          'verified department training',
+          '${training.creditHours}',
+          start.year.toString(),
+        ].join(' ').toLowerCase();
+        if (query.isNotEmpty && !searchable.contains(query)) continue;
+        entries.add(
+          _CareerTimelineEntry(
+            kind: _CareerTimelineEntryKind.departmentTraining,
+            date: start,
+            departmentTraining: training,
+          ),
+        );
+      }
+    }
+
+    entries.sort((a, b) => b.date.compareTo(a.date));
+    return entries;
+  }
+
+  Widget _timelineCard(AppState app, _CareerTimelineEntry entry) {
+    switch (entry.kind) {
+      case _CareerTimelineEntryKind.careerRecord:
+        final record = entry.record!;
+        return _RecordCard(
+          record: record,
+          requirementName: _requirementName(app, record.relatedRequirementId),
+          onEdit: () => _openEditor(existing: record),
+          onDelete: () => _deleteRecord(record),
+        );
+      case _CareerTimelineEntryKind.certification:
+        final certification = entry.certification!;
+        final expiration = certification.doesNotExpire
+            ? 'Does not expire'
+            : certification.expirationDate == null
+                ? 'Expiration date not recorded'
+                : 'Expires ${_formatDate(certification.expirationDate!)}';
+        final issuer = certification.issuingOrganization?.trim();
+        return Card(
+          child: ListTile(
+            leading: Icon(
+              certification.status == CertificationStatus.expired
+                  ? Icons.warning_amber_rounded
+                  : Icons.verified_outlined,
+            ),
+            title: Text(app.certificationDisplayName(certification)),
+            subtitle: Text(
+              '${entry.date.year} · $expiration${issuer == null || issuer.isEmpty ? '' : ' · $issuer'}',
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push(
+              '${AppRoutes.certificationDetail}/${certification.id}',
+            ),
+          ),
+        );
+      case _CareerTimelineEntryKind.departmentTraining:
+        final training = entry.departmentTraining!;
+        return Card(
+          child: ListTile(
+            leading: const Icon(Icons.apartment_rounded),
+            title: Text(training.title),
+            subtitle: Text(
+              '${_formatDate(entry.date)} · ${training.trainingCategory} · ${_trimNumber(training.creditHours)} hours · Verified department record',
+            ),
+            trailing: const Icon(Icons.verified_outlined, size: 20),
+          ),
+        );
+    }
   }
 
   Future<void> _openEditor({
@@ -860,6 +971,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         .where((e) => e.type == CareerRecordType.skill)
         .fold<int>(0, (sum, e) => sum + e.repetitions);
     final highlights = _records.where((e) => e.highlight).length;
+    final timelineEntries = _timelineEntries(app);
 
     final requirementIds = <String>{};
     if (roadmap != null) {
@@ -1092,8 +1204,22 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                         padding: const EdgeInsets.only(right: 6),
                         child: FilterChip(
                           label: const Text('All'),
-                          selected: _filter == null,
-                          onSelected: (_) => setState(() => _filter = null),
+                          selected: _filter == null && !_credentialsOnly,
+                          onSelected: (_) => setState(() {
+                            _filter = null;
+                            _credentialsOnly = false;
+                          }),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: FilterChip(
+                          label: const Text('Credentials'),
+                          selected: _credentialsOnly,
+                          onSelected: (selected) => setState(() {
+                            _credentialsOnly = selected;
+                            _filter = null;
+                          }),
                         ),
                       ),
                       ...CareerRecordType.values.map(
@@ -1102,9 +1228,10 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                           child: FilterChip(
                             label: Text(type.shortLabel),
                             selected: _filter == type,
-                            onSelected: (_) => setState(
-                              () => _filter = _filter == type ? null : type,
-                            ),
+                            onSelected: (_) => setState(() {
+                              _filter = _filter == type ? null : type;
+                              _credentialsOnly = false;
+                            }),
                           ),
                         ),
                       ),
@@ -1117,56 +1244,32 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     padding: EdgeInsets.symmetric(vertical: 8),
                     child: LinearProgressIndicator(),
                   ),
-                if (_departmentTraining.isNotEmpty) ...[
-                  const Padding(
-                    padding: EdgeInsets.only(top: 12, bottom: 8),
-                    child: Text('Verified department training',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                  ..._departmentTraining.map((training) => Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.verified_outlined),
-                      title: Text(training.title),
-                      subtitle: Text(
-                        '${training.startsAt!.year}-${training.startsAt!.month.toString().padLeft(2, '0')}-${training.startsAt!.day.toString().padLeft(2, '0')} · ${training.trainingCategory} · ${training.creditHours} hours · Department record',
-                      ),
-                      trailing: const Icon(Icons.lock_outline, size: 18),
-                    ),
-                  )),
-                  const SizedBox(height: 12),
-                ],
-                if (_filteredRecords.isEmpty)
+                if (timelineEntries.isEmpty)
                   _EmptyState(
-                    hasRecords: _records.isNotEmpty,
+                    hasRecords: _records.isNotEmpty ||
+                        app.certifications.isNotEmpty ||
+                        _departmentTraining.isNotEmpty,
                     onAdd: () => _openEditor(),
                   )
                 else
-                  ..._filteredRecords.asMap().entries.expand((entry) {
+                  ...timelineEntries.asMap().entries.expand((entry) {
                     final index = entry.key;
-                    final record = entry.value;
+                    final item = entry.value;
                     final startsYear = index == 0 ||
-                        _filteredRecords[index - 1].date.year != record.date.year;
+                        timelineEntries[index - 1].date.year != item.date.year;
                     return <Widget>[
                       if (startsYear)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
                           child: Text(
-                            '${record.date.year}',
+                            '${item.date.year}',
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                         ),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
-                        child: _RecordCard(
-                          record: record,
-                          requirementName: _requirementName(
-                            app,
-                            record.relatedRequirementId,
-                          ),
-                          onEdit: () => _openEditor(existing: record),
-                          onDelete: () => _deleteRecord(record),
-                        ),
+                        child: _timelineCard(app, item),
                       ),
                     ];
                   }),
@@ -1276,6 +1379,28 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     }
     return null;
   }
+}
+
+enum _CareerTimelineEntryKind {
+  careerRecord,
+  certification,
+  departmentTraining,
+}
+
+class _CareerTimelineEntry {
+  final _CareerTimelineEntryKind kind;
+  final DateTime date;
+  final CareerRecord? record;
+  final Certification? certification;
+  final DepartmentClassDetail? departmentTraining;
+
+  const _CareerTimelineEntry({
+    required this.kind,
+    required this.date,
+    this.record,
+    this.certification,
+    this.departmentTraining,
+  });
 }
 
 class _SectionTitle extends StatelessWidget {
