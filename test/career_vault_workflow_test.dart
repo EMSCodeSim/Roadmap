@@ -55,6 +55,7 @@ void main() {
       () => Future<void>.delayed(const Duration(milliseconds: 100)),
     );
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(AlertDialog), findsNothing);
     expect(find.text('EMT instructor course'), findsOneWidget);
