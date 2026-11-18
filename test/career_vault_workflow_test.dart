@@ -106,19 +106,19 @@ void main() {
         ),
       );
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      await tester.scrollUntilVisible(find.text('Paramedic'), 250);
+      await tester.scrollUntilVisible(find.widgetWithText(ListTile, 'Paramedic'), 250);
 
       expect(find.text('My Career Timeline'), findsOneWidget);
-      expect(find.text('Paramedic'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Paramedic'), findsOneWidget);
       expect(find.textContaining('Expires'), findsOneWidget);
 
       final credentialsFilter = find.widgetWithText(FilterChip, 'Credentials');
       await tester.ensureVisible(credentialsFilter);
       await tester.tap(credentialsFilter);
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      await tester.scrollUntilVisible(find.text('Paramedic'), 250);
+      await tester.scrollUntilVisible(find.widgetWithText(ListTile, 'Paramedic'), 250);
 
-      expect(find.text('Paramedic'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Paramedic'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );
