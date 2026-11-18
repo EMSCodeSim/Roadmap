@@ -69,9 +69,15 @@ List<DepartmentTrainingSheetTemplate> _trainingSheetChecklistTemplates(
 String _trainingComponentSummary(DepartmentTrainingSheetComponentTemplate component) {
   final data = component.data;
   if (component.kind == 'EMS_CE_LIST') {
+    final groups = data['ceGroups'] as List? ?? const [];
+    if (groups.isNotEmpty) {
+      return groups.whereType<Map>().map((group) {
+        final categories = group['categories'] as List? ?? const [];
+        return '${group['name']}: ${categories.map((category) => category.toString()).join(', ')}';
+      }).join(' · ');
+    }
     final credits = data['ceCredits'] as List? ?? const [];
-    return credits.whereType<Map>().map((credit) =>
-      '${credit['category']} ${credit['hours']} hr').join(' · ');
+    return credits.whereType<Map>().map((credit) => '${credit['category']}').join(' · ');
   }
   final config = data['gradingConfig'] is Map
       ? Map<String, dynamic>.from(data['gradingConfig'] as Map)
@@ -335,7 +341,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
   final title = TextEditingController(), location = TextEditingController(), notes = TextEditingController(), hours = TextEditingController();
   bool busy = false, qr = true, advanced = false; String? error; DateTime startTime = DateTime.now(); String category = 'COMPANY'; String checklist = ''; String gradingComponentId = ''; String ceComponentId = ''; final Set<String> selectedMembers = <String>{}; final Map<String, String> stationProctors = <String, String>{};
   bool _dirty = false;
-  bool get _isEmsCe => widget.template?.ceCredits.isNotEmpty == true;
+  bool get _hasCeAllocation => widget.template?.ceCredits.isNotEmpty == true;
 
   void _markDirty() {
     if (_dirty) return;
@@ -361,7 +367,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
     super.initState();
     final t=widget.template;
     if(t!=null){
-      title.text=_isEmsCe ? '' : t.defaultTitle; location.text=t.location; notes.text=t.notes;
+      title.text=_hasCeAllocation ? '' : t.defaultTitle; location.text=t.location; notes.text=t.notes;
       hours.text=t.creditHours > 0 ? t.creditHours.toString() : '';
       category=t.trainingCategory; checklist=t.checklistVersionId; qr=t.selfRegistration;
     }
@@ -472,7 +478,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const Text('Saved instructor components', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height:4),
-              const Text('Optional: override the grading or EMS CE settings included in the selected class package.'),
+              const Text('Optional: override the grading or CE settings included in the selected class package.'),
               const SizedBox(height:10),
               DropdownButtonFormField<String>(
                 initialValue: gradingComponentId,
@@ -495,7 +501,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
               const SizedBox(height:8),
               DropdownButtonFormField<String>(
                 initialValue: ceComponentId,
-                decoration: const InputDecoration(labelText: 'EMS CE allocation (optional)'),
+                decoration: const InputDecoration(labelText: 'CE category set (optional)'),
                 items: [
                   const DropdownMenuItem(value: '', child: Text('Use class package / enter at closeout')),
                   ...widget.components.where((component) => component.kind == 'EMS_CE_LIST').map((component) =>
@@ -509,7 +515,6 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
                 onChanged: (value) {
                   setState(() {
                     ceComponentId = value ?? '';
-                    if (ceComponentId.isNotEmpty) category = 'EMS';
                   });
                   _markDirty();
                 },
@@ -1068,7 +1073,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 summaryRow('End', _recordDate(detail.endsAt), required: true),
                 summaryRow('Total hours', detail.creditHours > 0 ? detail.creditHours.toStringAsFixed(2) : '', required: true),
                 summaryRow('Category', detail.trainingCategory.replaceAll('_', ' '), required: true),
-                if (detail.trainingCategory == 'EMS') summaryRow('CE category', ceSummary, required: true),
+                if (detail.ceCredits.isNotEmpty || detail.trainingCategory == 'EMS') summaryRow('CE allocation', ceSummary, required: true),
                 summaryRow('Shift', detail.shift),
                 summaryRow('Station / facility', detail.station.isNotEmpty ? detail.station : detail.location),
                 summaryRow('Checklist', detail.checklistTitle),
@@ -1619,7 +1624,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
     final savedCategory = result['trainingCategory'] as String;
     final requiresCe = ceCategories.isNotEmpty;
-    if(savedCategory == 'EMS' && (result['notes'] as String).trim().isEmpty){setState(()=>_error='Enter a short class description before closing EMS CE.');return false;}
+    if(savedCategory == 'EMS' && (result['notes'] as String).trim().isEmpty){setState(()=>_error='Enter a short class description before closing this EMS training sheet.');return false;}
     final ceCredits=result['ceCredits'] as Map<String,double>;
     if(requiresCe && !ceCredits.values.any((hours)=>hours>0)){setState(()=>_error='Assign CE credit to at least one category before closing.');return false;}
 
@@ -2010,7 +2015,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         line('Training hours', detail.creditHours.toStringAsFixed(2)),
         if (ceRows.isNotEmpty) ...[
           pw.SizedBox(height: 10),
-          pw.Text('EMS CE category breakdown', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.Text('CE category breakdown', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 6),
           pw.TableHelper.fromTextArray(
             headers: const ['CE category', 'Hours'],
@@ -2743,7 +2748,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Apply this class package?'),
-            content: const Text('This replaces the current grading rules and custom result fields. If the package has an EMS CE allocation, it replaces the current CE breakdown too. Existing student records remain attached to the class.'),
+            content: const Text('This replaces the current grading rules and custom result fields. If the package has CE categories, it replaces the current CE breakdown too. Existing student records remain attached to the class.'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Keep current setup')),
               FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Apply package')),
@@ -3122,7 +3127,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       if (detail.ceCredits.isNotEmpty || detail.gradingConfig.isNotEmpty)
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Template requirements', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-          if (detail.ceCredits.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('EMS CE: ${detail.ceCredits.map((item) => '${item['hours']} hr ${item['category']}').join(' · ')}')),
+          if (detail.ceCredits.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('CE: ${detail.ceCredits.map((item) => '${item['hours']} hr ${item['category']}').join(' · ')}')),
           if (detail.gradingConfig.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Required scores: ${[
             if (detail.gradingConfig['writtenTestEnabled'] == true) 'Written test${detail.gradingConfig['writtenTestPassPercent'] != null ? ' ≥${detail.gradingConfig['writtenTestPassPercent']}%' : ''}',
             if (detail.gradingConfig['ccfEnabled'] == true) 'CCF${detail.gradingConfig['ccfPassPercent'] != null ? ' ≥${detail.gradingConfig['ccfPassPercent']}%' : ''}',
