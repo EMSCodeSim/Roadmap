@@ -419,7 +419,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
               child: Center(
                 child: Text(
                   _step == 0
-                      ? 'About 1 minute'
+                      ? 'Choose a starting point'
                       : 'Step $_step of $_setupSteps',
                   style: Theme.of(context)
                       .textTheme
@@ -452,14 +452,18 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                   width: double.infinity,
                   height: 58,
                   child: FilledButton(
-                    onPressed: _saving ? null : _next,
+                    onPressed: _saving
+                        ? null
+                        : _step == 0
+                            ? _startWithPersonalRecord
+                            : _next,
                     child: Text(
                       _saving
-                          ? 'Building your next steps…'
+                          ? 'Getting your record ready…'
                           : _step == 4
                               ? 'Build My Roadmap'
                               : _step == 0
-                                  ? 'Set up my roadmap'
+                                  ? 'Start with my personal record'
                                   : _step == 3
                                       ? 'Continue — skip if none'
                                       : 'Continue',
@@ -485,36 +489,66 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         final content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            OnboardingHero(
-              headline: 'Your career roadmap, organized.',
-              supporting:
-                  'Responder Roadmap helps you plan your Fire and EMS career, record experience, manage credentials, and keep official department work clearly separate.',
-              progressValue: 0,
-              currentStep: 1,
-              totalSteps: _setupSteps,
-              progressLabel:
-                  'Four quick setup steps · You can change everything later',
+            Container(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.xl),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    cs.primaryContainer.withValues(alpha: 0.85),
+                    cs.secondaryContainer.withValues(alpha: 0.55),
+                  ],
+                ),
+                border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.timeline_rounded,
+                      size: 34, color: cs.onPrimaryContainer),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Your Fire & EMS career record starts here.',
+                    style: t.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      height: 1.12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Keep training, certifications, experience, and accomplishments together in one personal record.',
+                    style: t.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            const _WelcomeFeatureCard(
-              icon: Icons.route_outlined,
-              title: 'Build your personal roadmap',
-              detail:
-                  'Choose a Fire, EMS, or combined path, set a goal, and keep a record of training and experience.',
+            const SizedBox(height: 16),
+            Text(
+              'You can start with any of these',
+              style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
             const _WelcomeFeatureCard(
-              icon: Icons.assignment_turned_in_outlined,
-              title: 'Build on your next steps',
-              detail:
-                  'Start with a useful roadmap, add official requirements as you find them, and keep your progress from getting lost.',
+              icon: Icons.school_outlined,
+              title: 'A class or training',
+              detail: 'Add a recent course, skill, or training hour.',
             ),
             const SizedBox(height: 8),
             const _WelcomeFeatureCard(
-              icon: Icons.groups_outlined,
-              title: 'Connect with your department',
-              detail:
-                  'Receive department work, request an approved evaluator, and follow every approval in the app.',
+              icon: Icons.verified_outlined,
+              title: 'A certification',
+              detail: 'Keep the credential and its renewal date together.',
+            ),
+            const SizedBox(height: 8),
+            const _WelcomeFeatureCard(
+              icon: Icons.workspace_premium_outlined,
+              title: 'Experience or an accomplishment',
+              detail: 'Capture leadership, assignments, awards, and milestones.',
             ),
             const SizedBox(height: 12),
             Container(
@@ -531,7 +565,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Start with a personal roadmap. Connecting a department is optional and can be done later.',
+                      'Personal records work on their own. You do not need a career goal or department connection to begin.',
                       style: t.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                         height: 1.4,
@@ -540,6 +574,12 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                   ),
                 ],
               ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _saving ? null : _next,
+              icon: const Icon(Icons.route_outlined),
+              label: const Text('Set up my roadmap first'),
             ),
           ],
         );
@@ -555,6 +595,24 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         );
       },
     );
+  }
+
+  Future<void> _startWithPersonalRecord() async {
+    setState(() => _saving = true);
+    try {
+      await context.read<AppState>().completeOnboarding(
+            profile: UserProfile.empty(),
+            certifications: const [],
+          );
+      if (!mounted) return;
+      context.go(AppRoutes.home);
+    } catch (_) {
+      if (mounted) {
+        _message('Your personal record could not be opened. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Widget _careerPathStep() {
