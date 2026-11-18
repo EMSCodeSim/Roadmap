@@ -61,6 +61,8 @@ void main() {
       // Avoid waiting indefinitely for progress indicators and asynchronous sync.
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Today'), findsOneWidget);
+      final wordmark = tester.widget<Text>(find.text('Responder Roadmap'));
+      expect(wordmark.style?.color, Colors.white);
       expect(find.text('YOUR CAREER'), findsOneWidget);
       expect(
         find.byWidgetPredicate(
