@@ -43,6 +43,7 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
   DateTime? _issueDate;
   DateTime? _expirationDate;
   bool _doesNotExpire = false;
+  bool _expirationRequiredError = false;
   final ResponderRoadmapApi _departmentApi = ResponderRoadmapApi();
   Set<String> _sharedCertificationIds = <String>{};
   bool _sharingInitialized = false;
@@ -149,7 +150,10 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
       initialDate: _expirationDate ?? now,
     );
     if (picked == null) return;
-    setState(() => _expirationDate = picked);
+    setState(() {
+      _expirationDate = picked;
+      _expirationRequiredError = false;
+    });
   }
 
   Future<void> _loadDepartmentSharing() async {
@@ -290,6 +294,10 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_doesNotExpire && _expirationDate == null) {
+      setState(() => _expirationRequiredError = true);
+      return;
+    }
 
     // Duplicate protection (stable ID).
     final defId = _cert.certificationDefinitionId;
@@ -886,10 +894,23 @@ class _CertificationDetailPageState extends State<CertificationDetailPage> {
                   ),
                 ],
               ),
+              if (_expirationRequiredError) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Add an expiration date or select Does Not Expire.',
+                  style: TextStyle(
+                    color: cs.error,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.sm),
               SwitchListTile(
                 value: _doesNotExpire,
-                onChanged: (v) => setState(() => _doesNotExpire = v),
+                onChanged: (value) => setState(() {
+                  _doesNotExpire = value;
+                  if (value) _expirationRequiredError = false;
+                }),
                 title: const Text('Does Not Expire'),
                 contentPadding: EdgeInsets.zero,
               ),
