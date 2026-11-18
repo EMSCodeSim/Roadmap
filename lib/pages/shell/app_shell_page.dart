@@ -47,7 +47,7 @@ class AppShellPage extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 20),
               child: FloatingActionButton(
                 key: const Key('quick_log_fab'),
-                tooltip: 'Quick Add',
+                tooltip: 'Log something now',
                 onPressed: () => QuickLogLauncher.open(context),
                 child: const Icon(Icons.add_rounded),
               ),
