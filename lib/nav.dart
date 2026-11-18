@@ -336,7 +336,7 @@ class AppRouter {
         path: AppRoutes.growth,
         name: 'growth',
         pageBuilder: (context, state) =>
-            const MaterialPage(child: GrowthOverviewPage()),
+            const MaterialPage(child: CareerVaultPage()),
       ),
 
       GoRoute(path: '/career', redirect: (context, state) => AppRoutes.growth),
