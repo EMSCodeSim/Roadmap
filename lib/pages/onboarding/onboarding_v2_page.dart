@@ -446,31 +446,26 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 58,
-                  child: FilledButton(
-                    onPressed: _saving
-                        ? null
-                        : _step == 0
-                            ? _startWithPersonalRecord
-                            : _next,
-                    child: Text(
-                      _saving
-                          ? 'Getting your record ready…'
-                          : _step == 4
-                              ? 'Build My Roadmap'
-                              : _step == 0
-                                  ? 'Start with my personal record'
-                                  : _step == 3
-                                      ? 'Continue — skip if none'
-                                      : 'Continue',
+              if (_step != 0)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 58,
+                    child: FilledButton(
+                      onPressed: _saving ? null : _next,
+                      child: Text(
+                        _saving
+                            ? 'Getting your record ready…'
+                            : _step == 4
+                                ? 'Build My Roadmap'
+                                : _step == 3
+                                    ? 'Continue — skip if none'
+                                    : 'Continue',
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -576,7 +571,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
               ),
             ),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
+            FilledButton.icon(
               onPressed: _saving ? null : _next,
               icon: const Icon(Icons.route_outlined),
               label: const Text('Set up my roadmap first'),
@@ -595,24 +590,6 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         );
       },
     );
-  }
-
-  Future<void> _startWithPersonalRecord() async {
-    setState(() => _saving = true);
-    try {
-      await context.read<AppState>().completeOnboarding(
-            profile: UserProfile.empty(),
-            certifications: const [],
-          );
-      if (!mounted) return;
-      context.go(AppRoutes.home);
-    } catch (_) {
-      if (mounted) {
-        _message('Your personal record could not be opened. Please try again.');
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
   }
 
   Widget _careerPathStep() {
