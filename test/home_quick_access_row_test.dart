@@ -37,13 +37,12 @@ void main() {
     expect(find.text('Next action'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Credentials'), 200);
     expect(find.text('Credentials'), findsOneWidget);
-    expect(find.text('YOUR CAREER'), findsOneWidget);
+    expect(find.text('YOUR CAREER'), findsNothing);
     await tester.scrollUntilVisible(find.text('Unfinished records'), 200);
     expect(find.text('Unfinished records'), findsOneWidget);
     expect(find.text('Department attention'), findsNothing);
     expect(find.text('Start my roadmap'), findsNothing);
 
-    await tester.scrollUntilVisible(find.text('Open Career Goals'), 300);
-    expect(find.text('Open Career Goals'), findsOneWidget);
+    expect(find.text('Open Career Goals'), findsNothing);
   });
 }
