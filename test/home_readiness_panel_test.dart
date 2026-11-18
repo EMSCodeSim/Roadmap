@@ -84,6 +84,7 @@ void main() {
 
     expect(find.text('Today'), findsOneWidget);
     expect(find.text('Next action'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Credentials'), 200);
     expect(find.text('Credentials'), findsOneWidget);
     expect(find.text('My Roadmap'), findsNothing);
     await tester.scrollUntilVisible(find.text('Open Career Goals'), 300);
