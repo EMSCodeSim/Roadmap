@@ -39,6 +39,9 @@ void main() {
           'id': 'class-10',
           'startsAt': '2026-10-23T14:00:00.000Z',
           'endsAt': '2026-10-23T15:30:00.000Z',
+          'trainingCategory': 'EMS',
+          'creditHours': 1.5,
+          'ceCredits': [{'category': 'Patient Assessment', 'hours': 1.5}],
           'notes': 'Ten-member training. RMS code EMS-TRAIN',
           'location': 'Training station',
           'status': 'ACTIVE',
@@ -52,11 +55,16 @@ void main() {
       endsAt: DateTime.utc(2026, 10, 23, 15, 30),
       notes: 'Ten-member training. RMS code EMS-TRAIN',
       location: 'Training station',
+      trainingCategory: 'EMS',
       creditHours: 1.5,
+      ceCredits: const {'Patient Assessment': 1.5},
     );
     expect(method, 'PATCH');
     expect(sent?['creditHours'], 1.5);
     expect(sent?['endsAt'], '2026-10-23T15:30:00.000Z');
+    expect(sent?['trainingCategory'], 'EMS');
+    expect(result.trainingCategory, 'EMS');
+    expect(result.ceCredits.single['category'], 'Patient Assessment');
     expect(result.endsAt, isNotNull);
     expect(result.notes, contains('EMS-TRAIN'));
   });
@@ -77,6 +85,9 @@ void main() {
           'id': 'class-11',
           'startsAt': '2026-10-23T14:00:00.000Z',
           'endsAt': '2026-10-23T15:30:00.000Z',
+          'trainingCategory': 'EMS',
+          'creditHours': 1.5,
+          'ceCredits': [{'category': 'Patient Assessment', 'hours': 1.5}],
           'notes': 'Class description',
           'location': 'Station 181',
           'status': 'ACTIVE',
@@ -91,13 +102,67 @@ void main() {
       endsAt: DateTime.utc(2026, 10, 23, 15, 30),
       notes: 'Class description',
       location: 'Station 181',
+      trainingCategory: 'EMS',
       creditHours: 1.5,
+      ceCredits: const {'Patient Assessment': 1.5},
     );
 
     expect(methods, ['PATCH', 'GET']);
     expect(result.endsAt, DateTime.utc(2026, 10, 23, 15, 30));
     expect(result.notes, 'Class description');
     expect(result.location, 'Station 181');
+    expect(result.trainingCategory, 'EMS');
+    expect(result.ceCredits.single['category'], 'Patient Assessment');
+    expect(result.creditHours, 1.5);
+  });
+
+  test('a mismatched category response reloads the saved canonical record', () async {
+    final methods = <String>[];
+    final client = MockClient((request) async {
+      methods.add(request.method);
+      if (request.method == 'PATCH') {
+        return http.Response(jsonEncode(<String, dynamic>{
+          'data': <String, dynamic>{
+            'id': 'class-12',
+            'startsAt': '2026-10-23T14:00:00.000Z',
+            'endsAt': '2026-10-23T15:30:00.000Z',
+            'trainingCategory': 'COMPANY',
+            'creditHours': 1.5,
+            'ceCredits': [{'category': 'Patient Assessment', 'hours': 1.5}],
+            'notes': 'Class description',
+            'location': 'Station 181',
+          },
+        }), 200);
+      }
+      return http.Response(jsonEncode(<String, dynamic>{
+        'data': <String, dynamic>{
+          'id': 'class-12',
+          'startsAt': '2026-10-23T14:00:00.000Z',
+          'endsAt': '2026-10-23T15:30:00.000Z',
+          'trainingCategory': 'EMS',
+          'creditHours': 1.5,
+          'ceCredits': [{'category': 'Patient Assessment', 'hours': 1.5}],
+          'notes': 'Class description',
+          'location': 'Station 181',
+        },
+      }), 200);
+    });
+
+    final result = await ResponderRoadmapApi(client: client)
+        .updateTrainingSheetDocumentation(
+      'class-12',
+      startsAt: DateTime.utc(2026, 10, 23, 14),
+      endsAt: DateTime.utc(2026, 10, 23, 15, 30),
+      notes: 'Class description',
+      location: 'Station 181',
+      trainingCategory: 'EMS',
+      creditHours: 1.5,
+      ceCredits: const {'Patient Assessment': 1.5},
+    );
+
+    expect(methods, ['PATCH', 'GET']);
+    expect(result.trainingCategory, 'EMS');
+    expect(result.ceCredits.single['category'], 'Patient Assessment');
   });
 
   test('ten-member offline batch is stored and replayed with expected revisions', () async {

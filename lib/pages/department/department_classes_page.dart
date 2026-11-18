@@ -16,6 +16,7 @@ import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
+import 'package:firepath/services/training_sheet_result.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/services/training_time_calculator.dart';
 import 'package:firepath/pages/department/class_task_book_link_card.dart';
@@ -657,35 +658,31 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   DepartmentClassStudent? get _student { for (final item in _detail?.roster ?? const <DepartmentClassStudent>[]) { if (item.id == _studentId) return item; } return null; }
 
   bool _studentComplete(DepartmentClassDetail detail, DepartmentClassStudent student) {
-    if (student.attendance != 'PRESENT') return false;
-    final required = detail.sections.expand((section) => section.skills).where((skill) => skill.required);
-    for (final skill in required) {
-      final matches = student.results.where((result) => result.requirementId == skill.id);
-      if (matches.isEmpty || matches.last.result != 'PASS') return false;
-    }
-    final config = detail.gradingConfig;
-    if (config['writtenTestEnabled'] == true) {
-      if (student.writtenScore == null) return false;
-      final threshold = (config['writtenTestPassPercent'] as num?)?.toDouble();
-      if (threshold != null && student.writtenScore! < threshold) return false;
-    }
-    if (config['ccfEnabled'] == true) {
-      if (student.ccfScore == null) return false;
-      final threshold = (config['ccfPassPercent'] as num?)?.toDouble();
-      if (threshold != null && student.ccfScore! < threshold) return false;
-    }
-    return true;
+    return student.attendance == 'PRESENT' && _missingFor(detail, student).isEmpty;
   }
+
+  String _displayResult(DepartmentClassDetail detail, DepartmentClassStudent student) =>
+      displayTrainingSheetResult(
+        savedResult: student.finalResult,
+        skillResults: student.results.map((result) => {'result': result.result}).toList(),
+        customFields: detail.customFields,
+        customValues: student.customValues,
+        gradingConfig: detail.gradingConfig,
+        writtenScore: student.writtenScore,
+        ccfScore: student.ccfScore,
+      );
 
   String _missingFor(DepartmentClassDetail detail, DepartmentClassStudent member) {
     if (member.attendance == 'REGISTERED') return 'Attendance not confirmed';
     if (member.attendance != 'PRESENT') return '';
     final missing = detail.sections.expand((section) => section.skills)
         .where((skill) => skill.required && !member.results.any(
-          (result) => result.requirementId == skill.id && result.result == 'PASS',
+          (result) => result.requirementId == skill.id &&
+              const {'PASS', 'FAIL', 'NEEDS_REMEDIATION', 'NOT_APPLICABLE'}
+                  .contains(result.result),
         )).toList();
     final issues = <String>[];
-    if (missing.isNotEmpty) issues.add('${missing.length} required skill(s) need a passing result');
+    if (missing.isNotEmpty) issues.add('${missing.length} required skill result(s) need recording');
     final config = detail.gradingConfig;
     final writtenThreshold = (config['writtenTestPassPercent'] as num?)?.toDouble();
     if (config['writtenTestEnabled'] == true && (member.writtenScore == null || (writtenThreshold != null && member.writtenScore! < writtenThreshold))) issues.add('written test score needed');
@@ -1007,21 +1004,26 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   }
 
   Future<void> _reviewAndFinish() async {
-    final detail = _detail;
-    if (detail == null || _busy) return;
-    final memberIssues = detail.roster
-        .where((member) => _missingFor(detail, member).isNotEmpty)
-        .toList();
+    if (_detail == null || _busy) return;
+    late final DepartmentClassDetail detail;
     late final DepartmentCloseValidation validation;
     try {
+      // The review must reflect the canonical saved record, including any
+      // template values changed during documentation closeout.
+      detail = await _api.getTrainingSheet(widget.classId);
+      if (!mounted) return;
+      _setDetail(detail);
       validation = await _api.validateClassClosure(detail.id);
     } catch (error) {
       if (mounted) {
-        setState(() => _error = 'Unable to check required closeout items: $error');
+        setState(() => _error = 'Unable to refresh the Training Sheet for review: $error');
       }
       return;
     }
     if (!mounted) return;
+    final memberIssues = detail.roster
+        .where((member) => _missingFor(detail, member).isNotEmpty)
+        .toList();
     final serverIssues = validation.missing;
     final hasMissingItems =
         memberIssues.isNotEmpty || serverIssues.isNotEmpty || !validation.canClose;
@@ -1087,7 +1089,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                         if (member.writtenScore != null) 'Test ${member.writtenScore!.toStringAsFixed(1)}%',
                         if (member.ccfScore != null) 'CCF ${member.ccfScore!.toStringAsFixed(1)}%',
                         '${member.results.length} skill result${member.results.length == 1 ? '' : 's'}',
-                        'Result: ${member.finalResult.replaceAll('_', ' ')}',
+                        'Result: ${_displayResult(detail, member).replaceAll('_', ' ')}',
                       ].join(' · ')),
                     ),
               ]),
@@ -1296,9 +1298,11 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   int _requiredSkillCount(DepartmentClassDetail detail) =>
       detail.sections.expand((section) => section.skills).where((skill) => skill.required).length;
 
-  int _passedRequiredCount(DepartmentClassDetail detail, DepartmentClassStudent student) {
+  int _recordedRequiredCount(DepartmentClassDetail detail, DepartmentClassStudent student) {
     final requiredIds = detail.sections.expand((section) => section.skills).where((skill) => skill.required).map((skill) => skill.id).toSet();
-    return student.results.where((result) => requiredIds.contains(result.requirementId) && result.result == 'PASS').map((result) => result.requirementId).toSet().length;
+    return student.results.where((result) => requiredIds.contains(result.requirementId) &&
+        const {'PASS', 'FAIL', 'NEEDS_REMEDIATION', 'NOT_APPLICABLE'}.contains(result.result))
+        .map((result) => result.requirementId).toSet().length;
   }
   String get _registrationUrl => _detail?.registrationToken.isNotEmpty == true ? 'https://responderroadmap.com/class-join/${_detail!.registrationToken}' : '';
 
@@ -2910,7 +2914,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               ? '${detail.roster.length} registered · Attendance verified'
               : '${detail.roster.where((member) => member.attendance != 'REGISTERED').length}/${detail.roster.length} attendance recorded · Tap to update',
       skillsDone
-          ? '$readyCount present students ready'
+          ? '$readyCount present students have required results recorded'
           : rosterAttendanceDone
               ? '$readyCount ready · Tap to grade required skills'
               : 'Complete roster and attendance first',
@@ -3313,6 +3317,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 Builder(builder: (context) {
                   final selected = item.id == _studentId;
                   final complete = _studentComplete(detail, item);
+                  final displayedResult = _displayResult(detail, item);
+                  final failed = displayedResult == 'FAIL';
+                  final needsRemediation = displayedResult == 'REMEDIATION';
                   return ListTile(
                     selected: selected,
                     selectedTileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.45),
@@ -3328,12 +3335,24 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                             }),
                           )
                         : Icon(
-                            complete ? Icons.check_circle_rounded : Icons.person_outline_rounded,
-                            color: complete ? Colors.green : null,
+                            failed
+                                ? Icons.cancel_rounded
+                                : needsRemediation
+                                    ? Icons.warning_amber_rounded
+                                    : complete
+                                        ? Icons.check_circle_rounded
+                                        : Icons.person_outline_rounded,
+                            color: failed
+                                ? Theme.of(context).colorScheme.error
+                                : needsRemediation
+                                    ? Colors.orange
+                                    : complete
+                                        ? Colors.green
+                                        : null,
                           ),
                     title: Text('${item.name}${item.membershipId == null ? ' · Guest' : ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
                     subtitle: Text(
-                      '${item.attendance.replaceAll('_', ' ')} · ${_passedRequiredCount(detail, item)}/${_requiredSkillCount(detail)} required skills passed'
+                      '${item.attendance.replaceAll('_', ' ')} · ${_recordedRequiredCount(detail, item)}/${_requiredSkillCount(detail)} required results recorded · Result: ${displayedResult.replaceAll('_', ' ')}'
                       '${_missingFor(detail, item).isEmpty ? '' : '\\nNeeds: ${_missingFor(detail, item)}'}',
                     ),
                     trailing: Icon(selected ? Icons.keyboard_arrow_down_rounded : Icons.chevron_right_rounded),
@@ -3387,7 +3406,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(student.name, style: const TextStyle(fontWeight: FontWeight.w900)),
                 const SizedBox(height: 3),
-                Text('${student.attendance.replaceAll('_', ' ')} · ${_passedRequiredCount(detail, student)}/${_requiredSkillCount(detail)} required skills passed'),
+                Text('${student.attendance.replaceAll('_', ' ')} · ${_recordedRequiredCount(detail, student)}/${_requiredSkillCount(detail)} required results recorded · Result: ${_displayResult(detail, student).replaceAll('_', ' ')}'),
               ])),
               IconButton(tooltip: 'Next member', onPressed: _nextStudent, icon: const Icon(Icons.arrow_forward_rounded)),
             ]),
@@ -3415,7 +3434,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         const SizedBox(height: 10), DropdownButtonFormField<String>(key: ValueKey(student.id), initialValue: student.attendance, decoration: const InputDecoration(labelText: 'Attendance'), items: const ['REGISTERED', 'PRESENT', 'ABSENT', 'EXCUSED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: _busy || detail.status == 'COMPLETE' ? null : (value) async { if (value == null) return; setState(() => _busy = true); try { final saved=await _api.updateClassStudentDurable(classId:detail.id,enrollmentId:student.id,attendance:value); if(saved.detail!=null){_setDetail(saved.detail!); _nextStudent();} if(saved.queued&&context.mounted){context.read<DepartmentInboxController>().submissionQueued();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Waiting to Sync — attendance saved safely on this device.')));} } catch(e) { if (mounted) setState(() => _error = e.toString()); } finally { if (mounted) setState(() => _busy = false); } }),
         ] else ...[
         const SizedBox(height: 10),
-        Text('Select all observed skill results first, then submit once. Results remain individual records.', style: Theme.of(context).textTheme.bodySmall),
+        Text('Select each observed result, including failures or remediation, then submit once. Results remain individual records.', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 8),
         FilledButton.icon(
           onPressed: _busy || detail.status == 'COMPLETE' || (_draftSkillResults[student.id]?.isEmpty ?? true)
