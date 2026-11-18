@@ -251,9 +251,11 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     const navy = Color(0xFF09213D);
-    const red = Color(0xFFC8102E);
     final records = _personalRecords;
     final training = _trainingRecords;
+    final activity = records
+        .where((record) => record.type != CareerRecordType.training)
+        .toList(growable: false);
     final certs = app.certifications;
     final urgent = CertificationUrgency.urgent(certs);
     final stats = _careerStats;
@@ -287,7 +289,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
               Text(
-                'Your work, credentials, and training history.',
+                'Day-to-day activity, documents, and statistics.',
                 style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 14),
@@ -311,20 +313,8 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        'Quick logs, training, credentials and career evidence.',
+                        'Fast logs, training documents, certificates and activity statistics.',
                         style: TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                              backgroundColor: red,
-                              foregroundColor: Colors.white),
-                          onPressed: () => QuickLogLauncher.open(context),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Log something now'),
-                        ),
                       ),
                     ],
                   ),
@@ -335,6 +325,22 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                 onQuickAdd: () => QuickLogLauncher.open(context),
                 onOpenCertificates: () => context.push(AppRoutes.certifications),
                 onOpenStats: () => context.push(AppRoutes.personalLog),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  leading: const Icon(Icons.timeline_rounded),
+                  title: const Text(
+                    'Career story and highlights',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: const Text(
+                    'Open Timeline for your complete career history, milestones, and verified training.',
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.go(AppRoutes.growth),
+                ),
               ),
               const SizedBox(height: 16),
               if (urgent.isNotEmpty) ...[
@@ -359,7 +365,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                 const _LoadingCard()
               else if (_loadError != null)
                 _MessageCard(message: _loadError!, actionLabel: 'Retry', onAction: _loadRecords)
-              else if (records.isEmpty)
+              else if (activity.isEmpty)
                 _MessageCard(
                   message: 'Your logged activity will appear here.',
                   actionLabel: 'Log something now',
@@ -367,7 +373,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                 )
               else
                 _RecordPreviewCard(
-                  records: records.take(3).toList(),
+                  records: activity.take(3).toList(),
                   onOpen: () => context.push(AppRoutes.personalLog),
                 ),
               const SizedBox(height: 18),
@@ -392,16 +398,6 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                   stats: stats,
                   onOpen: () => context.push(AppRoutes.personalLog),
                 ),
-              const SizedBox(height: 18),
-              _SectionTitle(title: 'Stats & exports', icon: Icons.ios_share_outlined),
-              const SizedBox(height: 8),
-              _ExportCard(
-                year: DateTime.now().year,
-                yearStats: yearStats,
-                careerStats: stats,
-                onStats: () => context.push(AppRoutes.personalLog),
-                onExport: _showExportOptions,
-              ),
               const SizedBox(height: 10),
               Text(
                 'Department assignments, instructor approvals, and Training Sheet closeout stay in Department.',
@@ -771,41 +767,6 @@ class _RecordPreviewCard extends StatelessWidget {
                 onTap: onOpen,
               ),
           ],
-        ),
-      );
-}
-
-class _ExportCard extends StatelessWidget {
-  const _ExportCard({required this.year, required this.yearStats, required this.careerStats, required this.onStats, required this.onExport});
-  final int year;
-  final CareerStats yearStats;
-  final CareerStats careerStats;
-  final VoidCallback onStats;
-  final VoidCallback onExport;
-
-  @override
-  Widget build(BuildContext context) => Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Review activity by year or across your career. Export a shareable record for renewals, applications, or audits.'),
-              const SizedBox(height: 8),
-              Text(year.toString() + ': ' + CareerStats.formatDurationHours(yearStats.trainingHours) + ' training logged',
-                  style: Theme.of(context).textTheme.bodySmall),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(onPressed: onStats, icon: const Icon(Icons.insights_outlined), label: const Text('Yearly & career stats')),
-                  FilledButton.tonalIcon(onPressed: onExport, icon: const Icon(Icons.ios_share_outlined), label: const Text('Export or print')),
-                ],
-              ),
-            ],
-          ),
         ),
       );
 }

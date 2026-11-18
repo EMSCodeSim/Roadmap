@@ -38,7 +38,7 @@ void main() {
   });
 
   testWidgets(
-    'Home shows career summary and daily priorities with separate goals',
+    'Home stays focused on daily priorities',
     (tester) async {
       final app = AppState();
       await tester.runAsync(app.bootstrap);
@@ -63,25 +63,14 @@ void main() {
       expect(find.text('Today'), findsOneWidget);
       final wordmark = tester.widget<Text>(find.text('Responder Roadmap'));
       expect(wordmark.style?.color, Colors.white);
-      expect(find.text('YOUR CAREER'), findsOneWidget);
-      expect(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is Text &&
-              (widget.data == 'Add my first record' ||
-                  widget.data == 'Add detailed career history' ||
-                  widget.data == 'Add a career record' ||
-                  widget.data == 'Add Career Record'),
-        ),
-        findsOneWidget,
-      );
+      expect(find.text('YOUR CAREER'), findsNothing);
+      expect(find.text('Add detailed career history'), findsNothing);
       expect(find.text('Next action'), findsOneWidget);
       expect(find.text('Credentials'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Unfinished records'), 200);
       expect(find.text('Unfinished records'), findsOneWidget);
       expect(find.text('Department attention'), findsNothing);
-      await tester.scrollUntilVisible(find.text('Open Career Goals'), 200);
-      expect(find.text('Open Career Goals'), findsOneWidget);
+      expect(find.text('Open Career Goals'), findsNothing);
       expect(find.text('Quick actions'), findsNothing);
       expect(find.text('My Progress'), findsNothing);
       expect(find.text('My Goals'), findsNothing);

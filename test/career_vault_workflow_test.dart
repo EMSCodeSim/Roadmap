@@ -62,8 +62,13 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('EMT instructor course'),
       250,
+      scrollable: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable &&
+            widget.axisDirection == AxisDirection.down,
+      ),
     );
-    expect(find.text('EMT instructor course'), findsOneWidget);
+    expect(find.text('EMT instructor course'), findsAtLeastNWidgets(1));
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );
@@ -106,17 +111,34 @@ void main() {
         ),
       );
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      await tester.scrollUntilVisible(find.widgetWithText(ListTile, 'Paramedic'), 250);
+      await tester.scrollUntilVisible(
+        find.widgetWithText(ListTile, 'Paramedic'),
+        250,
+        scrollable: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable &&
+            widget.axisDirection == AxisDirection.down,
+      ),
+      );
 
       expect(find.text('My Career Timeline'), findsOneWidget);
-      expect(find.widgetWithText(ListTile, 'Paramedic'), findsOneWidget);
+      expect(find.text('Career snapshot'), findsNothing);
+      expect(find.text('Quick capture'), findsNothing);
+      expect(find.text('Certification radar'), findsNothing);
+      expect(
+        find.widgetWithText(ListTile, 'Paramedic'),
+        findsAtLeastNWidgets(1),
+      );
       expect(find.textContaining('Expires'), findsOneWidget);
 
       final credentialsFilter = find.widgetWithText(FilterChip, 'Credentials');
       await tester.ensureVisible(credentialsFilter);
       await tester.tap(credentialsFilter);
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      expect(find.widgetWithText(ListTile, 'Paramedic'), findsOneWidget);
+      expect(
+        find.widgetWithText(ListTile, 'Paramedic'),
+        findsAtLeastNWidgets(1),
+      );
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );

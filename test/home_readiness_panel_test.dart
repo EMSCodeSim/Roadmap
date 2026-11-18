@@ -87,8 +87,7 @@ void main() {
     await tester.scrollUntilVisible(find.text('Credentials'), 200);
     expect(find.text('Credentials'), findsOneWidget);
     expect(find.text('My Roadmap'), findsNothing);
-    await tester.scrollUntilVisible(find.text('Open Career Goals'), 300);
-    expect(find.text('Open Career Goals'), findsOneWidget);
+    expect(find.text('Open Career Goals'), findsNothing);
   });
 
   testWidgets('home directs members without a goal to My Roadmap',

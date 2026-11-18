@@ -950,27 +950,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final cs = Theme.of(context).colorScheme;
     final roadmap = app.roadmap;
     final goal = app.selectedGoal;
-    final currentCerts = app.certifications
-        .where((c) => c.status == CertificationStatus.current)
-        .length;
-    final dueCerts = app.certifications
-        .where((c) => c.status == CertificationStatus.expiringSoon)
-        .length;
-    final expiredCerts = app.certifications
-        .where((c) => c.status == CertificationStatus.expired)
-        .length;
-    final trainingHours = _records
-        .where(
-          (e) =>
-              e.type == CareerRecordType.training ||
-              e.type == CareerRecordType.education ||
-              e.type == CareerRecordType.teaching,
-        )
-        .fold<double>(0, (sum, e) => sum + (e.hours ?? 0));
-    final skillReps = _records
-        .where((e) => e.type == CareerRecordType.skill)
-        .fold<int>(0, (sum, e) => sum + e.repetitions);
-    final highlights = _records.where((e) => e.highlight).length;
     final timelineEntries = _timelineEntries(app);
 
     return Scaffold(
@@ -988,16 +967,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
             tooltip: 'Career Goals',
             onPressed: () => context.go(AppRoutes.careerGoals),
             icon: const Icon(Icons.flag_outlined),
-          ),
-          IconButton(
-            tooltip: 'Career advancement brief',
-            onPressed: () => _showCareerBrief(app),
-            icon: const Icon(Icons.description_outlined),
-          ),
-          IconButton(
-            tooltip: 'Add detailed career history',
-            onPressed: () => _openEditor(),
-            icon: const Icon(Icons.add_circle_outline),
           ),
         ],
       ),
@@ -1130,38 +1099,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                   ),
                 ),
                 const _SectionTitle(
-                  title: 'Career snapshot',
-                  subtitle: 'Your personal records at a glance.',
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _MetricCard(
-                      label: 'Records',
-                      value: '${_records.length}',
-                      icon: Icons.history,
-                    ),
-                    _MetricCard(
-                      label: 'Training hours',
-                      value: _trimNumber(trainingHours),
-                      icon: Icons.school_outlined,
-                    ),
-                    _MetricCard(
-                      label: 'Skill reps',
-                      value: '$skillReps',
-                      icon: Icons.handyman_outlined,
-                    ),
-                    _MetricCard(
-                      label: 'Career highlights',
-                      value: '$highlights',
-                      icon: Icons.star_outline,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const _SectionTitle(
                   title: 'My Career Timeline',
                   subtitle:
                       'Your professional history in one place.',
@@ -1263,98 +1200,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                       ),
                     ];
                   }),
-                const SizedBox(height: 18),
-                const _SectionTitle(
-                  title: 'Quick capture',
-                  subtitle: 'Log it while the details are still fresh.',
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _QuickAdd(
-                      label: 'Skill',
-                      icon: Icons.handyman_outlined,
-                      onTap: () =>
-                          _openEditor(initialType: CareerRecordType.skill),
-                    ),
-                    _QuickAdd(
-                      label: 'Training',
-                      icon: Icons.school_outlined,
-                      onTap: () =>
-                          _openEditor(initialType: CareerRecordType.training),
-                    ),
-                    _QuickAdd(
-                      label: 'Leadership',
-                      icon: Icons.groups_outlined,
-                      onTap: () =>
-                          _openEditor(initialType: CareerRecordType.leadership),
-                    ),
-                    _QuickAdd(
-                      label: 'Award / win',
-                      icon: Icons.emoji_events_outlined,
-                      onTap: () => _openEditor(
-                        initialType: CareerRecordType.achievement,
-                      ),
-                    ),
-                    _QuickAdd(
-                      label: 'Call / experience',
-                      icon: Icons.local_fire_department_outlined,
-                      onTap: () => _openEditor(
-                        initialType: CareerRecordType.operationalExperience,
-                      ),
-                    ),
-                    _QuickAdd(
-                      label: 'Task book',
-                      icon: Icons.fact_check_outlined,
-                      onTap: () => _openEditor(
-                        initialType: CareerRecordType.taskBookEvidence,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.verified_outlined),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Certification radar',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w700),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () =>
-                                  context.go(AppRoutes.certifications),
-                              child: const Text('Manage'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '$currentCerts current • $dueCerts expiring within 90 days • $expiredCerts expired',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: cs.onSurfaceVariant),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Credentials stay in the existing certification tracker and are automatically included in your career brief.',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: cs.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
     );
@@ -1418,80 +1263,6 @@ class _SectionTitle extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _MetricCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      width: 156,
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: cs.primary),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickAdd extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _QuickAdd({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: 18),
-      label: Text(label),
-      onPressed: onTap,
     );
   }
 }
