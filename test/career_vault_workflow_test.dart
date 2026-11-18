@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:firepath/models/certification.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/state/app_state.dart';
@@ -66,4 +67,59 @@ void main() {
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );
+  testWidgets(
+    'career timeline includes credentials alongside personal records',
+    (tester) async {
+      final app = AppState();
+      await tester.runAsync(app.bootstrap);
+      final now = DateTime(2026, 1, 1);
+      await tester.runAsync(
+        () => app.upsertCertification(
+          Certification(
+            id: 'timeline-paramedic',
+            name: 'Paramedic',
+            issuingOrganization: 'National Registry',
+            certificationNumber: null,
+            certificationDefinitionId: null,
+            issueDate: DateTime(2024, 4, 1),
+            expirationDate: DateTime(2028, 3, 31),
+            doesNotExpire: false,
+            notes: null,
+            renewalHistory: const [],
+            createdAt: now,
+            updatedAt: now,
+          ),
+        ),
+      );
+      final api = ResponderRoadmapApi(
+        client: MockClient((request) async => http.Response(
+          jsonEncode(<String, Object>{'userId': 'standalone-user'}),
+          200,
+          headers: const {'content-type': 'application/json'},
+        )),
+      );
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AppState>.value(
+          value: app,
+          child: MaterialApp(home: CareerVaultPage(api: api)),
+        ),
+      );
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      await tester.scrollUntilVisible(find.text('Paramedic'), 250);
+
+      expect(find.text('My Career Timeline'), findsOneWidget);
+      expect(find.text('Paramedic'), findsOneWidget);
+      expect(find.textContaining('Expires'), findsOneWidget);
+
+      await tester.scrollUntilVisible(find.text('Credentials'), 250);
+      await tester.tap(find.text('Credentials'));
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      await tester.scrollUntilVisible(find.text('Paramedic'), 250);
+
+      expect(find.text('Paramedic'), findsOneWidget);
+    },
+    timeout: const Timeout(Duration(seconds: 45)),
+  );
+
 }
