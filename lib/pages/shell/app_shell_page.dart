@@ -9,7 +9,7 @@ import 'package:firepath/state/department_inbox_controller.dart';
 ///
 /// Keep the navigation focused on the responder's core jobs:
 /// - Home: what needs attention now
-/// - My Roadmap: personal progression and next requirements
+/// - Timeline: lifelong career history, with goals as a secondary tool
 /// - Record: durable personal evidence and activity history
 /// - Credentials: licenses/certifications and expiration upkeep
 /// - Department: official assignments, evaluations, and department work
@@ -75,9 +75,9 @@ class AppShellPage extends StatelessWidget {
                   label: 'Home',
                 ),
                 const NavigationDestination(
-                  icon: Icon(Icons.route_outlined),
-                  selectedIcon: Icon(Icons.route_rounded),
-                  label: 'My Roadmap',
+                  icon: Icon(Icons.timeline_outlined),
+                  selectedIcon: Icon(Icons.timeline_rounded),
+                  label: 'Timeline',
                 ),
                 const NavigationDestination(
                   icon: Icon(Icons.folder_copy_outlined),
