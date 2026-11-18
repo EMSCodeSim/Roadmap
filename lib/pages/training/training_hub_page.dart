@@ -323,7 +323,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                               foregroundColor: Colors.white),
                           onPressed: () => QuickLogLauncher.open(context),
                           icon: const Icon(Icons.add),
-                          label: const Text('Quick Add Record'),
+                          label: const Text('Log something now'),
                         ),
                       ),
                     ],
@@ -361,8 +361,8 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                 _MessageCard(message: _loadError!, actionLabel: 'Retry', onAction: _loadRecords)
               else if (records.isEmpty)
                 _MessageCard(
-                  message: 'Your Quick Add history will appear here.',
-                  actionLabel: 'Quick Add',
+                  message: 'Your logged activity will appear here.',
+                  actionLabel: 'Log something now',
                   onAction: () => QuickLogLauncher.open(context),
                 )
               else
@@ -466,8 +466,8 @@ class _QuickActionsRow extends StatelessWidget {
         Expanded(
           child: _QuickActionTile(
             icon: Icons.add_rounded,
-            title: 'Quick Add',
-            subtitle: 'Log now',
+            title: 'Log something now',
+            subtitle: 'Fast entry',
             color: cs.primary,
             background: cs.primaryContainer.withValues(alpha: 0.55),
             onTap: onQuickAdd,

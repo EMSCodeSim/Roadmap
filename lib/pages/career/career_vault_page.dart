@@ -995,7 +995,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
             icon: const Icon(Icons.description_outlined),
           ),
           IconButton(
-            tooltip: 'Add career record',
+            tooltip: 'Add detailed career history',
             onPressed: () => _openEditor(),
             icon: const Icon(Icons.add_circle_outline),
           ),
@@ -1099,7 +1099,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                               child: FilledButton.icon(
                                 onPressed: () => _openEditor(),
                                 icon: const Icon(Icons.add),
-                                label: const Text('Add career record'),
+                                label: const Text('Add detailed career history'),
                               ),
                             ),
                             const SizedBox(width: 10),

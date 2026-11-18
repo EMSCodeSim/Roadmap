@@ -142,7 +142,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
                         label: Text(
                           !_loadingRecords && _records.isEmpty
                               ? 'Add my first record'
-                              : 'Add a career record',
+                              : 'Add detailed career history',
                         ),
                       ),
                     ),
@@ -243,7 +243,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
               detail: _loadingRecords
                   ? 'Your saved history and roadmap evidence are loading.'
                   : followUps.isEmpty
-                      ? 'Quick Add history and completed milestones stay in Records.'
+                      ? 'Logged activity and completed milestones stay in Records.'
                       : followUps.first.title,
               onTap: () => context.go(AppRoutes.training),
             ),
