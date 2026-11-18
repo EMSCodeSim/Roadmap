@@ -271,6 +271,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: const ValueKey('career_record_title'),
                         controller: title,
                         autofocus: existing == null,
                         decoration: const InputDecoration(
