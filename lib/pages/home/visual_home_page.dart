@@ -103,7 +103,9 @@ class _VisualHomePageState extends State<VisualHomePage> {
                     Text(
                       _loadingRecords
                           ? 'Loading your career history…'
-                          : '${_records.length} personal career records',
+                          : _records.isEmpty
+                              ? 'Your record is ready to build'
+                              : '${_records.length} personal career records',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           color: Colors.white, fontWeight: FontWeight.w800),
                     ),
@@ -112,6 +114,13 @@ class _VisualHomePageState extends State<VisualHomePage> {
                       'Training, experience and accomplishments — all in one place.',
                       style: TextStyle(color: Colors.white70),
                     ),
+                    if (!_loadingRecords && _records.isEmpty) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Start with a certification, recent class, experience, or accomplishment. You can add older records anytime.',
+                        style: TextStyle(color: Colors.white70, height: 1.4),
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     SizedBox(
                       width: double.infinity,
@@ -122,7 +131,11 @@ class _VisualHomePageState extends State<VisualHomePage> {
                           '${AppRoutes.careerEvidence}?create=1',
                         ),
                         icon: const Icon(Icons.add),
-                        label: const Text('Add Career Record'),
+                        label: Text(
+                          _records.isEmpty
+                              ? 'Add my first record'
+                              : 'Add Career Record',
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -153,13 +166,13 @@ class _VisualHomePageState extends State<VisualHomePage> {
                 title: Text(
                   nextStep?.requirement.name ??
                       (roadmap == null
-                          ? 'Choose a career goal'
+                          ? 'Set a career goal (optional)'
                           : 'No immediate roadmap step'),
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 subtitle: Text(
                   roadmap == null
-                      ? 'Set an optional career goal to see a recommended next step.'
+                      ? 'Your personal record works without a goal. Add one later for suggested next steps.'
                       : nextStep == null
                           ? 'Review your personal growth plan.'
                           : 'Recommended step in your personal plan.',
