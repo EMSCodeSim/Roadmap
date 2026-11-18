@@ -28,7 +28,6 @@ import 'package:firepath/pages/department/department_tab_page.dart';
 import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:firepath/pages/department/department_settings_page.dart';
 import 'package:firepath/pages/department/department_class_qr_scanner_page.dart';
-import 'package:firepath/pages/career/growth_overview_page.dart';
 import 'package:firepath/pages/career/competency_map_page.dart';
 import 'package:firepath/pages/career/personal_log_page.dart';
 import 'package:firepath/pages/career/career_record_v2_page.dart';
