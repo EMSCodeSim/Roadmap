@@ -60,7 +60,7 @@ void main() {
 
     expect(find.byType(AlertDialog), findsNothing);
     await tester.scrollUntilVisible(
-      find.text('EMT instructor course').first,
+      find.text('EMT instructor course'),
       250,
       scrollable: find.byWidgetPredicate(
         (widget) =>
@@ -112,7 +112,7 @@ void main() {
       );
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
       await tester.scrollUntilVisible(
-        find.widgetWithText(ListTile, 'Paramedic').first,
+        find.widgetWithText(ListTile, 'Paramedic'),
         250,
         scrollable: find.byWidgetPredicate(
         (widget) =>
