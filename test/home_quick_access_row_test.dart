@@ -40,6 +40,6 @@ void main() {
     expect(find.text('Start my roadmap'), findsNothing);
 
     await tester.scrollUntilVisible(find.text('Open Career Goals'), 300);
-    expect(find.text('Open My Roadmap'), findsOneWidget);
+    expect(find.text('Open Career Goals'), findsOneWidget);
   });
 }
