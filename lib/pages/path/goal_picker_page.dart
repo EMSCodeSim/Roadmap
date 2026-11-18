@@ -88,7 +88,7 @@ class _GoalPickerPageState extends State<GoalPickerPage> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'Pick the position or specialty you want to work toward. Changing this rebuilds your future Starter Roadmap but keeps your certifications, career history, Quick Add records, and completed work.',
+                    'Pick the position or specialty you want to work toward. Changing this rebuilds your future Starter Roadmap but keeps your certifications, career history, logged activity, and completed work.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: cs.onSurfaceVariant,
                       height: 1.5,
