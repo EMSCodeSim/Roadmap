@@ -360,7 +360,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
             ),
             title: Text(app.certificationDisplayName(certification)),
             subtitle: Text(
-              '${entry.date.year} · $expiration${issuer == null || issuer.isEmpty ? '' : ' · $issuer'}',
+              'Credential · ${entry.date.year} · $expiration${issuer == null || issuer.isEmpty ? '' : ' · $issuer'}',
             ),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => context.push(
@@ -375,7 +375,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
             leading: const Icon(Icons.apartment_rounded),
             title: Text(training.title),
             subtitle: Text(
-              '${_formatDate(entry.date)} · ${training.trainingCategory} · ${_trimNumber(training.creditHours)} hours · Verified department record',
+              '${_formatDate(entry.date)} · Department training · ${training.trainingCategory} · ${_trimNumber(training.creditHours)} hours · Verified',
             ),
             trailing: const Icon(Icons.verified_outlined, size: 20),
           ),
@@ -973,16 +973,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final highlights = _records.where((e) => e.highlight).length;
     final timelineEntries = _timelineEntries(app);
 
-    final requirementIds = <String>{};
-    if (roadmap != null) {
-      requirementIds.addAll(roadmap.included.map((e) => e.requirement.id));
-    }
-    final coveredRequirementIds = _records
-        .map((e) => e.relatedRequirementId)
-        .whereType<String>()
-        .where(requirementIds.contains)
-        .toSet();
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF09213D),
@@ -1078,8 +1068,8 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                             children: [
                               Text(
                                 goal == null
-                                    ? 'No advancement target selected'
-                                    : 'Target: ${goal.title}',
+                                    ? 'Career goal (optional)'
+                                    : 'Your goal: ${goal.title}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -1087,8 +1077,8 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                               const SizedBox(height: 5),
                               Text(
                                 roadmap == null
-                                    ? 'Choose a roadmap target to connect career evidence to specific requirements.'
-                                    : '${roadmap.completedCount}/${roadmap.totalCount} requirements complete • ${coveredRequirementIds.length}/${requirementIds.length} requirements have supporting career evidence',
+                                    ? 'Your timeline works on its own. Add a goal when you want guidance toward a next step.'
+                                    : '${roadmap.completedCount} of ${roadmap.totalCount} steps complete. Your career records can support this goal.',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(color: cs.onSurfaceVariant),
                               ),
