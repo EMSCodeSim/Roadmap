@@ -82,8 +82,8 @@ void main() {
     expect(find.text('Next action'), findsOneWidget);
     expect(find.text('Credentials'), findsOneWidget);
     expect(find.text('My Roadmap'), findsNothing);
-    await tester.scrollUntilVisible(find.text('Open My Roadmap'), 300);
-    expect(find.text('Open My Roadmap'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Open Career Goals'), 300);
+    expect(find.text('Open Career Goals'), findsOneWidget);
   });
 
   testWidgets('home directs members without a goal to My Roadmap',
@@ -95,7 +95,7 @@ void main() {
 
     expect(find.text('Choose a career goal'), findsOneWidget);
     expect(
-      find.text('Set a goal in My Roadmap to get a recommended next step.'),
+      find.text('Set an optional career goal to see a recommended next step.'),
       findsOneWidget,
     );
     expect(find.text('Start my roadmap'), findsNothing);
