@@ -116,8 +116,6 @@ void main() {
       await tester.ensureVisible(credentialsFilter);
       await tester.tap(credentialsFilter);
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      await tester.scrollUntilVisible(find.widgetWithText(ListTile, 'Paramedic'), 250);
-
       expect(find.widgetWithText(ListTile, 'Paramedic'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
