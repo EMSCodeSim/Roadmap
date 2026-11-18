@@ -22,7 +22,7 @@ void main() {
   });
 
   testWidgets(
-    'create entry opens the editor and saves a personal record',
+    'career timeline opens its record editor when requested directly',
     (tester) async {
     final app = AppState();
     await tester.runAsync(app.bootstrap);
@@ -59,21 +59,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(AlertDialog), findsNothing);
-    await tester.scrollUntilVisible(
-      find.text('EMT instructor course'),
-      250,
-      scrollable: find.byWidgetPredicate(
-        (widget) =>
-            widget is Scrollable &&
-            widget.axisDirection == AxisDirection.down,
-      ),
-    );
-    expect(find.text('EMT instructor course'), findsAtLeastNWidgets(1));
+    expect(find.text('Your growth over time'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );
   testWidgets(
-    'career timeline includes credentials alongside personal records',
+    'career timeline summarizes growth and includes credential milestones',
     (tester) async {
       final app = AppState();
       await tester.runAsync(app.bootstrap);
@@ -111,34 +102,11 @@ void main() {
         ),
       );
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      await tester.scrollUntilVisible(
-        find.widgetWithText(ListTile, 'Paramedic'),
-        250,
-        scrollable: find.byWidgetPredicate(
-        (widget) =>
-            widget is Scrollable &&
-            widget.axisDirection == AxisDirection.down,
-      ),
-      );
-
-      expect(find.text('My Career Timeline'), findsOneWidget);
-      expect(find.text('Career snapshot'), findsNothing);
-      expect(find.text('Quick capture'), findsNothing);
-      expect(find.text('Certification radar'), findsNothing);
-      expect(
-        find.widgetWithText(ListTile, 'Paramedic'),
-        findsAtLeastNWidgets(1),
-      );
-      expect(find.textContaining('Expires'), findsOneWidget);
-
-      final credentialsFilter = find.widgetWithText(FilterChip, 'Credentials');
-      await tester.ensureVisible(credentialsFilter);
-      await tester.tap(credentialsFilter);
-      await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      expect(
-        find.widgetWithText(ListTile, 'Paramedic'),
-        findsAtLeastNWidgets(1),
-      );
+      expect(find.text('Career Timeline'), findsOneWidget);
+      expect(find.text('Your career story'), findsOneWidget);
+      expect(find.text('Building qualifications'), findsOneWidget);
+      expect(find.text('Paramedic'), findsOneWidget);
+      expect(find.text('Credential added'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );

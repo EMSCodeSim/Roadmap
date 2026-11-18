@@ -54,7 +54,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
   List<CareerRecord> _records = const [];
   List<ScoredSkillPreference> _scoredSkills = const [];
   bool _loading = true;
-  bool _career = false;
+  bool _career = true;
   int _year = DateTime.now().year;
   _CareerFilter _filter = _CareerFilter.all;
 
@@ -208,7 +208,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
         // replace the current route and leave no stack to pop. Always provide
         // a reliable way back to Home.
         leading: const AppBackButton.toHome(),
-        subtitle: 'Log',
+        subtitle: 'Records',
         actions: [
           IconButton(
             tooltip: 'Quick Log setup',
@@ -264,6 +264,16 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
             children: [
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.inventory_2_outlined),
+                  title: const Text('Your detailed career log'),
+                  subtitle: const Text(
+                    'Search, filter, add, and edit the individual entries behind your growth timeline.',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
               _PeriodControls(
                 career: _career,
                 year: _year,
@@ -275,7 +285,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 controller: _search,
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.search),
-                  hintText: 'Search your career record',
+                  hintText: 'Search all records',
                 ),
               ),
               const SizedBox(height: 12),
@@ -360,7 +370,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 ],
                 const SizedBox(height: 22),
                 Text(
-                  'HISTORY',
+                  'ALL RECORDS',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: cs.onSurfaceVariant,
@@ -1119,6 +1129,7 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
   late final TextEditingController _note =
       TextEditingController(text: widget.record.summary ?? '');
   late CareerRecordOutcome? _outcome = widget.record.outcome;
+  late bool _highlight = widget.record.highlight;
   late DateTime _date = widget.record.date;
 
   @override
@@ -1189,6 +1200,13 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
                   ),
                 ],
                 onChanged: (value) => setState(() => _outcome = value),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _highlight,
+                onChanged: (value) => setState(() => _highlight = value ?? false),
+                title: const Text('Show as a career milestone on Timeline'),
+                controlAffinity: ListTileControlAffinity.leading,
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -1271,7 +1289,7 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
         relatedGoalId: widget.record.relatedGoalId,
         relatedRequirementId: widget.record.relatedRequirementId,
         relatedTaskId: widget.record.relatedTaskId,
-        highlight: widget.record.highlight,
+        highlight: _highlight,
         trackingKey: widget.record.trackingKey,
         outcome: _outcome,
         createdAt: widget.record.createdAt,
