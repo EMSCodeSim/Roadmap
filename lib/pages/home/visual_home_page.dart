@@ -7,6 +7,7 @@ import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/career_inbox.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/certification_urgency.dart';
+import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
@@ -42,12 +43,14 @@ class _VisualHomePageState extends State<VisualHomePage> {
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final appMode = context.watch<AppModeController>();
     final department = context.watch<DepartmentInboxController>();
     final colors = Theme.of(context).colorScheme;
     const navy = Color(0xFF09213D);
     const red = Color(0xFFC8102E);
     final roadmap = app.roadmap;
     final nextStep = roadmap?.nextStep;
+    final hasDepartment = appMode.departmentLink != null;
     final firstRecordQuery =
         _records.isEmpty ? '?create=1&first=1' : '?create=1';
     final credentials = CertificationUrgency.urgent(
@@ -241,23 +244,25 @@ class _VisualHomePageState extends State<VisualHomePage> {
                       : followUps.first.title,
               onTap: () => context.go(AppRoutes.training),
             ),
-            const SizedBox(height: 16),
-            _sectionTitle(
-              context,
-              'Department attention',
-              actionLabel: 'Open',
-              onAction: () => context.go(AppRoutes.department),
-            ),
-            _statusCard(
-              icon: Icons.apartment_rounded,
-              title: department.actionCount == 0
-                  ? 'No department actions waiting'
-                  : '${department.actionCount} item${department.actionCount == 1 ? '' : 's'} need attention',
-              detail: department.unreadCount == 0
-                  ? 'Department requests and updates appear here.'
-                  : '${department.unreadCount} unread update${department.unreadCount == 1 ? '' : 's'}',
-              onTap: () => context.go(AppRoutes.department),
-            ),
+            if (hasDepartment) ...[
+              const SizedBox(height: 16),
+              _sectionTitle(
+                context,
+                'Department attention',
+                actionLabel: 'Open',
+                onAction: () => context.go(AppRoutes.department),
+              ),
+              _statusCard(
+                icon: Icons.apartment_rounded,
+                title: department.actionCount == 0
+                    ? 'No department actions waiting'
+                    : '${department.actionCount} item${department.actionCount == 1 ? '' : 's'} need attention',
+                detail: department.unreadCount == 0
+                    ? 'Department requests and updates appear here.'
+                    : '${department.unreadCount} unread update${department.unreadCount == 1 ? '' : 's'}',
+                onTap: () => context.go(AppRoutes.department),
+              ),
+            ],
             const SizedBox(height: 20),
             OutlinedButton.icon(
               onPressed: () => context.go(AppRoutes.careerGoals),
