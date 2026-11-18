@@ -77,6 +77,9 @@ jobs:
           flutter test --concurrency=1 test/home_overview_test.dart
           flutter test --concurrency=1 test/portfolio_backup_sheet_test.dart
 
+      - name: Career timeline and direct record entry workflow test
+        run: flutter test --concurrency=1 test/career_vault_workflow_test.dart
+
       - name: Previously failing legacy widget regressions
         run: |
           flutter test --concurrency=1 test/task_book_cert_checklist_test.dart
