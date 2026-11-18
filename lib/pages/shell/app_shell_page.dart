@@ -31,6 +31,8 @@ class AppShellPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    const roadmapRed = Color(0xFFC8102E);
+    const roadmapNavy = Color(0xFF09213D);
     final inbox = context.watch<DepartmentInboxController>();
     final unreadLabel = inbox.unreadCount > 99 ? '99+' : '${inbox.unreadCount}';
     final isTrainingSheetDetail = GoRouterState.of(context)
@@ -64,6 +66,19 @@ class AppShellPage extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.only(bottom: 2),
             child: NavigationBar(
+              backgroundColor: cs.surface,
+              indicatorColor: roadmapRed.withValues(alpha: 0.10),
+              labelTextStyle: WidgetStateProperty.resolveWith((states) =>
+                  TextStyle(
+                    fontSize: 11,
+                    fontWeight: states.contains(WidgetState.selected)
+                        ? FontWeight.w700 : FontWeight.w500,
+                    color: states.contains(WidgetState.selected)
+                        ? roadmapRed : roadmapNavy,
+                  )),
+              iconTheme: WidgetStateProperty.resolveWith((states) =>
+                  IconThemeData(color: states.contains(WidgetState.selected)
+                      ? roadmapRed : roadmapNavy)),
               selectedIndex: navigationShell.currentIndex,
               onDestinationSelected: _go,
               height: 64,
