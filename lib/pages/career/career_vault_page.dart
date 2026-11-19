@@ -1077,7 +1077,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         surfaceTintColor: Colors.transparent,
         leading: const AppBackButton.toAdvance(),
         title: const Text(
-          'Career Timeline',
+          'Career Roadmap',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         actions: [
@@ -1163,42 +1163,62 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                 ),
                 const SizedBox(height: 12),
                 Card(
+                  color: const Color(0xFFEAF1FC),
                   child: Padding(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.flag_outlined),
-                            const SizedBox(width: 10),
+                            const Icon(Icons.flag_rounded, size: 28),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 goal == null
-                                    ? 'Career direction is optional'
-                                    : 'Your goal: ${goal.title}',
-                                style: const TextStyle(fontWeight: FontWeight.w800),
+                                    ? 'Choose a career goal'
+                                    : goal.title,
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                    ),
                               ),
-                            ),
-                            TextButton(
-                              onPressed: () => context.go(AppRoutes.careerGoals),
-                              child: Text(goal == null ? 'Set goal' : 'Update'),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 10),
                         Text(
                           roadmap == null
-                              ? 'Use Timeline to reflect on the career you are building. Add a goal when you are ready to plan a next step.'
-                              : '${roadmap.completedCount} of ${roadmap.totalCount} roadmap steps complete. Your milestones can show how you are growing toward this goal.',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              ? 'Set a destination for your professional growth. Your timeline will show the experience and milestones you build along the way.'
+                              : '${roadmap.completedCount} of ${roadmap.totalCount} roadmap steps complete. Your career records capture the experience and milestones behind your progress.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: cs.onSurfaceVariant,
                                 height: 1.4,
                               ),
                         ),
                         if (roadmap != null && roadmap.totalCount > 0) ...[
-                          const SizedBox(height: 10),
-                          LinearProgressIndicator(value: roadmap.percentComplete),
+                          const SizedBox(height: 14),
+                          LinearProgressIndicator(
+                            minHeight: 8,
+                            value: roadmap.percentComplete,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${roadmap.completedCount} of ${roadmap.totalCount} steps complete',
+                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
                         ],
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => context.go(AppRoutes.careerGoals),
+                            icon: Icon(goal == null ? Icons.flag_outlined : Icons.edit_outlined),
+                            label: Text(goal == null ? 'Set my goal' : 'Update my goal'),
+                          ),
+                        ),
                       ],
                     ),
                   ),

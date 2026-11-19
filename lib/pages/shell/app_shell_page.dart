@@ -80,7 +80,7 @@ class AppShellPage extends StatelessWidget {
                 const NavigationDestination(
                   icon: Icon(Icons.timeline_outlined),
                   selectedIcon: Icon(Icons.timeline_rounded),
-                  label: 'Timeline',
+                  label: 'Roadmap',
                 ),
                 const NavigationDestination(
                   icon: Icon(Icons.folder_copy_outlined),
