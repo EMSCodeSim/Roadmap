@@ -1252,7 +1252,7 @@ class _NextActionCard extends StatelessWidget {
   }
 }
 
-class _EmptyPath extends StatelessWidget {class _EmptyPath extends StatelessWidget {
+class _EmptyPath extends StatelessWidget {
   final VoidCallback onBuild;
   const _EmptyPath({required this.onBuild});
 
