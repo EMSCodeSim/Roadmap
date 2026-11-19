@@ -243,6 +243,116 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     return years;
   }
 
+  List<_GrowthCategorySummary> _growthCategorySummaries(AppState app) {
+    final stats = CareerStats.fromRecords(_records);
+    final experience = _records
+        .where((record) => record.type == CareerRecordType.operationalExperience)
+        .toList();
+    final driving = _records.where(CareerStats.isDrivingRecord).toList();
+    final skills = _records
+        .where((record) =>
+            record.type == CareerRecordType.skill &&
+            !CareerStats.isDrivingRecord(record))
+        .toList();
+    final leadership = _records
+        .where((record) => record.type == CareerRecordType.leadership)
+        .toList();
+    final teaching = _records
+        .where((record) => record.type == CareerRecordType.teaching)
+        .toList();
+    final learning = _records
+        .where((record) =>
+            record.type == CareerRecordType.training ||
+            record.type == CareerRecordType.education)
+        .toList();
+    final milestones = _records
+        .where((record) =>
+            record.type == CareerRecordType.achievement ||
+            record.type == CareerRecordType.project)
+        .toList();
+    final taskBookEvidence = _records
+        .where((record) => record.type == CareerRecordType.taskBookEvidence)
+        .toList();
+
+    String yearsLabel(Iterable<int> years) {
+      final count = years.toSet().length;
+      return count == 0
+          ? 'No years documented yet'
+          : 'Across $count documented year${count == 1 ? '' : 's'}';
+    }
+
+    String recordsLabel(List<CareerRecord> records) =>
+        '${records.length} record${records.length == 1 ? '' : 's'}';
+
+    return [
+      _GrowthCategorySummary(
+        title: 'Experience',
+        icon: Icons.local_fire_department_outlined,
+        value: '${stats.calls}',
+        detail: '${recordsLabel(experience)} · ${yearsLabel(experience.map((e) => e.date.year))}',
+      ),
+      _GrowthCategorySummary(
+        title: 'Skills',
+        icon: Icons.handyman_outlined,
+        value: '${stats.skillRepetitions}',
+        detail: 'Documented repetitions · ${yearsLabel(skills.map((e) => e.date.year))}',
+      ),
+      _GrowthCategorySummary(
+        title: 'Driving',
+        icon: Icons.local_taxi_outlined,
+        value: stats.driveHours > 0
+            ? stats.driveLabel
+            : '${driving.length}',
+        detail: stats.driveHours > 0
+            ? '${recordsLabel(driving)} · time recorded'
+            : 'Driving records · hours optional',
+      ),
+      _GrowthCategorySummary(
+        title: 'Leadership',
+        icon: Icons.groups_outlined,
+        value: '${stats.leadershipCount}',
+        detail: '${recordsLabel(leadership)} · ${yearsLabel(leadership.map((e) => e.date.year))}',
+      ),
+      _GrowthCategorySummary(
+        title: 'Teaching',
+        icon: Icons.record_voice_over_outlined,
+        value: stats.teachingHours > 0
+            ? stats.teachingLabel
+            : '${teaching.length}',
+        detail: stats.teachingHours > 0
+            ? '${recordsLabel(teaching)} · hours taught'
+            : 'Teaching and mentoring records',
+      ),
+      _GrowthCategorySummary(
+        title: 'Education & training',
+        icon: Icons.school_outlined,
+        value: '${learning.length + _departmentTraining.length}',
+        detail: '${learning.length} personal entries · ${_departmentTraining.length} verified department classes',
+      ),
+      _GrowthCategorySummary(
+        title: 'Credentials',
+        icon: Icons.verified_outlined,
+        value: '${app.certifications.length}',
+        detail: yearsLabel(app.certifications.map(
+          (certification) =>
+              (certification.issueDate ?? certification.createdAt).year,
+        )),
+      ),
+      _GrowthCategorySummary(
+        title: 'Achievements',
+        icon: Icons.emoji_events_outlined,
+        value: '${stats.achievements + stats.projects}',
+        detail: '${recordsLabel(milestones)} · ${yearsLabel(milestones.map((e) => e.date.year))}',
+      ),
+      _GrowthCategorySummary(
+        title: 'Task book evidence',
+        icon: Icons.fact_check_outlined,
+        value: '${stats.taskBookUpdates}',
+        detail: '${recordsLabel(taskBookEvidence)} · ${yearsLabel(taskBookEvidence.map((e) => e.date.year))}',
+      ),
+    ];
+  }
+
   String _growthFocus(_GrowthYear year) {
     final types = <CareerRecordType, int>{};
     for (final record in year.records) {
@@ -955,6 +1065,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final roadmap = app.roadmap;
     final goal = app.selectedGoal;
     final growthYears = _growthYears(app);
+    final growthCategories = _growthCategorySummaries(app);
     final highlights = _records.where((record) => record.highlight).length;
     final activeYears = growthYears.length;
     final currentStats = CareerStats.fromRecords(_records);
@@ -1094,6 +1205,27 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                 ),
                 const SizedBox(height: 18),
                 const _SectionTitle(
+                  title: 'Growth areas',
+                  subtitle:
+                      'See the experience you have documented across your career. These are records of activity, not ratings of ability.',
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 156,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: growthCategories.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    itemBuilder: (context, index) => SizedBox(
+                      width: 184,
+                      child: _GrowthCategoryCard(
+                        category: growthCategories[index],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const _SectionTitle(
                   title: 'Your career story',
                   subtitle:
                       'A high-level view of how your career has developed. Open Records for the full, searchable history and editing tools.',
@@ -1121,18 +1253,12 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Add training, a new skill, an assignment, a credential, or a moment you are proud of. Over time, Timeline will show the bigger picture.',
+                            'Use Quick Add to record training, skills, experience, credentials, and milestones. Timeline will show how those areas build over time.',
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   color: cs.onSurfaceVariant,
                                   height: 1.4,
                                 ),
-                          ),
-                          const SizedBox(height: 12),
-                          FilledButton.icon(
-                            onPressed: () => context.go(AppRoutes.personalLog),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add a career record'),
                           ),
                         ],
                       ),
@@ -1173,6 +1299,79 @@ class _GrowthYear {
   final List<DepartmentClassDetail> departmentTraining = [];
 
   _GrowthYear(this.year);
+}
+
+class _GrowthCategorySummary {
+  final String title;
+  final IconData icon;
+  final String value;
+  final String detail;
+
+  const _GrowthCategorySummary({
+    required this.title,
+    required this.icon,
+    required this.value,
+    required this.detail,
+  });
+}
+
+class _GrowthCategoryCard extends StatelessWidget {
+  final _GrowthCategorySummary category;
+
+  const _GrowthCategoryCard({required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(category.icon, size: 20, color: cs.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    category.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Text(
+              category.value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: cs.primary,
+                  ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              category.detail,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.25,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _GrowthMetric extends StatelessWidget {
