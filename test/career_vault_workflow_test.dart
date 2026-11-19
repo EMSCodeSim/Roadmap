@@ -102,7 +102,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      expect(find.text('Career Timeline'), findsOneWidget);
+      expect(find.text('Career Roadmap'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Your career story'),
         250,
