@@ -1803,6 +1803,7 @@ class ResponderRoadmapApi {
     String trainingSheetTemplateId = '',
     String checklistVersionId = '',
     String gradingComponentId = '',
+    String prebuiltTrainingSystemId = '',
   }) async {
     final data = await _request(
       'PATCH',
@@ -1814,6 +1815,8 @@ class ResponderRoadmapApi {
           'checklistVersionId': checklistVersionId,
         if (gradingComponentId.isNotEmpty)
           'gradingComponentId': gradingComponentId,
+        if (prebuiltTrainingSystemId.isNotEmpty)
+          'prebuiltTrainingSystemId': prebuiltTrainingSystemId,
       },
     );
     return DepartmentClassDetail.fromJson(_asMap(data));
