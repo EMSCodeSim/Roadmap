@@ -665,45 +665,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
   void _setDetail(DepartmentClassDetail detail) { if (!mounted) return; setState(() { _detail = detail; _studentId = detail.roster.any((item) => item.id == _studentId) ? _studentId : (detail.roster.isEmpty ? null : detail.roster.first.id); _error = null; }); }
 
-  Future<List<String>> _ceCategoriesForDetail(DepartmentClassDetail detail) async {
+  List<String> _ceCategoriesForTemplate(DepartmentTrainingSheetTemplate template) {
     String categoryName(Map<String, dynamic> credit) =>
         (credit['category'] ?? credit['name'] ?? '').toString().trim();
-    final saved = detail.ceCredits
+    return template.ceCredits
         .map(categoryName)
         .where((name) => name.isNotEmpty)
+        .toSet()
         .toList(growable: false);
-    if (saved.isNotEmpty) return saved.toSet().toList(growable: false);
-
-    // Class detail keeps the selected reusable component ID. Resolve its
-    // current dashboard-defined category list for closeout rather than
-    // synthesizing a separate list in the mobile app.
-    try {
-      if (detail.ceComponentId.isNotEmpty) {
-        final components = await _api.listTrainingSheetComponents();
-        final component = components.where((item) =>
-            item.id == detail.ceComponentId && item.kind == 'EMS_CE_LIST').firstOrNull;
-        final credits = component?.data['ceCredits'];
-        if (credits is List) {
-          final names = credits.whereType<Map>()
-              .map((item) => categoryName(Map<String, dynamic>.from(item)))
-              .where((name) => name.isNotEmpty).toSet().toList(growable: false);
-          if (names.isNotEmpty) return names;
-        }
-      }
-      if (detail.trainingSheetTemplateId.isNotEmpty) {
-        final templates = await _api.listTrainingSheetTemplates();
-        final template = templates.where((item) =>
-            item.id == detail.trainingSheetTemplateId).firstOrNull;
-        final names = (template?.ceCredits ?? const <Map<String, dynamic>>[])
-            .map(categoryName).where((name) => name.isNotEmpty)
-            .toSet().toList(growable: false);
-        if (names.isNotEmpty) return names;
-      }
-    } catch (_) {
-      // Preserve access to legacy EMS closeout if the reusable catalog is
-      // temporarily unavailable; ordinary class records remain editable.
-    }
-    return detail.trainingCategory == 'EMS' ? _emsCeCategories : const <String>[];
   }
   DepartmentClassStudent? get _student { for (final item in _detail?.roster ?? const <DepartmentClassStudent>[]) { if (item.id == _studentId) return item; } return null; }
 
@@ -1374,7 +1343,30 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final hours = TextEditingController(text:d.creditHours > 0 ? d.creditHours.toString() : '');
     String trainingCategory = d.trainingCategory;
     String shift = d.shift;
-    final ceCategories = await _ceCategoriesForDetail(d);
+    late final List<DepartmentTrainingSheetTemplate> templates;
+    try {
+      templates = await _api.listTrainingSheetTemplates();
+    } catch (error) {
+      if (mounted) {
+        setState(() => _error = 'Unable to load Training Sheet templates: $error');
+      }
+      narrative.dispose(); station.dispose(); hours.dispose();
+      return false;
+    }
+    if (templates.isEmpty) {
+      if (mounted) {
+        setState(() => _error = 'Create a Training Sheet template on the dashboard before closing this class.');
+      }
+      narrative.dispose(); station.dispose(); hours.dispose();
+      return false;
+    }
+    final initialTemplate = templates.where((template) =>
+        template.id == d.trainingSheetTemplateId ||
+        (d.templateName.isNotEmpty && template.name == d.templateName)).firstOrNull;
+    String selectedTemplateId = initialTemplate?.id ?? '';
+    var ceCategories = initialTemplate == null
+        ? const <String>[]
+        : _ceCategoriesForTemplate(initialTemplate);
     final ceControllers = <String, TextEditingController>{
       for (final category in ceCategories)
         category: TextEditingController(text: d.ceCredits.where((item) => item['category'] == category).map((item) => item['hours']).firstOrNull?.toString() ?? ''),
@@ -1436,7 +1428,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               ? null
               : TrainingTimeCalculator.roundDayNightSplitToQuarterHour(split);
           final allocatedMinutes = hasCeCategories
-              ? ceControllers.values.fold<int>(0, (sum, c) => sum + parseHoursToMinutes(c.text))
+              ? ceCategories.fold<int>(0, (sum, category) =>
+                  sum + parseHoursToMinutes(ceControllers[category]?.text ?? ''))
               : 0;
           final overAllocated = roundedElapsedMinutes != null &&
               allocatedMinutes > roundedElapsedMinutes;
@@ -1507,18 +1500,28 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      initialValue: trainingCategory,
+                      initialValue: selectedTemplateId.isEmpty ? null : selectedTemplateId,
                       decoration: const InputDecoration(labelText: 'Training category *'),
-                      items: const [
-                        DropdownMenuItem(value: 'COMPANY', child: Text('Company training')),
-                        DropdownMenuItem(value: 'FACILITY', child: Text('Facility / station')),
-                        DropdownMenuItem(value: 'EMS', child: Text('EMS')),
-                        DropdownMenuItem(value: 'HAZMAT', child: Text('HazMat')),
-                        DropdownMenuItem(value: 'DRIVER', child: Text('Driver / apparatus')),
-                        DropdownMenuItem(value: 'OFFICER', child: Text('Officer development')),
-                        DropdownMenuItem(value: 'OTHER', child: Text('Other')),
-                      ],
-                      onChanged: (value) => update(() => trainingCategory = value ?? 'COMPANY'),
+                      hint: const Text('Select a Training Sheet template'),
+                      items: templates.map((template) => DropdownMenuItem(
+                        value: template.id,
+                        child: Text(template.name),
+                      )).toList(growable: false),
+                      onChanged: (value) => update(() {
+                        selectedTemplateId = value ?? '';
+                        final selected = templates.where((template) =>
+                            template.id == selectedTemplateId).firstOrNull;
+                        if (selected == null) return;
+                        trainingCategory = selected.trainingCategory;
+                        ceCategories = _ceCategoriesForTemplate(selected);
+                        for (final category in ceCategories) {
+                          ceControllers.putIfAbsent(category, () => TextEditingController(
+                            text: d.ceCredits.where((item) =>
+                                item['category'] == category).map((item) =>
+                                item['hours']).firstOrNull?.toString() ?? '',
+                          ));
+                        }
+                      }),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -1615,7 +1618,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             actions: [
               TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
               FilledButton(
-                onPressed: overAllocated
+                onPressed: overAllocated || selectedTemplateId.isEmpty
                     ? null
                     : () {
                         final computedMinutes = TrainingTimeCalculator.elapsedMinutes(start, end);
@@ -1627,6 +1630,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                           'station': station.text,
                           'shift': shift,
                           'trainingCategory': trainingCategory,
+                          'trainingSheetTemplateId': selectedTemplateId,
                           // Back-compat: creditHours remains a double, derived from elapsed minutes when possible.
                           'hours': computedMinutes == null
                               ? TrainingTimeCalculator.quarterHoursFromMinutes(
@@ -1634,8 +1638,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                                 )
                               : TrainingTimeCalculator.quarterHoursFromMinutes(computedMinutes),
                           'ceCredits': <String, double>{
-                            for (final entry in ceControllers.entries)
-                              entry.key: parseHoursToMinutes(entry.value.text) / 60.0,
+                            for (final category in ceCategories)
+                              category: parseHoursToMinutes(ceControllers[category]?.text ?? '') / 60.0,
                           },
                         });
                       },
@@ -1682,6 +1686,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         notes:result['notes'] as String, location:result['location'] as String,
         station:result['station'] as String, shift:result['shift'] as String,
         trainingCategory:savedCategory,
+        trainingSheetTemplateId:result['trainingSheetTemplateId'] as String,
         creditHours:result['hours'] as double,
         ceCredits:ceCredits,
       ));
