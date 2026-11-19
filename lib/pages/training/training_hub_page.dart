@@ -339,7 +339,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                     'Open Timeline for your complete career history, milestones, and verified training.',
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => context.go(AppRoutes.growth),
+                  onTap: () => context.push(AppRoutes.growth),
                 ),
               ),
               const SizedBox(height: 16),
