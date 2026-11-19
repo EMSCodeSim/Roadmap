@@ -219,7 +219,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
             icon: const Icon(Icons.tune),
           ),
           IconButton(
-            tooltip: 'Quick Log',
+            tooltip: 'Quick Add',
             onPressed: _openQuickLog,
             icon: const Icon(Icons.add_task),
           ),
@@ -256,7 +256,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openQuickLog,
         icon: const Icon(Icons.add),
-        label: const Text('Quick Log'),
+        label: const Text('Quick Add'),
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -269,7 +269,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                   leading: const Icon(Icons.inventory_2_outlined),
                   title: const Text('Your detailed career log'),
                   subtitle: const Text(
-                    'Search, filter, add, and edit the individual entries behind your growth timeline.',
+                    'Use Quick Add to capture a record, then search, filter, and edit its details here.',
                   ),
                 ),
               ),
@@ -1100,7 +1100,7 @@ class _EmptyHistory extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onLog,
               icon: const Icon(Icons.add_task),
-              label: const Text('Quick Log'),
+              label: const Text('Quick Add'),
             ),
           ),
         ],
