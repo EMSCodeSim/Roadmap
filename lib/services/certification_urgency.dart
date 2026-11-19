@@ -9,7 +9,13 @@ class CertificationUrgencyItem {
   final Certification cert;
   final CertificationStatus status;
   final int? daysRemaining;
-  const CertificationUrgencyItem({required this.cert, required this.status, required this.daysRemaining});
+  final bool missingExpirationDate;
+  const CertificationUrgencyItem({
+    required this.cert,
+    required this.status,
+    required this.daysRemaining,
+    this.missingExpirationDate = false,
+  });
 
   bool get isExpired => status == CertificationStatus.expired;
   bool get isExpiringSoon => status == CertificationStatus.expiringSoon;
@@ -31,6 +37,15 @@ class CertificationUrgency {
   static List<CertificationUrgencyItem> urgent(List<Certification> certs, {int withinDays = 90}) {
     final items = <CertificationUrgencyItem>[];
     for (final c in certs) {
+      if (!c.doesNotExpire && c.expirationDate == null) {
+        items.add(CertificationUrgencyItem(
+          cert: c,
+          status: c.status,
+          daysRemaining: null,
+          missingExpirationDate: true,
+        ));
+        continue;
+      }
       final s = c.status;
       if (s == CertificationStatus.current) continue;
       final days = c.daysRemaining;
@@ -40,8 +55,8 @@ class CertificationUrgency {
 
     int rank(CertificationUrgencyItem i) => switch (i.status) {
           CertificationStatus.expired => 0,
-          CertificationStatus.expiringSoon => 1,
-          CertificationStatus.current => 2,
+          CertificationStatus.expiringSoon => 2,
+          CertificationStatus.current => i.missingExpirationDate ? 1 : 3,
         };
 
     items.sort((a, b) {
