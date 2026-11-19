@@ -131,8 +131,8 @@ class _VisualHomePageState extends State<VisualHomePage> {
             if (credentials.isEmpty)
               _statusCard(
                 icon: Icons.verified_outlined,
-                title: 'No credentials need attention',
-                detail: 'Expiring and expired credentials will appear here.',
+                title: 'No credential follow-up needed',
+                detail: 'Missing expiration dates, expiring credentials, and expired credentials will appear here.',
               )
             else
               ...credentials.take(3).map(
@@ -145,7 +145,9 @@ class _VisualHomePageState extends State<VisualHomePage> {
                         ),
                         title: Text(app.certificationDisplayName(item.cert)),
                         subtitle: Text(
-                          item.isExpired
+                          item.missingExpirationDate
+                              ? 'No expiration date · review credential status'
+                              : item.isExpired
                               ? 'Expired · renewal needs attention'
                               : 'Expires in ${item.daysRemaining} ${item.daysRemaining == 1 ? 'day' : 'days'}',
                         ),
