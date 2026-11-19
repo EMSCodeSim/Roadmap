@@ -103,7 +103,25 @@ void main() {
       );
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
       expect(find.text('Career Timeline'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Your career story'),
+        250,
+        scrollable: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              widget.axisDirection == AxisDirection.down,
+        ),
+      );
       expect(find.text('Your career story'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Building qualifications'),
+        250,
+        scrollable: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              widget.axisDirection == AxisDirection.down,
+        ),
+      );
       expect(find.text('Building qualifications'), findsOneWidget);
       expect(find.text('Paramedic'), findsOneWidget);
       expect(find.text('Credential added'), findsOneWidget);
