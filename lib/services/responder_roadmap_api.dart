@@ -944,6 +944,7 @@ class DepartmentCloseValidation {
 class DepartmentClassDetail {
   final String trainingSheetTemplateId;
   final String ceComponentId;
+  final String templateName;
   final List<Map<String, dynamic>> ceCredits;
   final Map<String, dynamic> gradingConfig;
   final List<Map<String, dynamic>> customFields;
@@ -976,6 +977,7 @@ class DepartmentClassDetail {
   const DepartmentClassDetail({
     this.trainingSheetTemplateId = '',
     this.ceComponentId = '',
+    this.templateName = '',
     required this.ceCredits,
     required this.gradingConfig,
     required this.customFields,
@@ -1009,6 +1011,7 @@ class DepartmentClassDetail {
   factory DepartmentClassDetail.fromJson(Map<String, dynamic> json) => DepartmentClassDetail(
         trainingSheetTemplateId: (json['trainingSheetTemplateId'] as String?) ?? '',
         ceComponentId: (json['ceComponentId'] as String?) ?? '',
+        templateName: (json['templateName'] as String?) ?? '',
         ceCredits: (json['ceCredits'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
         gradingConfig: Map<String, dynamic>.from(json['gradingConfig'] as Map? ?? const {}),
         customFields: (json['customFields'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
@@ -1621,6 +1624,7 @@ class ResponderRoadmapApi {
     String? station,
     String? shift,
     String? trainingCategory,
+    String? trainingSheetTemplateId,
     required double creditHours,
     Map<String, double> ceCredits = const <String, double>{},
   }) async {
@@ -1635,6 +1639,8 @@ class ResponderRoadmapApi {
         if (station != null) 'station': station.trim(),
         if (shift != null) 'shift': shift.trim(),
         if (trainingCategory != null) 'trainingCategory': trainingCategory,
+        if (trainingSheetTemplateId != null && trainingSheetTemplateId.isNotEmpty)
+          'trainingSheetTemplateId': trainingSheetTemplateId,
         'creditHours': creditHours,
         'ceCredits': ceCredits,
       },
@@ -1679,6 +1685,9 @@ class ResponderRoadmapApi {
         sameCredits(detail) &&
         (station == null || detail.station == station.trim()) &&
         (shift == null || detail.shift == shift.trim()) &&
+        (trainingSheetTemplateId == null ||
+            trainingSheetTemplateId.isEmpty ||
+            detail.templateName.isNotEmpty) &&
         (trainingCategory == null || detail.trainingCategory == trainingCategory);
 
     // Some API deployments return a partial PATCH acknowledgement. Never
