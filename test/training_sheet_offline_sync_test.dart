@@ -173,6 +173,39 @@ void main() {
     expect(result.ceCredits.single['category'], 'Patient Assessment');
   });
 
+  test('evaluation setup sends a saved dashboard grading system', () async {
+    Map<String, dynamic>? sent;
+    final client = MockClient((request) async {
+      expect(request.method, 'PATCH');
+      expect(request.url.path, '/api/v1/app/training-sheets/class-13/evaluation-setup');
+      sent = jsonDecode(request.body) as Map<String, dynamic>;
+      return http.Response(jsonEncode(<String, dynamic>{
+        'data': <String, dynamic>{
+          'id': 'class-13',
+          'title': 'Call Review Training',
+          'status': 'ACTIVE',
+          'gradingConfig': <String, dynamic>{},
+          'customFields': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'id': 'result',
+              'label': 'Student result',
+              'type': 'PASS_FAIL',
+              'required': true,
+            },
+          ],
+        },
+      }), 200);
+    });
+
+    final result = await ResponderRoadmapApi(client: client).updateClassEvaluationSetup(
+      classId: 'class-13',
+      gradingComponentId: 'grading-pass-fail',
+    );
+
+    expect(sent, <String, dynamic>{'gradingComponentId': 'grading-pass-fail'});
+    expect(result.customFields.single['type'], 'PASS_FAIL');
+  });
+
   test('ten-member offline batch is stored and replayed with expected revisions', () async {
     var online = false;
     var submitted = 0;
