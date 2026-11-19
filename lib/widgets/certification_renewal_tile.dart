@@ -13,6 +13,7 @@ class CertificationRenewalTile extends StatelessWidget {
   final int? daysRemaining;
   final String? expirationLabel;
   final String? renewalSummary;
+  final bool needsExpirationDate;
   final VoidCallback onOpen;
   final VoidCallback? onRenew;
   final Widget? trailing;
@@ -25,6 +26,7 @@ class CertificationRenewalTile extends StatelessWidget {
     required this.daysRemaining,
     required this.expirationLabel,
     required this.renewalSummary,
+    this.needsExpirationDate = false,
     required this.onOpen,
     required this.onRenew,
     this.trailing,
@@ -34,6 +36,7 @@ class CertificationRenewalTile extends StatelessWidget {
     Key? key,
     required Certification cert,
     required String displayName,
+    bool needsExpirationDate = false,
     required VoidCallback onOpen,
     required VoidCallback? onRenew,
     Widget? trailing,
@@ -65,6 +68,7 @@ class CertificationRenewalTile extends StatelessWidget {
       daysRemaining: cert.daysRemaining,
       expirationLabel: expirationLabel,
       renewalSummary: guidance.summary,
+      needsExpirationDate: needsExpirationDate,
       onOpen: onOpen,
       onRenew: onRenew,
       trailing: trailing,
@@ -76,7 +80,14 @@ class CertificationRenewalTile extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    final (toneColor, bg, icon, label) = switch (status) {
+    final (toneColor, bg, icon, label) = needsExpirationDate
+        ? (
+            FireOpsSemanticColors.expiring,
+            cs.secondaryContainer,
+            Icons.warning_amber_rounded,
+            'Needs date',
+          )
+        : switch (status) {
       CertificationStatus.expired => (
           FireOpsSemanticColors.expired,
           cs.errorContainer,
