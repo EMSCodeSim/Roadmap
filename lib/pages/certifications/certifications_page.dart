@@ -13,7 +13,7 @@ import 'package:firepath/widgets/certification_renewal_tile.dart';
 import 'package:firepath/widgets/calm_empty_state.dart';
 import 'package:firepath/widgets/remove_certification_sheet.dart';
 
-enum _CertFilter { all, current, expiring, expired }
+enum _CertFilter { all, current, expiring, expired, needsDate }
 
 enum _CertMenuAction { open, remove }
 
@@ -29,6 +29,7 @@ class _CertSummaryHeader extends StatelessWidget {
   final int current;
   final int expiring;
   final int expired;
+  final int needsDate;
   final VoidCallback onAdd;
 
   const _CertSummaryHeader({
@@ -36,6 +37,7 @@ class _CertSummaryHeader extends StatelessWidget {
     required this.current,
     required this.expiring,
     required this.expired,
+    required this.needsDate,
     required this.onAdd,
   });
 
@@ -57,7 +59,7 @@ class _CertSummaryHeader extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    '$current Current • $expiring Expiring • $expired Expired',
+                    '$current Current • $expiring Expiring • $expired Expired • $needsDate Need date',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
@@ -132,6 +134,11 @@ class _FilteredEmptyState extends StatelessWidget {
           'No expired certifications',
           'Good to go — no expired certs on file.',
           Icons.check_circle_outline,
+        ),
+      _CertFilter.needsDate => (
+          'No dates to review',
+          'All certifications have an expiration date or are marked Does Not Expire.',
+          Icons.event_available_outlined,
         ),
       _CertFilter.all => (
           'No certifications found',
@@ -266,8 +273,13 @@ class _CertificationsPageState extends State<CertificationsPage> {
     final certs = state.certifications;
 
     final total = certs.length;
+    final needsDateCount = certs
+        .where((c) => !c.doesNotExpire && c.expirationDate == null)
+        .length;
     final currentCount = certs
-        .where((c) => c.status == CertificationStatus.current)
+        .where((c) =>
+            c.status == CertificationStatus.current &&
+            (c.doesNotExpire || c.expirationDate != null))
         .length;
     final expiringCount = certs
         .where((c) => c.status == CertificationStatus.expiringSoon)
@@ -289,6 +301,10 @@ class _CertificationsPageState extends State<CertificationsPage> {
         case _CertFilter.expired:
           return certs
               .where((c) => c.status == CertificationStatus.expired)
+              .toList();
+        case _CertFilter.needsDate:
+          return certs
+              .where((c) => !c.doesNotExpire && c.expirationDate == null)
               .toList();
         case _CertFilter.all:
           return certs;
@@ -346,6 +362,7 @@ class _CertificationsPageState extends State<CertificationsPage> {
                       current: currentCount,
                       expiring: expiringCount,
                       expired: expiredCount,
+                      needsDate: needsDateCount,
                       onAdd: () => context.push(AppRoutes.certificationAdd),
                     ),
                   ),
@@ -384,6 +401,10 @@ class _CertificationsPageState extends State<CertificationsPage> {
                             value: _CertFilter.expired,
                             label: Text('Expired'),
                           ),
+                          ButtonSegment(
+                            value: _CertFilter.needsDate,
+                            label: Text('Needs date'),
+                          ),
                         ],
                         selected: {_filter},
                         onSelectionChanged: (selection) {
@@ -416,8 +437,10 @@ class _CertificationsPageState extends State<CertificationsPage> {
                                       ? 'No expiration date'
                                       : 'Expires ${_formatDate(cert.expirationDate!)}';
 
-                              final isUrgent = cert.status !=
-                                  CertificationStatus.current;
+                              final needsExpirationDate =
+                                  !cert.doesNotExpire && cert.expirationDate == null;
+                              final isUrgent = needsExpirationDate ||
+                                  cert.status != CertificationStatus.current;
 
                               return Padding(
                                 padding:
@@ -426,6 +449,7 @@ class _CertificationsPageState extends State<CertificationsPage> {
                                     ? CertificationRenewalTile.fromCert(
                                         cert: cert,
                                         displayName: displayName,
+                                        needsExpirationDate: needsExpirationDate,
                                         onOpen: () => context.push(
                                           '${AppRoutes.certificationDetail}/${cert.id}',
                                         ),
