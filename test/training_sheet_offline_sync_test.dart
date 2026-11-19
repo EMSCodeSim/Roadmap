@@ -40,6 +40,8 @@ void main() {
           'startsAt': '2026-10-23T14:00:00.000Z',
           'endsAt': '2026-10-23T16:00:00.000Z',
           'trainingCategory': 'EMS',
+          'trainingSheetTemplateId': 'ems-template-1',
+          'ceComponentId': 'ce-component-1',
           'creditHours': 2.0,
           'ceCredits': [{'category': 'Patient Assessment', 'hours': 1.5}],
           'notes': 'Ten-member training. RMS code EMS-TRAIN',
@@ -64,6 +66,8 @@ void main() {
     expect(sent?['endsAt'], '2026-10-23T16:00:00.000Z');
     expect(sent?['trainingCategory'], 'EMS');
     expect(result.trainingCategory, 'EMS');
+    expect(result.trainingSheetTemplateId, 'ems-template-1');
+    expect(result.ceComponentId, 'ce-component-1');
     expect(result.ceCredits.single['category'], 'Patient Assessment');
     expect(result.endsAt, isNotNull);
     expect(result.notes, contains('EMS-TRAIN'));
