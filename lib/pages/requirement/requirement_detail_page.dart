@@ -732,32 +732,45 @@ class _CompleteToggle extends StatelessWidget {
   final bool completed;
   final bool enabled;
   final ValueChanged<bool> onChanged;
-  const _CompleteToggle({required this.completed, required this.enabled, required this.onChanged});
+
+  const _CompleteToggle({
+    required this.completed,
+    required this.enabled,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final completedColor = FireOpsSemanticColors.completed;
-    return FilledButton.tonalIcon(
+    final foreground = completed ? completedColor : cs.onPrimary;
+    final background = completed
+        ? completedColor.withValues(alpha: 0.14)
+        : cs.primary;
+    return FilledButton.icon(
       onPressed: enabled ? () => onChanged(!completed) : null,
       style: FilledButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-        backgroundColor: completed
-            ? completedColor.withValues(alpha: 0.16)
-            : cs.surfaceContainerHighest,
-        foregroundColor: completed ? completedColor : cs.onSurface,
+        backgroundColor: background,
+        foregroundColor: foreground,
       ),
-      icon: Icon(completed ? Icons.check_circle : Icons.circle_outlined, color: completed ? completedColor : cs.onSurfaceVariant, size: 18),
+      icon: Icon(
+        completed ? Icons.check_circle_rounded : Icons.circle_outlined,
+        size: 20,
+      ),
       label: Text(
-        completed ? 'Done' : 'Mark done',
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800, color: completed ? completedColor : cs.onSurface),
+        completed ? 'Completed' : 'Mark as done',
+        style: Theme.of(context)
+            .textTheme
+            .labelLarge
+            ?.copyWith(fontWeight: FontWeight.w900, color: foreground),
       ),
     );
   }
 }
 
-class _SourceRow extends StatelessWidget {
+class _SourceRow extends StatelessWidget {class _SourceRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final String url;
