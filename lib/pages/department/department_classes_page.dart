@@ -2712,11 +2712,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     try {
       final results = await Future.wait<dynamic>([
         _api.listTrainingSheetTemplates(),
+        _api.listTrainingSheetComponents(),
         _api.getClassSetup(),
       ]);
       if (!mounted) return;
       final templates = results[0] as List<DepartmentTrainingSheetTemplate>;
-      final setup = results[1] as DepartmentClassSetup;
+      final components = results[1] as List<DepartmentTrainingSheetComponentTemplate>;
+      final gradingSystems = components.where((item) => item.kind == 'GRADING').toList(growable: false);
+      final setup = results[2] as DepartmentClassSetup;
       final choice = await showModalBottomSheet<Map<String, String>>(
         context: context,
         useSafeArea: true,
@@ -2731,7 +2734,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             children: [
               Text('Add skills & evaluation setup', style: Theme.of(sheetContext).textTheme.headlineSmall),
               const SizedBox(height: 6),
-              const Text('Choose a prebuilt Training Sheet setup or a department checklist. It is copied to this class.'),
+              const Text('Choose a complete Training Sheet template, a department checklist, or a saved grading system. Your selection is copied to this class.'),
               const SizedBox(height: 18),
               if (templates.isNotEmpty) ...[
                 Text('Saved class packages', style: Theme.of(sheetContext).textTheme.titleMedium),
@@ -2766,25 +2769,46 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     'checklistVersionId': checklist['id']?.toString() ?? '',
                   }),
                 ),
+              if (gradingSystems.isNotEmpty) ...[
+                const Divider(),
+                Text('Saved grading systems', style: Theme.of(sheetContext).textTheme.titleMedium),
+                const Text('Choose any grading system created in Reusable Components on the dashboard.'),
+                for (final grading in gradingSystems)
+                  ListTile(
+                    leading: const Icon(Icons.rule_rounded),
+                    title: Text(grading.name),
+                    subtitle: const Text('Applies grading rules and student result fields'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.pop(sheetContext, {
+                      'gradingComponentId': grading.id,
+                    }),
+                  ),
+              ],
             ],
           ),
         ),
       );
       if (choice == null || !mounted) return;
       final selectedTemplate = templates.where((item) => item.id == choice['trainingSheetTemplateId']).firstOrNull;
+      final selectedGrading = gradingSystems.where((item) => item.id == choice['gradingComponentId']).firstOrNull;
       final hasExistingSetup = detail.checklistVersionId.isNotEmpty ||
           detail.gradingConfig.isNotEmpty ||
           detail.customFields.isNotEmpty ||
           detail.ceCredits.isNotEmpty;
-      if (selectedTemplate != null && hasExistingSetup) {
+      if ((selectedTemplate != null || selectedGrading != null) && hasExistingSetup) {
         final replace = await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
-            title: const Text('Apply this class package?'),
-            content: const Text('This replaces the current grading rules and custom result fields. If the package has an EMS CE allocation, it replaces the current CE breakdown too. Existing student records remain attached to the class.'),
+            title: Text(selectedTemplate != null ? 'Apply this class package?' : 'Apply this grading system?'),
+            content: Text(selectedTemplate != null
+                ? 'This replaces the current grading rules and custom result fields. If the package has a CE allocation, it replaces the current CE breakdown too. Existing student records remain attached to the class.'
+                : 'This replaces the current grading rules and student result fields. Existing students and recorded checklist results remain attached to the class.'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Keep current setup')),
-              FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Apply package')),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text(selectedTemplate != null ? 'Apply package' : 'Apply grading system'),
+              ),
             ],
           ),
         );
@@ -2795,6 +2819,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         classId: detail.id,
         trainingSheetTemplateId: choice['trainingSheetTemplateId'] ?? '',
         checklistVersionId: choice['checklistVersionId'] ?? '',
+        gradingComponentId: choice['gradingComponentId'] ?? '',
       );
       _setDetail(updated);
       if (mounted) {
