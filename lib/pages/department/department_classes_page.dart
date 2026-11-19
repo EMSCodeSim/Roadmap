@@ -664,6 +664,47 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
   } catch (e) { if (mounted) setState(() => _error = e.toString()); } }
   void _setDetail(DepartmentClassDetail detail) { if (!mounted) return; setState(() { _detail = detail; _studentId = detail.roster.any((item) => item.id == _studentId) ? _studentId : (detail.roster.isEmpty ? null : detail.roster.first.id); _error = null; }); }
+
+  Future<List<String>> _ceCategoriesForDetail(DepartmentClassDetail detail) async {
+    String categoryName(Map<String, dynamic> credit) =>
+        (credit['category'] ?? credit['name'] ?? '').toString().trim();
+    final saved = detail.ceCredits
+        .map(categoryName)
+        .where((name) => name.isNotEmpty)
+        .toList(growable: false);
+    if (saved.isNotEmpty) return saved.toSet().toList(growable: false);
+
+    // Class detail keeps the selected reusable component ID. Resolve its
+    // current dashboard-defined category list for closeout rather than
+    // synthesizing a separate list in the mobile app.
+    try {
+      if (detail.ceComponentId.isNotEmpty) {
+        final components = await _api.listTrainingSheetComponents();
+        final component = components.where((item) =>
+            item.id == detail.ceComponentId && item.kind == 'EMS_CE_LIST').firstOrNull;
+        final credits = component?.data['ceCredits'];
+        if (credits is List) {
+          final names = credits.whereType<Map>()
+              .map((item) => categoryName(Map<String, dynamic>.from(item)))
+              .where((name) => name.isNotEmpty).toSet().toList(growable: false);
+          if (names.isNotEmpty) return names;
+        }
+      }
+      if (detail.trainingSheetTemplateId.isNotEmpty) {
+        final templates = await _api.listTrainingSheetTemplates();
+        final template = templates.where((item) =>
+            item.id == detail.trainingSheetTemplateId).firstOrNull;
+        final names = (template?.ceCredits ?? const <Map<String, dynamic>>[])
+            .map(categoryName).where((name) => name.isNotEmpty)
+            .toSet().toList(growable: false);
+        if (names.isNotEmpty) return names;
+      }
+    } catch (_) {
+      // Preserve access to legacy EMS closeout if the reusable catalog is
+      // temporarily unavailable; ordinary class records remain editable.
+    }
+    return detail.trainingCategory == 'EMS' ? _emsCeCategories : const <String>[];
+  }
   DepartmentClassStudent? get _student { for (final item in _detail?.roster ?? const <DepartmentClassStudent>[]) { if (item.id == _studentId) return item; } return null; }
 
   bool _studentComplete(DepartmentClassDetail detail, DepartmentClassStudent student) {
@@ -1333,10 +1374,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final hours = TextEditingController(text:d.creditHours > 0 ? d.creditHours.toString() : '');
     String trainingCategory = d.trainingCategory;
     String shift = d.shift;
-    final ceCategories = <String>{
-      ...(d.ceCredits.isEmpty && trainingCategory == 'EMS' ? _emsCeCategories : <String>[]),
-      ...d.ceCredits.map((item) => item['category']?.toString() ?? '').where((category) => category.isNotEmpty),
-    }.toList(growable: false);
+    final ceCategories = await _ceCategoriesForDetail(d);
     final ceControllers = <String, TextEditingController>{
       for (final category in ceCategories)
         category: TextEditingController(text: d.ceCredits.where((item) => item['category'] == category).map((item) => item['hours']).firstOrNull?.toString() ?? ''),
