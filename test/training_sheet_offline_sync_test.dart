@@ -42,6 +42,7 @@ void main() {
           'trainingCategory': 'EMS',
           'trainingSheetTemplateId': 'ems-template-1',
           'ceComponentId': 'ce-component-1',
+          'templateName': 'EMS Continuing Education',
           'creditHours': 2.0,
           'ceCredits': [{'category': 'Patient Assessment', 'hours': 1.5}],
           'notes': 'Ten-member training. RMS code EMS-TRAIN',
@@ -58,6 +59,7 @@ void main() {
       notes: 'Ten-member training. RMS code EMS-TRAIN',
       location: 'Training station',
       trainingCategory: 'EMS',
+      trainingSheetTemplateId: 'ems-template-1',
       creditHours: 2.0,
       ceCredits: const {'Patient Assessment': 1.5},
     );
@@ -65,9 +67,11 @@ void main() {
     expect(sent?['creditHours'], 2.0);
     expect(sent?['endsAt'], '2026-10-23T16:00:00.000Z');
     expect(sent?['trainingCategory'], 'EMS');
+    expect(sent?['trainingSheetTemplateId'], 'ems-template-1');
     expect(result.trainingCategory, 'EMS');
     expect(result.trainingSheetTemplateId, 'ems-template-1');
     expect(result.ceComponentId, 'ce-component-1');
+    expect(result.templateName, 'EMS Continuing Education');
     expect(result.ceCredits.single['category'], 'Patient Assessment');
     expect(result.endsAt, isNotNull);
     expect(result.notes, contains('EMS-TRAIN'));
