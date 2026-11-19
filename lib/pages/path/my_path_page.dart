@@ -501,6 +501,11 @@ class _PathTab extends StatelessWidget {
                   primaryLabel: _primaryLabel(item.requirement),
                   onOpen: () => AppRouter.openRequirement(context, item.requirement, goalId: state.roadmap?.goal.id),
                   onPrimary: () => _primaryAction(context, state, item.requirement),
+                  onMarkDone: () => state.setRequirementCompleted(
+                    goalId: roadmap.goal.id,
+                    requirementId: item.requirement.id,
+                    completed: true,
+                  ),
                 ),
               );
             }),
@@ -531,6 +536,11 @@ class _PathTab extends StatelessWidget {
                   statusIcon: Icons.circle_outlined,
                   statusColor: cs.onSurfaceVariant,
                   onTap: () => AppRouter.openRequirement(context, r.requirement, goalId: state.roadmap?.goal.id),
+                  onMarkDone: () => state.setRequirementCompleted(
+                    goalId: roadmap.goal.id,
+                    requirementId: r.requirement.id,
+                    completed: true,
+                  ),
                   compactBadges: true,
                 )).toList(),
               );
@@ -1151,44 +1161,98 @@ class _NextActionCard extends StatelessWidget {
   final String primaryLabel;
   final VoidCallback onOpen;
   final VoidCallback onPrimary;
+  final VoidCallback onMarkDone;
 
-  const _NextActionCard({required this.requirement, required this.emphasized, required this.subtitle, required this.primaryLabel, required this.onOpen, required this.onPrimary});
+  const _NextActionCard({
+    required this.requirement,
+    required this.emphasized,
+    required this.subtitle,
+    required this.primaryLabel,
+    required this.onOpen,
+    required this.onPrimary,
+    required this.onMarkDone,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final bg = emphasized ? cs.primaryContainer : cs.surface;
-    final border = emphasized ? cs.primary.withValues(alpha: 0.18) : cs.outline.withValues(alpha: 0.14);
-    return InkWell(
-      onTap: onOpen,
-      borderRadius: BorderRadius.circular(AppRadius.xl),
-      child: Container(
-        padding: AppSpacing.paddingLg,
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.xl), border: Border.all(color: border)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(requirement.name, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-            const SizedBox(height: AppSpacing.xs),
-            Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
-            const SizedBox(height: AppSpacing.md),
-            SizedBox(
-              height: 50,
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: onPrimary,
-                style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg))),
-                child: Text(primaryLabel),
+    final border = emphasized
+        ? cs.primary.withValues(alpha: 0.18)
+        : cs.outline.withValues(alpha: 0.14);
+    return Container(
+      padding: AppSpacing.paddingLg,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: onOpen,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    requirement.name,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            height: 50,
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: onPrimary,
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+              child: Text(primaryLabel),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          SizedBox(
+            height: 48,
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onMarkDone,
+              icon: const Icon(Icons.check_circle_outline_rounded),
+              label: const Text('Mark as done'),
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _EmptyPath extends StatelessWidget {
+class _EmptyPath extends StatelessWidget {class _EmptyPath extends StatelessWidget {
   final VoidCallback onBuild;
   const _EmptyPath({required this.onBuild});
 
@@ -1226,50 +1290,96 @@ class _ReqTile extends StatelessWidget {
   final IconData statusIcon;
   final Color statusColor;
   final VoidCallback onTap;
+  final VoidCallback? onMarkDone;
   final bool compactBadges;
 
-  const _ReqTile({required this.requirement, required this.statusIcon, required this.statusColor, required this.onTap, this.compactBadges = false});
+  const _ReqTile({
+    required this.requirement,
+    required this.statusIcon,
+    required this.statusColor,
+    required this.onTap,
+    this.onMarkDone,
+    this.compactBadges = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
-          ),
-          child: Row(
-            children: [
-              Icon(statusIcon, color: statusColor),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text(requirement.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
-                        const SizedBox(width: AppSpacing.sm),
-                        if (!compactBadges)
-                          _RequirementBadges(requirement: requirement),
-                      ],
+                    Icon(statusIcon, color: statusColor),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  requirement.name,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              if (!compactBadges)
+                                _RequirementBadges(requirement: requirement),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _subtitleFor(requirement),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: cs.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(_subtitleFor(requirement), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                    const SizedBox(width: AppSpacing.sm),
+                    Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+            ),
+            if (onMarkDone != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                height: 46,
+                child: OutlinedButton.icon(
+                  onPressed: onMarkDone,
+                  icon: const Icon(Icons.check_circle_outline_rounded),
+                  label: const Text('Mark as done'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
+                ),
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
