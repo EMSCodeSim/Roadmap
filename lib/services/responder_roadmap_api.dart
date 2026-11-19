@@ -942,6 +942,8 @@ class DepartmentCloseValidation {
 }
 
 class DepartmentClassDetail {
+  final String trainingSheetTemplateId;
+  final String ceComponentId;
   final List<Map<String, dynamic>> ceCredits;
   final Map<String, dynamic> gradingConfig;
   final List<Map<String, dynamic>> customFields;
@@ -972,6 +974,8 @@ class DepartmentClassDetail {
   final List<DepartmentClassStudent> roster;
 
   const DepartmentClassDetail({
+    this.trainingSheetTemplateId = '',
+    this.ceComponentId = '',
     required this.ceCredits,
     required this.gradingConfig,
     required this.customFields,
@@ -1003,6 +1007,8 @@ class DepartmentClassDetail {
   });
 
   factory DepartmentClassDetail.fromJson(Map<String, dynamic> json) => DepartmentClassDetail(
+        trainingSheetTemplateId: (json['trainingSheetTemplateId'] as String?) ?? '',
+        ceComponentId: (json['ceComponentId'] as String?) ?? '',
         ceCredits: (json['ceCredits'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
         gradingConfig: Map<String, dynamic>.from(json['gradingConfig'] as Map? ?? const {}),
         customFields: (json['customFields'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
