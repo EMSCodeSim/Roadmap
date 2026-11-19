@@ -22,11 +22,6 @@ import 'package:firepath/services/training_time_calculator.dart';
 import 'package:firepath/pages/department/class_task_book_link_card.dart';
 import 'package:firepath/widgets/training_sheet/training_sheet_cards.dart';
 
-const _emsCeCategories = <String>[
-  'Airway', 'Cardiology', 'Trauma', 'Medical', 'Operations',
-  'Pediatric / Obstetrics', 'Local / State', 'Individual',
-];
-
 String _trainingTemplateSummary(DepartmentTrainingSheetTemplate template) {
   final rosterFields = template.customFields
       .where((field) => field['appliesTo'] == 'ROSTER')
