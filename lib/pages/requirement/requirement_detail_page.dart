@@ -770,7 +770,7 @@ class _CompleteToggle extends StatelessWidget {
   }
 }
 
-class _SourceRow extends StatelessWidget {class _SourceRow extends StatelessWidget {
+class _SourceRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final String url;
