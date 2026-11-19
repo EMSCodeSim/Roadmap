@@ -1640,9 +1640,9 @@ class ResponderRoadmapApi {
         .map((entry) => MapEntry(entry.key, entry.value))
         .toList()
       ..sort((left, right) => left.key.compareTo(right.key));
-    final expectedCreditHours = expectedCredits.isEmpty
-        ? creditHours
-        : expectedCredits.fold<double>(0, (sum, item) => sum + item.value);
+    // Training duration and allocated CE credits are separate values. A class
+    // can be 2 hours long while only 1.5 hours are assigned to CE categories.
+    final expectedCreditHours = creditHours;
     bool sameInstant(DateTime? actual, DateTime? expected) =>
         actual?.millisecondsSinceEpoch == expected?.millisecondsSinceEpoch;
     bool sameCredits(DepartmentClassDetail detail) {

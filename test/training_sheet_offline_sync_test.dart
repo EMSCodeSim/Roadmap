@@ -38,9 +38,9 @@ void main() {
         'data': <String, dynamic>{
           'id': 'class-10',
           'startsAt': '2026-10-23T14:00:00.000Z',
-          'endsAt': '2026-10-23T15:30:00.000Z',
+          'endsAt': '2026-10-23T16:00:00.000Z',
           'trainingCategory': 'EMS',
-          'creditHours': 1.5,
+          'creditHours': 2.0,
           'ceCredits': [{'category': 'Patient Assessment', 'hours': 1.5}],
           'notes': 'Ten-member training. RMS code EMS-TRAIN',
           'location': 'Training station',
@@ -52,16 +52,16 @@ void main() {
     final result = await api.updateTrainingSheetDocumentation(
       'class-10',
       startsAt: DateTime.utc(2026, 10, 23, 14),
-      endsAt: DateTime.utc(2026, 10, 23, 15, 30),
+      endsAt: DateTime.utc(2026, 10, 23, 16),
       notes: 'Ten-member training. RMS code EMS-TRAIN',
       location: 'Training station',
       trainingCategory: 'EMS',
-      creditHours: 1.5,
+      creditHours: 2.0,
       ceCredits: const {'Patient Assessment': 1.5},
     );
     expect(method, 'PATCH');
-    expect(sent?['creditHours'], 1.5);
-    expect(sent?['endsAt'], '2026-10-23T15:30:00.000Z');
+    expect(sent?['creditHours'], 2.0);
+    expect(sent?['endsAt'], '2026-10-23T16:00:00.000Z');
     expect(sent?['trainingCategory'], 'EMS');
     expect(result.trainingCategory, 'EMS');
     expect(result.ceCredits.single['category'], 'Patient Assessment');

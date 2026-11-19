@@ -1068,7 +1068,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 summaryRow('End', _recordDate(detail.endsAt), required: true),
                 summaryRow('Total hours', detail.creditHours > 0 ? detail.creditHours.toStringAsFixed(2) : '', required: true),
                 summaryRow('Category', detail.trainingCategory.replaceAll('_', ' '), required: true),
-                if (detail.trainingCategory == 'EMS') summaryRow('CE category', ceSummary, required: true),
+                if (detail.ceCredits.isNotEmpty) summaryRow('CE category hours', ceSummary, required: true),
                 summaryRow('Shift', detail.shift),
                 summaryRow('Station / facility', detail.station.isNotEmpty ? detail.station : detail.location),
                 summaryRow('Checklist', detail.checklistTitle),
@@ -2010,7 +2010,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         line('Training hours', detail.creditHours.toStringAsFixed(2)),
         if (ceRows.isNotEmpty) ...[
           pw.SizedBox(height: 10),
-          pw.Text('EMS CE category breakdown', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.Text('CE category breakdown', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 6),
           pw.TableHelper.fromTextArray(
             headers: const ['CE category', 'Hours'],
@@ -3122,7 +3122,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       if (detail.ceCredits.isNotEmpty || detail.gradingConfig.isNotEmpty)
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Template requirements', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-          if (detail.ceCredits.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('EMS CE: ${detail.ceCredits.map((item) => '${item['hours']} hr ${item['category']}').join(' · ')}')),
+          if (detail.ceCredits.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('CE hours: ${detail.ceCredits.map((item) => '${item['hours']} hr ${item['category']}').join(' · ')}')),
           if (detail.gradingConfig.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Required scores: ${[
             if (detail.gradingConfig['writtenTestEnabled'] == true) 'Written test${detail.gradingConfig['writtenTestPassPercent'] != null ? ' ≥${detail.gradingConfig['writtenTestPassPercent']}%' : ''}',
             if (detail.gradingConfig['ccfEnabled'] == true) 'CCF${detail.gradingConfig['ccfPassPercent'] != null ? ' ≥${detail.gradingConfig['ccfPassPercent']}%' : ''}',
