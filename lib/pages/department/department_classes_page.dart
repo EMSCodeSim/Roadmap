@@ -2719,6 +2719,13 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       final templates = results[0] as List<DepartmentTrainingSheetTemplate>;
       final components = results[1] as List<DepartmentTrainingSheetComponentTemplate>;
       final gradingSystems = components.where((item) => item.kind == 'GRADING').toList(growable: false);
+      const prebuiltTrainingSystems = <Map<String, String>>[
+        {'id': 'PASS_FAIL', 'name': 'Pass / Fail', 'description': 'Record a clear pass or fail for each student.'},
+        {'id': 'PERCENT', 'name': 'Percentage', 'description': 'Record a score from 0 to 100%.'},
+        {'id': 'LETTER_GRADE', 'name': 'Letter Grade', 'description': 'Record A+ through F for each student.'},
+        {'id': 'SCORE_1_10', 'name': '1–10 Score', 'description': 'Record a whole-number score from 1 to 10.'},
+        {'id': 'CCF', 'name': 'CCF Score', 'description': 'Record the CCF score with an 80% pass mark.'},
+      ];
       final setup = results[2] as DepartmentClassSetup;
       final choice = await showModalBottomSheet<Map<String, String>>(
         context: context,
@@ -2734,7 +2741,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             children: [
               Text('Add skills & evaluation setup', style: Theme.of(sheetContext).textTheme.headlineSmall),
               const SizedBox(height: 6),
-              const Text('Choose a complete Training Sheet template, a department checklist, or a saved grading system. Your selection is copied to this class.'),
+              const Text('Choose a complete Training Sheet template, a department checklist, or a grading system. Your selection is copied to this class.'),
               const SizedBox(height: 18),
               if (templates.isNotEmpty) ...[
                 Text('Saved class packages', style: Theme.of(sheetContext).textTheme.titleMedium),
@@ -2769,10 +2776,21 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     'checklistVersionId': checklist['id']?.toString() ?? '',
                   }),
                 ),
+              const Divider(),
+              Text('Grading systems', style: Theme.of(sheetContext).textTheme.titleMedium),
+              const Text('Use a prebuilt training system or one your department customized on the dashboard.'),
+              for (final grading in prebuiltTrainingSystems)
+                ListTile(
+                  leading: const Icon(Icons.rule_rounded),
+                  title: Text(grading['name']!),
+                  subtitle: Text(grading['description']!),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.pop(sheetContext, {
+                    'prebuiltTrainingSystemId': grading['id']!,
+                  }),
+                ),
               if (gradingSystems.isNotEmpty) ...[
-                const Divider(),
-                Text('Saved grading systems', style: Theme.of(sheetContext).textTheme.titleMedium),
-                const Text('Choose any grading system created in Reusable Components on the dashboard.'),
+                Text('Department custom systems', style: Theme.of(sheetContext).textTheme.titleSmall),
                 for (final grading in gradingSystems)
                   ListTile(
                     leading: const Icon(Icons.rule_rounded),
@@ -2791,11 +2809,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       if (choice == null || !mounted) return;
       final selectedTemplate = templates.where((item) => item.id == choice['trainingSheetTemplateId']).firstOrNull;
       final selectedGrading = gradingSystems.where((item) => item.id == choice['gradingComponentId']).firstOrNull;
+      final selectedPrebuilt = prebuiltTrainingSystems.where((item) => item['id'] == choice['prebuiltTrainingSystemId']).firstOrNull;
       final hasExistingSetup = detail.checklistVersionId.isNotEmpty ||
           detail.gradingConfig.isNotEmpty ||
           detail.customFields.isNotEmpty ||
           detail.ceCredits.isNotEmpty;
-      if ((selectedTemplate != null || selectedGrading != null) && hasExistingSetup) {
+      if ((selectedTemplate != null || selectedGrading != null || selectedPrebuilt != null) && hasExistingSetup) {
         final replace = await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
@@ -2820,6 +2839,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         trainingSheetTemplateId: choice['trainingSheetTemplateId'] ?? '',
         checklistVersionId: choice['checklistVersionId'] ?? '',
         gradingComponentId: choice['gradingComponentId'] ?? '',
+        prebuiltTrainingSystemId: choice['prebuiltTrainingSystemId'] ?? '',
       );
       _setDetail(updated);
       if (mounted) {

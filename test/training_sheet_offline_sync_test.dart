@@ -206,6 +206,39 @@ void main() {
     expect(result.customFields.single['type'], 'PASS_FAIL');
   });
 
+  test('evaluation setup sends a prebuilt training system as grading', () async {
+    Map<String, dynamic>? sent;
+    final client = MockClient((request) async {
+      expect(request.method, 'PATCH');
+      expect(request.url.path, '/api/v1/app/training-sheets/class-13/evaluation-setup');
+      sent = jsonDecode(request.body) as Map<String, dynamic>;
+      return http.Response(jsonEncode(<String, dynamic>{
+        'data': <String, dynamic>{
+          'id': 'class-13',
+          'title': 'Call Review Training',
+          'status': 'ACTIVE',
+          'gradingConfig': <String, dynamic>{},
+          'customFields': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'id': 'grade-letter_grade',
+              'label': 'Letter Grade',
+              'type': 'LETTER_GRADE',
+              'required': true,
+            },
+          ],
+        },
+      }), 200);
+    });
+
+    final result = await ResponderRoadmapApi(client: client).updateClassEvaluationSetup(
+      classId: 'class-13',
+      prebuiltTrainingSystemId: 'LETTER_GRADE',
+    );
+
+    expect(sent, <String, dynamic>{'prebuiltTrainingSystemId': 'LETTER_GRADE'});
+    expect(result.customFields.single['type'], 'LETTER_GRADE');
+  });
+
   test('ten-member offline batch is stored and replayed with expected revisions', () async {
     var online = false;
     var submitted = 0;
