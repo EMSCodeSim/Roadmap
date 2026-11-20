@@ -2089,6 +2089,27 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       for (final section in detail.sections)
         for (final skill in section.skills) skill.id: skill.title,
     };
+    final skillIds = <String>{
+      for (final section in detail.sections)
+        for (final skill in section.skills) skill.id,
+    }.toList(growable: false);
+    String checklistResultLabel(String? result) {
+      if (result == null || result == 'NOT_EVALUATED') return '—';
+      if (result == 'PASS' || result == 'FAIL') return result;
+      if (result == 'NOT_APPLICABLE') return 'N/A';
+      return result.replaceAll('_', ' ');
+    }
+
+    final checklistRows = <List<String>>[];
+    for (final student in detail.roster) {
+      final resultsBySkill = <String, String>{
+        for (final result in student.results) result.requirementId: result.result,
+      };
+      checklistRows.add(<String>[
+        student.name,
+        for (final skillId in skillIds) checklistResultLabel(resultsBySkill[skillId]),
+      ]);
+    }
     final rosterRows = detail.roster.map((student) {
       final scores = trainingScoreParts(
         customFields: detail.customFields,
@@ -2103,18 +2124,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         student.attendance.replaceAll('_', ' '),
       ];
     }).toList(growable: false);
-    final resultRows = <List<String>>[];
-    for (final student in detail.roster) {
-      for (final result in student.results) {
-        resultRows.add(<String>[
-          student.name,
-          skillNames[result.requirementId] ?? 'Checklist skill',
-          result.result.replaceAll('_', ' '),
-          result.evaluatorName,
-          result.notes,
-        ]);
-      }
-    }
     final ceRows = detail.ceCredits
         .where((item) => (item['hours'] as num?)?.toDouble() != null && (item['hours'] as num).toDouble() > 0)
         .map((item) => <String>[
@@ -2205,27 +2214,90 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             1: pw.FlexColumnWidth(1.2),
           },
         ),
-        if (resultRows.isNotEmpty) ...[
-          pw.SizedBox(height: 16),
-          pw.Text('Checklist results', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 6),
-          pw.TableHelper.fromTextArray(
-            headers: const ['Student', 'Skill', 'Result', 'Evaluator', 'Notes'],
-            data: resultRows,
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
-            cellStyle: const pw.TextStyle(fontSize: 7),
-            cellPadding: const pw.EdgeInsets.all(3),
-            columnWidths: const {
-              0: pw.FlexColumnWidth(1.2), 1: pw.FlexColumnWidth(1.8),
-              2: pw.FlexColumnWidth(.8), 3: pw.FlexColumnWidth(1.1), 4: pw.FlexColumnWidth(1.5),
-            },
-          ),
-        ],
         pw.SizedBox(height: 14),
         pw.Text('Generated from the canonical Responder Roadmap record.', style: const pw.TextStyle(fontSize: 8)),
       ],
     ));
+    if (skillIds.isNotEmpty) {
+      final checklistColumnWidths = <int, pw.TableColumnWidth>{
+        0: const pw.FlexColumnWidth(1.8),
+        for (var index = 0; index < skillIds.length; index++)
+          index + 1: const pw.FlexColumnWidth(1),
+      };
+      document.addPage(pw.MultiPage(
+        pageFormat: PdfPageFormat.letter.landscape,
+        margin: const pw.EdgeInsets.all(32),
+        header: (context) => pw.Container(
+          padding: const pw.EdgeInsets.only(bottom: 8),
+          decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: .5))),
+          child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+            pw.Text(departmentName.isEmpty ? 'Responder Roadmap' : departmentName,
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+            pw.Text('Checklist results · Training ID ${detail.id}',
+              style: const pw.TextStyle(fontSize: 9)),
+          ]),
+        ),
+        footer: (context) => pw.Align(
+          alignment: pw.Alignment.centerRight,
+          child: pw.Text('Page ${context.pageNumber} of ${context.pagesCount}',
+            style: const pw.TextStyle(fontSize: 8)),
+        ),
+        build: (context) => [
+          pw.SizedBox(height: 10),
+          pw.Text('Checklist results',
+            style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 4),
+          pw.Text('${detail.title} · One row per student; each skill appears once across the top.',
+            style: const pw.TextStyle(fontSize: 9)),
+          pw.SizedBox(height: 10),
+          pw.TableHelper.fromTextArray(
+            headers: <String>['Student', for (final skillId in skillIds) skillNames[skillId] ?? 'Skill'],
+            data: checklistRows,
+            headerStyle: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+            cellStyle: const pw.TextStyle(fontSize: 8),
+            cellPadding: const pw.EdgeInsets.all(5),
+            border: pw.TableBorder.all(color: PdfColors.black, width: .5),
+            columnWidths: checklistColumnWidths,
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text('Station / skill reference',
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 4),
+          for (final section in detail.sections) ...[
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(top: 4, bottom: 2),
+              child: pw.Text(section.title,
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+            ),
+            for (final skill in section.skills)
+              pw.Padding(
+                padding: const pw.EdgeInsets.only(left: 10, bottom: 2),
+                child: pw.Text(
+                  skill.description.isEmpty ? skill.title : '${skill.title}: ${skill.description}',
+                  style: const pw.TextStyle(fontSize: 8),
+                ),
+              ),
+          ],
+          pw.SizedBox(height: 18),
+          pw.Row(children: [
+            pw.Expanded(child: pw.Container(
+              height: 24,
+              alignment: pw.Alignment.bottomLeft,
+              decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: .7))),
+              child: pw.Text('Instructor signature', style: pw.TextStyle(fontSize: 8)),
+            )),
+            pw.SizedBox(width: 24),
+            pw.SizedBox(width: 140, child: pw.Container(
+              height: 24,
+              alignment: pw.Alignment.bottomLeft,
+              decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: .7))),
+              child: pw.Text('Date', style: pw.TextStyle(fontSize: 8)),
+            )),
+          ]),
+        ],
+      ));
+    }
     return document.save();
   }
 
