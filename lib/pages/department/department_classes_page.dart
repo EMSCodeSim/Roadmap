@@ -3095,28 +3095,51 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     label: const Text('Check or grade skills · Apply to all'),
                   ),
                 ],
-                if (hasGrades) ...[
+                if ((skills.isNotEmpty || hasGrades) && present.isNotEmpty) ...[
                   const SizedBox(height: 22),
-                  Text('Student grades', style: Theme.of(sheetContext).textTheme.titleLarge),
-                  const Text('Open a student to record written, CCF, or template grading fields.'),
+                  Text('Grade individual students', style: Theme.of(sheetContext).textTheme.titleLarge),
+                  const Text('Open a student to grade each checklist item separately and record individual scores.'),
                   const SizedBox(height: 8),
                   for (final student in present)
-                    Card(
-                      child: ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.person_outline_rounded)),
-                        title: Text(student.name),
-                        subtitle: Text([
-                          if (student.writtenScore != null) 'Written ${student.writtenScore}%',
-                          if (student.ccfScore != null) 'CCF ${student.ccfScore}%',
-                          if (student.writtenScore == null && student.ccfScore == null) 'Tap to grade',
-                        ].join(' · ')),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: _busy ? null : () async {
-                          await _editCustomResults(detail, student);
-                          if (mounted) updateSheet(() {});
-                        },
-                      ),
-                    ),
+                    Builder(builder: (context) {
+                      final resultsBySkill = <String, String>{
+                        for (final result in student.results)
+                          result.requirementId: result.result,
+                      };
+                      final passed = skills.where((skill) =>
+                        resultsBySkill[skill.id] == 'PASS').length;
+                      final failed = skills.where((skill) =>
+                        resultsBySkill[skill.id] == 'FAIL').length;
+                      final remediation = skills.where((skill) =>
+                        resultsBySkill[skill.id] == 'NEEDS_REMEDIATION').length;
+                      final notGraded = skills.where((skill) {
+                        final result = resultsBySkill[skill.id];
+                        return result == null || result == 'NOT_EVALUATED';
+                      }).length;
+                      final notApplicable = skills.where((skill) =>
+                        resultsBySkill[skill.id] == 'NOT_APPLICABLE').length;
+                      final summary = <String>[
+                        if (skills.isNotEmpty) '$passed/${skills.length} passed',
+                        if (failed > 0) '$failed failed',
+                        if (remediation > 0) '$remediation remediation',
+                        if (notGraded > 0) '$notGraded not graded',
+                        if (notApplicable > 0) '$notApplicable N/A',
+                        if (student.writtenScore != null) 'Written ${student.writtenScore}%',
+                        if (student.ccfScore != null) 'CCF ${student.ccfScore}%',
+                      ].join(' · ');
+                      return Card(
+                        child: ListTile(
+                          leading: const CircleAvatar(child: Icon(Icons.person_outline_rounded)),
+                          title: Text(student.name),
+                          subtitle: Text(summary.isEmpty ? 'Tap to grade checklist' : summary),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: _busy ? null : () {
+                            Navigator.pop(sheetContext);
+                            _jumpToMember(student, grading: true);
+                          },
+                        ),
+                      );
+                    }),
                 ],
                 if (skills.isEmpty && !hasGrades) ...[
                   const SizedBox(height: 24),
