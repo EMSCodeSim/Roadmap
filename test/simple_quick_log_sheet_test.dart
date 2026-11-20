@@ -27,6 +27,10 @@ void main() {
     expect(find.text('EXPOSURE'), findsOneWidget);
     expect(find.text('DRIVING'), findsOneWidget);
     expect(find.text('CAREER'), findsOneWidget);
+    expect(
+      find.text('Customize Fire, EMS & personal choices'),
+      findsOneWidget,
+    );
     expect(find.text('Task Book / Career Road progress'), findsOneWidget);
     expect(find.text('Scan department class QR'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -113,6 +117,10 @@ void main() {
     expect(find.text('Notes'), findsOneWidget);
     expect(find.text('Personal only'), findsOneWidget);
     expect(find.text('Share with department'), findsOneWidget);
+    expect(
+      find.textContaining('first result will start a success-rate statistic'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 

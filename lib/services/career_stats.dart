@@ -203,7 +203,8 @@ class CareerStats {
       if (record.outcome == CareerRecordOutcome.successful) {
         attempts += count;
         successes += 1;
-      } else if (record.outcome == CareerRecordOutcome.unsuccessful) {
+      } else if (record.outcome == CareerRecordOutcome.unsuccessful ||
+          record.outcome == CareerRecordOutcome.attempted) {
         attempts += count;
       }
     }

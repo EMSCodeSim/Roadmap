@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/prefill.dart';
+import 'package:firepath/models/quick_log_template.dart';
+import 'package:firepath/models/quick_log_tracker.dart';
+import 'package:firepath/nav.dart';
+import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/quick_log_preferences_store.dart';
 import 'package:firepath/services/scored_skill_store.dart';
 import 'package:firepath/services/department_activity_sharing.dart';
 import 'package:firepath/state/app_mode_controller.dart';
@@ -55,6 +61,8 @@ class SimpleQuickLogSheet extends StatefulWidget {
 
 class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
   final CareerRecordStore _store = CareerRecordStore();
+  final QuickLogPreferencesStore _preferencesStore = QuickLogPreferencesStore();
+  final ScoredSkillStore _scoredSkillStore = ScoredSkillStore();
   final DepartmentActivitySharingService _sharing = DepartmentActivitySharingService();
   final TextEditingController _notes = TextEditingController();
   final TextEditingController _miles = TextEditingController();
@@ -70,6 +78,11 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
   _DriveActivity _driveActivity = _DriveActivity.response;
   CareerRecordOutcome? _skillOutcome;
   bool _shareWithDepartment = false;
+  List<String> _quickActionKeys =
+      List<String>.from(QuickLogPreferencesStore.defaultQuickActionKeys);
+  List<QuickLogTracker> _pinnedTrackers = const [];
+  QuickLogTracker? _selectedTracker;
+  CareerSuccessStats? _skillStats;
 
   @override
   void initState() {
@@ -79,7 +92,36 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
       _mode = _SimpleMode.taskBook;
       _choice = prefill!.title.trim();
     }
+    _loadPreferences();
   }
+
+  Future<void> _loadPreferences() async {
+    final preferences = await _preferencesStore.load();
+    final custom = preferences.customTemplates
+        .map(_trackerFromTemplate)
+        .toList(growable: false);
+    final pinned = preferences.pinnedIds
+        .map((key) => QuickLogCatalog.byKey(key, custom))
+        .whereType<QuickLogTracker>()
+        .toList(growable: false);
+    if (!mounted) return;
+    setState(() {
+      _quickActionKeys = List<String>.from(preferences.quickActionKeys);
+      _pinnedTrackers = pinned;
+    });
+  }
+
+  static QuickLogTracker _trackerFromTemplate(QuickLogTemplate template) =>
+      QuickLogTracker(
+        keyName: template.id,
+        title: template.title,
+        category: template.category,
+        type: template.type,
+        iconName: template.iconKey,
+        tracksOutcome:
+            template.type == CareerRecordType.skill || template.tracksOutcome,
+        custom: template.isCustom,
+      );
 
   @override
   void dispose() {
@@ -114,6 +156,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                   transport: _transport,
                   driveActivity: _driveActivity,
                   skillOutcome: _skillOutcome,
+                  skillStats: _skillStats,
                   shareWithDepartment: _shareWithDepartment,
                   departmentConnected: context.watch<AppModeController>().departmentLink != null,
                   onEmergentChanged: (value) =>
@@ -135,14 +178,18 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                   ? _ChoiceStep(
                       key: const ValueKey('choice'),
                       mode: _mode!,
+                      customChoices: _trackersForMode(_mode!),
                       onBack: () => setState(() => _mode = null),
-                      onPick: (value) => setState(() => _choice = value),
+                      onPick: _pickChoice,
+                      onCustomize: _openCustomization,
                       onMoreDetails: () => Navigator.of(context)
                           .pop(SimpleQuickLogResult.moreDetails),
                     )
                   : _CategoryStep(
                       key: const ValueKey('category'),
                       onPick: (mode) => setState(() => _mode = mode),
+                      visibleModes: _visibleModes,
+                      onCustomize: _openCustomization,
                       showScanQr: widget.showDepartmentQrAction,
                       onScanQr: () => Navigator.of(context).pop(SimpleQuickLogResult.scanDepartmentQr),
                       onMoreDetails: () => Navigator.of(context)
@@ -153,8 +200,84 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
     );
   }
 
+  List<_SimpleMode> get _visibleModes {
+    final modes = _quickActionKeys
+        .map(_modeForActionKey)
+        .whereType<_SimpleMode>()
+        .where((mode) => mode != _SimpleMode.taskBook)
+        .toSet()
+        .toList();
+    return modes.isEmpty ? _CategoryStep.defaultModes : modes;
+  }
+
+  static _SimpleMode? _modeForActionKey(String key) => switch (key) {
+        'training' => _SimpleMode.training,
+        'call' => _SimpleMode.call,
+        'skill' => _SimpleMode.skill,
+        'exposure' => _SimpleMode.exposure,
+        'drive' => _SimpleMode.drive,
+        'career' => _SimpleMode.career,
+        'task_book' => _SimpleMode.taskBook,
+        _ => null,
+      };
+
+  List<QuickLogTracker> _trackersForMode(_SimpleMode mode) => _pinnedTrackers
+      .where((tracker) => _modeForTracker(tracker) == mode)
+      .toList(growable: false);
+
+  static _SimpleMode _modeForTracker(QuickLogTracker tracker) {
+    final haystack = '${tracker.title} ${tracker.category}'.toLowerCase();
+    if (tracker.keyName == 'fire.driver') return _SimpleMode.drive;
+    return switch (tracker.type) {
+      CareerRecordType.skill => _SimpleMode.skill,
+      CareerRecordType.training => _SimpleMode.training,
+      CareerRecordType.operationalExperience =>
+        haystack.contains('exposure') ? _SimpleMode.exposure : _SimpleMode.call,
+      CareerRecordType.taskBookEvidence => _SimpleMode.taskBook,
+      _ => _SimpleMode.career,
+    };
+  }
+
+  Future<void> _openCustomization() async {
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    await Future<void>.delayed(Duration.zero);
+    await router.push(AppRoutes.quickLogSetup);
+  }
+
+  Future<void> _pickChoice(String value) async {
+    QuickLogTracker? tracker;
+    for (final item in _trackersForMode(_mode!)) {
+      if (item.title == value) {
+        tracker = item;
+        break;
+      }
+    }
+    setState(() {
+      _choice = value;
+      _selectedTracker = tracker;
+      _skillStats = null;
+      _skillOutcome = null;
+    });
+    if (_mode != _SimpleMode.skill) return;
+    final records = await _store.load();
+    final key = tracker?.keyName ?? ScoredSkillStore.keyForTitle(value);
+    if (!mounted || _choice != value) return;
+    setState(() {
+      _skillStats = CareerStats.successFor(records, trackingKey: key);
+    });
+  }
+
   Future<void> _save() async {
     if (_mode == null || _choice == null || _saving) return;
+    if (_mode == _SimpleMode.skill && _skillOutcome == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Choose Successful, Attempted, or Unsuccessful.'),
+        ),
+      );
+      return;
+    }
     setState(() => _saving = true);
 
     final now = DateTime.now();
@@ -171,7 +294,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
       title: title,
       category: (prefill?.category ?? '').trim().isNotEmpty
           ? prefill!.category!.trim()
-          : _category(mode),
+          : (_selectedTracker?.category ?? _category(mode)),
       date: now,
       roleOrAssignment: _role.text.trim().isEmpty ? null : _role.text.trim(),
       summary: notes.isEmpty ? null : notes,
@@ -184,7 +307,11 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
       relatedRequirementId: prefill?.relatedRequirementId,
       relatedTaskId: prefill?.relatedTaskId,
       highlight: mode == _SimpleMode.career,
-      trackingKey: _trackingKey(mode, title, prefill?.trackerKey),
+      trackingKey: _trackingKey(
+        mode,
+        title,
+        prefill?.trackerKey ?? _selectedTracker?.keyName,
+      ),
       outcome: mode == _SimpleMode.skill
           ? _skillOutcome
           : mode == _SimpleMode.taskBook
@@ -202,6 +329,9 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
     final ok = await _store.upsert(record);
     if (!mounted) return;
     if (ok) {
+      if (mode == _SimpleMode.skill) {
+        await _ensureSkillMetric(record);
+      }
       try {
         await context.read<AppState>().applyLogToRequirementProgress(record);
       } catch (_) {
@@ -238,6 +368,17 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
         const SnackBar(content: Text('Could not save the log. Try again.')),
       );
     }
+  }
+
+  Future<void> _ensureSkillMetric(CareerRecord record) async {
+    final key = CareerStats.skillTrackingKey(record);
+    if (key == null) return;
+    final current = await _scoredSkillStore.load();
+    if (current.any((item) => item.keyName == key)) return;
+    await _scoredSkillStore.save([
+      ...current,
+      ScoredSkillPreference(keyName: key, title: record.title),
+    ]);
   }
 
   Map<String, dynamic> _detailsFor(_SimpleMode mode, String title) {
@@ -335,6 +476,8 @@ class _CategoryStep extends StatelessWidget {
   final bool showScanQr;
   final VoidCallback onScanQr;
   final VoidCallback onMoreDetails;
+  final VoidCallback onCustomize;
+  final List<_SimpleMode> visibleModes;
 
   const _CategoryStep({
     super.key,
@@ -342,9 +485,11 @@ class _CategoryStep extends StatelessWidget {
     required this.showScanQr,
     required this.onScanQr,
     required this.onMoreDetails,
+    required this.onCustomize,
+    required this.visibleModes,
   });
 
-  static const _orderedModes = <_SimpleMode>[
+  static const defaultModes = <_SimpleMode>[
     _SimpleMode.training,
     _SimpleMode.call,
     _SimpleMode.skill,
@@ -385,9 +530,9 @@ class _CategoryStep extends StatelessWidget {
             mainAxisSpacing: 10,
             childAspectRatio: 1.85,
           ),
-          itemCount: _orderedModes.length,
+          itemCount: visibleModes.length,
           itemBuilder: (context, index) {
-            final mode = _orderedModes[index];
+            final mode = visibleModes[index];
             return FilledButton.tonal(
               onPressed: () => onPick(mode),
               style: FilledButton.styleFrom(
@@ -413,6 +558,12 @@ class _CategoryStep extends StatelessWidget {
           },
         ),
         const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: onCustomize,
+          icon: const Icon(Icons.tune),
+          label: const Text('Customize Fire, EMS & personal choices'),
+        ),
+        const SizedBox(height: 4),
         FilledButton.tonalIcon(
           onPressed: () => onPick(_SimpleMode.taskBook),
           icon: const Icon(Icons.menu_book_outlined),
@@ -446,6 +597,8 @@ class _ChoiceStep extends StatelessWidget {
   final VoidCallback onBack;
   final ValueChanged<String> onPick;
   final VoidCallback onMoreDetails;
+  final VoidCallback onCustomize;
+  final List<QuickLogTracker> customChoices;
 
   const _ChoiceStep({
     super.key,
@@ -453,11 +606,20 @@ class _ChoiceStep extends StatelessWidget {
     required this.onBack,
     required this.onPick,
     required this.onMoreDetails,
+    required this.onCustomize,
+    required this.customChoices,
   });
 
   @override
   Widget build(BuildContext context) {
-    final choices = _choices(mode);
+    final choices = <String>[
+      ...customChoices.map((item) => item.title),
+      ..._choices(mode).where(
+        (title) => !customChoices.any(
+          (item) => item.title.toLowerCase() == title.toLowerCase(),
+        ),
+      ),
+    ];
     return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -505,6 +667,12 @@ class _ChoiceStep extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
+            onPressed: onCustomize,
+            icon: const Icon(Icons.tune),
+            label: const Text('Customize these choices'),
+          ),
+          const SizedBox(height: 4),
+          OutlinedButton.icon(
             onPressed: onMoreDetails,
             icon: const Icon(Icons.add),
             label: const Text('Custom / more details'),
@@ -538,6 +706,7 @@ class _ConfirmStep extends StatelessWidget {
   final bool transport;
   final _DriveActivity driveActivity;
   final CareerRecordOutcome? skillOutcome;
+  final CareerSuccessStats? skillStats;
   final bool shareWithDepartment;
   final bool departmentConnected;
   final ValueChanged<bool> onEmergentChanged;
@@ -563,6 +732,7 @@ class _ConfirmStep extends StatelessWidget {
     required this.transport,
     required this.driveActivity,
     required this.skillOutcome,
+    required this.skillStats,
     required this.shareWithDepartment,
     required this.departmentConnected,
     required this.onEmergentChanged,
@@ -599,6 +769,10 @@ class _ConfirmStep extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _SummaryCard(mode: mode, choice: choice),
+        if (mode == _SimpleMode.skill) ...[
+          const SizedBox(height: 10),
+          _SkillStatisticCard(choice: choice, stats: skillStats),
+        ],
         const SizedBox(height: 14),
         ..._fieldsForMode(context),
         const SizedBox(height: 12),
@@ -915,6 +1089,45 @@ class _ConfirmStep extends StatelessWidget {
           ),
         ];
     }
+  }
+}
+
+class _SkillStatisticCard extends StatelessWidget {
+  final String choice;
+  final CareerSuccessStats? stats;
+
+  const _SkillStatisticCard({required this.choice, required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final attempts = stats?.attempts ?? 0;
+    final text = attempts == 0
+        ? 'Your first result will start a success-rate statistic for $choice.'
+        : '$choice success: ${stats!.percent}% • '
+            '${stats!.successful} of $attempts attempts';
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.query_stats, color: cs.onSecondaryContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSecondaryContainer,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

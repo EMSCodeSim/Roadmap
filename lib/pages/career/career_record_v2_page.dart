@@ -415,28 +415,15 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
       final key = CareerStats.skillTrackingKey(record);
       if (key == null || !enabled.containsKey(key)) continue;
       if (record.outcome != CareerRecordOutcome.successful &&
-          record.outcome != CareerRecordOutcome.unsuccessful) {
+          record.outcome != CareerRecordOutcome.unsuccessful &&
+          record.outcome != CareerRecordOutcome.attempted) {
         continue;
       }
       (grouped[key] ??= <CareerRecord>[]).add(record);
     }
     final result = <_ProcedureStat>[];
     for (final entry in grouped.entries) {
-      var attempts = 0;
-      var successes = 0;
-      for (final record in entry.value) {
-        final count = record.repetitions < 1 ? 1 : record.repetitions;
-        if (record.outcome == CareerRecordOutcome.successful) {
-          attempts += count;
-          successes += 1;
-        } else if (record.outcome == CareerRecordOutcome.unsuccessful) {
-          attempts += count;
-        }
-      }
-      final measured = CareerSuccessStats(
-        attempts: attempts,
-        successful: successes,
-      );
+      final measured = CareerStats.successFor(entry.value);
       if (measured.attempts <= 0) continue;
       result.add(
         _ProcedureStat(
