@@ -19,6 +19,7 @@ import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/training_sheet_result.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/services/training_time_calculator.dart';
+import 'package:firepath/utils/training_record_format.dart';
 import 'package:firepath/pages/department/class_task_book_link_card.dart';
 import 'package:firepath/widgets/training_sheet/training_sheet_cards.dart';
 
@@ -1979,13 +1980,20 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       for (final section in detail.sections)
         for (final skill in section.skills) skill.id: skill.title,
     };
-    final rosterRows = detail.roster.map((student) => <String>[
-      student.name,
-      student.attendance.replaceAll('_', ' '),
-      student.finalResult.replaceAll('_', ' '),
-      student.writtenScore?.toStringAsFixed(1) ?? '',
-      student.ccfScore?.toStringAsFixed(1) ?? '',
-    ]).toList(growable: false);
+    final rosterRows = detail.roster.map((student) {
+      final scores = trainingScoreParts(
+        customFields: detail.customFields,
+        customValues: student.customValues,
+        gradingConfig: detail.gradingConfig,
+        finalResult: student.finalResult,
+        writtenScore: student.writtenScore,
+        ccfScore: student.ccfScore,
+      );
+      return <String>[
+        '${student.name} — ${scores.join(' · ')}',
+        student.attendance.replaceAll('_', ' '),
+      ];
+    }).toList(growable: false);
     final resultRows = <List<String>>[];
     for (final student in detail.roster) {
       for (final result in student.results) {
@@ -2077,12 +2085,16 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         pw.Text('Class roster', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 6),
         pw.TableHelper.fromTextArray(
-          headers: const ['Student', 'Attendance', 'Final result', 'Written', 'CCF'],
+          headers: const ['Student and scoring result', 'Attendance'],
           data: rosterRows,
           headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
           headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
           cellStyle: const pw.TextStyle(fontSize: 8),
           cellPadding: const pw.EdgeInsets.all(4),
+          columnWidths: const {
+            0: pw.FlexColumnWidth(4),
+            1: pw.FlexColumnWidth(1.2),
+          },
         ),
         if (resultRows.isNotEmpty) ...[
           pw.SizedBox(height: 16),
