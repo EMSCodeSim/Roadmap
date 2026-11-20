@@ -2093,6 +2093,13 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       for (final section in detail.sections)
         for (final skill in section.skills) skill.id,
     }.toList(growable: false);
+    String checklistResultLabel(String? result) {
+      if (result == null || result == 'NOT_EVALUATED') return '—';
+      if (result == 'PASS' || result == 'FAIL') return result;
+      if (result == 'NOT_APPLICABLE') return 'N/A';
+      return result.replaceAll('_', ' ');
+    }
+
     final checklistRows = <List<String>>[];
     for (final student in detail.roster) {
       final resultsBySkill = <String, String>{
@@ -2100,14 +2107,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       };
       checklistRows.add(<String>[
         student.name,
-        for (final skillId in skillIds)
-          switch (resultsBySkill[skillId]) {
-            null || 'NOT_EVALUATED' => '—',
-            'PASS' => 'PASS',
-            'FAIL' => 'FAIL',
-            'NOT_APPLICABLE' => 'N/A',
-            final result => result.replaceAll('_', ' '),
-          },
+        for (final skillId in skillIds) checklistResultLabel(resultsBySkill[skillId]),
       ]);
     }
     final rosterRows = detail.roster.map((student) {
