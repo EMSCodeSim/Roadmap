@@ -825,102 +825,211 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       setState(() => _error = 'Confirm attendance and choose a skills checklist first.');
       return;
     }
-    String? skillId;
-    String result = 'PASS';
-    final selected = <String>{};
+    final selected = members.map((member) => member.id).toSet();
+    final skillResults = <String, String>{};
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, update) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text('Group skill results', style: Theme.of(sheetContext).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: skillId,
-                decoration: const InputDecoration(labelText: 'Skill'),
-                items: skills.map((skill) => DropdownMenuItem<String>(
-                  value: skill.id, child: Text(skill.title),
-                )).toList(),
-                onChanged: (value) => update(() => skillId = value),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                initialValue: result,
-                decoration: const InputDecoration(labelText: 'Evaluation'),
-                items: const [
-                  DropdownMenuItem(value: 'PASS', child: Text('Pass')),
-                  DropdownMenuItem(value: 'FAIL', child: Text('Fail')),
-                ],
-                onChanged: (value) => update(() => result = value ?? 'PASS'),
-              ),
-              TextButton(
-                onPressed: () => update(() {
-                  if (selected.length == members.length) {
-                    selected.clear();
-                  } else {
-                    selected.addAll(members.map((member) => member.id));
-                  }
-                }),
-                child: Text(selected.length == members.length ? 'Clear selection' : 'Select all present'),
-              ),
-              SizedBox(
-                height: 240,
-                child: ListView(children: members.map((member) => CheckboxListTile(
-                  title: Text(member.name),
-                  value: selected.contains(member.id),
-                  onChanged: (checked) => update(() {
-                    if (checked == true) {
-                      selected.add(member.id);
-                    } else {
-                      selected.remove(member.id);
-                    }
-                  }),
-                )).toList()),
-              ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: skillId == null || selected.isEmpty
-                    ? null : () => Navigator.pop(sheetContext, true),
-                child: Text('Submit ${selected.length} evaluations'),
-              ),
-            ]),
+        builder: (sheetContext, update) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: .92,
+          maxChildSize: .98,
+          minChildSize: .65,
+          builder: (_, controller) => SafeArea(
+            child: ListView(
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              children: [
+                Row(children: [
+                  Expanded(
+                    child: Text(
+                      'Grade skills',
+                      style: Theme.of(sheetContext).textTheme.headlineSmall,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(sheetContext, false),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ]),
+                Text(
+                  'Choose students once, then grade the full checklist below.',
+                  style: Theme.of(sheetContext).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                Row(children: [
+                  Expanded(
+                    child: Text(
+                      'Students · ${selected.length} selected',
+                      style: Theme.of(sheetContext).textTheme.titleMedium,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => update(() {
+                      if (selected.length == members.length) {
+                        selected.clear();
+                      } else {
+                        selected.addAll(members.map((member) => member.id));
+                      }
+                    }),
+                    child: Text(
+                      selected.length == members.length
+                          ? 'Clear all'
+                          : 'Select all',
+                    ),
+                  ),
+                ]),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: members.map((member) => FilterChip(
+                    label: Text(member.name),
+                    selected: selected.contains(member.id),
+                    onSelected: (checked) => update(() {
+                      if (checked) {
+                        selected.add(member.id);
+                      } else {
+                        selected.remove(member.id);
+                      }
+                    }),
+                  )).toList(growable: false),
+                ),
+                const Divider(height: 32),
+                Row(children: [
+                  Expanded(
+                    child: Text(
+                      'Full checklist · ${skills.length} skills',
+                      style: Theme.of(sheetContext).textTheme.titleLarge,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => update(() {
+                      for (final skill in skills) {
+                        skillResults[skill.id] = 'PASS';
+                      }
+                    }),
+                    icon: const Icon(Icons.done_all_rounded),
+                    label: const Text('Pass all'),
+                  ),
+                ]),
+                const SizedBox(height: 8),
+                for (var index = 0; index < skills.length; index++)
+                  Card(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${index + 1}. ${skills[index].title}',
+                            style: Theme.of(sheetContext).textTheme.titleMedium,
+                          ),
+                          if (skills[index].description.trim().isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(skills[index].description),
+                          ],
+                          const SizedBox(height: 10),
+                          SegmentedButton<String>(
+                            showSelectedIcon: false,
+                            emptySelectionAllowed: true,
+                            segments: const [
+                              ButtonSegment(
+                                value: 'PASS',
+                                label: Text('Pass'),
+                                icon: Icon(Icons.check_rounded),
+                              ),
+                              ButtonSegment(
+                                value: 'FAIL',
+                                label: Text('Fail'),
+                                icon: Icon(Icons.close_rounded),
+                              ),
+                            ],
+                            selected: skillResults[skills[index].id] == null
+                                ? const <String>{}
+                                : {skillResults[skills[index].id]!},
+                            onSelectionChanged: (values) => update(() {
+                              if (values.isEmpty) {
+                                skillResults.remove(skills[index].id);
+                              } else {
+                                skillResults[skills[index].id] = values.first;
+                              }
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                FilledButton.icon(
+                  onPressed: selected.isEmpty || skillResults.isEmpty
+                      ? null
+                      : () => Navigator.pop(sheetContext, true),
+                  icon: const Icon(Icons.cloud_upload_outlined),
+                  label: Text(
+                    'Submit ${skillResults.length} skill${skillResults.length == 1 ? '' : 's'} '
+                    'for ${selected.length} student${selected.length == 1 ? '' : 's'}',
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
-    if (confirmed != true || skillId == null || !mounted) return;
+    if (confirmed != true || skillResults.isEmpty || !mounted) return;
     setState(() { _busy = true; _error = null; });
+    var submitted = 0;
+    var queued = false;
     try {
-      final batch = members.where((member) => selected.contains(member.id)).map((member) {
-        final previous = member.results.where((item) => item.requirementId == skillId).firstOrNull;
-        return <String, dynamic>{
-          'enrollmentId': member.id,
-          'result': result,
-          'notes': 'Group evaluation',
-          // null means no prior result was observed; the server checks this.
-          'expectedUpdatedAt': previous?.updatedAt,
-        };
-      }).toList(growable: false);
-      final saved = await _api.recordClassSkillBatchDurable(
-        classId: detail.id,
-        requirementId: skillId!,
-        results: batch,
-      );
-      if (saved.detail != null) _setDetail(saved.detail!);
-      if (saved.queued && mounted) {
-        context.read<DepartmentInboxController>().submissionQueued();
-        setState(() => _error = 'Evaluations waiting to sync. Check sync status before closing.');
+      for (final entry in skillResults.entries) {
+        final batch = members
+            .where((member) => selected.contains(member.id))
+            .map((member) {
+          final previous = member.results
+              .where((item) => item.requirementId == entry.key)
+              .firstOrNull;
+          return <String, dynamic>{
+            'enrollmentId': member.id,
+            'result': entry.value,
+            'notes': 'Group evaluation',
+            'expectedUpdatedAt': previous?.updatedAt,
+          };
+        }).toList(growable: false);
+        final saved = await _api.recordClassSkillBatchDurable(
+          classId: detail.id,
+          requirementId: entry.key,
+          results: batch,
+        );
+        if (saved.detail != null) _setDetail(saved.detail!);
+        submitted += batch.length;
+        if (saved.queued) {
+          queued = true;
+          if (mounted) {
+            context.read<DepartmentInboxController>().submissionQueued();
+          }
+        }
       }
       if (mounted) {
+        if (queued) {
+          setState(() => _error =
+              'Some evaluations are waiting to sync. Check sync status before closing.');
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(saved.queued ? '${batch.length} evaluation(s) saved and waiting to sync' : '${batch.length} individual evaluation(s) submitted together')),
+          SnackBar(content: Text(
+            queued
+                ? '$submitted evaluations saved; some are waiting to sync'
+                : '$submitted evaluations submitted',
+          )),
         );
       }
     } catch (error) {
-      if (mounted) setState(() => _error = 'Unable to submit these group evaluations: $error');
+      if (mounted) {
+        setState(() => _error = submitted == 0
+            ? 'Unable to submit these group evaluations: $error'
+            : '$submitted evaluations submitted; refresh before retrying the remainder: $error');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
