@@ -45,6 +45,7 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
     ('call', 'CALL', Icons.local_fire_department_outlined),
     ('training', 'TRAINING', Icons.school_outlined),
     ('skill', 'SKILL', Icons.handyman_outlined),
+    ('exposure', 'EXPOSURE', Icons.health_and_safety_outlined),
     ('drive', 'DRIVE', Icons.local_shipping_outlined),
     ('task_book', 'TASK BOOK', Icons.fact_check_outlined),
     ('career', 'CAREER', Icons.military_tech_outlined),
@@ -300,7 +301,7 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
 
   Future<void> _createCustomButton() async {
     var type = CareerRecordType.skill;
-    var trackOutcome = false;
+    var trackOutcome = true;
     final title = TextEditingController();
     final category = TextEditingController();
 
@@ -344,20 +345,37 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                         )
                         .toList(),
                     onChanged: (value) {
-                      if (value != null) setDialogState(() => type = value);
+                      if (value != null) {
+                        setDialogState(() {
+                          type = value;
+                          if (type == CareerRecordType.skill) {
+                            trackOutcome = true;
+                          }
+                        });
+                      }
                     },
                   ),
                   const SizedBox(height: 8),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: trackOutcome,
-                    onChanged: (value) =>
-                        setDialogState(() => trackOutcome = value),
-                    title: const Text('Track success / failure'),
-                    subtitle: const Text(
-                      'Use this for procedures where attempts and success rate matter.',
+                  if (type == CareerRecordType.skill)
+                    const ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.query_stats),
+                      title: Text('Skill statistics included'),
+                      subtitle: Text(
+                        'Every skill tracks attempts, outcomes, and success rate.',
+                      ),
+                    )
+                  else
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: trackOutcome,
+                      onChanged: (value) =>
+                          setDialogState(() => trackOutcome = value),
+                      title: const Text('Track success / failure'),
+                      subtitle: const Text(
+                        'Use this when attempts and outcomes matter.',
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

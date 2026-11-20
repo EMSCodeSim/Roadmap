@@ -18,6 +18,7 @@ class QuickLogPreferencesStore {
     'call',
     'training',
     'skill',
+    'exposure',
     'drive',
     'task_book',
     'career',

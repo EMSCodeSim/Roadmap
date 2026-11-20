@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/models/quick_log_tracker.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
@@ -153,6 +154,46 @@ void main() {
     expect(rate.successful, 1);
     expect(rate.unsuccessful, 2);
     expect(rate.percent, 33);
+  });
+
+  test('attempted skill entries still contribute to the skill statistic', () {
+    final records = [
+      _record(
+        id: 'ladder-practice',
+        type: CareerRecordType.skill,
+        title: 'Ground ladders',
+        trackingKey: 'skill.ground.ladders',
+        repetitions: 4,
+        outcome: CareerRecordOutcome.attempted,
+      ),
+    ];
+
+    final rate = CareerStats.successFor(
+      records,
+      trackingKey: 'skill.ground.ladders',
+    );
+
+    expect(rate.attempts, 4);
+    expect(rate.successful, 0);
+    expect(rate.percent, 0);
+  });
+
+  test('every built-in or custom skill tracks an outcome', () {
+    const customSkill = QuickLogTracker(
+      keyName: 'skill.custom.ladder',
+      title: 'Custom ladder evolution',
+      category: 'Fire skill',
+      type: CareerRecordType.skill,
+      iconName: 'ladder',
+    );
+
+    expect(customSkill.tracksOutcome, isTrue);
+    expect(
+      QuickLogCatalog.builtIns
+          .where((tracker) => tracker.type == CareerRecordType.skill)
+          .every((tracker) => tracker.tracksOutcome),
+      isTrue,
+    );
   });
 
   test('moving a completed task back to practicing clears verification', () {

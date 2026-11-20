@@ -9,7 +9,7 @@ enum QuickLogRolePreset {
 
 extension QuickLogRolePresetX on QuickLogRolePreset {
   String get label => switch (this) {
-        QuickLogRolePreset.medic => 'Medic',
+        QuickLogRolePreset.medic => 'EMS / Medic',
         QuickLogRolePreset.firefighter => 'Firefighter',
         QuickLogRolePreset.engineer => 'Engineer / Driver',
         QuickLogRolePreset.officer => 'Officer',
@@ -42,9 +42,9 @@ class QuickLogTracker {
     required this.category,
     required this.type,
     required this.iconName,
-    this.tracksOutcome = false,
+    bool tracksOutcome = false,
     this.custom = false,
-  });
+  }) : tracksOutcome = type == CareerRecordType.skill || tracksOutcome;
 
   Map<String, dynamic> toJson() => {
         'keyName': keyName,
