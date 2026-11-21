@@ -3226,6 +3226,25 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                       }).length;
                       final notApplicable = skills.where((skill) =>
                         resultsBySkill[skill.id] == 'NOT_APPLICABLE').length;
+                      final recordedCustomGrades = detail.customFields
+                          .where((field) => field['appliesTo'] != 'ROSTER')
+                          .map((field) {
+                            final id = field['id']?.toString() ?? '';
+                            final label = field['label']?.toString().trim() ?? '';
+                            final value = student.customValues[id];
+                            if (id.isEmpty || label.isEmpty || value == null ||
+                                value.toString().trim().isEmpty) {
+                              return '';
+                            }
+                            return '$label $value';
+                          })
+                          .where((value) => value.isNotEmpty);
+                      Future<void> openGradeEditor() async {
+                        final current = _detail;
+                        if (current == null) return;
+                        await _editCustomResults(current, student);
+                        if (mounted) updateSheet(() {});
+                      }
                       final summary = <String>[
                         if (skills.isNotEmpty) '$passed/${skills.length} passed',
                         if (failed > 0) '$failed failed',
@@ -3234,17 +3253,35 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                         if (notApplicable > 0) '$notApplicable N/A',
                         if (student.writtenScore != null) 'Written ${student.writtenScore}%',
                         if (student.ccfScore != null) 'CCF ${student.ccfScore}%',
+                        ...recordedCustomGrades,
                       ].join(' · ');
                       return Card(
                         child: ListTile(
                           leading: const CircleAvatar(child: Icon(Icons.person_outline_rounded)),
                           title: Text(student.name),
-                          subtitle: Text(summary.isEmpty ? 'Tap to grade checklist' : summary),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: _busy ? null : () {
-                            Navigator.pop(sheetContext);
-                            _jumpToMember(student, grading: true);
-                          },
+                          subtitle: Text(
+                            summary.isEmpty
+                                ? (hasGrades ? 'No grade recorded · Tap the grade icon' : 'Tap to grade checklist'),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: hasGrades
+                              ? IconButton(
+                                  tooltip: 'Record student grade',
+                                  icon: const Icon(Icons.edit_note_rounded),
+                                  onPressed: _busy ? null : openGradeEditor,
+                                )
+                              : const Icon(Icons.chevron_right_rounded),
+                          onTap: _busy
+                              ? null
+                              : () async {
+                                  if (skills.isEmpty && hasGrades) {
+                                    await openGradeEditor();
+                                    return;
+                                  }
+                                  Navigator.pop(sheetContext);
+                                  _jumpToMember(student, grading: true);
+                                },
                         ),
                       );
                     }),
