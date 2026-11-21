@@ -243,7 +243,7 @@ class FireOpsCatalog {
       if (!visited.add(definitionId)) return false;
       final definition = _certById[definitionId];
       if (definition == null) return false;
-      for (final prerequisite in definition.prerequisites) {
+      for (final prerequisite in definition.prerequisiteCertificationIds) {
         if (prerequisite == required ||
             includesPrerequisite(prerequisite)) {
           return true;
