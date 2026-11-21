@@ -420,7 +420,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
               child: Center(
                 child: Text(
                   _step == 0
-                      ? 'Choose a starting point'
+                      ? 'About the app'
                       : 'Step $_step of $_setupSteps',
                   style: Theme.of(context)
                       .textTheme
@@ -453,21 +453,15 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                   width: double.infinity,
                   height: 58,
                   child: FilledButton(
-                    onPressed: _saving
-                        ? null
-                        : _step == 0
-                            ? _startWithPersonalRecord
-                            : _next,
+                    onPressed: _saving ? null : _next,
                     child: Text(
                       _saving
-                          ? 'Getting your record ready…'
+                          ? 'Saving…'
                           : _step == 4
                               ? 'Build My Roadmap'
-                              : _step == 0
-                                  ? 'Start with my personal record'
-                                  : _step == 3
-                                      ? 'Continue — skip if none'
-                                      : 'Continue',
+                              : _step == 3
+                                  ? 'Continue — skip if none'
+                                  : 'Continue',
                     ),
                   ),
                 ),
@@ -485,135 +479,128 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
     final cs = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final content = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    cs.primaryContainer.withValues(alpha: 0.85),
-                    cs.secondaryContainer.withValues(alpha: 0.55),
-                  ],
+    return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  cs.primaryContainer.withValues(alpha: 0.85),
+                  cs.secondaryContainer.withValues(alpha: 0.55),
+                ],
+              ),
+              border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.timeline_rounded,
+                    size: 34, color: cs.onPrimaryContainer),
+                const SizedBox(height: 12),
+                Text(
+                  'One career record. A clearer path forward.',
+                  style: t.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    height: 1.12,
+                  ),
                 ),
-                border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.timeline_rounded,
-                      size: 34, color: cs.onPrimaryContainer),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Your Fire & EMS career record starts here.',
-                    style: t.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      height: 1.12,
-                    ),
+                const SizedBox(height: 8),
+                Text(
+                  'Responder Roadmap keeps your Fire and EMS career history organized and helps you see what to work toward next.',
+                  style: t.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    height: 1.45,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Keep training, certifications, experience, and accomplishments together in one personal record.',
-                    style: t.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      height: 1.45,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              'You can start with any of these',
-              style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 8),
-            const _WelcomeFeatureCard(
-              icon: Icons.school_outlined,
-              title: 'A class or training',
-              detail: 'Add a recent course, skill, or training hour.',
-            ),
-            const SizedBox(height: 8),
-            const _WelcomeFeatureCard(
-              icon: Icons.verified_outlined,
-              title: 'A certification',
-              detail: 'Keep the credential and its renewal date together.',
-            ),
-            const SizedBox(height: 8),
-            const _WelcomeFeatureCard(
-              icon: Icons.workspace_premium_outlined,
-              title: 'Experience or an accomplishment',
-              detail: 'Capture leadership, assignments, awards, and milestones.',
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.lock_outline, size: 18, color: cs.onSurfaceVariant),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Personal records work on their own. You do not need a career goal or department connection to begin.',
-                      style: t.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _saving ? null : _next,
-              icon: const Icon(Icons.route_outlined),
-              label: const Text('Set up my roadmap first'),
-            ),
-          ],
-        );
-
-        return SingleChildScrollView(
-          // Tight scroll region (only engages on small devices).
-          physics: const ClampingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight - 20),
-            child: content,
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          Text(
+            'How the app helps',
+            style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          const _WelcomeFeatureCard(
+            icon: Icons.folder_copy_outlined,
+            title: 'Keep your career record',
+            detail:
+                'Save training, certifications, experience, accomplishments, and important dates.',
+          ),
+          const SizedBox(height: 8),
+          const _WelcomeFeatureCard(
+            icon: Icons.route_outlined,
+            title: 'Build a simple roadmap',
+            detail:
+                'Choose where you are now and where you want to go. The app organizes useful next steps.',
+          ),
+          const SizedBox(height: 8),
+          const _WelcomeFeatureCard(
+            icon: Icons.apartment_outlined,
+            title: 'Connect to a department when needed',
+            detail:
+                'Receive assignments, task books, and department training while keeping your personal career history together.',
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: cs.outline.withValues(alpha: 0.10)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.bolt_rounded, size: 19, color: cs.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Quick setup: choose Fire, EMS, or Both; add your current role and certifications; then select a goal. You can change everything later.',
+                    style: t.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.lock_outline, size: 18, color: cs.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'A department connection is optional. Your personal career record works on its own.',
+                    style: t.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
-  }
-
-  Future<void> _startWithPersonalRecord() async {
-    setState(() => _saving = true);
-    try {
-      await context.read<AppState>().completeOnboarding(
-            profile: UserProfile.empty(),
-            certifications: const [],
-          );
-      if (!mounted) return;
-      context.go(AppRoutes.home);
-    } catch (_) {
-      if (mounted) {
-        _message('Your personal record could not be opened. Please try again.');
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
   }
 
   Widget _careerPathStep() {
