@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
@@ -16,15 +17,71 @@ import 'package:firepath/state/department_inbox_controller.dart';
 ///
 /// Quick Add is intentionally available from every primary tab so field capture
 /// never depends on navigating back to Home first.
-class AppShellPage extends StatelessWidget {
+class AppShellPage extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const AppShellPage({super.key, required this.navigationShell});
 
+  @override
+  State<AppShellPage> createState() => _AppShellPageState();
+}
+
+class _AppShellPageState extends State<AppShellPage> {
+  static const _quickAddIntroSeenKey = 'fireops.quickAddIntroSeen.v1';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showQuickAddIntroIfNeeded();
+    });
+  }
+
+  Future<void> _showQuickAddIntroIfNeeded() async {
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_quickAddIntroSeenKey) ?? false) return;
+      await prefs.setBool(_quickAddIntroSeenKey, true);
+    } catch (error) {
+      debugPrint('Quick Add introduction preference failed: $error');
+      return;
+    }
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.add_circle_outline_rounded),
+        title: const Text('Meet Quick Add'),
+        content: const Text(
+          'Tap the + button at the bottom of the screen to quickly add a '
+          'career record, training, certification, or other activity. It is '
+          'available from every main tab.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Got it'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              QuickLogLauncher.open(context);
+            },
+            child: const Text('Try Quick Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _go(int index) {
-    navigationShell.goBranch(
+    widget.navigationShell.goBranch(
       index,
-      initialLocation: index == navigationShell.currentIndex,
+      initialLocation: index == widget.navigationShell.currentIndex,
     );
   }
 
@@ -39,7 +96,7 @@ class AppShellPage extends StatelessWidget {
         .startsWith('/department/training-sheets/');
 
     return Scaffold(
-      body: navigationShell,
+      body: widget.navigationShell,
       floatingActionButton: isTrainingSheetDetail
           ? null
           : Padding(
@@ -62,7 +119,7 @@ class AppShellPage extends StatelessWidget {
             ),
           ),
           child: NavigationBar(
-            selectedIndex: navigationShell.currentIndex,
+            selectedIndex: widget.navigationShell.currentIndex,
             onDestinationSelected: _go,
             labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
             destinations: [
