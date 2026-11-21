@@ -883,9 +883,19 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 6,
-                  children: members.map((member) => FilterChip(
-                    label: Text(member.name),
-                    selected: selected.contains(member.id),
+                  children: members.map((member) {
+                    final isSelected = selected.contains(member.id);
+                    return FilterChip(
+                    label: Text(
+                      member.name,
+                      style: TextStyle(
+                        color: isSelected
+                            ? Theme.of(sheetContext).colorScheme.onPrimary
+                            : Theme.of(sheetContext).colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    selected: isSelected,
                     onSelected: (checked) => update(() {
                       if (checked) {
                         selected.add(member.id);
@@ -893,7 +903,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                         selected.remove(member.id);
                       }
                     }),
-                  )).toList(growable: false),
+                  );
+                  }).toList(growable: false),
                 ),
                 const Divider(height: 32),
                 Row(children: [
