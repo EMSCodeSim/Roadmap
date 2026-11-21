@@ -456,14 +456,12 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                     onPressed: _saving ? null : _next,
                     child: Text(
                       _saving
-                          ? 'Getting your record ready…'
+                          ? 'Saving…'
                           : _step == 4
                               ? 'Build My Roadmap'
-                              : _step == 0
-                                  ? 'Start with my personal record'
-                                  : _step == 3
-                                      ? 'Continue — skip if none'
-                                      : 'Continue',
+                              : _step == 3
+                                  ? 'Continue — skip if none'
+                                  : 'Continue',
                     ),
                   ),
                 ),
