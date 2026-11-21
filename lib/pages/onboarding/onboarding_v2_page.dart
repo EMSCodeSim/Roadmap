@@ -380,6 +380,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
   String? _goalId;
   DateTime? _targetDate;
   bool _saving = false;
+  bool _showAllRoles = false;
 
   @override
   void dispose() {
@@ -740,6 +741,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
         _primaryTrack = null;
       }
       if (pathChanged) {
+        _showAllRoles = false;
         final allowedRoles = FireOpsCatalog.rolesForPath(path)
             .where((r) => !r.toLowerCase().contains('custom'))
             .toSet();
@@ -768,9 +770,45 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
   Widget _currentSituationStep() {
     final cs = Theme.of(context).colorScheme;
     final path = _careerPath ?? CareerPath.fire;
-    final commonRoles = FireOpsCatalog.rolesForPath(path)
-        .where((role) => !role.toLowerCase().contains('custom'))
+    final allRoles = FireOpsCatalog.rolesForPath(path)
+        .where((role) =>
+            !role.toLowerCase().contains('custom') &&
+            role != 'Firefighter (Probationary)')
         .toList();
+    final quickRoles = switch (path) {
+      CareerPath.fire => const <String>[
+          'Recruit / Probationary',
+          'Firefighter',
+          'Driver/Operator',
+          'Lieutenant',
+          'Captain',
+          'Battalion Chief',
+        ],
+      CareerPath.ems => const <String>[
+          'EMT Student',
+          'EMT',
+          'Advanced EMT',
+          'Paramedic',
+          'FTO / Preceptor',
+          'EMS Supervisor',
+        ],
+      CareerPath.both => const <String>[
+          'Recruit / Probationary',
+          'Firefighter',
+          'Driver/Operator',
+          'EMT',
+          'Paramedic',
+          'Lieutenant',
+          'Captain',
+          'EMS Supervisor',
+        ],
+    };
+    final visibleRoles = _showAllRoles
+        ? allRoles
+        : allRoles
+            .where((role) => quickRoles.contains(role) || _roles.contains(role))
+            .toList(growable: false);
+    final hiddenRoleCount = allRoles.length - visibleRoles.length;
     final useEmsStudentShortcut = path == CareerPath.ems;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 30),
@@ -804,7 +842,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Pick one or more. This drives your roadmap + suggested Quick Logs.',
+                  'Choose the closest match. You can add another role later.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                         height: 1.35,
@@ -814,25 +852,46 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
+                  children: visibleRoles
+                      .map(
+                        (role) => RoleToggleChip(
+                          label: role,
+                          selected: _roles.contains(role),
+                          onPressed: () => setState(() {
+                            if (_roles.contains(role)) {
+                              _roles.remove(role);
+                            } else {
+                              _roles.add(role);
+                            }
+                          }),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+                const SizedBox(height: 10),
+                Row(
                   children: [
-                    ...commonRoles.map(
-                      (role) => RoleToggleChip(
-                        label: role,
-                        selected: _roles.contains(role),
+                    if (hiddenRoleCount > 0 || _showAllRoles)
+                      TextButton.icon(
                         onPressed: () => setState(() {
-                          if (_roles.contains(role)) {
-                            _roles.remove(role);
-                          } else {
-                            _roles.add(role);
-                          }
+                          _showAllRoles = !_showAllRoles;
                         }),
+                        icon: Icon(
+                          _showAllRoles
+                              ? Icons.expand_less_rounded
+                              : Icons.expand_more_rounded,
+                        ),
+                        label: Text(
+                          _showAllRoles
+                              ? 'Show fewer roles'
+                              : 'More roles ($hiddenRoleCount)',
+                        ),
                       ),
-                    ),
-                    RoleToggleChip(
-                      label: 'Add role',
-                      selected: false,
-                      leading: Icons.add,
+                    const Spacer(),
+                    TextButton.icon(
                       onPressed: _addCustomRole,
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Add role'),
                     ),
                   ],
                 ),
