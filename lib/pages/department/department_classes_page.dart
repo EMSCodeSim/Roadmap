@@ -3477,7 +3477,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                           title: Text(student.name),
                           subtitle: Text(
                             summary.isEmpty
-                                ? (hasGrades ? 'No grade recorded · Tap the grade icon' : 'Tap to grade checklist'),
+                                ? (hasGrades
+                                    ? 'No grade recorded · Tap the grade icon'
+                                    : 'Tap to grade checklist')
+                                : summary,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
