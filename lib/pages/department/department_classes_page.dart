@@ -819,10 +819,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   Future<void> _groupGrade() async {
     final detail = _detail;
     if (detail == null || _busy || detail.status == 'COMPLETE') return;
-    final sections = detail.sections
-        .where((section) => section.skills.isNotEmpty)
-        .toList(growable: false);
-    final skills = sections.expand((section) => section.skills).toList();
+    final skills = detail.sections.expand((section) => section.skills).toList();
     final members = detail.roster.where((member) => member.attendance == 'PRESENT').toList();
     if (skills.isEmpty || members.isEmpty) {
       setState(() => _error = 'Confirm attendance and choose a skills checklist first.');
@@ -910,273 +907,69 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   }).toList(growable: false),
                 ),
                 const Divider(height: 32),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Theme.of(sheetContext).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: Theme.of(sheetContext)
-                          .colorScheme
-                          .outline
-                          .withValues(alpha: .16),
+                Row(children: [
+                  Expanded(
+                    child: Text(
+                      'Full checklist · ${skills.length} skills',
+                      style: Theme.of(sheetContext).textTheme.titleLarge,
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        Expanded(
-                          child: Text(
-                            'SKILL CHECKLIST  •  ${skills.isEmpty ? 0 : ((skillResults.length / skills.length) * 100).round()}% Graded',
-                            style: Theme.of(sheetContext)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                        Text('${skillResults.length} of ${skills.length}'),
-                      ]),
-                      const SizedBox(height: 10),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(99),
-                        child: LinearProgressIndicator(
-                          value: skills.isEmpty
-                              ? 0
-                              : skillResults.length / skills.length,
-                          minHeight: 9,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(children: [
-                        Expanded(
-                          child: Text(
-                            '${sections.length} section${sections.length == 1 ? '' : 's'} · Results apply to ${selected.length} selected student${selected.length == 1 ? '' : 's'}',
-                            style: Theme.of(sheetContext).textTheme.bodySmall,
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => update(() {
-                            for (final skill in skills) {
-                              skillResults.putIfAbsent(skill.id, () => 'PASS');
-                            }
-                          }),
-                          icon: const Icon(Icons.done_all_rounded),
-                          label: const Text('Pass remaining'),
-                        ),
-                      ]),
-                    ],
+                  TextButton.icon(
+                    onPressed: () => update(() {
+                      for (final skill in skills) {
+                        skillResults[skill.id] = 'PASS';
+                      }
+                    }),
+                    icon: const Icon(Icons.done_all_rounded),
+                    label: const Text('Pass all'),
                   ),
-                ),
-                const SizedBox(height: 14),
-                for (final section in sections)
+                ]),
+                const SizedBox(height: 8),
+                for (var index = 0; index < skills.length; index++)
                   Card(
-                    margin: const EdgeInsets.only(bottom: 14),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          color: Theme.of(sheetContext)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(children: [
-                                Expanded(
-                                  child: Text(
-                                    section.title,
-                                    style: Theme.of(sheetContext)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.w900),
-                                  ),
-                                ),
-                                Text(
-                                  '${section.skills.where((skill) => skillResults.containsKey(skill.id)).length}/${section.skills.length}',
-                                  style: Theme.of(sheetContext)
-                                      .textTheme
-                                      .labelLarge
-                                      ?.copyWith(fontWeight: FontWeight.w800),
-                                ),
-                              ]),
-                              const SizedBox(height: 8),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(99),
-                                child: LinearProgressIndicator(
-                                  value: section.skills.isEmpty
-                                      ? 0
-                                      : section.skills
-                                              .where((skill) => skillResults
-                                                  .containsKey(skill.id))
-                                              .length /
-                                          section.skills.length,
-                                  minHeight: 6,
-                                ),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${index + 1}. ${skills[index].title}',
+                            style: Theme.of(sheetContext).textTheme.titleMedium,
+                          ),
+                          if (skills[index].description.trim().isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(skills[index].description),
+                          ],
+                          const SizedBox(height: 10),
+                          SegmentedButton<String>(
+                            showSelectedIcon: false,
+                            emptySelectionAllowed: true,
+                            segments: const [
+                              ButtonSegment(
+                                value: 'PASS',
+                                label: Text('Pass'),
+                                icon: Icon(Icons.check_rounded),
+                              ),
+                              ButtonSegment(
+                                value: 'FAIL',
+                                label: Text('Fail'),
+                                icon: Icon(Icons.close_rounded),
                               ),
                             ],
+                            selected: skillResults[skills[index].id] == null
+                                ? const <String>{}
+                                : {skillResults[skills[index].id]!},
+                            onSelectionChanged: (values) => update(() {
+                              if (values.isEmpty) {
+                                skillResults.remove(skills[index].id);
+                              } else {
+                                skillResults[skills[index].id] = values.first;
+                              }
+                            }),
                           ),
-                        ),
-                        for (var index = 0;
-                            index < section.skills.length;
-                            index++) ...[
-                          Builder(builder: (context) {
-                            final skill = section.skills[index];
-                            final pendingResult = skillResults[skill.id];
-                            final recorded = members
-                                .where((member) => selected.contains(member.id))
-                                .where((member) => member.results.any((result) =>
-                                    result.requirementId == skill.id &&
-                                    const {
-                                      'PASS',
-                                      'FAIL',
-                                      'NEEDS_REMEDIATION',
-                                      'NOT_APPLICABLE',
-                                    }.contains(result.result)))
-                                .length;
-                            final statusColor = pendingResult == 'PASS'
-                                ? FireOpsSemanticColors.green
-                                : pendingResult == 'FAIL'
-                                    ? Theme.of(sheetContext).colorScheme.error
-                                    : Theme.of(sheetContext)
-                                        .colorScheme
-                                        .onSurfaceVariant;
-                            final statusLabel = pendingResult == 'PASS'
-                                ? 'Ready to submit: Pass'
-                                : pendingResult == 'FAIL'
-                                    ? 'Ready to submit: Fail'
-                                    : recorded == selected.length &&
-                                            selected.isNotEmpty
-                                        ? 'Already recorded for all selected students'
-                                        : recorded > 0
-                                            ? '$recorded of ${selected.length} already recorded'
-                                            : 'Not graded';
-                            return Padding(
-                              padding: const EdgeInsets.all(14),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Icon(
-                                        pendingResult == 'PASS'
-                                            ? Icons.check_circle_rounded
-                                            : pendingResult == 'FAIL'
-                                                ? Icons.cancel_rounded
-                                                : recorded == selected.length &&
-                                                        selected.isNotEmpty
-                                                    ? Icons.task_alt_rounded
-                                                    : Icons.circle_outlined,
-                                        size: 22,
-                                        color: statusColor,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(children: [
-                                              Expanded(
-                                                child: Text(
-                                                  '${index + 1}. ${skill.title}',
-                                                  style: Theme.of(sheetContext)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.copyWith(
-                                                          fontWeight:
-                                                              FontWeight.w800),
-                                                ),
-                                              ),
-                                              if (skill.required)
-                                                Container(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 7,
-                                                      vertical: 3),
-                                                  decoration: BoxDecoration(
-                                                    color: Theme.of(sheetContext)
-                                                        .colorScheme
-                                                        .primaryContainer,
-                                                    borderRadius:
-                                                        BorderRadius.circular(99),
-                                                  ),
-                                                  child: Text(
-                                                    'REQUIRED',
-                                                    style: Theme.of(sheetContext)
-                                                        .textTheme
-                                                        .labelSmall
-                                                        ?.copyWith(
-                                                            fontWeight:
-                                                                FontWeight.w900),
-                                                  ),
-                                                ),
-                                            ]),
-                                            if (skill.description
-                                                .trim()
-                                                .isNotEmpty) ...[
-                                              const SizedBox(height: 4),
-                                              Text(skill.description),
-                                            ],
-                                            const SizedBox(height: 5),
-                                            Text(
-                                              statusLabel,
-                                              style: Theme.of(sheetContext)
-                                                  .textTheme
-                                                  .bodySmall
-                                                  ?.copyWith(
-                                                      color: statusColor,
-                                                      fontWeight:
-                                                          FontWeight.w700),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: SegmentedButton<String>(
-                                      showSelectedIcon: false,
-                                      emptySelectionAllowed: true,
-                                      segments: const [
-                                        ButtonSegment(
-                                          value: 'PASS',
-                                          label: Text('Pass'),
-                                          icon: Icon(Icons.check_rounded),
-                                        ),
-                                        ButtonSegment(
-                                          value: 'FAIL',
-                                          label: Text('Fail'),
-                                          icon: Icon(Icons.close_rounded),
-                                        ),
-                                      ],
-                                      selected: pendingResult == null
-                                          ? const <String>{}
-                                          : {pendingResult},
-                                      onSelectionChanged: (values) => update(() {
-                                        if (values.isEmpty) {
-                                          skillResults.remove(skill.id);
-                                        } else {
-                                          skillResults[skill.id] = values.first;
-                                        }
-                                      }),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
-                          if (index < section.skills.length - 1)
-                            const Divider(height: 1),
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 const SizedBox(height: 8),
