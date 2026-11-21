@@ -1986,7 +1986,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final detail = _detail;
     if (detail == null || _busy) return;
 
-    final pending = await _api.pendingSkillMutationCountForClass(detail.id);
+    int pending;
+    try {
+      pending = await _api.pendingSkillMutationCountForClass(detail.id);
+    } catch (error) {
+      if (mounted) {
+        setState(() => _error =
+            'Unable to check for unsynced skill results before approval: $error');
+      }
+      return;
+    }
+
     if (pending > 0) {
       if (mounted) {
         setState(() => _error =
@@ -2002,53 +2012,27 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       _error = null;
     });
     try {
-      final validation = await _api.validateClassClosure(detail.id);
-      if (!mounted) return;
-      if (!validation.canClose) {
-        final missing = validation.missing
-            .map((item) => item.message)
-            .join(' ');
-        setState(() => _error = missing.isEmpty
-            ? 'The Training Sheet needs more information before it can be finalized.'
-            : 'The Training Sheet still needs: $missing');
-        return;
-      }
-
-      final closed = await _api.updateClassStatus(
-        classId: detail.id,
-        status: 'COMPLETE',
-      );
-      _setDetail(closed);
-
-      // Approval follows closeout because the server only approves a closed
-      // Training Sheet. If approval fails, the closed sheet remains available
-      // from the closeout checklist for an authorized retry.
+      // The server validates, closes, and approves the sheet in one operation.
+      // This avoids separate close and approval requests that can leave a
+      // completed sheet waiting for a second request.
       final approved = await _api.approveTrainingSheet(detail.id);
+      if (!mounted) return;
       _setDetail(approved);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Training Sheet finalized and approved. Department RMS entry is next.',
-            ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Training Sheet finalized and approved. Department RMS entry is next.',
           ),
-        );
-      }
+        ),
+      );
     } on ResponderRoadmapApiException catch (error) {
       if (mounted) {
-        final approvalPending = _detail?.status == 'COMPLETE' &&
-            _detail?.instructorApprovedAt == null;
-        setState(() => _error = approvalPending
-            ? 'The sheet is closed, but instructor approval did not finish: ${error.message}'
-            : error.message);
+        setState(() => _error = error.message);
       }
     } catch (error) {
       if (mounted) {
-        final approvalPending = _detail?.status == 'COMPLETE' &&
-            _detail?.instructorApprovedAt == null;
-        setState(() => _error = approvalPending
-            ? 'The sheet is closed, but instructor approval did not finish: $error'
-            : error.toString());
+        setState(() => _error =
+            'Training Sheet approval did not finish. Refresh the sheet before retrying: $error');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -3468,7 +3452,24 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final detail = _detail; final student = _student;
     final mode = context.watch<AppModeController>();
     final canRecordRmsEntry = mode.isAdmin;
-    return Scaffold(appBar: AppBar(title: Text(detail?.title ?? 'Training Sheet')), body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(detail?.title ?? 'Training Sheet'),
+        actions: [
+          if (_busy)
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Semantics(
+                label: 'Finalizing Training Sheet',
+                child: SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+        ],
+      ),
+      body: detail == null ? Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!)) : ListView(
       controller: _detailScrollController,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
       children: [
