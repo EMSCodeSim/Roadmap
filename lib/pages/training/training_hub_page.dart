@@ -83,6 +83,8 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
     );
   }
 
+  Color? get navy => null;
+
   Future<void> _showExportOptions() async {
     final action = await showModalBottomSheet<String>(
       context: context,
@@ -250,7 +252,6 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
     final app = context.watch<AppState>();
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    const navy = Color(0xFF09213D);
     final records = _personalRecords;
     final training = _trainingRecords;
     final activity = records
@@ -263,11 +264,10 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: navy,
-        foregroundColor: Colors.white,
+        backgroundColor: cs.primary,
+        foregroundColor: cs.onPrimary,
         surfaceTintColor: Colors.transparent,
-        title: const Text('My Records',
-            style: TextStyle(fontWeight: FontWeight.w800)),
+        title: Text('My Records', style: theme.textTheme.titleLarge?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             tooltip: 'Export or print records',
@@ -295,15 +295,20 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
               const SizedBox(height: 14),
               Card(
                 margin: EdgeInsets.zero,
-                color: navy,
+                color: cs.primary,
                 child: Padding(
                   padding: const EdgeInsets.all(18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('YOUR PERSONAL RECORDS',
-                          style: TextStyle(color: Colors.white70,
-                              fontWeight: FontWeight.w700, letterSpacing: 1)),
+                      Text(
+                        'YOUR PERSONAL RECORDS',
+                        style: TextStyle(
+                          color: cs.onPrimary.withValues(alpha: 0.78),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         _loading ? 'Loading records…'

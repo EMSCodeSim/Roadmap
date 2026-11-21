@@ -23,18 +23,18 @@ class MyPathPage extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: const Color(0xFF09213D),
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
           surfaceTintColor: Colors.transparent,
           title: const Text('Career Goals',
               style: TextStyle(fontWeight: FontWeight.w800)),
           centerTitle: false,
           bottom: roadmap == null
               ? null
-              : const TabBar(
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white70,
-                  indicatorColor: Color(0xFFC8102E),
+              : TabBar(
+                  labelColor: Theme.of(context).colorScheme.onPrimary,
+                  unselectedLabelColor: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.72),
+                  indicatorColor: Theme.of(context).colorScheme.error,
                   isScrollable: false,
                   tabs: [
                     Tab(text: 'My Goal'),

@@ -31,7 +31,6 @@ class AppShellPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    const roadmapRed = Color(0xFFC8102E);
     final inbox = context.watch<DepartmentInboxController>();
     final unreadLabel = inbox.unreadCount > 99 ? '99+' : '${inbox.unreadCount}';
     final isTrainingSheetDetail = GoRouterState.of(context)
@@ -62,46 +61,40 @@ class AppShellPage extends StatelessWidget {
               top: BorderSide(color: cs.outline.withValues(alpha: 0.12)),
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: NavigationBar(
-              backgroundColor: cs.surface,
-              indicatorColor: roadmapRed.withValues(alpha: 0.10),
-              selectedIndex: navigationShell.currentIndex,
-              onDestinationSelected: _go,
-              height: 64,
-              labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-              destinations: [
-                const NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: 'Home',
+          child: NavigationBar(
+            selectedIndex: navigationShell.currentIndex,
+            onDestinationSelected: _go,
+            labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+            destinations: [
+              const NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home_rounded),
+                label: 'Home',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.timeline_outlined),
+                selectedIcon: Icon(Icons.timeline_rounded),
+                label: 'Roadmap',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.folder_copy_outlined),
+                selectedIcon: Icon(Icons.folder_copy_rounded),
+                label: 'Records',
+              ),
+              NavigationDestination(
+                icon: Badge(
+                  isLabelVisible: inbox.unreadCount > 0,
+                  label: Text(unreadLabel),
+                  child: const Icon(Icons.apartment_outlined),
                 ),
-                const NavigationDestination(
-                  icon: Icon(Icons.timeline_outlined),
-                  selectedIcon: Icon(Icons.timeline_rounded),
-                  label: 'Roadmap',
+                selectedIcon: Badge(
+                  isLabelVisible: inbox.unreadCount > 0,
+                  label: Text(unreadLabel),
+                  child: const Icon(Icons.apartment_rounded),
                 ),
-                const NavigationDestination(
-                  icon: Icon(Icons.folder_copy_outlined),
-                  selectedIcon: Icon(Icons.folder_copy_rounded),
-                  label: 'Records',
-                ),
-                NavigationDestination(
-                  icon: Badge(
-                    isLabelVisible: inbox.unreadCount > 0,
-                    label: Text(unreadLabel),
-                    child: const Icon(Icons.apartment_outlined),
-                  ),
-                  selectedIcon: Badge(
-                    isLabelVisible: inbox.unreadCount > 0,
-                    label: Text(unreadLabel),
-                    child: const Icon(Icons.apartment_rounded),
-                  ),
-                  label: 'Department',
-                ),
-              ],
-            ),
+                label: 'Department',
+              ),
+            ],
           ),
         ),
       ),

@@ -10,7 +10,8 @@ import 'package:firepath/services/certification_urgency.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
-import 'package:firepath/widgets/firefighter_roadmap_wordmark.dart';
+import 'package:firepath/widgets/app_card_tile.dart';
+import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 
 /// A compact daily overview. Lifelong history lives in Career Timeline.
 class VisualHomePage extends StatefulWidget {
@@ -46,7 +47,6 @@ class _VisualHomePageState extends State<VisualHomePage> {
     final appMode = context.watch<AppModeController>();
     final department = context.watch<DepartmentInboxController>();
     final colors = Theme.of(context).colorScheme;
-    const navy = Color(0xFF09213D);
     final roadmap = app.roadmap;
     final nextStep = roadmap?.nextStep;
     final hasDepartment = appMode.departmentLink != null;
@@ -59,11 +59,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
         .toList(growable: false);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: navy,
-        foregroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        title: const FirefighterRoadmapWordmark(foregroundColor: Colors.white),
+      appBar: FirefighterRoadmapAppBar(
         actions: [
           IconButton(
             tooltip: 'Settings',
@@ -91,35 +87,16 @@ class _VisualHomePageState extends State<VisualHomePage> {
             ),
             const SizedBox(height: 16),
             _sectionTitle(context, 'Next action'),
-            Card(
-              margin: EdgeInsets.zero,
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                leading: const CircleAvatar(
-                  child: Icon(Icons.arrow_forward_rounded),
-                ),
-                title: Text(
-                  nextStep?.requirement.name ??
-                      (roadmap == null
-                          ? 'Set a career goal (optional)'
-                          : 'No immediate roadmap step'),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(
-                  roadmap == null
-                      ? 'Your personal record works without a goal. Add one later for suggested next steps.'
-                      : nextStep == null
-                          ? 'Review your personal growth plan.'
-                          : 'Part of your ${app.selectedGoal?.title ?? 'career'} goal. You can change your goal anytime.',
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => context.go(
-                  roadmap == null ? AppRoutes.goalSetup : AppRoutes.careerGoals,
-                ),
-              ),
+            AppCardTile(
+              icon: Icons.arrow_forward_rounded,
+              iconColor: colors.primary,
+              title: nextStep?.requirement.name ?? (roadmap == null ? 'Set a career goal (optional)' : 'No immediate roadmap step'),
+              subtitle: roadmap == null
+                  ? 'Your personal record works without a goal. Add one later for suggested next steps.'
+                  : nextStep == null
+                      ? 'Review your personal growth plan.'
+                      : 'Part of your ${app.selectedGoal?.title ?? 'career'} goal. You can change your goal anytime.',
+              onTap: () => context.go(roadmap == null ? AppRoutes.goalSetup : AppRoutes.careerGoals),
             ),
             const SizedBox(height: 16),
             _sectionTitle(
@@ -129,10 +106,10 @@ class _VisualHomePageState extends State<VisualHomePage> {
               onAction: () => context.go(AppRoutes.certifications),
             ),
             if (credentials.isEmpty)
-              _statusCard(
+              AppCardTile(
                 icon: Icons.verified_outlined,
                 title: 'No credential follow-up needed',
-                detail: 'Missing expiration dates, expiring credentials, and expired credentials will appear here.',
+                subtitle: 'Missing expiration dates, expiring credentials, and expired credentials will appear here.',
               )
             else
               ...credentials.take(3).map(
@@ -165,14 +142,14 @@ class _VisualHomePageState extends State<VisualHomePage> {
               actionLabel: 'Records',
               onAction: () => context.go(AppRoutes.training),
             ),
-            _statusCard(
+            AppCardTile(
               icon: Icons.history_rounded,
               title: _loadingRecords
                   ? 'Checking personal records…'
                   : followUps.isEmpty
                       ? 'No unfinished follow-ups'
                       : '${followUps.length} follow-up${followUps.length == 1 ? '' : 's'} to finish',
-              detail: _loadingRecords
+              subtitle: _loadingRecords
                   ? 'Your saved history and roadmap evidence are loading.'
                   : followUps.isEmpty
                       ? 'Logged activity and completed milestones stay in Records.'
@@ -187,12 +164,12 @@ class _VisualHomePageState extends State<VisualHomePage> {
                 actionLabel: 'Open',
                 onAction: () => context.go(AppRoutes.department),
               ),
-              _statusCard(
+              AppCardTile(
                 icon: Icons.apartment_rounded,
                 title: department.actionCount == 0
                     ? 'No department actions waiting'
                     : '${department.actionCount} item${department.actionCount == 1 ? '' : 's'} need attention',
-                detail: department.unreadCount == 0
+                subtitle: department.unreadCount == 0
                     ? 'Department requests and updates appear here.'
                     : '${department.unreadCount} unread update${department.unreadCount == 1 ? '' : 's'}',
                 onTap: () => context.go(AppRoutes.department),
@@ -229,20 +206,5 @@ class _VisualHomePageState extends State<VisualHomePage> {
         ),
       );
 
-  Widget _statusCard({
-    required IconData icon,
-    required String title,
-    required String detail,
-    VoidCallback? onTap,
-  }) =>
-      Card(
-        margin: EdgeInsets.zero,
-        child: ListTile(
-          leading: Icon(icon),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: Text(detail),
-          trailing: const Icon(Icons.chevron_right_rounded),
-          onTap: onTap,
-        ),
-      );
+  // _statusCard removed in favor of shared AppCardTile.
 }

@@ -1072,8 +1072,8 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF09213D),
-        foregroundColor: Colors.white,
+        backgroundColor: cs.primary,
+        foregroundColor: cs.onPrimary,
         surfaceTintColor: Colors.transparent,
         leading: const AppBackButton.toAdvance(),
         title: const Text(
