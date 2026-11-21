@@ -1491,7 +1491,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final ceOptions = <Map<String, dynamic>>[];
     for (final component in ceComponents) {
       final groups = component.data['ceGroups'];
-      if (groups is List) {
+      if (groups is List && groups.isNotEmpty) {
         for (final rawGroup in groups.whereType<Map>()) {
           final groupName = rawGroup['name']?.toString().trim() ?? '';
           final rawCategories = rawGroup['categories'];
@@ -1684,6 +1684,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                         if (selected == null) return;
                         trainingCategory = selected.trainingCategory;
                         ceCategories = _ceCategoriesForTemplate(selected);
+                        final matchingOption = ceOptions.where((option) {
+                          final categories = (option['categories'] as List).cast<String>();
+                          return ceCategories.isNotEmpty &&
+                              ceCategories.every(categories.contains);
+                        }).firstOrNull;
+                        selectedCeOptionKey = matchingOption?['key']?.toString() ?? '';
                         for (final category in ceCategories) {
                           ceControllers.putIfAbsent(category, () => TextEditingController(
                             text: d.ceCredits.where((item) =>
