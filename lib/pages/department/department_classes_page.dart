@@ -1449,8 +1449,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     String trainingCategory = d.trainingCategory;
     String shift = d.shift;
     late final List<DepartmentTrainingSheetTemplate> templates;
+    var ceComponents = <DepartmentTrainingSheetComponentTemplate>[];
     try {
       templates = await _api.listTrainingSheetTemplates();
+      try {
+        ceComponents = (await _api.listTrainingSheetComponents())
+            .where((component) => component.kind == 'EMS_CE_LIST' && !component.archived)
+            .toList(growable: false);
+      } catch (_) {
+        // Existing template CE categories remain available if component loading
+        // is temporarily unavailable.
+      }
     } catch (error) {
       if (mounted) {
         setState(() => _error = 'Unable to load Training Sheet templates: $error');
@@ -1469,12 +1478,68 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         template.id == d.trainingSheetTemplateId ||
         (d.templateName.isNotEmpty && template.name == d.templateName)).firstOrNull;
     String selectedTemplateId = initialTemplate?.id ?? '';
-    var ceCategories = initialTemplate == null
-        ? const <String>[]
-        : _ceCategoriesForTemplate(initialTemplate);
+    final existingCeCredits = <String, double>{
+      for (final item in d.ceCredits)
+        if (item['category']?.toString().trim().isNotEmpty == true)
+          item['category'].toString(): (item['hours'] as num?)?.toDouble() ?? 0,
+    };
+    var ceCategories = existingCeCredits.keys.toList(growable: false);
+    if (ceCategories.isEmpty && initialTemplate != null) {
+      ceCategories = _ceCategoriesForTemplate(initialTemplate);
+    }
+
+    final ceOptions = <Map<String, dynamic>>[];
+    for (final component in ceComponents) {
+      final groups = component.data['ceGroups'];
+      if (groups is List) {
+        for (final rawGroup in groups.whereType<Map>()) {
+          final groupName = rawGroup['name']?.toString().trim() ?? '';
+          final rawCategories = rawGroup['categories'];
+          final categories = rawCategories is List
+              ? rawCategories.map((value) => value.toString().trim())
+                  .where((value) => value.isNotEmpty)
+                  .map((value) => groupName.isEmpty ? value : '$groupName — $value')
+                  .toList(growable: false)
+              : const <String>[];
+          if (categories.isNotEmpty) {
+            ceOptions.add({
+              'key': '${component.id}::${groupName.isEmpty ? 'Other' : groupName}',
+              'label': groupName.isEmpty ? component.name : '${component.name} · $groupName',
+              'categories': categories,
+            });
+          }
+        }
+      } else {
+        final legacyCredits = component.data['ceCredits'];
+        if (legacyCredits is List) {
+          final categories = legacyCredits.whereType<Map>()
+              .map((item) => item['category']?.toString().trim() ?? '')
+              .where((category) => category.isNotEmpty)
+              .toSet().toList(growable: false);
+          if (categories.isNotEmpty) {
+            ceOptions.add({
+              'key': '${component.id}::EMS',
+              'label': '${component.name} · EMS',
+              'categories': categories,
+            });
+          }
+        }
+      }
+    }
+
+    final matchingCeOption = ceOptions.where((option) {
+      final categories = (option['categories'] as List).cast<String>();
+      return ceCategories.isNotEmpty &&
+          ceCategories.every(categories.contains);
+    }).firstOrNull;
+    String selectedCeOptionKey = matchingCeOption?['key']?.toString() ?? '';
     final ceControllers = <String, TextEditingController>{
       for (final category in ceCategories)
-        category: TextEditingController(text: d.ceCredits.where((item) => item['category'] == category).map((item) => item['hours']).firstOrNull?.toString() ?? ''),
+        category: TextEditingController(
+          text: existingCeCredits[category]?.toString() ??
+              d.ceCredits.where((item) => item['category'] == category)
+                  .map((item) => item['hours']).firstOrNull?.toString() ?? '',
+        ),
     };
 
     int parseHoursToMinutes(String raw) {
@@ -1628,6 +1693,32 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                         }
                       }),
                     ),
+                    if (ceOptions.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedCeOptionKey.isEmpty ? null : selectedCeOptionKey,
+                        decoration: const InputDecoration(labelText: 'CE category set'),
+                        hint: const Text('Choose CE categories for this class'),
+                        items: ceOptions.map((option) => DropdownMenuItem(
+                          value: option['key'] as String,
+                          child: Text(option['label'] as String, overflow: TextOverflow.ellipsis),
+                        )).toList(growable: false),
+                        onChanged: (value) => update(() {
+                          selectedCeOptionKey = value ?? '';
+                          final selected = ceOptions.where((option) =>
+                              option['key'] == selectedCeOptionKey).firstOrNull;
+                          if (selected == null) return;
+                          ceCategories = (selected['categories'] as List).cast<String>();
+                          for (final category in ceCategories) {
+                            ceControllers.putIfAbsent(category, () => TextEditingController(
+                              text: existingCeCredits[category]?.toString() ?? '',
+                            ));
+                          }
+                        }),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text('Select a CE set, then enter the hours that apply. CE assignment is optional.'),
+                    ],
                     const SizedBox(height: 8),
                     TextField(
                       controller: station,
