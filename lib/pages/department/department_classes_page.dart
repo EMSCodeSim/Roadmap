@@ -1279,7 +1279,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             const ListTile(
               leading: Icon(Icons.check_circle_outline, color: Colors.green),
               title: Text('All required closeout items are ready.'),
-              subtitle: Text('Instructor approval remains a separate required step.'),
+              subtitle: Text('The final approval will close the sheet and send it to the department RMS queue.'),
             ),
         ];
         return SafeArea(
@@ -1293,14 +1293,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Review Training Sheet',
+                        'Final review & approval',
                         style: Theme.of(sheetContext).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 6),
                       Text(
                         hasMissingItems
                             ? 'Review the full record below. Required information that is incomplete is shown in red.'
-                            : 'The Training Sheet is complete and ready to close, print, and approve.',
+                            : 'All required items are ready. Review the record, then finalize and approve it.',
                       ),
                     ],
                   ),
@@ -1308,28 +1308,42 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 Expanded(child: ListView(children: tiles)),
                 Padding(
                   padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => Navigator.pop(
-                        sheetContext,
-                        hasMissingItems
-                            ? (memberIssues.isNotEmpty ? memberIssues.first : 'edit')
-                            : 'continue',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!hasMissingItems)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () => Navigator.pop(sheetContext, 'edit_details'),
+                            icon: const Icon(Icons.edit_outlined),
+                            label: const Text('Edit training details'),
+                          ),
+                        ),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () => Navigator.pop(
+                            sheetContext,
+                            hasMissingItems
+                                ? (memberIssues.isNotEmpty ? memberIssues.first : 'edit')
+                                : 'approve',
+                          ),
+                          icon: Icon(
+                            hasMissingItems
+                                ? Icons.edit_note_rounded
+                                : Icons.verified_outlined,
+                          ),
+                          label: Text(
+                            hasMissingItems
+                                ? (memberIssues.isNotEmpty
+                                    ? 'Enter student scores / results'
+                                    : 'Complete training details')
+                                : 'Finalize & approve Training Sheet',
+                          ),
+                        ),
                       ),
-                      icon: Icon(
-                        hasMissingItems
-                            ? Icons.edit_note_rounded
-                            : Icons.fact_check_outlined,
-                      ),
-                      label: Text(
-                        hasMissingItems
-                            ? (memberIssues.isNotEmpty
-                                ? 'Enter student scores / results'
-                                : 'Complete training details')
-                            : 'Review details & continue',
-                      ),
-                    ),
+                    ],
                   ),
                 ),
               ],
@@ -1343,48 +1357,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       _jumpToMember(selection, grading: selection.attendance == 'PRESENT');
     } else if (selection == 'edit') {
       if (await _editTrainingDocumentation() && mounted) await _reviewAndFinish();
-    } else if (selection == 'continue' && validation.canClose) {
-      if (await _editTrainingDocumentation()) {
-        await _closeTraining();
-        if (mounted && _detail?.status == 'COMPLETE') await _showCompletedTrainingActions();
-      }
-    }
-  }
-
-  Future<void> _showCompletedTrainingActions() async {
-    final detail = _detail;
-    if (detail == null || detail.status != 'COMPLETE' || !mounted) return;
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('Training Sheet complete', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 6),
-            const Text('Print or save a copy now. Instructor approval makes this the official record and sends it to the department RMS queue.'),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.pop(sheetContext, 'print'),
-              icon: const Icon(Icons.print_outlined),
-              label: const Text('Print / save Training Sheet'),
-            ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: detail.instructorApprovedAt == null ? () => Navigator.pop(sheetContext, 'approve') : null,
-              icon: const Icon(Icons.verified_outlined),
-              label: Text(detail.instructorApprovedAt == null ? 'Instructor approve class' : 'Instructor approved'),
-            ),
-          ]),
-        ),
-      ),
-    );
-    if (action == 'print') {
-      await _printTrainingRecord();
-      if (mounted && _detail?.instructorApprovedAt == null) await _showCompletedTrainingActions();
-    } else if (action == 'approve') {
-      await _approveTrainingSheet();
+    } else if (selection == 'edit_details') {
+      if (await _editTrainingDocumentation() && mounted) await _reviewAndFinish();
+    } else if (selection == 'approve' && validation.canClose) {
+      await _closeAndApproveTraining();
     }
   }
 
@@ -2006,44 +1982,77 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     }
   }
 
-  Future<void> _closeTraining() async {
-    final d=_detail; if(d==null||_busy)return;
-    final pending = await _api.pendingSkillMutationCountForClass(d.id);
+  Future<void> _closeAndApproveTraining() async {
+    final detail = _detail;
+    if (detail == null || _busy) return;
+
+    final pending = await _api.pendingSkillMutationCountForClass(detail.id);
     if (pending > 0) {
-      if (mounted) setState(() => _error =
-          '$pending skill batch(es) are still saved on this device. '
-          'Review or sync them before closing; server approval must not ignore field evaluations.');
+      if (mounted) {
+        setState(() => _error =
+            '$pending skill batch(es) are still saved on this device. '
+            'Sync or review them before final approval.');
+      }
       await _reviewPendingSkillSync();
       return;
     }
-    setState(()=>_busy=true);
-    try{
-      final validation=await _api.validateClassClosure(widget.classId);
-      if(!mounted)return;
-      if(!validation.canClose){
-        await showDialog<void>(context:context,builder:(context)=>AlertDialog(
-          title:const Text('Training is not ready to close'),
-          content:SizedBox(width:420,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-            const Text('Complete these items before this becomes an official training record.'),const SizedBox(height:12),
-            ...validation.missing.map((item)=>Padding(padding:const EdgeInsets.only(bottom:12),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              const Padding(padding:EdgeInsets.only(top:2),child:Icon(Icons.error_outline_rounded,size:20)),const SizedBox(width:10),
-              Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(item.message,style:const TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:2),Text(item.action)])),
-            ]))),
-          ]))),
-          actions:[FilledButton(onPressed:()=>Navigator.pop(context),child:const Text('Fix Missing Items'))],
-        ));
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final validation = await _api.validateClassClosure(detail.id);
+      if (!mounted) return;
+      if (!validation.canClose) {
+        final missing = validation.missing
+            .map((item) => item.message)
+            .join(' ');
+        setState(() => _error = missing.isEmpty
+            ? 'The Training Sheet needs more information before it can be finalized.'
+            : 'The Training Sheet still needs: $missing');
         return;
       }
-      final ok=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(
-        title:const Text('Close Training?'),
-        content:Text('Roster: ${d.roster.length}\n\nAll required fields, attendance, proctors and skill results are complete. Closing finalizes the official digital training sheet and stops QR registration.'),
-        actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Keep Open')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Finalize & Close'))],
-      ))??false;
-      if(!ok)return;
-      _setDetail(await _api.updateClassStatus(classId:widget.classId,status:'COMPLETE'));
-    }on ResponderRoadmapApiException catch(e){if(mounted)setState(()=>_error=e.message);}
-    catch(e){if(mounted)setState(()=>_error=e.toString());}
-    finally{if(mounted)setState(()=>_busy=false);}
+
+      final closed = await _api.updateClassStatus(
+        classId: detail.id,
+        status: 'COMPLETE',
+      );
+      _setDetail(closed);
+
+      // Approval follows closeout because the server only approves a closed
+      // Training Sheet. If approval fails, the closed sheet remains available
+      // from the closeout checklist for an authorized retry.
+      final approved = await _api.approveTrainingSheet(detail.id);
+      _setDetail(approved);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Training Sheet finalized and approved. Department RMS entry is next.',
+            ),
+          ),
+        );
+      }
+    } on ResponderRoadmapApiException catch (error) {
+      if (mounted) {
+        final approvalPending = _detail?.status == 'COMPLETE' &&
+            _detail?.instructorApprovedAt == null;
+        setState(() => _error = approvalPending
+            ? 'The sheet is closed, but instructor approval did not finish: ${error.message}'
+            : error.message);
+      }
+    } catch (error) {
+      if (mounted) {
+        final approvalPending = _detail?.status == 'COMPLETE' &&
+            _detail?.instructorApprovedAt == null;
+        setState(() => _error = approvalPending
+            ? 'The sheet is closed, but instructor approval did not finish: $error'
+            : error.toString());
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _approveTrainingSheet() async {
@@ -3226,6 +3235,25 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                       }).length;
                       final notApplicable = skills.where((skill) =>
                         resultsBySkill[skill.id] == 'NOT_APPLICABLE').length;
+                      final recordedCustomGrades = detail.customFields
+                          .where((field) => field['appliesTo'] != 'ROSTER')
+                          .map((field) {
+                            final id = field['id']?.toString() ?? '';
+                            final label = field['label']?.toString().trim() ?? '';
+                            final value = student.customValues[id];
+                            if (id.isEmpty || label.isEmpty || value == null ||
+                                value.toString().trim().isEmpty) {
+                              return '';
+                            }
+                            return '$label $value';
+                          })
+                          .where((value) => value.isNotEmpty);
+                      Future<void> openGradeEditor() async {
+                        final current = _detail;
+                        if (current == null) return;
+                        await _editCustomResults(current, student);
+                        if (mounted) updateSheet(() {});
+                      }
                       final summary = <String>[
                         if (skills.isNotEmpty) '$passed/${skills.length} passed',
                         if (failed > 0) '$failed failed',
@@ -3234,17 +3262,35 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                         if (notApplicable > 0) '$notApplicable N/A',
                         if (student.writtenScore != null) 'Written ${student.writtenScore}%',
                         if (student.ccfScore != null) 'CCF ${student.ccfScore}%',
+                        ...recordedCustomGrades,
                       ].join(' · ');
                       return Card(
                         child: ListTile(
                           leading: const CircleAvatar(child: Icon(Icons.person_outline_rounded)),
                           title: Text(student.name),
-                          subtitle: Text(summary.isEmpty ? 'Tap to grade checklist' : summary),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: _busy ? null : () {
-                            Navigator.pop(sheetContext);
-                            _jumpToMember(student, grading: true);
-                          },
+                          subtitle: Text(
+                            summary.isEmpty
+                                ? (hasGrades ? 'No grade recorded · Tap the grade icon' : 'Tap to grade checklist'),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: hasGrades
+                              ? IconButton(
+                                  tooltip: 'Record student grade',
+                                  icon: const Icon(Icons.edit_note_rounded),
+                                  onPressed: _busy ? null : openGradeEditor,
+                                )
+                              : const Icon(Icons.chevron_right_rounded),
+                          onTap: _busy
+                              ? null
+                              : () async {
+                                  if (skills.isEmpty && hasGrades) {
+                                    await openGradeEditor();
+                                    return;
+                                  }
+                                  Navigator.pop(sheetContext);
+                                  _jumpToMember(student, grading: true);
+                                },
                         ),
                       );
                     }),
