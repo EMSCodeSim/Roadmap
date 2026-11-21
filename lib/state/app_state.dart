@@ -148,6 +148,27 @@ class AppState extends ChangeNotifier {
           };
       if (rank(next) < rank(current)) certStatusByDefId[defId] = next;
     }
+    CertificationStatus? bestStatusSatisfying(String requiredDefinitionId) {
+      CertificationStatus? best;
+      int rank(CertificationStatus status) => switch (status) {
+            CertificationStatus.current => 0,
+            CertificationStatus.expiringSoon => 1,
+            CertificationStatus.expired => 2,
+          };
+      for (final entry in certStatusByDefId.entries) {
+        if (!FireOpsCatalog.certificationSatisfiesRequirement(
+          heldDefinitionId: entry.key,
+          requiredDefinitionId: requiredDefinitionId,
+        )) {
+          continue;
+        }
+        if (best == null || rank(entry.value) < rank(best)) {
+          best = entry.value;
+        }
+      }
+      return best;
+    }
+
     final goalCustom = customRequirements
         .where((r) => r.id.startsWith('${goal.id}::'))
         .toList();
@@ -176,7 +197,7 @@ class AppState extends ChangeNotifier {
       if (r.type == RequirementType.certification) {
         final defId = r.certificationDefinitionId;
         if (defId == null || defId.isEmpty) return false;
-        final status = certStatusByDefId[defId];
+        final status = bestStatusSatisfying(defId);
         if (status == null) return false;
         if (status == CertificationStatus.expired) {
           return r.allowExpiredCertification;
