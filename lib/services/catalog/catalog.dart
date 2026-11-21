@@ -227,6 +227,34 @@ class FireOpsCatalog {
   static List<CertificationDefinition> certificationDefinitions() => _certifications;
   static Map<String, CertificationDefinition> certificationById() => _certById;
 
+  /// Returns true when [heldDefinitionId] is the requested credential or a
+  /// higher credential whose prerequisite chain includes it.
+  static bool certificationSatisfiesRequirement({
+    required String heldDefinitionId,
+    required String requiredDefinitionId,
+  }) {
+    final held = heldDefinitionId.trim();
+    final required = requiredDefinitionId.trim();
+    if (held.isEmpty || required.isEmpty) return false;
+    if (held == required) return true;
+
+    final visited = <String>{};
+    bool includesPrerequisite(String definitionId) {
+      if (!visited.add(definitionId)) return false;
+      final definition = _certById[definitionId];
+      if (definition == null) return false;
+      for (final prerequisite in definition.prerequisites) {
+        if (prerequisite == required ||
+            includesPrerequisite(prerequisite)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    return includesPrerequisite(held);
+  }
+
   static String normalizeCertificationText(String value) {
     final v = value.toLowerCase().trim();
     if (v.isEmpty) return '';
