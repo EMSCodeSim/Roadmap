@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -1152,6 +1153,7 @@ class ResponderRoadmapApi {
   static const String _tokenKey = 'fireops.responderRoadmap.token.v1';
   static const String _pendingSubmissionsKey = 'fireops.responderRoadmap.pendingSubmissions.v1';
   static const String _pendingClassMutationsKey = 'fireops.responderRoadmap.pendingClassMutations.v1';
+  static const Duration _requestTimeout = Duration(seconds: 30);
 
   final http.Client _client;
   final FlutterSecureStorage _secureStorage;
@@ -2088,21 +2090,21 @@ class ResponderRoadmapApi {
     try {
       switch (method) {
         case 'GET':
-          response = await _client.get(uri, headers: headers);
+          response = await _client.get(uri, headers: headers).timeout(_requestTimeout);
           break;
         case 'POST':
           response = await _client.post(
             uri,
             headers: headers,
             body: jsonEncode(body ?? const <String, dynamic>{}),
-          );
+          ).timeout(_requestTimeout);
           break;
         case 'PATCH':
           response = await _client.patch(
             uri,
             headers: headers,
             body: jsonEncode(body ?? const <String, dynamic>{}),
-          );
+          ).timeout(_requestTimeout);
           break;
         default:
           throw ResponderRoadmapApiException('Unsupported request method: $method');
@@ -2112,6 +2114,11 @@ class ResponderRoadmapApi {
         debugPrint('[Roadmap API] $method $path network failure after ${timer.elapsedMilliseconds}ms');
       }
       if (error is ResponderRoadmapApiException) rethrow;
+      if (error is TimeoutException) {
+        throw const ResponderRoadmapApiException(
+          'Responder Roadmap did not respond in time. Refresh the Training Sheet before retrying to confirm its latest status.',
+        );
+      }
       throw const ResponderRoadmapApiException(
         'Could not reach ResponderRoadmap. Check your connection and try again.',
       );
