@@ -3271,11 +3271,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                           subtitle: Text(
                             summary.isEmpty
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                                 ? (hasGrades
                                     ? 'No grade recorded · Tap the grade icon'
                                     : 'Tap to grade checklist')
 =======
                                 ? (hasGrades ? 'No grade recorded · Tap the grade icon' : 'Tap to grade checklist')
+>>>>>>> Stashed changes
+=======
+                                ? (hasGrades
+                                    ? 'No grade recorded · Tap the grade icon'
+                                    : 'Tap to grade checklist')
 >>>>>>> Stashed changes
                                 : summary,
                             maxLines: 2,
