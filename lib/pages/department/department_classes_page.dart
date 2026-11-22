@@ -3270,9 +3270,13 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                           title: Text(student.name),
                           subtitle: Text(
                             summary.isEmpty
+<<<<<<< Updated upstream
                                 ? (hasGrades
                                     ? 'No grade recorded · Tap the grade icon'
                                     : 'Tap to grade checklist')
+=======
+                                ? (hasGrades ? 'No grade recorded · Tap the grade icon' : 'Tap to grade checklist')
+>>>>>>> Stashed changes
                                 : summary,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
