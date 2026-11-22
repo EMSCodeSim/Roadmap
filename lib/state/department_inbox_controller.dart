@@ -19,6 +19,7 @@ class DepartmentInboxController extends ChangeNotifier {
   Timer? _timer;
   DepartmentInbox? _inbox;
   List<DepartmentTaskBookAssignment> _urgentAssignments = const [];
+  int? _workQueueActionCount;
   DepartmentSyncState _syncState = DepartmentSyncState.disconnected;
   DateTime? _lastSyncedAt;
   String? _lastError;
@@ -31,7 +32,8 @@ class DepartmentInboxController extends ChangeNotifier {
 
   DepartmentInbox? get inbox => _inbox;
   int get unreadCount => _inbox?.unreadCount ?? 0;
-  int get actionCount => (_inbox?.needsAction.length ?? 0) + _urgentAssignments.length;
+  int get actionCount => _workQueueActionCount ??
+      ((_inbox?.needsAction.length ?? 0) + _urgentAssignments.length);
   List<DepartmentTaskBookAssignment> get urgentAssignments => _urgentAssignments;
   DepartmentSyncState get syncState => _syncState;
   DateTime? get lastSyncedAt => _lastSyncedAt;
@@ -60,6 +62,15 @@ class DepartmentInboxController extends ChangeNotifier {
       await _api.retryPendingClassMutations();
       final pending = await _api.pendingSubmissionCount() + await _api.pendingClassMutationCount();
       _inbox = await _api.getInbox();
+      // The Department tab's Needs Attention card is driven by the canonical
+      // work queue, which also contains training-sheet follow-ups. Keep Home's
+      // summary aligned with that same source instead of only counting inbox
+      // actions and overdue assignments.
+      try {
+        _workQueueActionCount = (await _api.getWorkQueue()).items.length;
+      } catch (_) {
+        // Preserve the inbox/assignment fallback if the work queue is offline.
+      }
       var allAssignments = const <DepartmentTaskBookAssignment>[];
       try {
         final assignments = await _api.listAssignments();
@@ -125,6 +136,11 @@ class DepartmentInboxController extends ChangeNotifier {
     }
     try {
       _inbox = await _api.getInbox();
+      try {
+        _workQueueActionCount = (await _api.getWorkQueue()).items.length;
+      } catch (_) {
+        // Keep the last known work-queue count if this refresh is partial.
+      }
       _lastSyncedAt = _inbox?.serverTime ?? DateTime.now();
       _lastError = null;
       await _store.saveJson(_stateKey, {
