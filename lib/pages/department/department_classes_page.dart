@@ -1416,6 +1416,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   }
   String get _registrationUrl => _detail?.registrationToken.isNotEmpty == true ? 'https://responderroadmap.com/class-join/${_detail!.registrationToken}' : '';
 
+  get upstream => null;
+
   Future<void> _registration(String action) async {
     if (_detail == null || _busy) return; setState(()=>_busy=true);
     try { _setDetail(await _api.manageClassRegistration(classId: widget.classId, action: action)); }
@@ -3270,25 +3272,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                           title: Text(student.name),
                           subtitle: Text(
                             summary.isEmpty
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                                 ? (hasGrades
                                     ? 'No grade recorded · Tap the grade icon'
                                     : 'Tap to grade checklist')
-=======
-                                ? (hasGrades ? 'No grade recorded · Tap the grade icon' : 'Tap to grade checklist')
->>>>>>> Stashed changes
-=======
-                                ? (hasGrades
-                                    ? 'No grade recorded · Tap the grade icon'
-                                    : 'Tap to grade checklist')
->>>>>>> Stashed changes
-=======
-                                ? (hasGrades
-                                    ? 'No grade recorded · Tap the grade icon'
-                                    : 'Tap to grade checklist')
->>>>>>> Stashed changes
                                 : summary,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -3966,4 +3952,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       ],
     ]));
   }
+}
+
+class Updated {
 }
