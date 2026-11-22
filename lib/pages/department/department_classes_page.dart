@@ -628,6 +628,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   String? _studentId;
   String? _error;
   bool _busy = false;
+  bool _openingReviewApproval = false;
   bool _showGrading = false;
   bool _showAdditionalDetails = false;
   bool _missingOnly = false;
@@ -3301,6 +3302,34 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     );
   }
 
+  Future<void> _openReviewApprovalStep() async {
+    if (_busy || _openingReviewApproval) return;
+    setState(() => _openingReviewApproval = true);
+    try {
+      // Refresh the server state before choosing between review and approval.
+      // This prevents a stale local status from leaving the closeout row on the
+      // wrong action after a prior close or an interrupted approval request.
+      final latest = await _api.getTrainingSheet(widget.classId);
+      if (!mounted) return;
+      _setDetail(latest);
+      if (latest.status == 'COMPLETE') {
+        if (latest.instructorApprovedAt == null) {
+          await _approveTrainingSheet();
+        } else {
+          _showChecklistMessage('Training is already closed and instructor approved.');
+        }
+      } else {
+        await _reviewAndFinish();
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _error = 'Unable to open review and instructor approval: $error');
+      }
+    } finally {
+      if (mounted) setState(() => _openingReviewApproval = false);
+    }
+  }
+
   Future<void> _activateCloseoutStep(
     int index,
     DepartmentClassDetail detail, {
@@ -3314,13 +3343,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         await _openSkillsStep();
         return;
       case 2:
-        if (detail.status != 'COMPLETE') {
-          await _reviewAndFinish();
-        } else if (detail.instructorApprovedAt == null) {
-          await _approveTrainingSheet();
-        } else {
-          _showChecklistMessage('Training is already closed and instructor approved.');
-        }
+        await _openReviewApprovalStep();
         return;
       case 3:
         if (detail.rmsStatus == 'RMS_ENTERED') {
@@ -3433,8 +3456,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   ? TextStyle(color: error)
                   : null,
             ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _busy
+            trailing: i == 2 && _openingReviewApproval
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.chevron_right),
+            onTap: _busy || _openingReviewApproval
                 ? null
                 : () => _activateCloseoutStep(
                       i,
