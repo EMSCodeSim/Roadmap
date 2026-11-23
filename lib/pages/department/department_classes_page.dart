@@ -1872,7 +1872,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final requiresCe = ceCategories.isNotEmpty;
     if(savedCategory == 'EMS' && (result['notes'] as String).trim().isEmpty){setState(()=>_error='Enter a short class description before closing EMS CE.');return false;}
     final ceCredits=result['ceCredits'] as Map<String,double>;
-    if(requiresCe && !ceCredits.values.any((hours)=>hours>0)){setState(()=>_error='Assign CE credit to at least one category before closing.');return false;}
+    // CE credit assignment is optional; validate duration only when credits are entered.
 
     final elapsedMinutes = TrainingTimeCalculator.elapsedMinutes(savedStart, savedEnd);
     if (elapsedMinutes == null) {
