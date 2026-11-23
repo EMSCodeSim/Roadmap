@@ -11,6 +11,7 @@ import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/app_card_tile.dart';
+import 'package:firepath/widgets/unread_pulse_indicator.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
 
 /// A compact daily overview. Lifelong history lives in Career Timeline.
@@ -172,6 +173,16 @@ class _VisualHomePageState extends State<VisualHomePage> {
                 subtitle: department.unreadCount == 0
                     ? 'Department requests and updates appear here.'
                     : '${department.unreadCount} unread update${department.unreadCount == 1 ? '' : 's'}',
+                trailing: department.unreadCount > 0
+                    ? const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          UnreadPulseIndicator(),
+                          SizedBox(width: 8),
+                          Icon(Icons.chevron_right_rounded),
+                        ],
+                      )
+                    : null,
                 onTap: () => context.go(AppRoutes.department),
               ),
             ],
