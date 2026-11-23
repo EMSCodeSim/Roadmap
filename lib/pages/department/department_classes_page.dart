@@ -1195,12 +1195,16 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 summaryRow('End', _recordDate(detail.endsAt), required: true),
                 summaryRow('Total hours', detail.creditHours > 0 ? detail.creditHours.toStringAsFixed(2) : '', required: true),
                 summaryRow('Category', detail.trainingCategory.replaceAll('_', ' '), required: true),
-                if (detail.ceCredits.isNotEmpty) summaryRow('CE category hours', ceSummary, required: true),
+                if (ceSummary.isNotEmpty) summaryRow('CE category hours', ceSummary),
                 summaryRow('Shift', detail.shift),
                 summaryRow('Station / facility', detail.station.isNotEmpty ? detail.station : detail.location),
                 summaryRow('Checklist', detail.checklistTitle),
                 summaryRow('Roster', '${detail.roster.length} students · ${detail.roster.where((m) => m.attendance == 'PRESENT').length} present'),
-                summaryRow('Description', detail.notes, required: true),
+                summaryRow(
+                  'Description',
+                  detail.notes,
+                  required: detail.requiredFields.contains('DESCRIPTION'),
+                ),
               ]),
             ),
           ),
@@ -1468,6 +1472,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         template.id == d.trainingSheetTemplateId ||
         (d.templateName.isNotEmpty && template.name == d.templateName)).firstOrNull;
     String selectedTemplateId = initialTemplate?.id ?? '';
+    var activeRequiredFields = <String>{...d.requiredFields};
     final existingCeCredits = <String, double>{
       for (final item in d.ceCredits)
         if (item['category']?.toString().trim().isNotEmpty == true)
@@ -1593,6 +1598,16 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               : 0;
           final overAllocated = roundedElapsedMinutes != null &&
               allocatedMinutes > roundedElapsedMinutes;
+          final invalidCeIncrement = hasCeCategories && ceCategories.any((category) {
+            final raw = ceControllers[category]?.text.trim() ?? '';
+            if (raw.isEmpty) return false;
+            final value = double.tryParse(raw);
+            if (value == null || !value.isFinite || value < 0 || value > 24) return true;
+            final minuteValue = value * 60;
+            final roundedMinutes = minuteValue.round();
+            return (minuteValue - roundedMinutes).abs() > 0.01 ||
+                roundedMinutes % 15 != 0;
+          });
           final remainingMinutes = roundedElapsedMinutes == null
               ? null
               : (roundedElapsedMinutes - allocatedMinutes);
@@ -1687,6 +1702,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                             template.id == selectedTemplateId).firstOrNull;
                         if (selected == null) return;
                         trainingCategory = selected.trainingCategory;
+                        activeRequiredFields = {
+                          ...d.departmentRequiredFields,
+                          ...selected.requiredFields.map((field) => field.toUpperCase()),
+                        };
                         ceCategories = _ceCategoriesForTemplate(selected);
                         final matchingOption = ceOptions.where((option) {
                           final categories = (option['categories'] as List).cast<String>();
@@ -1754,10 +1773,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                       controller: narrative,
                       maxLines: 4,
                       decoration: InputDecoration(
-                        labelText: 'Short class description / objectives${trainingCategory == 'EMS' ? ' *' : ''}',
+                        labelText: 'Short class description / objectives${activeRequiredFields.contains('DESCRIPTION') ? ' *' : ''}',
                         hintText: 'Briefly describe what was taught and practiced',
-                        errorText: trainingCategory == 'EMS' && narrative.text.trim().isEmpty
-                            ? 'Required for EMS CE closeout'
+                        errorText: activeRequiredFields.contains('DESCRIPTION') && narrative.text.trim().isEmpty
+                            ? 'Required by this Training Sheet setup'
                             : null,
                       ),
                     ),
@@ -1766,6 +1785,17 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                       Text('Assign CE hours by category', style: Theme.of(dialogContext).textTheme.titleMedium),
                       const SizedBox(height: 4),
                       const Text('Enter CE credit in 0.25-hour increments. Total credit cannot exceed rounded training hours.'),
+                      if (invalidCeIncrement)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            'Use 0.25-hour increments for every CE category.',
+                            style: TextStyle(
+                              color: Theme.of(dialogContext).colorScheme.error,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                       ...ceCategories.map((category) => Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: TextField(
@@ -1827,7 +1857,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             actions: [
               TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
               FilledButton(
-                onPressed: overAllocated || selectedTemplateId.isEmpty
+                onPressed: overAllocated || invalidCeIncrement || selectedTemplateId.isEmpty
                     ? null
                     : () {
                         final computedMinutes = TrainingTimeCalculator.elapsedMinutes(start, end);
@@ -1868,9 +1898,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       setState(()=>_error='Enter an actual end time after the start time before closing.');
       return false;
     }
-    final savedCategory = result['trainingCategory'] as String;
     final requiresCe = ceCategories.isNotEmpty;
-    if(savedCategory == 'EMS' && (result['notes'] as String).trim().isEmpty){setState(()=>_error='Enter a short class description before closing EMS CE.');return false;}
     final ceCredits=result['ceCredits'] as Map<String,double>;
     // CE credit assignment is optional; validate duration only when credits are entered.
 
