@@ -104,6 +104,9 @@ class _AppShellPageState extends State<AppShellPage> {
               child: FloatingActionButton(
                 key: const Key('quick_log_fab'),
                 tooltip: 'Quick Add',
+                backgroundColor: cs.secondary,
+                foregroundColor: cs.onSecondary,
+                elevation: 6,
                 onPressed: () => QuickLogLauncher.open(context),
                 child: const Icon(Icons.add_rounded),
               ),
