@@ -1621,7 +1621,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                                 roundedElapsedMinutes == null
                                     ? 'Duration: Pending (set End Time)'
                                     : 'Training hours: ${formatQuarterHoursFromMinutes(roundedElapsedMinutes)}',
-                                style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+                                style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: roundedElapsedMinutes == null
+                                      ? Theme.of(dialogContext).colorScheme.error
+                                      : null,
+                                ),
                               ),
                               if (roundedSplit != null)
                                 Padding(
@@ -1651,17 +1656,26 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     ),
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
+                      style: end == null
+                          ? OutlinedButton.styleFrom(
+                              foregroundColor: Theme.of(dialogContext).colorScheme.error,
+                              side: BorderSide(color: Theme.of(dialogContext).colorScheme.error, width: 1.5),
+                            )
+                          : null,
                       onPressed: () async {
                         final chosen = await chooseTime(dialogContext, end ?? start);
                         if (chosen != null) update(() => end = chosen);
                       },
                       icon: const Icon(Icons.schedule),
-                      label: Text(end == null ? 'End Time: Set when complete' : 'End Time: ${formatLocalDateTime(end!)}'),
+                      label: Text(end == null ? 'End Time: Required' : 'End Time: ${formatLocalDateTime(end!)}'),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       initialValue: selectedTemplateId.isEmpty ? null : selectedTemplateId,
-                      decoration: const InputDecoration(labelText: 'Training category *'),
+                      decoration: InputDecoration(
+                        labelText: 'Training category *',
+                        errorText: selectedTemplateId.isEmpty ? 'Required' : null,
+                      ),
                       hint: const Text('Select a Training Sheet template'),
                       items: templates.map((template) => DropdownMenuItem(
                         value: template.id,
@@ -1739,9 +1753,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     TextField(
                       controller: narrative,
                       maxLines: 4,
-                      decoration: const InputDecoration(
-                        labelText: 'Short class description / objectives',
+                      decoration: InputDecoration(
+                        labelText: 'Short class description / objectives${trainingCategory == 'EMS' ? ' *' : ''}',
                         hintText: 'Briefly describe what was taught and practiced',
+                        errorText: trainingCategory == 'EMS' && narrative.text.trim().isEmpty
+                            ? 'Required for EMS CE closeout'
+                            : null,
                       ),
                     ),
                     if (hasCeCategories) ...[
