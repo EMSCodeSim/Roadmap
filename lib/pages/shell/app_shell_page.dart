@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
+import 'package:firepath/widgets/unread_pulse_indicator.dart';
 
 /// Primary mobile shell.
 ///
@@ -145,12 +146,16 @@ class _AppShellPageState extends State<AppShellPage> {
                 icon: Badge(
                   isLabelVisible: inbox.unreadCount > 0,
                   label: Text(unreadLabel),
-                  child: const Icon(Icons.apartment_outlined),
+                  child: inbox.unreadCount > 0
+                      ? const UnreadPulseIndicator(icon: Icons.apartment_outlined, size: 20)
+                      : const Icon(Icons.apartment_outlined),
                 ),
                 selectedIcon: Badge(
                   isLabelVisible: inbox.unreadCount > 0,
                   label: Text(unreadLabel),
-                  child: const Icon(Icons.apartment_rounded),
+                  child: inbox.unreadCount > 0
+                      ? const UnreadPulseIndicator(icon: Icons.apartment_rounded, size: 20)
+                      : const Icon(Icons.apartment_rounded),
                 ),
                 label: 'Department',
               ),
