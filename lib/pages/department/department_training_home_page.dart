@@ -13,6 +13,7 @@ import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/competency_evidence_bridge.dart';
 import 'package:firepath/services/theme.dart';
+import 'package:firepath/widgets/unread_pulse_indicator.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/state/app_state.dart';
@@ -589,8 +590,10 @@ class _SyncLine extends StatelessWidget {
       ),
       if (inbox.unreadCount > 0) ...[
         const Spacer(),
+        const UnreadPulseIndicator(size: 15),
+        const SizedBox(width: 5),
         Text(
-          '${inbox.unreadCount} update${inbox.unreadCount == 1 ? '' : 's'}',
+          '${inbox.unreadCount} new update${inbox.unreadCount == 1 ? '' : 's'}',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: cs.onSurfaceVariant,
                 fontWeight: FontWeight.w700,
