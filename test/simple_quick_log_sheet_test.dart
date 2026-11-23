@@ -31,8 +31,35 @@ void main() {
       find.text('Customize Fire, EMS & personal choices'),
       findsOneWidget,
     );
-    expect(find.text('Task Book / Career Road progress'), findsOneWidget);
+    expect(find.text('Task Book / Career Road progress'), findsNothing);
+    expect(find.text('Training Resources'), findsOneWidget);
+    expect(find.byKey(const Key('quick_add_training_resources')), findsOneWidget);
     expect(find.text('Scan department class QR'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Training Resources offers EMSCodeSim and FireOpsSim',
+      (tester) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AppModeController(),
+        child: const MaterialApp(
+          home: Scaffold(body: ProductionQuickLogSheet()),
+        ),
+      ),
+    );
+
+    await tester.ensureVisible(find.text('Training Resources'));
+    await tester.tap(find.text('Training Resources'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose training library'), findsOneWidget);
+    expect(find.text('EMS Training'), findsOneWidget);
+    expect(find.text('Open EMSCodeSim'), findsOneWidget);
+    expect(find.text('Fire Training'), findsOneWidget);
+    expect(find.text('Open FireOpsSim'), findsOneWidget);
+    expect(find.byKey(const Key('training_library_ems')), findsOneWidget);
+    expect(find.byKey(const Key('training_library_fire')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
