@@ -1421,8 +1421,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
   }
   String get _registrationUrl => _detail?.registrationToken.isNotEmpty == true ? 'https://responderroadmap.com/class-join/${_detail!.registrationToken}' : '';
 
-  get upstream => null;
-
   Future<void> _registration(String action) async {
     if (_detail == null || _busy) return; setState(()=>_busy=true);
     try { _setDetail(await _api.manageClassRegistration(classId: widget.classId, action: action)); }
@@ -1923,7 +1921,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         d.id, startsAt:savedStart, endsAt:savedEnd,
         notes:result['notes'] as String, location:result['location'] as String,
         station:result['station'] as String, shift:result['shift'] as String,
-        trainingCategory:savedCategory,
+        trainingCategory: trainingCategory,
         trainingSheetTemplateId:result['trainingSheetTemplateId'] as String,
         creditHours:result['hours'] as double,
         ceCredits:ceCredits,
@@ -3534,11 +3532,11 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         title: Text(detail?.title ?? 'Training Sheet'),
         actions: [
           if (_busy)
-            const Padding(
-              padding: EdgeInsets.only(right: 16),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
               child: Semantics(
                 label: 'Finalizing Training Sheet',
-                child: SizedBox.square(
+                child: const SizedBox.square(
                   dimension: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),

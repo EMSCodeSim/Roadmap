@@ -711,7 +711,6 @@ class DepartmentTrainingSheetTemplate {
   final Map<String, dynamic> gradingConfig;
   final List<Map<String, dynamic>> customFields;
   final List<String> departmentRequiredFields;
-  final List<String> requiredFields;
   final String id;
   final String name;
   final String defaultTitle;
@@ -736,7 +735,7 @@ class DepartmentTrainingSheetTemplate {
     required this.id, required this.name, required this.defaultTitle,
     required this.classType, required this.trainingCategory, required this.creditHours,
     required this.checklistVersionId, required this.location, required this.notes,
-    required this.requiredFields, required this.selfRegistration,
+    required this.selfRegistration,
     required this.proctorUserIds, required this.archived,
   });
 
@@ -757,7 +756,6 @@ class DepartmentTrainingSheetTemplate {
         checklistVersionId: (json['checklistVersionId'] as String?) ?? '',
         location: (json['location'] as String?) ?? '',
         notes: (json['notes'] as String?) ?? '',
-        requiredFields: (json['requiredFields'] as List? ?? const []).map((v)=>v.toString()).toList(growable:false),
         selfRegistration: json['selfRegistration'] == true,
         proctorUserIds: (json['proctorUserIds'] as List? ?? const []).map((v)=>v.toString()).toList(growable:false),
         archived: json['archived'] == true,
@@ -955,6 +953,8 @@ class DepartmentClassDetail {
   final List<Map<String, dynamic>> ceCredits;
   final Map<String, dynamic> gradingConfig;
   final List<Map<String, dynamic>> customFields;
+  final List<String> departmentRequiredFields;
+  final List<String> requiredFields;
   final String id;
   final String title;
   final String classType;
@@ -988,6 +988,8 @@ class DepartmentClassDetail {
     required this.ceCredits,
     required this.gradingConfig,
     required this.customFields,
+    this.departmentRequiredFields = const <String>[],
+    this.requiredFields = const <String>[],
     required this.id,
     required this.title,
     required this.classType,
@@ -1022,6 +1024,8 @@ class DepartmentClassDetail {
         ceCredits: (json['ceCredits'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
         gradingConfig: Map<String, dynamic>.from(json['gradingConfig'] as Map? ?? const {}),
         customFields: (json['customFields'] as List? ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList(growable: false),
+        departmentRequiredFields: (json['departmentRequiredFields'] as List? ?? const []).map((value) => value.toString().toUpperCase()).toList(growable: false),
+        requiredFields: (json['requiredFields'] as List? ?? const []).map((value) => value.toString().toUpperCase()).toList(growable: false),
         id: (json['id'] as String?) ?? '',
         title: (json['title'] as String?) ?? 'Class',
         classType: (json['classType'] as String?) ?? 'GENERAL',
