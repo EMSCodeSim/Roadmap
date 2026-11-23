@@ -6,6 +6,7 @@ import 'package:firepath/pages/department/department_task_book_page.dart';
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
+import 'package:firepath/widgets/unread_pulse_indicator.dart';
 
 class DepartmentInboxPage extends StatefulWidget {
   const DepartmentInboxPage({super.key});
@@ -94,7 +95,9 @@ class _DepartmentInboxPageState extends State<DepartmentInboxPage> {
                       title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w900)),
                       subtitle: Text('${item.body}\n${_date(item.createdAt)}'),
                       isThreeLine: true,
-                      trailing: item.readAt == null ? const Icon(Icons.circle, size: 10) : null,
+                      trailing: item.readAt == null
+                          ? const UnreadPulseIndicator(size: 14)
+                          : null,
                     ),
                   )),
           ],
