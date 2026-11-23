@@ -1772,6 +1772,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     TextField(
                       controller: narrative,
                       maxLines: 4,
+                      onChanged: (_) => update(() {}),
                       decoration: InputDecoration(
                         labelText: 'Short class description / objectives${activeRequiredFields.contains('DESCRIPTION') ? ' *' : ''}',
                         hintText: 'Briefly describe what was taught and practiced',
