@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/prefill.dart';
@@ -190,6 +191,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                       onPick: (mode) => setState(() => _mode = mode),
                       visibleModes: _visibleModes,
                       onCustomize: _openCustomization,
+                      onTrainingResources: _openTrainingResources,
                       showScanQr: widget.showDepartmentQrAction,
                       onScanQr: () => Navigator.of(context).pop(SimpleQuickLogResult.scanDepartmentQr),
                       onMoreDetails: () => Navigator.of(context)
@@ -243,6 +245,67 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
     Navigator.of(context).pop();
     await Future<void>.delayed(Duration.zero);
     await router.push(AppRoutes.quickLogSetup);
+  }
+
+  Future<void> _openTrainingResources() async {
+    final destination = await showModalBottomSheet<Uri>(
+      context: context,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Choose training library',
+              style: Theme.of(sheetContext)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Find drills, scenarios, skills, and learning resources.',
+              style: Theme.of(sheetContext).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 18),
+            _TrainingLibraryChoice(
+              key: const Key('training_library_ems'),
+              icon: Icons.medical_services_outlined,
+              title: 'EMS Training',
+              subtitle: 'Open EMSCodeSim',
+              onTap: () => Navigator.of(sheetContext).pop(
+                Uri.parse('https://emscodesim.com/ems-training-library.html'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _TrainingLibraryChoice(
+              key: const Key('training_library_fire'),
+              icon: Icons.local_fire_department_outlined,
+              title: 'Fire Training',
+              subtitle: 'Open FireOpsSim',
+              onTap: () => Navigator.of(sheetContext).pop(
+                Uri.parse(
+                  'https://fireopssim.com/fire-service-training-library.html',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (destination == null || !mounted) return;
+    final opened = await launchUrl(
+      destination,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to open the training library.')),
+      );
+    }
   }
 
   Future<void> _pickChoice(String value) async {
@@ -477,6 +540,7 @@ class _CategoryStep extends StatelessWidget {
   final VoidCallback onScanQr;
   final VoidCallback onMoreDetails;
   final VoidCallback onCustomize;
+  final VoidCallback onTrainingResources;
   final List<_SimpleMode> visibleModes;
 
   const _CategoryStep({
@@ -486,6 +550,7 @@ class _CategoryStep extends StatelessWidget {
     required this.onScanQr,
     required this.onMoreDetails,
     required this.onCustomize,
+    required this.onTrainingResources,
     required this.visibleModes,
   });
 
@@ -565,9 +630,10 @@ class _CategoryStep extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         FilledButton.tonalIcon(
-          onPressed: () => onPick(_SimpleMode.taskBook),
-          icon: const Icon(Icons.menu_book_outlined),
-          label: const Text('Task Book / Career Road progress'),
+          key: const Key('quick_add_training_resources'),
+          onPressed: onTrainingResources,
+          icon: const Icon(Icons.school_outlined),
+          label: const Text('Training Resources'),
           style: FilledButton.styleFrom(
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -588,6 +654,57 @@ class _CategoryStep extends StatelessWidget {
           label: const Text('Full log / more details'),
         ),
       ],
+    );
+  }
+}
+
+class _TrainingLibraryChoice extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _TrainingLibraryChoice({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(icon, size: 30, color: cs.primary),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              const Icon(Icons.open_in_new_rounded),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
