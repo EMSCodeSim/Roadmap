@@ -197,6 +197,19 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                       final selected = _quickActionKeys.contains(key);
                       return FilterChip(
                         selected: selected,
+                        // Keep selected chips readable against the dark navy
+                        // fill. Material 3 can otherwise inherit the light
+                        // label color from ChipThemeData.
+                        labelStyle: TextStyle(
+                          color: selected ? cs.onPrimary : cs.onSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        iconTheme: IconThemeData(
+                          color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+                          size: 18,
+                        ),
+                        checkmarkColor: cs.onPrimary,
+                        selectedColor: cs.primary,
                         label: Text(label),
                         avatar: Icon(icon, size: 18),
                         onSelected: (_) => _toggleQuickAction(key),
