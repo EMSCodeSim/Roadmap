@@ -993,70 +993,78 @@ class _RecordCard extends StatelessWidget {
       if (record.outcome != null) record.outcome!.label,
     ].where((value) => value.trim().isNotEmpty).join(' • ');
 
-    return Container(
-      constraints: const BoxConstraints(minHeight: 76),
-      padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
-      decoration: BoxDecoration(
-        color: cs.surface,
+    final photoCount =
+        (record.details['photoAttachments'] as List?)?.length ?? 0;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpen,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
-      ),
-      child: Row(
-        children: [
-          Icon(_icon(record), color: cs.primary, size: 25),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  record.title,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w900),
-                ),
-                if (details.isNotEmpty)
-                  Text(
-                    details,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                Text(
-                  CareerStats.formatDate(record.date),
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelSmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
-                ),
-              ],
-            ),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 76),
+          padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
           ),
-          if (photoCount > 0)
-            Padding(
-              padding: const EdgeInsets.only(right: 2),
-              child: Badge(
-                label: Text('$photoCount'),
-                child: const Icon(Icons.photo_library_outlined, size: 20),
+          child: Row(
+            children: [
+              Icon(_icon(record), color: cs.primary, size: 25),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      record.title,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                    if (details.isNotEmpty)
+                      Text(
+                        details,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    Text(
+                      CareerStats.formatDate(record.date),
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelSmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          PopupMenuButton<String>(
-            tooltip: 'Record options',
-            onSelected: (value) {
-              if (value == 'open') onOpen();
-              if (value == 'edit') onEdit();
-              if (value == 'delete') onDelete();
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'open', child: Text('Open full log')),
-              PopupMenuItem(value: 'edit', child: Text('Edit details')),
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
+              if (photoCount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(right: 2),
+                  child: Badge(
+                    label: Text('$photoCount'),
+                    child: const Icon(Icons.photo_library_outlined, size: 20),
+                  ),
+                ),
+              PopupMenuButton<String>(
+                tooltip: 'Record options',
+                onSelected: (value) {
+                  if (value == 'open') onOpen();
+                  if (value == 'edit') onEdit();
+                  if (value == 'delete') onDelete();
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: 'open', child: Text('Open full log')),
+                  PopupMenuItem(value: 'edit', child: Text('Edit details')),
+                  PopupMenuItem(value: 'delete', child: Text('Delete')),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
         ),
       ),
     );
