@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/pages/bootstrap_page.dart';
+import 'package:firepath/pages/career/fireops_import_page.dart';
 import 'package:firepath/pages/shell/app_shell_page.dart';
 import 'package:firepath/pages/home/visual_home_page.dart';
 import 'package:firepath/pages/onboarding/onboarding_v2_page.dart';
@@ -68,6 +69,7 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: AppRoutes.bootstrap,
     routes: [
+      GoRoute(path: '/fireops-import', builder: (context, state) => FireOpsImportPage(uri: state.uri)),
       GoRoute(
         path: AppRoutes.bootstrap,
         name: 'bootstrap',
