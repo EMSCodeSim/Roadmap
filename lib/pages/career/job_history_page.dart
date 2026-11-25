@@ -302,6 +302,18 @@ class _JobRoleEditorPageState extends State<_JobRoleEditorPage> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
+    if (!_current && _end == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add an end date, or mark this as a current position.')),
+      );
+      return;
+    }
+    if (!_current && _end!.isBefore(_start)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('End date must be on or after the start date.')),
+      );
+      return;
+    }
     Navigator.of(context).pop(JobHistoryEntry(
       id: widget.entry?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
       employer: _employer.text.trim(),
