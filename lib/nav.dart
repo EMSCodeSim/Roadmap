@@ -16,6 +16,7 @@ import 'package:firepath/pages/task_book/custom_task_book_create_page.dart';
 import 'package:firepath/pages/task_book/custom_task_book_builder_page.dart';
 import 'package:firepath/pages/career/career_hub_page.dart';
 import 'package:firepath/pages/career/career_vault_page.dart';
+import 'package:firepath/pages/career/job_history_page.dart';
 import 'package:firepath/pages/career/career_intelligence_page.dart';
 import 'package:firepath/pages/career/career_longevity_page.dart';
 import 'package:firepath/pages/career/daily_focus_page.dart';
@@ -257,6 +258,12 @@ class AppRouter {
                 pageBuilder: (context, state) =>
                     const NoTransitionPage(child: CareerVaultPage()),
                 routes: [
+                  GoRoute(
+                    path: 'job-history',
+                    name: 'job_history',
+                    pageBuilder: (context, state) =>
+                        const MaterialPage(child: JobHistoryPage()),
+                  ),
                   GoRoute(
                     path: 'goals',
                     name: 'career_goals',
@@ -614,6 +621,7 @@ class AppRoutes {
 
   static const String home = '/home';
   static const String myPath = '/path';
+  static const String jobHistory = '/path/job-history';
   static const String careerGoals = '/path/goals';
   static const String myPathLegacy = '/task-book/customize';
   static const String training = '/training';
