@@ -79,6 +79,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
   _DriveActivity _driveActivity = _DriveActivity.response;
   CareerRecordOutcome? _skillOutcome;
   bool _shareWithDepartment = false;
+  int _priorityRank = 3;
   List<String> _quickActionKeys =
       List<String>.from(QuickLogPreferencesStore.defaultQuickActionKeys);
   List<QuickLogTracker> _pinnedTrackers = const [];
@@ -159,6 +160,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                   skillOutcome: _skillOutcome,
                   skillStats: _skillStats,
                   shareWithDepartment: _shareWithDepartment,
+                  priorityRank: _priorityRank,
                   departmentConnected: context.watch<AppModeController>().departmentLink != null,
                   onEmergentChanged: (value) =>
                       setState(() => _emergent = value),
@@ -170,6 +172,8 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                       setState(() => _skillOutcome = value),
                   onShareChanged: (value) =>
                       setState(() => _shareWithDepartment = value),
+                  onPriorityRankChanged: (value) =>
+                      setState(() => _priorityRank = value),
                   onBack: () => setState(() => _choice = null),
                   onSave: _save,
                   onMoreDetails: () => Navigator.of(context)
@@ -384,6 +388,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
         ..._detailsFor(mode, title),
         'visibility': _shareWithDepartment ? 'department_shared' : 'personal',
         'shareWithDepartment': _shareWithDepartment,
+        'priorityRank': _priorityRank,
       },
       createdAt: now,
       updatedAt: now,
@@ -825,12 +830,14 @@ class _ConfirmStep extends StatelessWidget {
   final CareerRecordOutcome? skillOutcome;
   final CareerSuccessStats? skillStats;
   final bool shareWithDepartment;
+  final int priorityRank;
   final bool departmentConnected;
   final ValueChanged<bool> onEmergentChanged;
   final ValueChanged<bool> onTransportChanged;
   final ValueChanged<_DriveActivity> onDriveActivityChanged;
   final ValueChanged<CareerRecordOutcome?> onSkillOutcomeChanged;
   final ValueChanged<bool> onShareChanged;
+  final ValueChanged<int> onPriorityRankChanged;
   final VoidCallback onBack;
   final VoidCallback onSave;
   final VoidCallback onMoreDetails;
@@ -851,12 +858,14 @@ class _ConfirmStep extends StatelessWidget {
     required this.skillOutcome,
     required this.skillStats,
     required this.shareWithDepartment,
+    required this.priorityRank,
     required this.departmentConnected,
     required this.onEmergentChanged,
     required this.onTransportChanged,
     required this.onDriveActivityChanged,
     required this.onSkillOutcomeChanged,
     required this.onShareChanged,
+    required this.onPriorityRankChanged,
     required this.onBack,
     required this.onSave,
     required this.onMoreDetails,
@@ -907,6 +916,39 @@ class _ConfirmStep extends StatelessWidget {
                 : 'Anything worth remembering later…',
             border: OutlineInputBorder(),
           ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'How important is this entry?',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Rank it now so you can find your strongest or most important records later.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: List.generate(5, (index) {
+            final rank = index + 1;
+            return ChoiceChip(
+              avatar: Icon(
+                rank <= priorityRank
+                    ? Icons.star_rounded
+                    : Icons.star_border_rounded,
+                size: 18,
+              ),
+              label: Text('$rank'),
+              selected: rank == priorityRank,
+              onSelected: (_) => onPriorityRankChanged(rank),
+            );
+          }),
         ),
         const SizedBox(height: 14),
         Text(
