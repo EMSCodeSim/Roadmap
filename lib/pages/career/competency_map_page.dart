@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firepath/widgets/fireops_practice_card.dart';
+import 'package:firepath/models/career_path.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -209,6 +211,10 @@ class _CompetencyMapPageState extends State<CompetencyMapPage> {
                 value: item.verifiedEvidenceCount.toString(),
               ),
               const SizedBox(height: 18),
+              if (context.read<AppState>().profile.effectiveCareerPath != CareerPath.ems &&
+                  CareerPathCopy.trackLabelForGoalCategory(context.read<AppState>().roadmap?.goal.category ?? '') != 'EMS' &&
+                  (item.verifiedEvidenceCount == 0 || item.mastery.any((skill) => skill.status == 'REASSESS' || skill.status == 'NEEDS_IMPROVEMENT')))
+                FireOpsPracticeCard(topic: item.name, records: _records),
               Text(
                 'Supporting evidence',
                 style: Theme.of(context)

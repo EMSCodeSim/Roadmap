@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firepath/widgets/fireops_practice_card.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -175,6 +176,8 @@ class _DailyFocusPageState extends State<DailyFocusPage> {
                       ),
                     ),
                   ),
+                if (!suppressExternalLearning && focusTopic != null)
+                  FireOpsPracticeCard(topic: focusTopic, records: _records, maxMinutes: switch (_mode) { DailyFocusMode.fifteen => 15, DailyFocusMode.thirty => 30, DailyFocusMode.sixty => 60, DailyFocusMode.crew => null }),
                 if (ecosystemRecommendation != null) ...[
                   const SizedBox(height: 12),
                   EcosystemRecommendationCard(
