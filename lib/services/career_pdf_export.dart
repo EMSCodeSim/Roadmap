@@ -73,6 +73,7 @@ class CareerPdfExport {
     required AppState app,
     required List<CareerRecord> records,
     required CareerExportIdentity identity,
+    List<Map<String, dynamic>> jobHistory = const [],
   }) async {
     final snapshot = CareerIntelligence.analyze(records);
     final advancement = AdvancementAnalyzer.analyze(app: app, records: records);
@@ -92,6 +93,11 @@ class CareerPdfExport {
             ('Career highlights', '${snapshot.highlightCount}'),
           ]),
           pw.SizedBox(height: 18),
+          if (jobHistory.isNotEmpty) ...[
+            _sectionTitle('Employment History'),
+            ..._jobHistoryLines(jobHistory),
+            pw.SizedBox(height: 12),
+          ],
           _sectionTitle('Career Direction'),
           _body('Current role: ${_roles(app)}'),
           _body(
@@ -152,6 +158,7 @@ class CareerPdfExport {
     required AppState app,
     required List<CareerRecord> records,
     required CareerExportIdentity identity,
+    List<Map<String, dynamic>> jobHistory = const [],
   }) async {
     final highlights =
         records
@@ -203,6 +210,10 @@ class CareerPdfExport {
             _body(app.profile.departmentName!.trim()),
           if (app.selectedGoal != null)
             _body('Career development target: ${app.selectedGoal!.title}'),
+          if (jobHistory.isNotEmpty) ...[
+            _resumeHeading('PROFESSIONAL EXPERIENCE'),
+            ..._resumeJobHistory(jobHistory),
+          ],
           _resumeHeading('CREDENTIALS'),
           pw.Wrap(
             spacing: 10,
@@ -234,6 +245,7 @@ class CareerPdfExport {
     required AppState app,
     required List<CareerRecord> records,
     required CareerExportIdentity identity,
+    List<Map<String, dynamic>> jobHistory = const [],
   }) async {
     final advancement = AdvancementAnalyzer.analyze(app: app, records: records);
     final stories = advancement.promotionStories;
@@ -282,6 +294,11 @@ class CareerPdfExport {
           _sectionTitle('Interview Story Bank'),
           ...stories.take(10).map((record) => _storyBlock(record)),
           pw.SizedBox(height: 12),
+          if (jobHistory.isNotEmpty) ...[
+            _sectionTitle('Employment History'),
+            ..._jobHistoryLines(jobHistory),
+            pw.SizedBox(height: 12),
+          ],
           _sectionTitle('Credentials'),
           ..._credentialLines(app),
           pw.SizedBox(height: 12),
@@ -495,6 +512,72 @@ class CareerPdfExport {
       ],
     ),
   );
+
+  static Iterable<pw.Widget> _jobHistoryLines(
+    List<Map<String, dynamic>> entries,
+  ) {
+    final sorted = [...entries]
+      ..sort((a, b) => _jobStart(b).compareTo(_jobStart(a)));
+    return sorted.map((entry) {
+      final title = (entry['title'] as String? ?? '').trim();
+      final employer = (entry['employer'] as String? ?? '').trim();
+      final location = (entry['location'] as String? ?? '').trim();
+      final start = _jobDate(entry['startDate'] as String?);
+      final current = entry['isCurrent'] as bool? ?? false;
+      final end = current ? 'Present' : _jobDate(entry['endDate'] as String?);
+      final notes = (entry['notes'] as String? ?? '').trim();
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 5),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            _body('$title — $employer'),
+            _body('$start – $end${location.isEmpty ? '' : ' · $location'}'),
+            if (notes.isNotEmpty) _body(notes),
+          ],
+        ),
+      );
+    });
+  }
+
+  static Iterable<pw.Widget> _resumeJobHistory(
+    List<Map<String, dynamic>> entries,
+  ) {
+    final sorted = [...entries]
+      ..sort((a, b) => _jobStart(b).compareTo(_jobStart(a)));
+    return sorted.map((entry) {
+      final title = (entry['title'] as String? ?? '').trim();
+      final employer = (entry['employer'] as String? ?? '').trim();
+      final location = (entry['location'] as String? ?? '').trim();
+      final start = _jobDate(entry['startDate'] as String?);
+      final current = entry['isCurrent'] as bool? ?? false;
+      final end = current ? 'Present' : _jobDate(entry['endDate'] as String?);
+      final notes = (entry['notes'] as String? ?? '').trim();
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 7),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('$title — $employer',
+                style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
+            pw.Text('$start – $end${location.isEmpty ? '' : ' · $location'}',
+                style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
+            if (notes.isNotEmpty) _body(notes),
+          ],
+        ),
+      );
+    });
+  }
+
+  static DateTime _jobStart(Map<String, dynamic> entry) =>
+      DateTime.tryParse(entry['startDate'] as String? ?? '') ??
+      DateTime.fromMillisecondsSinceEpoch(0);
+
+  static String _jobDate(String? raw) {
+    final date = DateTime.tryParse(raw ?? '');
+    if (date == null) return 'Date not set';
+    return '${date.month}/${date.year}';
+  }
 
   static Iterable<pw.Widget> _credentialLines(AppState app) {
     final certs = app.certifications
