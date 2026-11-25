@@ -44,6 +44,16 @@ extension _SimpleModeX on _SimpleMode {
         _SimpleMode.career => Icons.military_tech_outlined,
         _SimpleMode.taskBook => Icons.fact_check_outlined,
       };
+
+  Color get color => switch (this) {
+        _SimpleMode.training => const Color(0xFF2563EB),
+        _SimpleMode.call => const Color(0xFFDC2626),
+        _SimpleMode.skill => const Color(0xFF0D9488),
+        _SimpleMode.exposure => const Color(0xFFEA580C),
+        _SimpleMode.drive => const Color(0xFFD97706),
+        _SimpleMode.career => const Color(0xFF7C3AED),
+        _SimpleMode.taskBook => const Color(0xFF475569),
+      };
 }
 
 class SimpleQuickLogSheet extends StatefulWidget {
@@ -603,26 +613,44 @@ class _CategoryStep extends StatelessWidget {
           itemCount: visibleModes.length,
           itemBuilder: (context, index) {
             final mode = visibleModes[index];
-            return FilledButton.tonal(
-              onPressed: () => onPick(mode),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.all(14),
-                alignment: Alignment.centerLeft,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(mode.icon, size: 27),
-                  const SizedBox(height: 7),
-                  Text(
-                    mode.label,
-                    style: const TextStyle(fontWeight: FontWeight.w900),
+            return Material(
+              color: mode.color.withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              child: InkWell(
+                onTap: () => onPick(mode),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(
+                      color: mode.color.withValues(alpha: 0.24),
+                    ),
                   ),
-                ],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: mode.color,
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(mode.icon, size: 22, color: Colors.white),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        mode.label,
+                        style: TextStyle(
+                          color: mode.color,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
           },
