@@ -30,6 +30,24 @@ enum _CareerFilter {
   achievements,
 }
 
+enum _RecordSort {
+  newest,
+  oldest,
+  highestRanked,
+  lowestRanked,
+  title,
+}
+
+extension _RecordSortX on _RecordSort {
+  String get label => switch (this) {
+        _RecordSort.newest => 'Newest first',
+        _RecordSort.oldest => 'Oldest first',
+        _RecordSort.highestRanked => 'Highest ranked',
+        _RecordSort.lowestRanked => 'Lowest ranked',
+        _RecordSort.title => 'Name A–Z',
+      };
+}
+
 extension _CareerFilterX on _CareerFilter {
   String get label => switch (this) {
         _CareerFilter.all => 'ALL',
@@ -60,6 +78,8 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
   bool _career = true;
   int _year = DateTime.now().year;
   _CareerFilter _filter = _CareerFilter.all;
+  _RecordSort _sort = _RecordSort.newest;
+  String? _activityTitle;
 
   Future<void> _pickFilter() async {
     final selected = await showModalBottomSheet<_CareerFilter>(
@@ -164,8 +184,12 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
 
   List<CareerRecord> get _visibleRecords {
     final query = _search.text.trim().toLowerCase();
-    return _periodRecords.where((record) {
+    final records = _periodRecords.where((record) {
       if (!_matchesFilter(record)) return false;
+      if (_activityTitle != null &&
+          record.title.trim().toLowerCase() != _activityTitle!.toLowerCase()) {
+        return false;
+      }
       if (query.isEmpty) return true;
       final text = [
         record.title,
@@ -177,6 +201,64 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
       ].join(' ').toLowerCase();
       return text.contains(query);
     }).toList();
+
+    records.sort((a, b) => switch (_sort) {
+          _RecordSort.newest => b.date.compareTo(a.date),
+          _RecordSort.oldest => a.date.compareTo(b.date),
+          _RecordSort.highestRanked =>
+            _priorityOf(b).compareTo(_priorityOf(a)),
+          _RecordSort.lowestRanked =>
+            _priorityOf(a).compareTo(_priorityOf(b)),
+          _RecordSort.title =>
+            a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+        });
+    return records;
+  }
+
+  int _priorityOf(CareerRecord record) =>
+      (record.details['priorityRank'] as num?)?.toInt() ?? 0;
+
+  List<MapEntry<String, int>> get _activityCounts {
+    final counts = <String, int>{};
+    final labels = <String, String>{};
+    for (final record in _periodRecords) {
+      final title = record.title.trim();
+      if (title.isEmpty) continue;
+      final key = title.toLowerCase();
+      labels[key] = labels[key] ?? title;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    final entries = counts.entries
+        .map((entry) => MapEntry(labels[entry.key]!, entry.value))
+        .toList();
+    entries.sort((a, b) {
+      final byCount = b.value.compareTo(a.value);
+      return byCount != 0 ? byCount : a.key.compareTo(b.key);
+    });
+    return entries;
+  }
+
+  Future<void> _pickSort() async {
+    final selected = await showModalBottomSheet<_RecordSort>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: _RecordSort.values
+              .map(
+                (sort) => RadioListTile<_RecordSort>(
+                  value: sort,
+                  groupValue: _sort,
+                  title: Text(sort.label),
+                  onChanged: (value) => Navigator.pop(sheetContext, value),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+    if (selected != null && mounted) setState(() => _sort = selected);
   }
 
   bool _matchesFilter(CareerRecord record) => switch (_filter) {
@@ -292,14 +374,76 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 ),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 48,
-                child: FilledButton.tonalIcon(
-                  onPressed: _pickFilter,
-                  icon: const Icon(Icons.filter_alt_outlined),
-                  label: Text('Filter: ${_filter.label}'),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: FilledButton.tonalIcon(
+                        onPressed: _pickFilter,
+                        icon: const Icon(Icons.filter_alt_outlined),
+                        label: Text('Filter: ${_filter.label}'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: _pickSort,
+                        icon: const Icon(Icons.sort_rounded),
+                        label: Text(_sort.label),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              if (_activityCounts.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'LOGGED ACTIVITIES',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: cs.onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                    if (_activityTitle != null)
+                      TextButton(
+                        onPressed: () => setState(() => _activityTitle = null),
+                        child: const Text('Show all'),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Tap an activity to show only those entries, then choose how to sort them.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _activityCounts
+                      .map(
+                        (entry) => FilterChip(
+                          label: Text('${entry.key}  ${entry.value}'),
+                          selected: _activityTitle?.toLowerCase() ==
+                              entry.key.toLowerCase(),
+                          onSelected: (selected) => setState(
+                            () => _activityTitle = selected ? entry.key : null,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
               const SizedBox(height: 20),
               if (_loading)
                 const Center(
@@ -991,6 +1135,7 @@ class _RecordCard extends StatelessWidget {
       record.category,
       if (amount != null) amount,
       if (record.outcome != null) record.outcome!.label,
+      if (_priority(record) > 0) 'Rank ${_priority(record)}/5',
     ].where((value) => value.trim().isNotEmpty).join(' • ');
 
     final photoCount =
@@ -1069,6 +1214,9 @@ class _RecordCard extends StatelessWidget {
       ),
     );
   }
+
+  static int _priority(CareerRecord record) =>
+      (record.details['priorityRank'] as num?)?.toInt() ?? 0;
 
   static IconData _icon(CareerRecord record) {
     if (CareerStats.isMedicalExposureRecord(record)) {
@@ -1163,6 +1311,8 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
           .toList();
   late CareerRecordOutcome? _outcome = widget.record.outcome;
   late bool _highlight = widget.record.highlight;
+  late int _priorityRank =
+      (widget.record.details['priorityRank'] as num?)?.toInt() ?? 3;
   late DateTime _date = widget.record.date;
 
   @override
@@ -1301,6 +1451,34 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
                   hintText: 'leadership, airway, driver training',
                   helperText: 'Separate tags with commas',
                 ),
+              ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'IMPORTANCE RANK',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                children: List.generate(5, (index) {
+                  final rank = index + 1;
+                  return ChoiceChip(
+                    avatar: Icon(
+                      rank <= _priorityRank
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      size: 18,
+                    ),
+                    label: Text('$rank'),
+                    selected: rank == _priorityRank,
+                    onSelected: (_) => setState(() => _priorityRank = rank),
+                  );
+                }),
               ),
               const SizedBox(height: 16),
               Row(
@@ -1488,6 +1666,7 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
         details: {
           ...widget.record.details,
           'photoAttachments': _photos,
+          'priorityRank': _priorityRank,
           'fullLog': true,
         },
         createdAt: widget.record.createdAt,
