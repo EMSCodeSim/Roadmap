@@ -21,6 +21,7 @@ class PromotionPortfolioExport {
     required AppState app,
     required List<CareerRecord> records,
     required CareerExportIdentity identity,
+    List<Map<String, dynamic>> jobHistory = const [],
   }) async {
     final snapshot = CareerIntelligence.analyze(records);
     final advancement = AdvancementAnalyzer.analyze(app: app, records: records);
@@ -55,6 +56,11 @@ class PromotionPortfolioExport {
           _sectionTitle('Selected Accomplishments'),
           ..._recordBullets(_bestRecords(records).take(7)),
           pw.SizedBox(height: 10),
+          if (jobHistory.isNotEmpty) ...[
+            _sectionTitle('Employment History'),
+            ..._jobHistoryLines(jobHistory),
+            pw.SizedBox(height: 10),
+          ],
           _sectionTitle('Current Credentials'),
           ..._credentialLines(app, limit: 16),
           pw.SizedBox(height: 10),
@@ -80,6 +86,7 @@ class PromotionPortfolioExport {
     required AppState app,
     required List<CareerRecord> records,
     required CareerExportIdentity identity,
+    List<Map<String, dynamic>> jobHistory = const [],
   }) async {
     final snapshot = CareerIntelligence.analyze(records);
     final advancement = AdvancementAnalyzer.analyze(app: app, records: records);
@@ -146,6 +153,11 @@ class PromotionPortfolioExport {
           _sectionTitle('Projects, Achievements & Impact'),
           ..._recordBullets(projects.take(10)),
           pw.SizedBox(height: 12),
+          if (jobHistory.isNotEmpty) ...[
+            _sectionTitle('Employment History'),
+            ..._jobHistoryLines(jobHistory),
+            pw.SizedBox(height: 12),
+          ],
           _sectionTitle('Credentials'),
           ..._credentialLines(app, limit: 24),
           pw.SizedBox(height: 12),
@@ -482,6 +494,44 @@ class PromotionPortfolioExport {
         if (impact.isNotEmpty) pw.Text('Result / impact: $impact', style: pw.TextStyle(fontSize: 8.5, lineSpacing: 2, color: _green)),
       ]),
     );
+  }
+
+  static Iterable<pw.Widget> _jobHistoryLines(
+    List<Map<String, dynamic>> entries,
+  ) {
+    final sorted = [...entries]
+      ..sort((a, b) => _jobStart(b).compareTo(_jobStart(a)));
+    return sorted.map((entry) {
+      final title = (entry['title'] as String? ?? '').trim();
+      final employer = (entry['employer'] as String? ?? '').trim();
+      final location = (entry['location'] as String? ?? '').trim();
+      final start = _jobDate(entry['startDate'] as String?);
+      final end = (entry['isCurrent'] as bool? ?? false)
+          ? 'Present'
+          : _jobDate(entry['endDate'] as String?);
+      final notes = (entry['notes'] as String? ?? '').trim();
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 5),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            _body('$title — $employer'),
+            _body('$start – $end${location.isEmpty ? '' : ' · $location'}'),
+            if (notes.isNotEmpty) _body(notes),
+          ],
+        ),
+      );
+    });
+  }
+
+  static DateTime _jobStart(Map<String, dynamic> entry) =>
+      DateTime.tryParse(entry['startDate'] as String? ?? '') ??
+      DateTime.fromMillisecondsSinceEpoch(0);
+
+  static String _jobDate(String? raw) {
+    final date = DateTime.tryParse(raw ?? '');
+    if (date == null) return 'Date not set';
+    return '${date.month}/${date.year}';
   }
 
   static Iterable<pw.Widget> _recordBullets(Iterable<CareerRecord> records) {
