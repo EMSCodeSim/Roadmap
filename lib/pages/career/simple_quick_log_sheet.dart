@@ -79,7 +79,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
   _DriveActivity _driveActivity = _DriveActivity.response;
   CareerRecordOutcome? _skillOutcome;
   bool _shareWithDepartment = false;
-  int _priorityRank = 3;
+  int _priorityRank = 0;
   List<String> _quickActionKeys =
       List<String>.from(QuickLogPreferencesStore.defaultQuickActionKeys);
   List<QuickLogTracker> _pinnedTrackers = const [];
@@ -935,20 +935,27 @@ class _ConfirmStep extends StatelessWidget {
         Wrap(
           spacing: 6,
           runSpacing: 6,
-          children: List.generate(5, (index) {
-            final rank = index + 1;
-            return ChoiceChip(
-              avatar: Icon(
-                rank <= priorityRank
-                    ? Icons.star_rounded
-                    : Icons.star_border_rounded,
-                size: 18,
-              ),
-              label: Text('$rank'),
-              selected: rank == priorityRank,
-              onSelected: (_) => onPriorityRankChanged(rank),
-            );
-          }),
+          children: [
+            ChoiceChip(
+              label: const Text('Not ranked'),
+              selected: priorityRank == 0,
+              onSelected: (_) => onPriorityRankChanged(0),
+            ),
+            ...List.generate(5, (index) {
+              final rank = index + 1;
+              return ChoiceChip(
+                avatar: Icon(
+                  rank <= priorityRank
+                      ? Icons.star_rounded
+                      : Icons.star_border_rounded,
+                  size: 18,
+                ),
+                label: Text(rank == 1 ? '1 Low' : rank == 5 ? '5 High' : '$rank'),
+                selected: rank == priorityRank,
+                onSelected: (_) => onPriorityRankChanged(rank),
+              );
+            }),
+          ],
         ),
         const SizedBox(height: 14),
         Text(
