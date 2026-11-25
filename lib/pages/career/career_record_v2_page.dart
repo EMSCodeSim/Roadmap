@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -385,6 +388,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                       padding: const EdgeInsets.only(bottom: 9),
                       child: _RecordCard(
                         record: record,
+                        onOpen: () => _editRecord(record),
                         onEdit: () => _editRecord(record),
                         onDelete: () => _deleteRecord(record),
                       ),
@@ -912,7 +916,14 @@ class _ProcedureRateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
+    final photoCount = (record.details['photoAttachments'] as List?)?.length ?? 0;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
       constraints: const BoxConstraints(minHeight: 68),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
@@ -957,11 +968,13 @@ class _ProcedureRateCard extends StatelessWidget {
 
 class _RecordCard extends StatelessWidget {
   final CareerRecord record;
+  final VoidCallback onOpen;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _RecordCard({
     required this.record,
+    required this.onOpen,
     required this.onEdit,
     required this.onDelete,
   });
@@ -1021,18 +1034,30 @@ class _RecordCard extends StatelessWidget {
               ],
             ),
           ),
+          if (photoCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 2),
+              child: Badge(
+                label: Text('$photoCount'),
+                child: const Icon(Icons.photo_library_outlined, size: 20),
+              ),
+            ),
           PopupMenuButton<String>(
             tooltip: 'Record options',
             onSelected: (value) {
+              if (value == 'open') onOpen();
               if (value == 'edit') onEdit();
               if (value == 'delete') onDelete();
             },
             itemBuilder: (context) => const [
-              PopupMenuItem(value: 'edit', child: Text('Edit')),
+              PopupMenuItem(value: 'open', child: Text('Open full log')),
+              PopupMenuItem(value: 'edit', child: Text('Edit details')),
               PopupMenuItem(value: 'delete', child: Text('Delete')),
             ],
           ),
         ],
+      ),
+        ),
       ),
     );
   }
@@ -1115,6 +1140,19 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
       TextEditingController(text: widget.record.hours?.toString() ?? '');
   late final TextEditingController _note =
       TextEditingController(text: widget.record.summary ?? '');
+  late final TextEditingController _role =
+      TextEditingController(text: widget.record.roleOrAssignment ?? '');
+  late final TextEditingController _impact =
+      TextEditingController(text: widget.record.impact ?? '');
+  late final TextEditingController _evidence =
+      TextEditingController(text: widget.record.evidenceReference ?? '');
+  late final TextEditingController _tags =
+      TextEditingController(text: widget.record.tags.join(', '));
+  late List<Map<String, dynamic>> _photos =
+      ((widget.record.details['photoAttachments'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
   late CareerRecordOutcome? _outcome = widget.record.outcome;
   late bool _highlight = widget.record.highlight;
   late DateTime _date = widget.record.date;
@@ -1126,15 +1164,19 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
     _count.dispose();
     _hours.dispose();
     _note.dispose();
+    _role.dispose();
+    _impact.dispose();
+    _evidence.dispose();
+    _tags.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Edit career record'),
+      title: const Text('Full log details'),
       content: SizedBox(
-        width: 520,
+        width: 620,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1207,11 +1249,126 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: _note,
-                minLines: 2,
-                maxLines: 4,
-                decoration: const InputDecoration(labelText: 'Note'),
+                controller: _role,
+                decoration: const InputDecoration(
+                  labelText: 'Your role or assignment',
+                  hintText: 'Lead medic, driver, instructor, acting officer',
+                ),
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _note,
+                minLines: 3,
+                maxLines: 7,
+                decoration: const InputDecoration(
+                  labelText: 'Detailed narrative',
+                  hintText: 'What happened, what you did, and what you learned',
+                  alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _impact,
+                minLines: 2,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  labelText: 'Result or impact',
+                  hintText: 'Outcome, improvement, recognition, or lesson',
+                  alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _evidence,
+                decoration: const InputDecoration(
+                  labelText: 'Supporting reference',
+                  hintText: 'Course number, incident number, certificate, or document',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _tags,
+                decoration: const InputDecoration(
+                  labelText: 'Tags',
+                  hintText: 'leadership, airway, driver training',
+                  helperText: 'Separate tags with commas',
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'PHOTOS',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _photos.length >= 6 ? null : _addPhotos,
+                    icon: const Icon(Icons.add_photo_alternate_outlined),
+                    label: const Text('Add photos'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_photos.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Add up to 6 photos of certificates, training, equipment, or other supporting evidence. Do not attach patient-identifying information.',
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: List.generate(_photos.length, (index) {
+                    final photo = _photos[index];
+                    final encoded = photo['data'] as String? ?? '';
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: encoded.isEmpty
+                              ? const SizedBox(
+                                  width: 92,
+                                  height: 92,
+                                  child: ColoredBox(color: Colors.black12),
+                                )
+                              : Image.memory(
+                                  base64Decode(encoded),
+                                  width: 92,
+                                  height: 92,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const SizedBox(
+                                    width: 92,
+                                    height: 92,
+                                    child: ColoredBox(color: Colors.black12),
+                                  ),
+                                ),
+                        ),
+                        Positioned(
+                          top: -8,
+                          right: -8,
+                          child: IconButton.filled(
+                            tooltip: 'Remove photo',
+                            visualDensity: VisualDensity.compact,
+                            iconSize: 16,
+                            onPressed: () => setState(() => _photos.removeAt(index)),
+                            icon: const Icon(Icons.close),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
             ],
           ),
         ),
@@ -1223,10 +1380,44 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
         ),
         FilledButton(
           onPressed: _save,
-          child: const Text('Save Changes'),
+          child: const Text('Save full log'),
         ),
       ],
     );
+  }
+
+  Future<void> _addPhotos() async {
+    final remaining = 6 - _photos.length;
+    if (remaining <= 0) return;
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+      allowMultiple: true,
+      withData: true,
+    );
+    if (result == null || !mounted) return;
+
+    final additions = <Map<String, dynamic>>[];
+    var skippedLarge = false;
+    for (final file in result.files.take(remaining)) {
+      final bytes = file.bytes;
+      if (bytes == null) continue;
+      if (bytes.length > 5 * 1024 * 1024) {
+        skippedLarge = true;
+        continue;
+      }
+      additions.add({
+        'name': file.name,
+        'data': base64Encode(bytes),
+        'addedAt': DateTime.now().toIso8601String(),
+      });
+    }
+    setState(() => _photos.addAll(additions));
+    if (skippedLarge && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Photos larger than 5 MB were skipped.')),
+      );
+    }
   }
 
   Future<void> _pickDate() async {
@@ -1266,19 +1457,31 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
         title: title,
         category: _category.text.trim(),
         date: _date,
-        roleOrAssignment: widget.record.roleOrAssignment,
+        roleOrAssignment:
+            _role.text.trim().isEmpty ? null : _role.text.trim(),
         summary: _note.text.trim().isEmpty ? null : _note.text.trim(),
-        impact: widget.record.impact,
-        evidenceReference: widget.record.evidenceReference,
+        impact: _impact.text.trim().isEmpty ? null : _impact.text.trim(),
+        evidenceReference:
+            _evidence.text.trim().isEmpty ? null : _evidence.text.trim(),
         hours: hours,
         repetitions: count,
-        tags: widget.record.tags,
+        tags: _tags.text
+            .split(',')
+            .map((tag) => tag.trim())
+            .where((tag) => tag.isNotEmpty)
+            .toSet()
+            .toList(),
         relatedGoalId: widget.record.relatedGoalId,
         relatedRequirementId: widget.record.relatedRequirementId,
         relatedTaskId: widget.record.relatedTaskId,
         highlight: _highlight,
         trackingKey: widget.record.trackingKey,
         outcome: _outcome,
+        details: {
+          ...widget.record.details,
+          'photoAttachments': _photos,
+          'fullLog': true,
+        },
         createdAt: widget.record.createdAt,
         updatedAt: DateTime.now(),
       ),
