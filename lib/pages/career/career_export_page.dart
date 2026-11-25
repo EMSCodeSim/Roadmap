@@ -294,6 +294,7 @@ class _CareerExportPageState extends State<CareerExportPage> {
       app: app,
       records: _records,
       identity: _identity,
+      jobHistory: _jobHistory,
     );
     await Printing.sharePdf(
       bytes: bytes,
@@ -308,6 +309,7 @@ class _CareerExportPageState extends State<CareerExportPage> {
         app: app,
         records: _records,
         identity: _identity,
+        jobHistory: _jobHistory,
       ),
     );
   });
@@ -317,6 +319,7 @@ class _CareerExportPageState extends State<CareerExportPage> {
       app: app,
       records: _records,
       identity: _identity,
+      jobHistory: _jobHistory,
     );
     await Printing.sharePdf(
       bytes: bytes,
@@ -331,6 +334,7 @@ class _CareerExportPageState extends State<CareerExportPage> {
         app: app,
         records: _records,
         identity: _identity,
+        jobHistory: _jobHistory,
       ),
     );
   });
@@ -340,6 +344,7 @@ class _CareerExportPageState extends State<CareerExportPage> {
       app: app,
       records: _records,
       identity: _identity,
+      jobHistory: _jobHistory,
     );
     await Printing.sharePdf(
       bytes: bytes,
@@ -354,6 +359,7 @@ class _CareerExportPageState extends State<CareerExportPage> {
         app: app,
         records: _records,
         identity: _identity,
+        jobHistory: _jobHistory,
       ),
     );
   });
@@ -363,6 +369,7 @@ class _CareerExportPageState extends State<CareerExportPage> {
       app: app,
       records: _records,
       identity: _identity,
+      jobHistory: _jobHistory,
     );
     await Printing.sharePdf(
       bytes: bytes,
