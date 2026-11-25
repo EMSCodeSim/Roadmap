@@ -430,12 +430,26 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            _shareWithDepartment
-                ? (shared
-                    ? '$title logged and shared with your department'
-                    : '$title logged. Department sharing will retry later.')
-                : '$title logged privately',
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF166534),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _shareWithDepartment
+                      ? (shared
+                          ? '$title logged and shared with your department'
+                          : '$title logged. Department sharing will retry later.')
+                      : '$title added to your career story',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
