@@ -517,7 +517,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 ],
                 const SizedBox(height: 22),
                 Text(
-                  'ALL RECORDS',
+                  _activityTitle == null ? 'CAREER JOURNAL' : _activityTitle!.toUpperCase(),
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: cs.onSurfaceVariant,
@@ -1126,6 +1126,7 @@ class _RecordCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final accent = _recordColor(record);
     final amount = record.hours != null
         ? CareerStats.formatDurationHours(record.hours!)
         : record.repetitions > 1
@@ -1150,13 +1151,21 @@ class _RecordCard extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 76),
           padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
           decoration: BoxDecoration(
-            color: cs.surface,
+            color: accent.withValues(alpha: 0.045),
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
+            border: Border.all(color: accent.withValues(alpha: 0.18)),
           ),
           child: Row(
             children: [
-              Icon(_icon(record), color: cs.primary, size: 25),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.13),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(_icon(record), color: accent, size: 23),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1177,12 +1186,47 @@ class _RecordCard extends StatelessWidget {
                             .bodySmall
                             ?.copyWith(color: cs.onSurfaceVariant),
                       ),
-                    Text(
-                      CareerStats.formatDate(record.date),
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelSmall
-                          ?.copyWith(color: cs.onSurfaceVariant),
+                    if ((record.summary ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        record.summary!.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                              height: 1.3,
+                            ),
+                      ),
+                    ],
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 12,
+                          color: cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          CareerStats.formatDate(record.date),
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                        if (_priority(record) > 0) ...[
+                          const SizedBox(width: 10),
+                          Icon(Icons.star_rounded, size: 14, color: Colors.amber.shade700),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${_priority(record)}/5',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.amber.shade900,
+                                ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -1217,6 +1261,22 @@ class _RecordCard extends StatelessWidget {
 
   static int _priority(CareerRecord record) =>
       (record.details['priorityRank'] as num?)?.toInt() ?? 0;
+
+  static Color _recordColor(CareerRecord record) {
+    if (CareerStats.isExposureRecord(record)) return const Color(0xFFEA580C);
+    if (CareerStats.isDrivingRecord(record)) return const Color(0xFFD97706);
+    return switch (record.type) {
+      CareerRecordType.operationalExperience => const Color(0xFFDC2626),
+      CareerRecordType.skill => const Color(0xFF0D9488),
+      CareerRecordType.training => const Color(0xFF2563EB),
+      CareerRecordType.achievement => const Color(0xFFCA8A04),
+      CareerRecordType.leadership => const Color(0xFF7C3AED),
+      CareerRecordType.teaching => const Color(0xFF7C3AED),
+      CareerRecordType.project => const Color(0xFF6366F1),
+      CareerRecordType.education => const Color(0xFF0284C7),
+      CareerRecordType.taskBookEvidence => const Color(0xFF475569),
+    };
+  }
 
   static IconData _icon(CareerRecord record) {
     if (CareerStats.isMedicalExposureRecord(record)) {
