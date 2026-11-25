@@ -8,6 +8,7 @@ import 'package:firepath/models/career_record.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/services/career_pdf_export.dart';
 import 'package:firepath/services/career_record_store.dart';
+import 'package:firepath/services/local_store.dart';
 import 'package:firepath/services/promotion_portfolio_export.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
@@ -21,12 +22,14 @@ class CareerExportPage extends StatefulWidget {
 
 class _CareerExportPageState extends State<CareerExportPage> {
   final CareerRecordStore _recordsStore = CareerRecordStore();
+  final LocalStore _localStore = LocalStore();
   final CareerExportIdentityStore _identityStore = CareerExportIdentityStore();
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _location = TextEditingController();
   List<CareerRecord> _records = const [];
+  List<Map<String, dynamic>> _jobHistory = const [];
   bool _loading = true;
   bool _working = false;
 
@@ -40,12 +43,15 @@ class _CareerExportPageState extends State<CareerExportPage> {
     final results = await Future.wait([
       _recordsStore.load(),
       _identityStore.load(),
+      _localStore.loadJsonList('fireops.personalJobHistory.v1'),
     ]);
     final records = results[0] as List<CareerRecord>;
     final identity = results[1] as CareerExportIdentity;
+    final jobHistory = results[2] as List<Map<String, dynamic>>;
     if (!mounted) return;
     setState(() {
       _records = records;
+      _jobHistory = jobHistory;
       _name.text = identity.name;
       _email.text = identity.email;
       _phone.text = identity.phone;
@@ -278,6 +284,7 @@ class _CareerExportPageState extends State<CareerExportPage> {
         app: app,
         records: _records,
         identity: _identity,
+         jobHistory: _jobHistory,
       ),
     );
   });
