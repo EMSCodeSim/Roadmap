@@ -1163,6 +1163,19 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                 ),
                 const SizedBox(height: 12),
                 Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: cs.secondaryContainer,
+                      child: Icon(Icons.work_history_outlined, color: cs.onSecondaryContainer),
+                    ),
+                    title: const Text('Job history', style: TextStyle(fontWeight: FontWeight.w800)),
+                    subtitle: const Text('Document employers, roles, and service dates'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => context.push(AppRoutes.jobHistory),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
                   color: const Color(0xFFEAF1FC),
                   child: Padding(
                     padding: const EdgeInsets.all(20),
