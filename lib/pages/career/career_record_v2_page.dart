@@ -1312,7 +1312,7 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
   late CareerRecordOutcome? _outcome = widget.record.outcome;
   late bool _highlight = widget.record.highlight;
   late int _priorityRank =
-      (widget.record.details['priorityRank'] as num?)?.toInt() ?? 3;
+      (widget.record.details['priorityRank'] as num?)?.toInt() ?? 0;
   late DateTime _date = widget.record.date;
 
   @override
@@ -1465,20 +1465,30 @@ class _CareerRecordEditorState extends State<_CareerRecordEditor> {
               const SizedBox(height: 8),
               Wrap(
                 spacing: 6,
-                children: List.generate(5, (index) {
-                  final rank = index + 1;
-                  return ChoiceChip(
-                    avatar: Icon(
-                      rank <= _priorityRank
-                          ? Icons.star_rounded
-                          : Icons.star_border_rounded,
-                      size: 18,
-                    ),
-                    label: Text('$rank'),
-                    selected: rank == _priorityRank,
-                    onSelected: (_) => setState(() => _priorityRank = rank),
-                  );
-                }),
+                runSpacing: 6,
+                children: [
+                  ChoiceChip(
+                    label: const Text('Not ranked'),
+                    selected: _priorityRank == 0,
+                    onSelected: (_) => setState(() => _priorityRank = 0),
+                  ),
+                  ...List.generate(5, (index) {
+                    final rank = index + 1;
+                    return ChoiceChip(
+                      avatar: Icon(
+                        rank <= _priorityRank
+                            ? Icons.star_rounded
+                            : Icons.star_border_rounded,
+                        size: 18,
+                      ),
+                      label: Text(
+                        rank == 1 ? '1 Low' : rank == 5 ? '5 High' : '$rank',
+                      ),
+                      selected: rank == _priorityRank,
+                      onSelected: (_) => setState(() => _priorityRank = rank),
+                    );
+                  }),
+                ],
               ),
               const SizedBox(height: 16),
               Row(
