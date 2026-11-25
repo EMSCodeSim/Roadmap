@@ -404,7 +404,19 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         'Experience and skills recorded',
     ];
 
+    final isCurrentYear = year.year == DateTime.now().year;
     return Card(
+      color: isCurrentYear
+          ? const Color(0xFFEAF2FF)
+          : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(
+          color: isCurrentYear
+              ? const Color(0xFF2563EB).withValues(alpha: 0.35)
+              : cs.outline.withValues(alpha: 0.10),
+        ),
+      ),
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1077,7 +1089,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         surfaceTintColor: Colors.transparent,
         leading: const AppBackButton.toAdvance(),
         title: const Text(
-          'Career Roadmap',
+          'My Career',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         actions: [
@@ -1099,7 +1111,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     width: double.infinity,
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Color(0xFFE7EFFC), Color(0xFFC8D9F8)],
+                        colors: [Color(0xFF071A33), Color(0xFF164E7A)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -1108,7 +1120,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.trending_up_rounded, size: 28),
+                        const Icon(Icons.trending_up_rounded, size: 28, color: Colors.white),
                         const SizedBox(height: 12),
                         Text(
                           'Your growth over time',
