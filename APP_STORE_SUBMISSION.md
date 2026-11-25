@@ -9,6 +9,27 @@
 - iPhone and iPad supported
 - No in-app purchases
 
+## App Store listing copy — personal career record
+
+**Subtitle**  
+Your Fire & EMS Career Record
+
+**Promotional text**  
+Your career record belongs to you. Keep training, certifications, experience, and accomplishments in one place, then plan the next step in your Fire or EMS career.
+
+**Description**  
+Your Fire and EMS career is more than a list of certifications. Responder Roadmap helps you keep the training, credentials, experience, education, and accomplishments you build over time in one personal career record—and turn that record into a clear plan for what comes next.
+
+**Build a career record that grows with you**
+- Record training, classes, experience, education, skills, leadership, teaching, awards, and milestones.
+- Keep certifications and important dates organized.
+- Use Quick Add to capture career records as they happen.
+- Set a career goal, create an editable roadmap, and see progress toward your next step.
+- Use the personal app without joining a department.
+
+**Department tools when you need them**
+If your department uses Responder Roadmap, connect for assigned training, Task Books, and evaluations. Personal career records stay on your device and remain distinct from official department records unless you choose an available sharing workflow.
+
 ## Product positioning
 Responder Roadmap is a professional development, credential, task-book, and department training companion for fire and EMS professionals.
 

@@ -506,7 +506,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                     size: 34, color: cs.onPrimaryContainer),
                 const SizedBox(height: 12),
                 Text(
-                  'One career record. A clearer path forward.',
+                  'Your career record belongs to you.',
                   style: t.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w900,
                     height: 1.12,
@@ -514,7 +514,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Responder Roadmap keeps your Fire and EMS career history organized and helps you see what to work toward next.',
+                  'Build your own Fire and EMS career record. Keep your training, credentials, experience, and accomplishments together, then use your personal Roadmap to choose what comes next.',
                   style: t.bodyMedium?.copyWith(
                     color: cs.onSurfaceVariant,
                     height: 1.45,
@@ -531,23 +531,23 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
           const SizedBox(height: 8),
           const _WelcomeFeatureCard(
             icon: Icons.folder_copy_outlined,
-            title: 'Keep your career record',
+            title: 'Build your career story',
             detail:
-                'Save training, certifications, experience, accomplishments, and important dates.',
+                'Add the training, credentials, experience, and accomplishments you want to carry forward.',
           ),
           const SizedBox(height: 8),
           const _WelcomeFeatureCard(
             icon: Icons.route_outlined,
-            title: 'Build a simple roadmap',
+            title: 'Choose what comes next',
             detail:
-                'Choose where you are now and where you want to go. The app organizes useful next steps.',
+                'Set personal growth goals, see your progress, and update your Roadmap as your career changes.',
           ),
           const SizedBox(height: 8),
           const _WelcomeFeatureCard(
             icon: Icons.apartment_outlined,
-            title: 'Connect to a department when needed',
+            title: 'Use it on your own',
             detail:
-                'Receive assignments, task books, and department training while keeping your personal career history together.',
+                'Start without a department connection. If your department uses Roadmap, connect for assigned training, Task Books, and evaluations.',
           ),
           const SizedBox(height: 12),
           Container(
@@ -564,7 +564,7 @@ class _OnboardingV2PageState extends State<OnboardingV2Page> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Quick setup: choose Fire, EMS, or Both; add your current role and certifications; then select a goal. You can change everything later.',
+                    'Start with what you have: choose Fire, EMS, or Both, add your current role and certifications, and set one goal. Add records and adjust your Roadmap anytime.',
                     style: t.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,
                       height: 1.4,
