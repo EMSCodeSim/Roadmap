@@ -157,12 +157,13 @@ class CareerRecordStore {
     );
   }
 
-  /// Full portable career backup. Version 5 adds custom Task Books + active
-  /// Task Book selection while remaining backward-compatible with v4/v3.
+  /// Full portable career backup. Version 6 adds personal job history while
+  /// remaining backward-compatible with earlier portfolio versions.
   Future<String> exportBackup() async {
     final records = await load();
     final profile = await _store.loadProfile();
     final certifications = await _store.loadCertifications();
+    final jobHistory = await _store.loadJsonList('fireops.personalJobHistory.v1');
     final customRequirements = await _store.loadCustomRequirements();
     final pathOverrides = await _store.loadPathOverrides();
     final certMatches = await _store.loadCertificationMatchConfirmations();
@@ -176,11 +177,12 @@ class CareerRecordStore {
 
     return const JsonEncoder.withIndent('  ').convert({
       'format': 'fireops-career-portfolio',
-      'version': 5,
+      'version': 6,
       'exportedAt': DateTime.now().toIso8601String(),
       'onboardingComplete': onboardingComplete,
       'profile': profile,
       'certifications': certifications,
+      'jobHistory': jobHistory,
       'customRequirements': customRequirements,
       'pathOverrides': pathOverrides,
       'certificationMatchConfirmations': certMatches,
@@ -241,6 +243,7 @@ class CareerRecordStore {
 
       Map<String, dynamic>? profile;
       List<Map<String, dynamic>> certifications = const [];
+      List<Map<String, dynamic>>? jobHistory;
       List<Map<String, dynamic>> customRequirements = const [];
       List<Map<String, dynamic>> pathOverrides = const [];
       Map<String, dynamic>? certificationMatchConfirmations;
@@ -253,6 +256,9 @@ class CareerRecordStore {
       if (isPortfolio) {
         profile = mapValue(map['profile'], 'profile');
         certifications = mapList(map['certifications'], 'certifications');
+        if (map.containsKey('jobHistory')) {
+          jobHistory = mapList(map['jobHistory'], 'jobHistory');
+        }
         customRequirements =
             mapList(map['customRequirements'], 'customRequirements');
         pathOverrides = mapList(map['pathOverrides'], 'pathOverrides');
@@ -293,6 +299,18 @@ class CareerRecordStore {
       if (isPortfolio) {
         if (profile != null) await _store.saveProfile(profile);
         await _store.saveCertifications(certifications);
+        if (jobHistory != null) {
+          final ok = await _store.saveJsonChecked(
+              'fireops.personalJobHistory.v1', jobHistory);
+          if (!ok) {
+            return CareerRestoreResult(
+              success: false,
+              count: restored.length,
+              message:
+                  'Career records were restored, but job history could not be saved.',
+            );
+          }
+        }
         await _store.saveCustomRequirements(customRequirements);
         await _store.savePathOverrides(pathOverrides);
         if (certificationMatchConfirmations != null) {
