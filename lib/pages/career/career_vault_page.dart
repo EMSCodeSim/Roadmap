@@ -1127,13 +1127,16 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                           style: Theme.of(context)
                               .textTheme
                               .headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w900),
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           'See how your experience, skills, learning, and leadership have developed year by year.',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: cs.onSurfaceVariant,
+                                color: Colors.white.withValues(alpha: 0.78),
                                 height: 1.4,
                               ),
                         ),
@@ -1166,6 +1169,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                             'Learning in personal records: ${CareerStats.formatDurationHours(currentStats.trainingHours + currentStats.teachingHours)}',
                             style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                   fontWeight: FontWeight.w700,
+                                  color: Colors.white,
                                 ),
                           ),
                         ],
