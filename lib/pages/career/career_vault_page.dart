@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -987,11 +985,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final goal = app.selectedGoal;
     final growthYears = _growthYears(app);
     final growthCategories = _growthCategorySummaries(app);
-    final highlightRecords = _records
-        .where((record) => record.highlight && _isAdvancementRecord(record))
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-    final highlights = highlightRecords.length;
     final activeYears = growthYears.length;
 
     return Scaffold(
@@ -1071,39 +1064,12 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                               value: '${app.certifications.length}',
                               label: 'credentials',
                             ),
-                            _GrowthMetric(
-                              value: '$highlights',
-                              label: 'career highlights',
-                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
                 ),
-                if (highlightRecords.isNotEmpty) ...[
-                  const SizedBox(height: 18),
-                  const _SectionTitle(
-                    title: 'Career highlights',
-                    subtitle:
-                        'The moments, achievements, and experiences that define your career story.',
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 178,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: highlightRecords.take(8).length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 10),
-                      itemBuilder: (context, index) => SizedBox(
-                        width: 220,
-                        child: _CareerHighlightCard(
-                          record: highlightRecords[index],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 18),
                 const _SectionTitle(
                   title: 'Career advancement',
@@ -1444,85 +1410,6 @@ class _GrowthCategoryCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _CareerHighlightCard extends StatelessWidget {
-  const _CareerHighlightCard({required this.record});
-
-  final CareerRecord record;
-
-  @override
-  Widget build(BuildContext context) {
-    final photos = (record.details['photoAttachments'] as List?) ?? const [];
-    String? encoded;
-    if (photos.isNotEmpty && photos.first is Map) {
-      encoded = (photos.first as Map)['data'] as String?;
-    }
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: EdgeInsets.zero,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if ((encoded ?? '').isNotEmpty)
-            Image.memory(
-              base64Decode(encoded!),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const ColoredBox(
-                color: Color(0xFF164E7A),
-              ),
-            )
-          else
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF164E7A), Color(0xFF7C3AED)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-            ),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.transparent, Color(0xD9071A33)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.star_rounded, color: Color(0xFFFBBF24)),
-                const Spacer(),
-                Text(
-                  record.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${record.date.month}/${record.date.year} • ${record.type.shortLabel}',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.78),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
