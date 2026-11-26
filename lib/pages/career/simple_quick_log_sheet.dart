@@ -207,9 +207,8 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                       onCustomize: _openCustomization,
                       onTrainingResources: _openTrainingResources,
                       showScanQr: widget.showDepartmentQrAction,
-                      onScanQr: () => Navigator.of(context).pop(SimpleQuickLogResult.scanDepartmentQr),
-                      onMoreDetails: () => Navigator.of(context)
-                          .pop(SimpleQuickLogResult.moreDetails),
+                      onScanQr: () => Navigator.of(context)
+                          .pop(SimpleQuickLogResult.scanDepartmentQr),
                     ),
         ),
       ),
@@ -567,7 +566,6 @@ class _CategoryStep extends StatelessWidget {
   final ValueChanged<_SimpleMode> onPick;
   final bool showScanQr;
   final VoidCallback onScanQr;
-  final VoidCallback onMoreDetails;
   final VoidCallback onCustomize;
   final VoidCallback onTrainingResources;
   final List<_SimpleMode> visibleModes;
@@ -577,8 +575,7 @@ class _CategoryStep extends StatelessWidget {
     required this.onPick,
     required this.showScanQr,
     required this.onScanQr,
-    required this.onMoreDetails,
-    required this.onCustomize,
+    required this.onCustomize;
     required this.onTrainingResources,
     required this.visibleModes,
   });
@@ -676,14 +673,23 @@ class _CategoryStep extends StatelessWidget {
           label: const Text('Customize Fire, EMS & personal choices'),
         ),
         const SizedBox(height: 4),
-        FilledButton.tonalIcon(
-          key: const Key('quick_add_training_resources'),
-          onPressed: onTrainingResources,
-          icon: const Icon(Icons.school_outlined),
-          label: const Text('Training Resources'),
-          style: FilledButton.styleFrom(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        SizedBox(
+          height: 72,
+          child: FilledButton.icon(
+            key: const Key('quick_add_training_resources'),
+            onPressed: onTrainingResources,
+            icon: const Icon(Icons.school_rounded, size: 28),
+            label: const Text(
+              'Training Resources',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            ),
+            style: FilledButton.styleFrom(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 10),
@@ -695,11 +701,6 @@ class _CategoryStep extends StatelessWidget {
           ),
           const SizedBox(height: 4),
         ],
-        TextButton.icon(
-          onPressed: onMoreDetails,
-          icon: const Icon(Icons.tune_outlined),
-          label: const Text('Full log / more details'),
-        ),
       ],
     );
   }
