@@ -19,12 +19,12 @@ class HomeSectionPreferencesStore {
     ),
     HomeSectionPreference(
       type: HomeSectionType.careerSnapshot,
-      visible: true,
+      visible: false,
     ),
     HomeSectionPreference(type: HomeSectionType.jobSearch, visible: false),
-    HomeSectionPreference(type: HomeSectionType.dailyQuiz, visible: false),
-    HomeSectionPreference(type: HomeSectionType.trainingIdeas, visible: false),
-    HomeSectionPreference(type: HomeSectionType.department, visible: true),
+    HomeSectionPreference(type: HomeSectionType.dailyQuiz, visible: true),
+    HomeSectionPreference(type: HomeSectionType.trainingIdeas, visible: true),
+    HomeSectionPreference(type: HomeSectionType.department, visible: false),
   ];
 
   Future<List<HomeSectionPreference>> load() async {
