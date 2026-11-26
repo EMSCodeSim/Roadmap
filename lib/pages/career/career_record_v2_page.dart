@@ -546,21 +546,30 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                       ),
                 ),
                 const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _activityCounts
-                      .map(
-                        (entry) => FilterChip(
-                          label: Text('${entry.key}  ${entry.value}'),
-                          selected: _activityTitle?.toLowerCase() ==
-                              entry.key.toLowerCase(),
-                          onSelected: (selected) => setState(
-                            () => _activityTitle = selected ? entry.key : null,
-                          ),
-                        ),
-                      )
-                      .toList(),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _activityCounts.length,
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    mainAxisExtent: 84,
+                  ),
+                  itemBuilder: (context, index) {
+                    final entry = _activityCounts[index];
+                    final selected = _activityTitle?.toLowerCase() ==
+                        entry.key.toLowerCase();
+                    return _ActivityFilterCard(
+                      title: entry.key,
+                      count: entry.value,
+                      selected: selected,
+                      onTap: () => setState(
+                        () => _activityTitle = selected ? null : entry.key,
+                      ),
+                    );
+                  },
                 ),
               ],
               const SizedBox(height: 20),
@@ -966,6 +975,86 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
         status: TaskBookTaskStatus.notStarted,
       );
     }
+  }
+}
+
+class _ActivityFilterCard extends StatelessWidget {
+  const _ActivityFilterCard({
+    required this.title,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final borderColor = selected
+        ? cs.primary
+        : cs.outlineVariant.withValues(alpha: 0.9);
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$title, $count ${count == 1 ? 'entry' : 'entries'}',
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: selected ? 1 : 0,
+        color: selected ? cs.primaryContainer : cs.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: borderColor, width: selected ? 1.5 : 1),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: selected
+                              ? cs.onPrimaryContainer
+                              : cs.onSurface,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15,
+                        ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  constraints: const BoxConstraints(minWidth: 30),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected ? cs.primary : cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
