@@ -157,13 +157,15 @@ class CareerRecordStore {
     );
   }
 
-  /// Full portable career backup. Version 6 adds personal job history while
-  /// remaining backward-compatible with earlier portfolio versions.
+  /// Full portable career backup. Version 7 adds saved job-search requirements
+  /// while remaining backward-compatible with earlier portfolio versions.
   Future<String> exportBackup() async {
     final records = await load();
     final profile = await _store.loadProfile();
     final certifications = await _store.loadCertifications();
     final jobHistory = await _store.loadJsonList('fireops.personalJobHistory.v1');
+    final jobSearchPreferences =
+        await _store.loadJsonMap('fireops.jobSearchPreferences.v1');
     final customRequirements = await _store.loadCustomRequirements();
     final pathOverrides = await _store.loadPathOverrides();
     final certMatches = await _store.loadCertificationMatchConfirmations();
@@ -177,12 +179,13 @@ class CareerRecordStore {
 
     return const JsonEncoder.withIndent('  ').convert({
       'format': 'fireops-career-portfolio',
-      'version': 6,
+      'version': 7,
       'exportedAt': DateTime.now().toIso8601String(),
       'onboardingComplete': onboardingComplete,
       'profile': profile,
       'certifications': certifications,
       'jobHistory': jobHistory,
+      'jobSearchPreferences': jobSearchPreferences,
       'customRequirements': customRequirements,
       'pathOverrides': pathOverrides,
       'certificationMatchConfirmations': certMatches,
@@ -244,6 +247,7 @@ class CareerRecordStore {
       Map<String, dynamic>? profile;
       List<Map<String, dynamic>> certifications = const [];
       List<Map<String, dynamic>>? jobHistory;
+      Map<String, dynamic>? jobSearchPreferences;
       List<Map<String, dynamic>> customRequirements = const [];
       List<Map<String, dynamic>> pathOverrides = const [];
       Map<String, dynamic>? certificationMatchConfirmations;
@@ -258,6 +262,12 @@ class CareerRecordStore {
         certifications = mapList(map['certifications'], 'certifications');
         if (map.containsKey('jobHistory')) {
           jobHistory = mapList(map['jobHistory'], 'jobHistory');
+        }
+        if (map.containsKey('jobSearchPreferences')) {
+          jobSearchPreferences = mapValue(
+            map['jobSearchPreferences'],
+            'jobSearchPreferences',
+          );
         }
         customRequirements =
             mapList(map['customRequirements'], 'customRequirements');
@@ -308,6 +318,20 @@ class CareerRecordStore {
               count: restored.length,
               message:
                   'Career records were restored, but job history could not be saved.',
+            );
+          }
+        }
+        if (jobSearchPreferences != null) {
+          final ok = await _store.saveJsonChecked(
+            'fireops.jobSearchPreferences.v1',
+            jobSearchPreferences,
+          );
+          if (!ok) {
+            return CareerRestoreResult(
+              success: false,
+              count: restored.length,
+              message:
+                  'Career records were restored, but job-search requirements could not be saved.',
             );
           }
         }
