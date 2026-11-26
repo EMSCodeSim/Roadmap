@@ -107,7 +107,7 @@ class _AppShellPageState extends State<AppShellPage> {
                 tooltip: 'Quick Add',
                 backgroundColor: cs.secondary,
                 foregroundColor: cs.onSecondary,
-                elevation: 6,
+                elevation: 0,
                 onPressed: () => QuickLogLauncher.open(context),
                 child: const Icon(Icons.add_rounded),
               ),
@@ -117,9 +117,9 @@ class _AppShellPageState extends State<AppShellPage> {
         top: false,
         child: Container(
           decoration: BoxDecoration(
-            color: cs.surface,
+            color: cs.primary,
             border: Border(
-              top: BorderSide(color: cs.outline.withValues(alpha: 0.12)),
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
             ),
           ),
           child: NavigationBar(

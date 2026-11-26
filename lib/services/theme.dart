@@ -88,21 +88,37 @@ class LightModeColors {
   /// - Teal/green: completion/success
   /// - Orange: pending/deadlines
   /// - Purple: goals/growth
+  // Core navigation / headers
   static const navy = Color(0xFF0B1220);
-  static const brightBlue = Color(0xFF2563EB);
-  static const tealGreen = Color(0xFF10B981);
-  static const orange = Color(0xFFF59E0B);
-  static const purple = Color(0xFF7C3AED);
+
+  // Category/action system
+  static const actionBlue = Color(0xFF2563EB); // primary actions
+  // Back-compat alias used by existing references.
+  static const brightBlue = actionBlue;
+  static const opsRed = Color(0xFFDC2626); // calls / operational experience
+  static const skillsTeal = Color(0xFF0D9488); // skills / successful completion
+  static const trainingBlue = Color(0xFF1D4ED8); // training / education (distinct from primary)
+  static const exposureOrange = Color(0xFFEA580C); // exposures / urgent attention
+  static const drivingAmber = Color(0xFFD97706); // driving / apparatus
+  static const growthPurple = Color(0xFF7C3AED); // leadership / career growth
+  static const milestonesGold = Color(0xFFB45309); // accomplishments / milestones (gold-like)
+  static const credentialGreen = Color(0xFF16A34A); // current credentials / completed requirements
+
+  // Back-compat aliases (older widgets still reference these names).
+  static const tealGreen = skillsTeal;
+  static const orange = exposureOrange;
+  static const purple = growthPurple;
 
   static const lightPrimary = navy;
   static const lightOnPrimary = Color(0xFFFFFFFF);
   static const lightPrimaryContainer = Color(0xFFE9EEF7); // soft navy-tinted
   static const lightOnPrimaryContainer = navy;
 
-  static const lightSecondary = brightBlue;
+  // Keep secondary reserved for the primary action color.
+  static const lightSecondary = actionBlue;
   static const lightOnSecondary = Color(0xFFFFFFFF);
 
-  static const lightTertiary = purple;
+  static const lightTertiary = growthPurple;
   static const lightOnTertiary = Color(0xFFFFFFFF);
 
   // Error colors
@@ -126,20 +142,31 @@ class LightModeColors {
 /// Dark mode colors with good contrast
 class DarkModeColors {
   static const navy = Color(0xFF0B1220);
-  static const brightBlue = Color(0xFF3B82F6);
-  static const tealGreen = Color(0xFF34D399);
-  static const orange = Color(0xFFFBBF24);
-  static const purple = Color(0xFFA78BFA);
+
+  static const actionBlue = Color(0xFF3B82F6);
+  static const brightBlue = actionBlue;
+  static const opsRed = Color(0xFFFF6B6B);
+  static const skillsTeal = Color(0xFF2DD4BF);
+  static const trainingBlue = Color(0xFF60A5FA);
+  static const exposureOrange = Color(0xFFFB923C);
+  static const drivingAmber = Color(0xFFFBBF24);
+  static const growthPurple = Color(0xFFA78BFA);
+  static const milestonesGold = Color(0xFFF59E0B);
+  static const credentialGreen = Color(0xFF34D399);
+
+  static const tealGreen = skillsTeal;
+  static const orange = exposureOrange;
+  static const purple = growthPurple;
 
   static const darkPrimary = navy;
   static const darkOnPrimary = Color(0xFFFFFFFF);
   static const darkPrimaryContainer = Color(0xFF111B2E);
   static const darkOnPrimaryContainer = Color(0xFFE5E7EB);
 
-  static const darkSecondary = brightBlue;
+  static const darkSecondary = actionBlue;
   static const darkOnSecondary = Color(0xFF071226);
 
-  static const darkTertiary = purple;
+  static const darkTertiary = growthPurple;
   static const darkOnTertiary = Color(0xFF0B1220);
 
   // Error colors
@@ -157,6 +184,39 @@ class DarkModeColors {
   static const darkOutline = Color(0xFF22304A);
   static const darkShadow = Color(0xFF000000);
   static const darkInversePrimary = brightBlue;
+}
+
+/// Category styling for high-signal responder workflows.
+///
+/// Keep all category colors/icons centralized so screens remain consistent.
+class PublicSafetyCategoryStyles {
+  static IconData iconFor(String category) {
+    final key = category.trim().toLowerCase();
+    if (key.contains('call') || key.contains('response')) return Icons.local_fire_department_outlined;
+    if (key.contains('training') || key.contains('class') || key.contains('course')) return Icons.school_outlined;
+    if (key.contains('skill')) return Icons.handyman_outlined;
+    if (key.contains('exposure')) return Icons.health_and_safety_outlined;
+    if (key.contains('drive') || key.contains('driving') || key.contains('apparatus')) return Icons.local_shipping_outlined;
+    if (key.contains('career') || key.contains('lead') || key.contains('promotion')) return Icons.military_tech_outlined;
+    if (key.contains('cert') || key.contains('credential')) return Icons.verified_outlined;
+    if (key.contains('award') || key.contains('milestone') || key.contains('accomplish')) return Icons.workspace_premium_outlined;
+    return Icons.bookmark_border_rounded;
+  }
+
+  /// Prefer passing an explicit categoryKey (Quick Add mode) when possible.
+  static Color colorFor(BuildContext context, String categoryKey) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final key = categoryKey.trim().toLowerCase();
+    if (key == 'call') return isDark ? DarkModeColors.opsRed : LightModeColors.opsRed;
+    if (key == 'training') return isDark ? DarkModeColors.trainingBlue : LightModeColors.trainingBlue;
+    if (key == 'skill') return isDark ? DarkModeColors.skillsTeal : LightModeColors.skillsTeal;
+    if (key == 'exposure') return isDark ? DarkModeColors.exposureOrange : LightModeColors.exposureOrange;
+    if (key == 'driving' || key == 'drive') return isDark ? DarkModeColors.drivingAmber : LightModeColors.drivingAmber;
+    if (key == 'career') return isDark ? DarkModeColors.growthPurple : LightModeColors.growthPurple;
+    if (key == 'credentials' || key == 'certifications') return isDark ? DarkModeColors.credentialGreen : LightModeColors.credentialGreen;
+    if (key == 'milestones' || key == 'accomplishments') return isDark ? DarkModeColors.milestonesGold : LightModeColors.milestonesGold;
+    return Theme.of(context).colorScheme.secondary;
+  }
 }
 
 /// Semantic colors used across FireOps Path UI (status + header)
@@ -363,20 +423,27 @@ ThemeData get lightTheme => ThemeData(
     ),
   ),
   navigationBarTheme: NavigationBarThemeData(
-    height: 68,
+    height: 70,
     elevation: 0,
-    indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-    indicatorColor: LightModeColors.lightPrimaryContainer,
-    backgroundColor: LightModeColors.lightSurface,
+    indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    indicatorColor: Colors.white.withValues(alpha: 0.12),
+    backgroundColor: LightModeColors.navy,
     labelTextStyle: WidgetStateProperty.resolveWith(
       (states) {
         final selected = states.contains(WidgetState.selected);
-        return GoogleFonts.inter(fontSize: 12, fontWeight: selected ? FontWeight.w700 : FontWeight.w600);
+        return GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+          color: Colors.white.withValues(alpha: selected ? 0.96 : 0.75),
+        );
       },
     ),
     iconTheme: WidgetStateProperty.resolveWith((states) {
       final selected = states.contains(WidgetState.selected);
-      return IconThemeData(color: selected ? LightModeColors.lightPrimary : LightModeColors.lightOnSurfaceVariant);
+      return IconThemeData(
+        color: Colors.white.withValues(alpha: selected ? 0.98 : 0.72),
+        size: 24,
+      );
     }),
   ),
   pageTransitionsTheme: const PageTransitionsTheme(
@@ -513,20 +580,27 @@ ThemeData get darkTheme => ThemeData(
     ),
   ),
   navigationBarTheme: NavigationBarThemeData(
-    height: 68,
+    height: 70,
     elevation: 0,
-    indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-    indicatorColor: DarkModeColors.darkPrimaryContainer,
-    backgroundColor: DarkModeColors.darkSurface,
+    indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    indicatorColor: Colors.white.withValues(alpha: 0.10),
+    backgroundColor: DarkModeColors.navy,
     labelTextStyle: WidgetStateProperty.resolveWith(
       (states) {
         final selected = states.contains(WidgetState.selected);
-        return GoogleFonts.inter(fontSize: 12, fontWeight: selected ? FontWeight.w700 : FontWeight.w600);
+        return GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+          color: Colors.white.withValues(alpha: selected ? 0.95 : 0.72),
+        );
       },
     ),
     iconTheme: WidgetStateProperty.resolveWith((states) {
       final selected = states.contains(WidgetState.selected);
-      return IconThemeData(color: selected ? DarkModeColors.darkPrimary : DarkModeColors.darkOnSurfaceVariant);
+      return IconThemeData(
+        color: Colors.white.withValues(alpha: selected ? 0.98 : 0.70),
+        size: 24,
+      );
     }),
   ),
   pageTransitionsTheme: const PageTransitionsTheme(

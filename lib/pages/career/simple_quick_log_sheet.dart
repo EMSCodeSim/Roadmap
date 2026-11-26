@@ -46,12 +46,12 @@ extension _SimpleModeX on _SimpleMode {
       };
 
   Color get color => switch (this) {
-        _SimpleMode.training => const Color(0xFF2563EB),
-        _SimpleMode.call => const Color(0xFFDC2626),
-        _SimpleMode.skill => const Color(0xFF0D9488),
-        _SimpleMode.exposure => const Color(0xFFEA580C),
-        _SimpleMode.drive => const Color(0xFFD97706),
-        _SimpleMode.career => const Color(0xFF7C3AED),
+        _SimpleMode.training => LightModeColors.trainingBlue,
+        _SimpleMode.call => LightModeColors.opsRed,
+        _SimpleMode.skill => LightModeColors.skillsTeal,
+        _SimpleMode.exposure => LightModeColors.exposureOrange,
+        _SimpleMode.drive => LightModeColors.drivingAmber,
+        _SimpleMode.career => LightModeColors.growthPurple,
         _SimpleMode.taskBook => const Color(0xFF475569),
       };
 }
@@ -84,6 +84,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
   _SimpleMode? _mode;
   String? _choice;
   bool _saving = false;
+  bool _saved = false;
   bool _emergent = false;
   bool _transport = false;
   _DriveActivity _driveActivity = _DriveActivity.response;
@@ -147,13 +148,16 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 140),
-          child: _choice != null
+          duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 140),
+          child: _saved
+              ? const _SavedConfirmation(key: ValueKey('saved'))
+              : _choice != null
               ? _ConfirmStep(
                   key: ValueKey('confirm-${_mode!.name}'),
                   mode: _mode!,
@@ -427,31 +431,17 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
         }
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF166534),
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _shareWithDepartment
-                      ? (shared
-                          ? '$title logged and shared with your department'
-                          : '$title logged. Department sharing will retry later.')
-                      : '$title added to your career story',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      // Small confirmation animation inside the sheet (more personal than a
+      // snackbar, and avoids competing with navigation).
+      setState(() {
+        _saved = true;
+        _saving = false;
+      });
+      final reduceMotion = MediaQuery.of(context).disableAnimations;
+      if (!reduceMotion) {
+        await Future<void>.delayed(const Duration(milliseconds: 520));
+      }
+      if (!mounted) return;
       Navigator.of(context).pop();
     } else {
       setState(() => _saving = false);
@@ -575,7 +565,7 @@ class _CategoryStep extends StatelessWidget {
     required this.onPick,
     required this.showScanQr,
     required this.onScanQr,
-    required this.onCustomize;
+    required this.onCustomize,
     required this.onTrainingResources,
     required this.visibleModes,
   });
@@ -1298,6 +1288,79 @@ class _ConfirmStep extends StatelessWidget {
           ),
         ];
     }
+  }
+}
+
+class _SavedConfirmation extends StatelessWidget {
+  const _SavedConfirmation({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final okGreen = Theme.of(context).brightness == Brightness.dark
+        ? DarkModeColors.credentialGreen
+        : LightModeColors.credentialGreen;
+
+    return Center(
+      child: AnimatedScale(
+        scale: 1,
+        duration: reduceMotion ? Duration.zero : AppMotion.medium,
+        curve: AppMotion.standard,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border: Border.all(color: cs.outline.withValues(alpha: 0.18)),
+            boxShadow: [
+              BoxShadow(
+                color: cs.shadow.withValues(alpha: 0.10),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: okGreen.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: okGreen.withValues(alpha: 0.35)),
+                ),
+                child: Icon(Icons.check_rounded, color: okGreen),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Saved',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Added to your career record.',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
