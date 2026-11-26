@@ -657,11 +657,7 @@ class _CategoryStep extends StatelessWidget {
           },
         ),
         const SizedBox(height: 10),
-        OutlinedButton.icon(
-          onPressed: onCustomize,
-          icon: const Icon(Icons.tune),
-          label: const Text('Customize Fire, EMS & personal choices'),
-        ),
+        _QuickPickCustomizeButton(onTap: onCustomize),
         const SizedBox(height: 4),
         SizedBox(
           height: 72,
@@ -692,6 +688,72 @@ class _CategoryStep extends StatelessWidget {
           const SizedBox(height: 4),
         ],
       ],
+    );
+  }
+}
+
+class _QuickPickCustomizeButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _QuickPickCustomizeButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surface,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 78),
+          padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.28)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.dashboard_customize_outlined,
+                  color: cs.onPrimaryContainer,
+                  size: 27,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Customize Quick Pick Buttons',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Choose and arrange your colored Quick Add tiles',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            height: 1.25,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: cs.primary),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
