@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
@@ -78,6 +79,16 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
           }
         }
       });
+    }
+  }
+
+  Future<void> _openJobSearch() async {
+    final uri = Uri.parse('https://emscodesim.com/jobs/');
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the job search.')),
+      );
     }
   }
 
@@ -1205,17 +1216,78 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                   ),
                 ],
                 const SizedBox(height: 12),
-                Card(
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: cs.secondaryContainer,
-                      child: Icon(Icons.work_history_outlined, color: cs.onSecondaryContainer),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => context.push(AppRoutes.jobHistory),
+                          child: const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: Color(0xFFE0E7FF),
+                                  child: Icon(
+                                    Icons.work_history_outlined,
+                                    color: Color(0xFF3730A3),
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Job history',
+                                  style: TextStyle(fontWeight: FontWeight.w900),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Roles and service dates',
+                                  maxLines: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    title: const Text('Job history', style: TextStyle(fontWeight: FontWeight.w800)),
-                    subtitle: const Text('Document employers, roles, and service dates'),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => context.push(AppRoutes.jobHistory),
-                  ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: _openJobSearch,
+                          child: const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: Color(0xFFDCFCE7),
+                                  child: Icon(
+                                    Icons.travel_explore_rounded,
+                                    color: Color(0xFF166534),
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Job search',
+                                  style: TextStyle(fontWeight: FontWeight.w900),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Find fire and EMS openings',
+                                  maxLines: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Card(
