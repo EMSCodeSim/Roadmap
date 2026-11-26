@@ -39,14 +39,11 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
 
   List<CareerRecord> _records = <CareerRecord>[];
   bool _loading = true;
-  List<DepartmentClassDetail> _departmentTraining = const [];
-  bool _departmentLoading = false;
 
   @override
   void initState() {
     super.initState();
     _load();
-    _loadDepartmentTraining();
   }
 
   Future<void> _load() async {
@@ -169,43 +166,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     }
   }
 
-  Future<void> _loadDepartmentTraining() async {
-    if (_departmentLoading) return;
-    setState(() => _departmentLoading = true);
-    try {
-      final api = widget.api ?? ResponderRoadmapApi();
-      final session = await api.currentSession();
-      if (!session.hasDepartment || session.membershipId == null) return;
-      final summaries = await api.listClasses();
-      final approved = <DepartmentClassDetail>[];
-      for (final summary in summaries) {
-        if (summary.id.isEmpty) continue;
-        try {
-          final detail = await api.getTrainingSheet(summary.id);
-          final isMember = detail.roster.any((student) =>
-              student.membershipId == session.membershipId &&
-              student.attendance.toUpperCase() == 'PRESENT');
-          // Only show final, instructor-approved and RMS-entered records.
-          // Never infer an individual PASS from a class-level approval.
-          if (isMember &&
-              detail.instructorApprovedAt != null &&
-              detail.rmsEnteredAt != null &&
-              detail.startsAt != null) {
-            approved.add(detail);
-          }
-        } catch (_) {
-          // One inaccessible training sheet must not hide other records.
-        }
-      }
-      approved.sort((a, b) => b.startsAt!.compareTo(a.startsAt!));
-      if (mounted) setState(() => _departmentTraining = approved);
-    } catch (_) {
-      // Personal career history remains available when offline or signed out.
-    } finally {
-      if (mounted) setState(() => _departmentLoading = false);
-    }
-  }
-
   Future<void> _saveRecord(CareerRecord record) async {
     final next = [..._records];
     final index = next.indexWhere((e) => e.id == record.id);
@@ -220,9 +180,17 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     setState(() => _records = next);
   }
 
+  bool _isAdvancementRecord(CareerRecord record) =>
+      record.type == CareerRecordType.achievement ||
+      record.type == CareerRecordType.leadership ||
+      record.type == CareerRecordType.teaching ||
+      record.type == CareerRecordType.project ||
+      record.type == CareerRecordType.education ||
+      record.type == CareerRecordType.taskBookEvidence;
+
   List<_GrowthYear> _growthYears(AppState app) {
     final byYear = <int, _GrowthYear>{};
-    for (final record in _records) {
+    for (final record in _records.where(_isAdvancementRecord)) {
       (byYear[record.date.year] ??= _GrowthYear(record.date.year))
           .records
           .add(record);
@@ -233,13 +201,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
           .certifications
           .add(certification);
     }
-    for (final training in _departmentTraining) {
-      final date = training.startsAt;
-      if (date == null) continue;
-      (byYear[date.year] ??= _GrowthYear(date.year))
-          .departmentTraining
-          .add(training);
-    }
     final years = byYear.values.toList()
       ..sort((a, b) => b.year.compareTo(a.year));
     return years;
@@ -247,25 +208,11 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
 
   List<_GrowthCategorySummary> _growthCategorySummaries(AppState app) {
     final stats = CareerStats.fromRecords(_records);
-    final experience = _records
-        .where((record) => record.type == CareerRecordType.operationalExperience)
-        .toList();
-    final driving = _records.where(CareerStats.isDrivingRecord).toList();
-    final skills = _records
-        .where((record) =>
-            record.type == CareerRecordType.skill &&
-            !CareerStats.isDrivingRecord(record))
-        .toList();
     final leadership = _records
         .where((record) => record.type == CareerRecordType.leadership)
         .toList();
     final teaching = _records
         .where((record) => record.type == CareerRecordType.teaching)
-        .toList();
-    final learning = _records
-        .where((record) =>
-            record.type == CareerRecordType.training ||
-            record.type == CareerRecordType.education)
         .toList();
     final milestones = _records
         .where((record) =>
@@ -288,28 +235,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
 
     return [
       _GrowthCategorySummary(
-        title: 'Experience',
-        icon: Icons.local_fire_department_outlined,
-        value: '${stats.calls}',
-        detail: '${recordsLabel(experience)} · ${yearsLabel(experience.map((e) => e.date.year))}',
-      ),
-      _GrowthCategorySummary(
-        title: 'Skills',
-        icon: Icons.handyman_outlined,
-        value: '${stats.skillRepetitions}',
-        detail: 'Documented repetitions · ${yearsLabel(skills.map((e) => e.date.year))}',
-      ),
-      _GrowthCategorySummary(
-        title: 'Driving',
-        icon: Icons.local_taxi_outlined,
-        value: stats.driveHours > 0
-            ? stats.driveLabel
-            : '${driving.length}',
-        detail: stats.driveHours > 0
-            ? '${recordsLabel(driving)} · time recorded'
-            : 'Driving records · hours optional',
-      ),
-      _GrowthCategorySummary(
         title: 'Leadership',
         icon: Icons.groups_outlined,
         value: '${stats.leadershipCount}',
@@ -324,12 +249,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         detail: stats.teachingHours > 0
             ? '${recordsLabel(teaching)} · hours taught'
             : 'Teaching and mentoring records',
-      ),
-      _GrowthCategorySummary(
-        title: 'Education & training',
-        icon: Icons.school_outlined,
-        value: '${learning.length + _departmentTraining.length}',
-        detail: '${learning.length} personal entries · ${_departmentTraining.length} verified department classes',
       ),
       _GrowthCategorySummary(
         title: 'Credentials',
@@ -366,17 +285,13 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         (types[CareerRecordType.project] ?? 0) > 0) {
       return 'Growing leadership and influence';
     }
-    if ((types[CareerRecordType.training] ?? 0) > 0 ||
-        year.departmentTraining.isNotEmpty) {
-      return 'Expanding knowledge and skills';
+    if ((types[CareerRecordType.achievement] ?? 0) > 0) {
+      return 'Reaching career milestones';
     }
-    if ((types[CareerRecordType.operationalExperience] ?? 0) > 0) {
-      return 'Building operational experience';
+    if ((types[CareerRecordType.education] ?? 0) > 0) {
+      return 'Building professional qualifications';
     }
-    if ((types[CareerRecordType.skill] ?? 0) > 0) {
-      return 'Strengthening practical skills';
-    }
-    return 'Recording career milestones';
+    return 'Advancing your career plan';
   }
 
   Widget _growthYearCard(AppState app, _GrowthYear year) {
@@ -387,23 +302,15 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       ..sort((a, b) => (b.issueDate ?? b.createdAt)
           .compareTo(a.issueDate ?? a.createdAt));
     final cs = Theme.of(context).colorScheme;
-    final hasDetails = year.records.isNotEmpty ||
-        year.certifications.isNotEmpty ||
-        year.departmentTraining.isNotEmpty;
-    final recordedHours = stats.trainingHours + stats.teachingHours;
+    final hasDetails =
+        year.records.isNotEmpty || year.certifications.isNotEmpty;
     final facts = <String>[
       if (year.records.isNotEmpty)
         '${year.records.length} record${year.records.length == 1 ? '' : 's'}',
-      if (recordedHours > 0)
-        '${CareerStats.formatDurationHours(recordedHours)} learning and teaching',
       if (year.certifications.isNotEmpty)
         '${year.certifications.length} credential${year.certifications.length == 1 ? '' : 's'}',
-      if (year.departmentTraining.isNotEmpty)
-        '${year.departmentTraining.length} verified department class${year.departmentTraining.length == 1 ? '' : 'es'}',
       if (stats.leadershipCount + stats.projects + stats.teachingHours > 0)
         'Leadership and service documented',
-      if (stats.calls + stats.skillRepetitions > 0)
-        'Experience and skills recorded',
     ];
 
     final isCurrentYear = year.year == DateTime.now().year;
@@ -499,7 +406,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
-                  onPressed: () => context.go(AppRoutes.personalLog),
+                  onPressed: () => context.go(AppRoutes.training),
                   icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                   label: const Text('View full records'),
                 ),
@@ -1080,11 +987,12 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final goal = app.selectedGoal;
     final growthYears = _growthYears(app);
     final growthCategories = _growthCategorySummaries(app);
-    final highlightRecords = _records.where((record) => record.highlight).toList()
+    final highlightRecords = _records
+        .where((record) => record.highlight && _isAdvancementRecord(record))
+        .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
     final highlights = highlightRecords.length;
     final activeYears = growthYears.length;
-    final currentStats = CareerStats.fromRecords(_records);
 
     return Scaffold(
       appBar: AppBar(
@@ -1154,8 +1062,10 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                               label: activeYears == 1 ? 'year documented' : 'years documented',
                             ),
                             _GrowthMetric(
-                              value: '${_records.length}',
-                              label: 'career records',
+                              value: roadmap == null
+                                  ? '—'
+                                  : '${roadmap.completedCount}/${roadmap.totalCount}',
+                              label: 'roadmap steps',
                             ),
                             _GrowthMetric(
                               value: '${app.certifications.length}',
@@ -1167,16 +1077,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                             ),
                           ],
                         ),
-                        if (_records.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            'Learning in personal records: ${CareerStats.formatDurationHours(currentStats.trainingHours + currentStats.teachingHours)}',
-                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -1386,9 +1286,9 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                 ),
                 const SizedBox(height: 18),
                 const _SectionTitle(
-                  title: 'Growth areas',
+                  title: 'Career-building areas',
                   subtitle:
-                      'See the experience you have documented across your career. These are records of activity, not ratings of ability.',
+                      'Focus on leadership, credentials, achievements, teaching, and evidence that support advancement.',
                 ),
                 const SizedBox(height: 10),
                 SizedBox(
@@ -1407,16 +1307,11 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                 ),
                 const SizedBox(height: 18),
                 const _SectionTitle(
-                  title: 'Your career story',
+                  title: 'Advancement milestones',
                   subtitle:
-                      'A high-level view of how your career has developed. Open Records for the full, searchable history and editing tools.',
+                      'A high-level view of qualifications and career-building milestones. Skills, calls, and individual training entries stay in Records.',
                 ),
                 const SizedBox(height: 10),
-                if (_departmentLoading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: LinearProgressIndicator(),
-                  ),
                 if (growthYears.isEmpty)
                   Card(
                     child: Padding(
@@ -1426,7 +1321,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                           const Icon(Icons.timeline_rounded, size: 36),
                           const SizedBox(height: 10),
                           Text(
-                            'Your growth story starts with a milestone',
+                            'Your advancement story starts with a milestone',
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w800,
@@ -1434,7 +1329,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Use Quick Add to record training, skills, experience, credentials, and milestones. Timeline will show how those areas build over time.',
+                            'Choose a career goal, add qualifications, and mark important leadership, education, project, or achievement milestones.',
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   color: cs.onSurfaceVariant,
@@ -1454,10 +1349,10 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     leading: const Icon(Icons.inventory_2_outlined),
                     title: const Text('Need a specific detail?'),
                     subtitle: const Text(
-                      'Records is the searchable log for training, experience, skills, and achievements. Edit entries and mark career milestones there.',
+                      'Records contains the complete searchable timeline for everything entered through Quick Add, including skills and training.',
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => context.go(AppRoutes.personalLog),
+                    onTap: () => context.go(AppRoutes.training),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1477,7 +1372,6 @@ class _GrowthYear {
   final int year;
   final List<CareerRecord> records = [];
   final List<Certification> certifications = [];
-  final List<DepartmentClassDetail> departmentTraining = [];
 
   _GrowthYear(this.year);
 }
