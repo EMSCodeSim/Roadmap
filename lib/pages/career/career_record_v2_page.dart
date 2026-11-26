@@ -40,6 +40,8 @@ enum _RecordSort {
 
 enum _RecordPeriod { month, year, custom, career }
 
+enum _RecordsCategory { dailyLogs, statistics, careerTimeline }
+
 extension _RecordSortX on _RecordSort {
   String get label => switch (this) {
         _RecordSort.newest => 'Newest first',
@@ -79,12 +81,13 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
   List<CareerRecord> _records = const [];
   List<ScoredSkillPreference> _scoredSkills = const [];
   bool _loading = true;
-  _RecordPeriod _period = _RecordPeriod.career;
+  _RecordPeriod _period = _RecordPeriod.month;
   DateTime _periodAnchor = DateTime.now();
   DateTimeRange? _customRange;
   _CareerFilter _filter = _CareerFilter.all;
   _RecordSort _sort = _RecordSort.newest;
   String? _activityTitle;
+  _RecordsCategory _recordsCategory = _RecordsCategory.dailyLogs;
 
   Future<void> _pickFilter() async {
     final selected = await showModalBottomSheet<_CareerFilter>(
@@ -376,8 +379,274 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
               record.type == CareerRecordType.project,
       };
 
+  Widget _searchAndSortControls() {
+    return Column(
+      children: [
+        TextField(
+          controller: _search,
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            hintText: 'Search all records',
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: FilledButton.tonalIcon(
+                  onPressed: _pickFilter,
+                  icon: const Icon(Icons.filter_alt_outlined),
+                  label: Text('Filter: ${_filter.label}'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: _pickSort,
+                  icon: const Icon(Icons.sort_rounded),
+                  label: Text(_sort.label),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _dailyLogsSection(
+    CareerStats stats,
+    List<CareerRecord> visible,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Card(
+          margin: EdgeInsets.zero,
+          child: ListTile(
+            leading: const Icon(Icons.today_outlined),
+            title: Text(
+              '${_periodRecords.length} record${_periodRecords.length == 1 ? '' : 's'} in $_periodLabel',
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            subtitle: Text(
+              '${stats.calls} calls • ${stats.skillRepetitions} skill reps • ${stats.trainingLabel} training',
+            ),
+          ),
+        ),
+        if (_activityCounts.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'LOGGED ACTIVITIES',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+              ),
+              if (_activityTitle != null)
+                TextButton(
+                  onPressed: () => setState(() => _activityTitle = null),
+                  child: const Text('Show all'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tap an activity to show only those entries, then choose how to sort them.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 10),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _activityCounts.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              mainAxisExtent: 84,
+            ),
+            itemBuilder: (context, index) {
+              final entry = _activityCounts[index];
+              final selected = _activityTitle?.toLowerCase() ==
+                  entry.key.toLowerCase();
+              return _ActivityFilterCard(
+                title: entry.key,
+                count: entry.value,
+                selected: selected,
+                onTap: () => setState(
+                  () => _activityTitle = selected ? null : entry.key,
+                ),
+              );
+            },
+          ),
+        ],
+        const SizedBox(height: 22),
+        Text(
+          _activityTitle == null
+              ? 'DAILY LOG ENTRIES'
+              : '${_activityTitle!.toUpperCase()} ENTRIES',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: cs.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 8),
+        if (visible.isEmpty)
+          _EmptyHistory(onLog: _openQuickLog)
+        else
+          ...visible.map(
+            (record) => Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: _RecordCard(
+                record: record,
+                onOpen: () => _editRecord(record),
+                onEdit: () => _editRecord(record),
+                onDelete: () => _deleteRecord(record),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _statisticsSection(
+    CareerStats stats,
+    List<_ProcedureStat> procedureStats,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          '${_periodLabel.toUpperCase()} STATISTICS',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: cs.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 8),
+        _SummaryGrid(stats: stats),
+        if (_scoredSkills.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'SCORED SKILLS',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _chooseScoredSkills,
+                icon: const Icon(Icons.tune_rounded, size: 18),
+                label: const Text('Choose'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Success percentages are shown only for the skills you choose to score.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 8),
+          if (procedureStats.isEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Text(
+                  'No measured attempts yet for your selected skills. Log a skill as Successful or Unsuccessful to start the score.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            )
+          else
+            ...procedureStats.take(12).map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _ProcedureRateCard(item: item),
+                  ),
+                ),
+        ] else ...[
+          const SizedBox(height: 22),
+          OutlinedButton.icon(
+            onPressed: _chooseScoredSkills,
+            icon: const Icon(Icons.add_chart_outlined),
+            label: const Text('Choose skills to score'),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _careerTimelineSection(List<CareerRecord> visible) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          _activityTitle == null
+              ? '${_periodLabel.toUpperCase()} CAREER TIMELINE'
+              : '${_activityTitle!.toUpperCase()} TIMELINE',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: cs.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 8),
+        if (visible.isEmpty)
+          _EmptyHistory(onLog: _openQuickLog)
+        else
+          ..._timelineGroups.expand(
+            (group) => [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
+                child: Text(
+                  group.key.toUpperCase(),
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurfaceVariant,
+                        letterSpacing: 0.5,
+                      ),
+                ),
+              ),
+              ...group.value.map(
+                (record) => Padding(
+                  padding: const EdgeInsets.only(bottom: 9),
+                  child: _RecordCard(
+                    record: record,
+                    onOpen: () => _editRecord(record),
+                    onEdit: () => _editRecord(record),
+                    onDelete: () => _deleteRecord(record),
+                  ),
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final app = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
     final stats = CareerStats.fromRecords(_periodRecords);
     final procedureStats = _procedureStats(_periodRecords);
@@ -447,16 +716,77 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
             children: [
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.inventory_2_outlined),
-                  title: const Text('Your detailed career log'),
-                  subtitle: const Text(
-                    'Use Quick Add to capture a record, then search, filter, and edit its details here.',
-                  ),
-                ),
+              Text(
+                'RECORD CENTER',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: cs.onSurfaceVariant,
+                      letterSpacing: 0.4,
+                    ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 4),
+              Text(
+                'Choose what you want to review. Quick Add continues to save every entry in one complete record.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              GridView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  mainAxisExtent: 150,
+                ),
+                children: [
+                  _RecordsCategoryCard(
+                    icon: Icons.verified_user_outlined,
+                    title: 'Certification Center',
+                    detail:
+                        '${app.certifications.length} credential${app.certifications.length == 1 ? '' : 's'}',
+                    accent: const Color(0xFFEA580C),
+                    onTap: () => context.push(AppRoutes.certifications),
+                  ),
+                  _RecordsCategoryCard(
+                    icon: Icons.today_outlined,
+                    title: 'Daily Logs',
+                    detail:
+                        '${_periodRecords.length} entr${_periodRecords.length == 1 ? 'y' : 'ies'} in $_periodLabel',
+                    accent: const Color(0xFF2563EB),
+                    selected: _recordsCategory == _RecordsCategory.dailyLogs,
+                    onTap: () => setState(
+                      () => _recordsCategory = _RecordsCategory.dailyLogs,
+                    ),
+                  ),
+                  _RecordsCategoryCard(
+                    icon: Icons.query_stats_rounded,
+                    title: 'Statistics',
+                    detail: 'Totals, hours and skill performance',
+                    accent: const Color(0xFF7C3AED),
+                    selected: _recordsCategory == _RecordsCategory.statistics,
+                    onTap: () => setState(
+                      () => _recordsCategory = _RecordsCategory.statistics,
+                    ),
+                  ),
+                  _RecordsCategoryCard(
+                    icon: Icons.timeline_rounded,
+                    title: 'Career Timeline',
+                    detail: 'Month, year, custom or all-time history',
+                    accent: const Color(0xFF0F766E),
+                    selected:
+                        _recordsCategory == _RecordsCategory.careerTimeline,
+                    onTap: () => setState(
+                      () => _recordsCategory = _RecordsCategory.careerTimeline,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
               _PeriodControls(
                 period: _period,
                 label: _periodLabel,
@@ -470,107 +800,9 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                     ? () => _movePeriod(1)
                     : null,
               ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _search,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: 'Search all records',
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 48,
-                      child: FilledButton.tonalIcon(
-                        onPressed: _pickFilter,
-                        icon: const Icon(Icons.filter_alt_outlined),
-                        label: Text('Filter: ${_filter.label}'),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SizedBox(
-                      height: 48,
-                      child: OutlinedButton.icon(
-                        onPressed: _pickSort,
-                        icon: const Icon(Icons.sort_rounded),
-                        label: Text(_sort.label),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Card(
-                margin: EdgeInsets.zero,
-                child: ListTile(
-                  leading: const Icon(Icons.insights_outlined),
-                  title: Text(
-                    '${_periodRecords.length} record${_periodRecords.length == 1 ? '' : 's'} in $_periodLabel',
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                  subtitle: Text(
-                    '${stats.calls} calls • ${stats.skillRepetitions} skill reps • ${stats.trainingLabel} training',
-                  ),
-                ),
-              ),
-              if (_activityCounts.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'LOGGED ACTIVITIES',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: cs.onSurfaceVariant,
-                            ),
-                      ),
-                    ),
-                    if (_activityTitle != null)
-                      TextButton(
-                        onPressed: () => setState(() => _activityTitle = null),
-                        child: const Text('Show all'),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Tap an activity to show only those entries, then choose how to sort them.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 10),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _activityCounts.length,
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    mainAxisExtent: 84,
-                  ),
-                  itemBuilder: (context, index) {
-                    final entry = _activityCounts[index];
-                    final selected = _activityTitle?.toLowerCase() ==
-                        entry.key.toLowerCase();
-                    return _ActivityFilterCard(
-                      title: entry.key,
-                      count: entry.value,
-                      selected: selected,
-                      onTap: () => setState(
-                        () => _activityTitle = selected ? null : entry.key,
-                      ),
-                    );
-                  },
-                ),
+              if (_recordsCategory != _RecordsCategory.statistics) ...[
+                const SizedBox(height: 14),
+                _searchAndSortControls(),
               ],
               const SizedBox(height: 20),
               if (_loading)
@@ -581,108 +813,12 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                   ),
                 )
               else ...[
-                Text(
-                  '${_periodLabel.toUpperCase()} STATS',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                _SummaryGrid(stats: stats),
-                if (_scoredSkills.isNotEmpty) ...[
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'SCORED SKILLS',
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color: cs.onSurfaceVariant,
-                              ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: _chooseScoredSkills,
-                        icon: const Icon(Icons.tune_rounded, size: 18),
-                        label: const Text('Choose'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Success percentages are shown only for the skills you choose to score.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (procedureStats.isEmpty)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Text(
-                          'No measured attempts yet for your selected skills. Log a skill as Successful or Unsuccessful to start the score.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
-                    )
-                  else
-                    ...procedureStats.take(12).map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: _ProcedureRateCard(item: item),
-                          ),
-                        ),
-                ] else ...[
-                  const SizedBox(height: 22),
-                  OutlinedButton.icon(
-                    onPressed: _chooseScoredSkills,
-                    icon: const Icon(Icons.add_chart_outlined),
-                    label: const Text('Choose skills to score'),
-                  ),
-                ],
-                const SizedBox(height: 22),
-                Text(
-                  _activityTitle == null
-                      ? 'TIMELINE'
-                      : '${_activityTitle!.toUpperCase()} TIMELINE',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                if (visible.isEmpty)
-                  _EmptyHistory(onLog: _openQuickLog)
-                else
-                  ..._timelineGroups.expand(
-                    (group) => [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
-                        child: Text(
-                          group.key.toUpperCase(),
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color: cs.onSurfaceVariant,
-                                letterSpacing: 0.5,
-                              ),
-                        ),
-                      ),
-                      ...group.value.map(
-                        (record) => Padding(
-                          padding: const EdgeInsets.only(bottom: 9),
-                          child: _RecordCard(
-                            record: record,
-                            onOpen: () => _editRecord(record),
-                            onEdit: () => _editRecord(record),
-                            onDelete: () => _deleteRecord(record),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                if (_recordsCategory == _RecordsCategory.dailyLogs)
+                  _dailyLogsSection(stats, visible),
+                if (_recordsCategory == _RecordsCategory.statistics)
+                  _statisticsSection(stats, procedureStats),
+                if (_recordsCategory == _RecordsCategory.careerTimeline)
+                  _careerTimelineSection(visible),
               ],
               const SizedBox(height: 22),
               Text(
@@ -975,6 +1111,104 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
         status: TaskBookTaskStatus.notStarted,
       );
     }
+  }
+}
+
+class _RecordsCategoryCard extends StatelessWidget {
+  const _RecordsCategoryCard({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.accent,
+    required this.onTap,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final Color accent;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$title. $detail',
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: selected ? 2 : 0,
+        color: selected
+            ? Color.alphaBlend(accent.withValues(alpha: 0.10), cs.surface)
+            : cs.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(
+            color: selected
+                ? accent
+                : cs.outlineVariant.withValues(alpha: 0.85),
+            width: selected ? 1.6 : 1,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.13),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(icon, size: 21, color: accent),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      selected
+                          ? Icons.check_circle_rounded
+                          : Icons.arrow_forward_rounded,
+                      size: 20,
+                      color: selected ? accent : cs.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        height: 1.15,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  detail,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        height: 1.2,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
