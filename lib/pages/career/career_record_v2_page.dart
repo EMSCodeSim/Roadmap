@@ -38,6 +38,8 @@ enum _RecordSort {
   title,
 }
 
+enum _RecordPeriod { month, year, custom, career }
+
 extension _RecordSortX on _RecordSort {
   String get label => switch (this) {
         _RecordSort.newest => 'Newest first',
@@ -62,7 +64,9 @@ extension _CareerFilterX on _CareerFilter {
 }
 
 class CareerRecordV2Page extends StatefulWidget {
-  const CareerRecordV2Page({super.key});
+  final bool embedded;
+
+  const CareerRecordV2Page({super.key, this.embedded = false});
 
   @override
   State<CareerRecordV2Page> createState() => _CareerRecordV2PageState();
@@ -75,8 +79,9 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
   List<CareerRecord> _records = const [];
   List<ScoredSkillPreference> _scoredSkills = const [];
   bool _loading = true;
-  bool _career = true;
-  int _year = DateTime.now().year;
+  _RecordPeriod _period = _RecordPeriod.career;
+  DateTime _periodAnchor = DateTime.now();
+  DateTimeRange? _customRange;
   _CareerFilter _filter = _CareerFilter.all;
   _RecordSort _sort = _RecordSort.newest;
   String? _activityTitle;
@@ -169,17 +174,108 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
     });
   }
 
-  // The Record tab is a personal Quick Add log, not a Task Book activity feed.
-  // Keep Task Book evidence stored for its original workflows and exports.
-  bool _isTaskBookHistory(CareerRecord record) =>
-      record.type == CareerRecordType.taskBookEvidence ||
-      record.tags.contains('task-book');
-
   List<CareerRecord> get _periodRecords {
-    final personalLogs = _records.where((record) => !_isTaskBookHistory(record));
-    return _career
-        ? personalLogs.toList()
-        : personalLogs.where((record) => record.date.year == _year).toList();
+    return _records.where((record) {
+      return switch (_period) {
+        _RecordPeriod.career => true,
+        _RecordPeriod.year => record.date.year == _periodAnchor.year,
+        _RecordPeriod.month =>
+          record.date.year == _periodAnchor.year &&
+              record.date.month == _periodAnchor.month,
+        _RecordPeriod.custom => _customRange == null ||
+            (!record.date.isBefore(_startOfDay(_customRange!.start)) &&
+                !record.date.isAfter(_endOfDay(_customRange!.end))),
+      };
+    }).toList();
+  }
+
+  static DateTime _startOfDay(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+
+  static DateTime _endOfDay(DateTime date) =>
+      DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
+
+  String get _periodLabel => switch (_period) {
+        _RecordPeriod.career => 'All time',
+        _RecordPeriod.year => '${_periodAnchor.year}',
+        _RecordPeriod.month =>
+          '${_monthName(_periodAnchor.month)} ${_periodAnchor.year}',
+        _RecordPeriod.custom => _customRange == null
+            ? 'Choose dates'
+            : '${CareerStats.formatDate(_customRange!.start)} – ${CareerStats.formatDate(_customRange!.end)}',
+      };
+
+  static String _monthName(int month) => const [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ][month - 1];
+
+  static String _shortWeekday(int weekday) => const [
+        'Mon',
+        'Tue',
+        'Wed',
+        'Thu',
+        'Fri',
+        'Sat',
+        'Sun',
+      ][weekday - 1];
+
+  Future<void> _setPeriod(_RecordPeriod period) async {
+    if (period == _RecordPeriod.custom) {
+      final now = DateTime.now();
+      final selected = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(1970),
+        lastDate: now,
+        initialDateRange: _customRange ??
+            DateTimeRange(
+              start: DateTime(now.year, now.month, 1),
+              end: now,
+            ),
+      );
+      if (selected == null || !mounted) return;
+      setState(() {
+        _period = period;
+        _customRange = selected;
+      });
+      return;
+    }
+    setState(() => _period = period);
+  }
+
+  void _movePeriod(int direction) {
+    setState(() {
+      if (_period == _RecordPeriod.month) {
+        _periodAnchor = DateTime(
+          _periodAnchor.year,
+          _periodAnchor.month + direction,
+          1,
+        );
+      } else if (_period == _RecordPeriod.year) {
+        _periodAnchor = DateTime(_periodAnchor.year + direction);
+      }
+    });
+  }
+
+  List<MapEntry<String, List<CareerRecord>>> get _timelineGroups {
+    final grouped = <String, List<CareerRecord>>{};
+    for (final record in _visibleRecords) {
+      final label = _period == _RecordPeriod.month
+          ? '${_shortWeekday(record.date.weekday)}, ${_monthName(record.date.month).substring(0, 3)} ${record.date.day}'
+          : '${_monthName(record.date.month)} ${record.date.year}';
+      (grouped[label] ??= <CareerRecord>[]).add(record);
+    }
+    return grouped.entries.toList();
   }
 
   List<CareerRecord> get _visibleRecords {
@@ -292,7 +388,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
         // This screen is frequently opened via `context.go('/log')`, which can
         // replace the current route and leave no stack to pop. Always provide
         // a reliable way back to Home.
-        leading: const AppBackButton.toHome(),
+        leading: widget.embedded ? null : const AppBackButton.toHome(),
         subtitle: 'Records',
         actions: [
           IconButton(
@@ -338,11 +434,13 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openQuickLog,
-        icon: const Icon(Icons.add),
-        label: const Text('Quick Add'),
-      ),
+      floatingActionButton: widget.embedded
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _openQuickLog,
+              icon: const Icon(Icons.add),
+              label: const Text('Quick Add'),
+            ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _load,
@@ -360,10 +458,17 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
               ),
               const SizedBox(height: 10),
               _PeriodControls(
-                career: _career,
-                year: _year,
-                onCareerChanged: (value) => setState(() => _career = value),
-                onYearTap: _career ? null : _pickYear,
+                period: _period,
+                label: _periodLabel,
+                onPeriodChanged: _setPeriod,
+                onPrevious: _period == _RecordPeriod.month ||
+                        _period == _RecordPeriod.year
+                    ? () => _movePeriod(-1)
+                    : null,
+                onNext: _period == _RecordPeriod.month ||
+                        _period == _RecordPeriod.year
+                    ? () => _movePeriod(1)
+                    : null,
               ),
               const SizedBox(height: 14),
               TextField(
@@ -398,6 +503,20 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              Card(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  leading: const Icon(Icons.insights_outlined),
+                  title: Text(
+                    '${_periodRecords.length} record${_periodRecords.length == 1 ? '' : 's'} in $_periodLabel',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: Text(
+                    '${stats.calls} calls • ${stats.skillRepetitions} skill reps • ${stats.trainingLabel} training',
+                  ),
+                ),
               ),
               if (_activityCounts.isNotEmpty) ...[
                 const SizedBox(height: 18),
@@ -454,7 +573,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 )
               else ...[
                 Text(
-                  _career ? 'CAREER SUMMARY' : '$_year SUMMARY',
+                  '${_periodLabel.toUpperCase()} STATS',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: cs.onSurfaceVariant,
@@ -517,7 +636,9 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 ],
                 const SizedBox(height: 22),
                 Text(
-                  _activityTitle == null ? 'CAREER JOURNAL' : _activityTitle!.toUpperCase(),
+                  _activityTitle == null
+                      ? 'TIMELINE'
+                      : '${_activityTitle!.toUpperCase()} TIMELINE',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: cs.onSurfaceVariant,
@@ -527,16 +648,31 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 if (visible.isEmpty)
                   _EmptyHistory(onLog: _openQuickLog)
                 else
-                  ...visible.map(
-                    (record) => Padding(
-                      padding: const EdgeInsets.only(bottom: 9),
-                      child: _RecordCard(
-                        record: record,
-                        onOpen: () => _editRecord(record),
-                        onEdit: () => _editRecord(record),
-                        onDelete: () => _deleteRecord(record),
+                  ..._timelineGroups.expand(
+                    (group) => [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
+                        child: Text(
+                          group.key.toUpperCase(),
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: cs.onSurfaceVariant,
+                                letterSpacing: 0.5,
+                              ),
+                        ),
                       ),
-                    ),
+                      ...group.value.map(
+                        (record) => Padding(
+                          padding: const EdgeInsets.only(bottom: 9),
+                          child: _RecordCard(
+                            record: record,
+                            onOpen: () => _editRecord(record),
+                            onEdit: () => _editRecord(record),
+                            onDelete: () => _deleteRecord(record),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
               ],
               const SizedBox(height: 22),
@@ -725,50 +861,6 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
     await _load();
   }
 
-  Future<void> _pickYear() async {
-    final years = CareerStats.availableYears(_records);
-    final selected = await showModalBottomSheet<int>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        final options = years.isEmpty ? [DateTime.now().year] : years;
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Choose year',
-                  style: Theme.of(sheetContext)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: options
-                      .map(
-                        (year) => ChoiceChip(
-                          label: Text('$year'),
-                          selected: year == _year,
-                          onSelected: (_) => Navigator.pop(sheetContext, year),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-    if (selected != null && mounted) setState(() => _year = selected);
-  }
-
   Future<void> _deleteRecord(CareerRecord record) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -878,16 +970,18 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
 }
 
 class _PeriodControls extends StatelessWidget {
-  final bool career;
-  final int year;
-  final ValueChanged<bool> onCareerChanged;
-  final VoidCallback? onYearTap;
+  final _RecordPeriod period;
+  final String label;
+  final ValueChanged<_RecordPeriod> onPeriodChanged;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
 
   const _PeriodControls({
-    required this.career,
-    required this.year,
-    required this.onCareerChanged,
-    required this.onYearTap,
+    required this.period,
+    required this.label,
+    required this.onPeriodChanged,
+    required this.onPrevious,
+    required this.onNext,
   });
 
   @override
@@ -900,29 +994,60 @@ class _PeriodControls extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
       ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SegmentedButton<bool>(
+          SegmentedButton<_RecordPeriod>(
             showSelectedIcon: false,
             segments: const [
-              ButtonSegment(value: false, label: Text('THIS YEAR')),
-              ButtonSegment(value: true, label: Text('CAREER')),
-            ],
-            selected: {career},
-            onSelectionChanged: (selection) =>
-                onCareerChanged(selection.first),
-          ),
-          if (!career)
-            SizedBox(
-              height: 48,
-              child: FilledButton.tonalIcon(
-                onPressed: onYearTap,
-                icon: const Icon(Icons.calendar_month),
-                label: Text('$year'),
+              ButtonSegment(
+                value: _RecordPeriod.month,
+                label: Text('MONTH'),
               ),
-            ),
+              ButtonSegment(
+                value: _RecordPeriod.year,
+                label: Text('YEAR'),
+              ),
+              ButtonSegment(
+                value: _RecordPeriod.custom,
+                label: Text('CUSTOM'),
+              ),
+              ButtonSegment(
+                value: _RecordPeriod.career,
+                label: Text('ALL'),
+              ),
+            ],
+            selected: {period},
+            onSelectionChanged: (selection) => onPeriodChanged(selection.first),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              IconButton.filledTonal(
+                tooltip: 'Previous period',
+                onPressed: onPrevious,
+                icon: const Icon(Icons.chevron_left_rounded),
+              ),
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: period == _RecordPeriod.custom
+                      ? () => onPeriodChanged(_RecordPeriod.custom)
+                      : null,
+                  icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                  label: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                  ),
+                ),
+              ),
+              IconButton.filledTonal(
+                tooltip: 'Next period',
+                onPressed: onNext,
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
+            ],
+          ),
         ],
       ),
     );

@@ -59,7 +59,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(AlertDialog), findsNothing);
-    expect(find.text('Your growth over time'), findsOneWidget);
+    expect(find.text('Advance your career'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );
@@ -102,9 +102,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      expect(find.text('Career Roadmap'), findsOneWidget);
+      expect(find.text('Roadmap'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.text('Your career story'),
+        find.text('Advancement milestones'),
         250,
         scrollable: find.byWidgetPredicate(
           (widget) =>
@@ -112,7 +112,7 @@ void main() {
               widget.axisDirection == AxisDirection.down,
         ),
       );
-      expect(find.text('Your career story'), findsOneWidget);
+      expect(find.text('Advancement milestones'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Building qualifications'),
         250,
