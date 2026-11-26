@@ -416,6 +416,141 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     );
   }
 
+  Widget _careerOpportunityTools() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionTitle(
+          title: 'Career opportunities',
+          subtitle:
+              'When you are ready to make a move, manage applications, work history, and job searches here.',
+        ),
+        const SizedBox(height: 10),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          margin: EdgeInsets.zero,
+          child: InkWell(
+            onTap: () => context.push(AppRoutes.applicationCenter),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF312E81), Color(0xFF6D28D9)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: const Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.white24,
+                    child: Icon(
+                      Icons.rocket_launch_outlined,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Application Center',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 17,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Reusable profile, document readiness, references, and hiring progress',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: Colors.white),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: Card(
+                margin: EdgeInsets.zero,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => context.push(AppRoutes.jobHistory),
+                  child: const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Color(0xFFE0E7FF),
+                          child: Icon(
+                            Icons.work_history_outlined,
+                            color: Color(0xFF3730A3),
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'Job history',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                        SizedBox(height: 4),
+                        Text('Roles and service dates', maxLines: 2),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Card(
+                margin: EdgeInsets.zero,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => context.push(AppRoutes.jobSearch),
+                  child: const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Color(0xFFDCFCE7),
+                          child: Icon(
+                            Icons.travel_explore_rounded,
+                            color: Color(0xFF166534),
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'Job search',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                        SizedBox(height: 4),
+                        Text('Find fire and EMS openings', maxLines: 2),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Future<void> _openEditor({
     CareerRecord? existing,
     CareerRecordType? initialType,
@@ -1070,124 +1205,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
-                const _SectionTitle(
-                  title: 'Career advancement',
-                  subtitle:
-                      'Choose the next move, prepare for it, and keep every application organized.',
-                ),
-                const SizedBox(height: 10),
-                Card(
-                  clipBehavior: Clip.antiAlias,
-                  margin: EdgeInsets.zero,
-                  child: InkWell(
-                    onTap: () => context.push(AppRoutes.applicationCenter),
-                    child: Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF312E81), Color(0xFF6D28D9)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: const Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: Colors.white24,
-                            child: Icon(Icons.rocket_launch_outlined, color: Colors.white),
-                          ),
-                          SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Application Center', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
-                                SizedBox(height: 4),
-                                Text('Reusable profile, document readiness, references, and hiring progress', style: TextStyle(color: Colors.white70, height: 1.35)),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.chevron_right_rounded, color: Colors.white),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Card(
-                        margin: EdgeInsets.zero,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () => context.push(AppRoutes.jobHistory),
-                          child: const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: Color(0xFFE0E7FF),
-                                  child: Icon(
-                                    Icons.work_history_outlined,
-                                    color: Color(0xFF3730A3),
-                                  ),
-                                ),
-                                SizedBox(height: 12),
-                                Text(
-                                  'Job history',
-                                  style: TextStyle(fontWeight: FontWeight.w900),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Roles and service dates',
-                                  maxLines: 2,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Card(
-                        margin: EdgeInsets.zero,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () => context.push(AppRoutes.jobSearch),
-                          child: const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: Color(0xFFDCFCE7),
-                                  child: Icon(
-                                    Icons.travel_explore_rounded,
-                                    color: Color(0xFF166534),
-                                  ),
-                                ),
-                                SizedBox(height: 12),
-                                Text(
-                                  'Job search',
-                                  style: TextStyle(fontWeight: FontWeight.w900),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Find fire and EMS openings',
-                                  maxLines: 2,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 12),
                 Card(
                   color: const Color(0xFFEAF1FC),
@@ -1308,7 +1325,9 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                   )
                 else
                   ...growthYears.map((year) => _growthYearCard(app, year)),
-                const SizedBox(height: 4),
+                const SizedBox(height: 18),
+                _careerOpportunityTools(),
+                const SizedBox(height: 12),
                 Card(
                   color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
                   child: ListTile(
