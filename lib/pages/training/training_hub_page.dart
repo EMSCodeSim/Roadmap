@@ -332,22 +332,6 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
                 onOpenStats: () => context.push(AppRoutes.personalLog),
               ),
               const SizedBox(height: 16),
-              Card(
-                margin: EdgeInsets.zero,
-                child: ListTile(
-                  leading: const Icon(Icons.timeline_rounded),
-                  title: const Text(
-                    'Career story and highlights',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  subtitle: const Text(
-                    'Open Timeline for your complete career history, milestones, and verified training.',
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => context.push(AppRoutes.growth),
-                ),
-              ),
-              const SizedBox(height: 16),
               if (urgent.isNotEmpty) ...[
                 _NeedsAttentionCard(
                   expired: urgent.where((item) => item.isExpired).length,
