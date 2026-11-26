@@ -20,8 +20,9 @@ class ProductionQuickLogSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mode = context.watch<AppModeController>();
+    final isDepartmentConnected = mode.departmentLink != null;
     final canCreateTrainingSheet =
-        mode.departmentLink != null && (mode.isInstructor || mode.isAdmin);
+        isDepartmentConnected && (mode.isInstructor || mode.isAdmin);
 
     // Do not nest another viewInsets pad here — confirm/detail steps already
     // scroll with MediaQuery.viewInsets so the primary action stays reachable.
@@ -31,13 +32,13 @@ class ProductionQuickLogSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ...[
+          if (isDepartmentConnected)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  ...[
+                  if (canCreateTrainingSheet) ...[
                     FilledButton.icon(
                         key: const Key('quick_add_training_sheet'),
                         onPressed: () async {
@@ -45,11 +46,7 @@ class ProductionQuickLogSheet extends StatelessWidget {
                           router.pop();
                           // Give the sheet dismissal a tick to settle.
                           await Future<void>.delayed(Duration.zero);
-                          if (canCreateTrainingSheet) {
-                            router.push('${AppRoutes.departmentTrainingSheets}?create=1');
-                          } else {
-                            router.push(AppRoutes.department);
-                          }
+                          router.push('${AppRoutes.departmentTrainingSheets}?create=1');
                         },
                         icon: const Icon(Icons.assignment_add),
                         label: const Text(
@@ -59,7 +56,7 @@ class ProductionQuickLogSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                   ],
-                  if (mode.departmentLink != null) OutlinedButton.icon(
+                  OutlinedButton.icon(
                       key: const Key('quick_add_scan_class_qr'),
                       onPressed: () =>
                           context.push(AppRoutes.departmentQrScan),
@@ -72,10 +69,11 @@ class ProductionQuickLogSheet extends StatelessWidget {
                 ],
               ),
             ),
-          ],
           SimpleQuickLogSheet(
             prefill: prefill,
-            showDepartmentQrAction: mode.departmentLink == null,
+            // Department QR access is owned by the gated action above. Never
+            // show the legacy QR shortcut to standalone personal users.
+            showDepartmentQrAction: false,
           ),
         ],
       ),

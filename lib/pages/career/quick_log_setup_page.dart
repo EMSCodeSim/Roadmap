@@ -41,27 +41,52 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
     });
   }
 
-  static const List<(String, String, IconData)> _quickActionOptions = [
-    ('call', 'CALL', Icons.local_fire_department_outlined),
-    ('training', 'TRAINING', Icons.school_outlined),
-    ('skill', 'SKILL', Icons.handyman_outlined),
-    ('exposure', 'EXPOSURE', Icons.health_and_safety_outlined),
-    ('drive', 'DRIVE', Icons.local_shipping_outlined),
-    ('task_book', 'TASK BOOK', Icons.fact_check_outlined),
-    ('career', 'CAREER', Icons.military_tech_outlined),
+  static const List<(String, String, IconData, Color)> _quickActionOptions = [
+    ('call', 'CALL', Icons.local_fire_department_outlined, Color(0xFFE5252A)),
+    ('training', 'TRAINING', Icons.school_outlined, Color(0xFF2754D9)),
+    ('skill', 'SKILL', Icons.handyman_outlined, Color(0xFF129C93)),
+    ('exposure', 'EXPOSURE', Icons.health_and_safety_outlined, Color(0xFFF05A0B)),
+    ('drive', 'DRIVING', Icons.local_shipping_outlined, Color(0xFFE47B00)),
+    ('career', 'CAREER', Icons.military_tech_outlined, Color(0xFF7937F2)),
   ];
 
   void _toggleQuickAction(String key) {
     setState(() {
       if (_quickActionKeys.contains(key)) {
+        final visibleCount = _quickActionOptions
+            .where((option) => _quickActionKeys.contains(option.$1))
+            .length;
+        if (visibleCount <= 1) return;
         _quickActionKeys.remove(key);
       } else {
         _quickActionKeys.add(key);
       }
-      if (_quickActionKeys.isEmpty) {
-        _quickActionKeys =
-            List<String>.from(QuickLogPreferencesStore.defaultQuickActionKeys);
-      }
+    });
+  }
+
+  void _moveQuickAction(String key, int direction) {
+    final visible = _quickActionOptions
+        .where((option) => _quickActionKeys.contains(option.$1))
+        .toList()
+      ..sort(
+        (a, b) => _quickActionKeys
+            .indexOf(a.$1)
+            .compareTo(_quickActionKeys.indexOf(b.$1)),
+      );
+    final visibleIndex = visible.indexWhere((option) => option.$1 == key);
+    final targetVisibleIndex = visibleIndex + direction;
+    if (visibleIndex < 0 ||
+        targetVisibleIndex < 0 ||
+        targetVisibleIndex >= visible.length) {
+      return;
+    }
+    final currentIndex = _quickActionKeys.indexOf(key);
+    final targetIndex =
+        _quickActionKeys.indexOf(visible[targetVisibleIndex].$1);
+    setState(() {
+      final item = _quickActionKeys[currentIndex];
+      _quickActionKeys[currentIndex] = _quickActionKeys[targetIndex];
+      _quickActionKeys[targetIndex] = item;
     });
   }
 
@@ -103,6 +128,14 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
         .map(_tracker)
         .whereType<QuickLogTracker>()
         .toList();
+    final selectedQuickActions = _quickActionOptions
+        .where((option) => _quickActionKeys.contains(option.$1))
+        .toList()
+      ..sort(
+        (a, b) => _quickActionKeys
+            .indexOf(a.$1)
+            .compareTo(_quickActionKeys.indexOf(b.$1)),
+      );
     final available = [
       ...QuickLogCatalog.builtIns,
       ..._customTrackers,
@@ -111,7 +144,7 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton.toLog(),
-        title: const Text('Set Up Quick Log'),
+        title: const Text('Customize Quick Picks'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -129,13 +162,13 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Build the buttons you actually use',
+                          'Make Quick Add work your way',
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Pinned buttons appear first in Quick Log and prefill the activity name and category. Skills such as IV, IO, and advanced airway also keep success/failure tracking available.',
+                          'Choose the large Quick Pick tiles you want to see, then arrange them in the order that feels most natural.',
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
                                 color: cs.onSurfaceVariant,
@@ -147,13 +180,101 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'STARTING SET',
+                    '1 · CHOOSE YOUR QUICK PICKS',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w900,
                       color: cs.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 8),
+                  Text(
+                    'Tap a tile to show or hide it. At least one Quick Pick stays active.',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
+                  ),
+                  const SizedBox(height: 10),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 1.75,
+                    children: _quickActionOptions.map((option) {
+                      final active = _quickActionKeys.contains(option.$1);
+                      return _QuickPickSelector(
+                        key: Key('quick_pick_selector_${option.$1}'),
+                        label: option.$2,
+                        icon: option.$3,
+                        color: option.$4,
+                        selected: active,
+                        onTap: () => _toggleQuickAction(option.$1),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    '2 · ARRANGE YOUR QUICK ADD SCREEN',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This preview matches the order of the colored tiles in Quick Add.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          height: 1.35,
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  GridView.builder(
+                    itemCount: selectedQuickActions.length,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1.38,
+                    ),
+                    itemBuilder: (context, index) {
+                      final option = selectedQuickActions[index];
+                      return _QuickPickPreview(
+                        key: Key('quick_pick_preview_${option.$1}'),
+                        number: index + 1,
+                        label: option.$2,
+                        icon: option.$3,
+                        color: option.$4,
+                        canMoveEarlier: index > 0,
+                        canMoveLater: index < selectedQuickActions.length - 1,
+                        onMoveEarlier: () =>
+                            _moveQuickAction(option.$1, -1),
+                        onMoveLater: () => _moveQuickAction(option.$1, 1),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    '3 · OPTIONAL ROLE PRESET',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Presets change the detailed choices inside your Quick Picks. They do not replace the colored tiles above.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          height: 1.35,
+                        ),
+                  ),
+                  const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -170,58 +291,12 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 22),
-                  Text(
-                    'QUICK ACTIONS (TOP GRID)',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Pick what shows up first when you open Quick Log. You can turn items on/off anytime.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _quickActionOptions.map((option) {
-                      final key = option.$1;
-                      final label = option.$2;
-                      final icon = option.$3;
-                      final selected = _quickActionKeys.contains(key);
-                      return FilterChip(
-                        selected: selected,
-                        // Keep selected chips readable against the dark navy
-                        // fill. Material 3 can otherwise inherit the light
-                        // label color from ChipThemeData.
-                        labelStyle: TextStyle(
-                          color: selected ? cs.onPrimary : cs.onSurface,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        iconTheme: IconThemeData(
-                          color: selected ? cs.onPrimary : cs.onSurfaceVariant,
-                          size: 18,
-                        ),
-                        checkmarkColor: cs.onPrimary,
-                        selectedColor: cs.primary,
-                        label: Text(label),
-                        avatar: Icon(icon, size: 18),
-                        onSelected: (_) => _toggleQuickAction(key),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 24),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
-                          'YOUR QUICK BUTTONS',
+                          'DETAILED CHOICES INSIDE QUICK PICKS',
                           style: Theme.of(context).textTheme.labelLarge
                               ?.copyWith(
                                 fontWeight: FontWeight.w900,
@@ -295,7 +370,7 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
             child: FilledButton.icon(
               onPressed: _loading || _saving ? null : _save,
               icon: const Icon(Icons.check),
-              label: Text(_saving ? 'Saving…' : 'Save Quick Log Setup'),
+              label: Text(_saving ? 'Saving…' : 'Save Quick Picks'),
             ),
           ),
         ),
@@ -452,6 +527,214 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+}
+
+class _QuickPickSelector extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _QuickPickSelector({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: selected
+          ? color.withValues(alpha: 0.11)
+          : cs.surfaceContainerHighest.withValues(alpha: 0.55),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(
+              color: selected
+                  ? color.withValues(alpha: 0.42)
+                  : cs.outline.withValues(alpha: 0.18),
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? color
+                      : cs.onSurfaceVariant.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 23,
+                  color: selected ? Colors.white : cs.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected ? color : cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.add_circle_outline_rounded,
+                size: 21,
+                color: selected ? color : cs.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickPickPreview extends StatelessWidget {
+  final int number;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool canMoveEarlier;
+  final bool canMoveLater;
+  final VoidCallback onMoveEarlier;
+  final VoidCallback onMoveLater;
+
+  const _QuickPickPreview({
+    super.key,
+    required this.number,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.canMoveEarlier,
+    required this.canMoveLater,
+    required this.onMoveEarlier,
+    required this.onMoveLater,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.11),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: color.withValues(alpha: 0.34)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(icon, size: 22, color: Colors.white),
+              ),
+              const Spacer(),
+              CircleAvatar(
+                radius: 13,
+                backgroundColor: color.withValues(alpha: 0.15),
+                child: Text(
+                  '$number',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: color, fontWeight: FontWeight.w900),
+          ),
+          const Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _ReorderButton(
+                tooltip: 'Move $label earlier',
+                icon: Icons.arrow_back_rounded,
+                color: color,
+                onPressed: canMoveEarlier ? onMoveEarlier : null,
+              ),
+              const SizedBox(width: 4),
+              _ReorderButton(
+                tooltip: 'Move $label later',
+                icon: Icons.arrow_forward_rounded,
+                color: color,
+                onPressed: canMoveLater ? onMoveLater : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReorderButton extends StatelessWidget {
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onPressed;
+
+  const _ReorderButton({
+    required this.tooltip,
+    required this.icon,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 34,
+      height: 30,
+      child: IconButton(
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          backgroundColor: color.withValues(alpha: 0.12),
+          disabledBackgroundColor: color.withValues(alpha: 0.04),
+        ),
+        icon: Icon(icon, size: 18),
+        color: color,
+      ),
+    );
   }
 }
 

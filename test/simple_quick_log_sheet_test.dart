@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:firepath/state/app_mode_controller.dart';
+import 'package:firepath/services/department_link_store.dart';
 
 import 'package:firepath/pages/career/production_quick_log_sheet.dart';
 
 void main() {
-  testWidgets('Log something now exposes responder activity categories and QR scan', (tester) async {
+  testWidgets('standalone users only see personal quick-log actions', (tester) async {
     await tester.pumpWidget(
       ChangeNotifierProvider(
         create: (_) => AppModeController(),
@@ -19,8 +20,10 @@ void main() {
     );
 
     expect(find.text('What are you logging?'), findsOneWidget);
-    expect(find.text('Create Training Sheet'), findsOneWidget);
-    expect(find.byKey(const Key('quick_add_training_sheet')), findsOneWidget);
+    expect(find.text('Create Training Sheet'), findsNothing);
+    expect(find.byKey(const Key('quick_add_training_sheet')), findsNothing);
+    expect(find.text('Scan Training Sheet'), findsNothing);
+    expect(find.byKey(const Key('quick_add_scan_class_qr')), findsNothing);
     expect(find.text('TRAINING'), findsOneWidget);
     expect(find.text('CALL'), findsOneWidget);
     expect(find.text('SKILL'), findsOneWidget);
@@ -28,13 +31,100 @@ void main() {
     expect(find.text('DRIVING'), findsOneWidget);
     expect(find.text('CAREER'), findsOneWidget);
     expect(
-      find.text('Customize Fire, EMS & personal choices'),
+      find.text('Customize Quick Pick Buttons'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Choose and arrange your colored Quick Add tiles'),
       findsOneWidget,
     );
     expect(find.text('Task Book / Career Road progress'), findsNothing);
     expect(find.text('Training Resources'), findsOneWidget);
     expect(find.byKey(const Key('quick_add_training_resources')), findsOneWidget);
-    expect(find.text('Scan department class QR'), findsOneWidget);
+    expect(find.text('Scan department class QR'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('department members can scan but cannot create training sheets',
+      (tester) async {
+    final mode = AppModeController();
+    await mode.setDepartmentLink(_departmentLink(role: 'MEMBER'));
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: mode,
+        child: const MaterialApp(
+          home: Scaffold(body: ProductionQuickLogSheet()),
+        ),
+      ),
+    );
+
+    expect(find.text('Create Training Sheet'), findsNothing);
+    expect(find.byKey(const Key('quick_add_training_sheet')), findsNothing);
+    expect(find.text('Scan Training Sheet'), findsOneWidget);
+    expect(find.byKey(const Key('quick_add_scan_class_qr')), findsOneWidget);
+    expect(find.text('Scan department class QR'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('department instructors can create and scan training sheets',
+      (tester) async {
+    final mode = AppModeController();
+    await mode.setDepartmentLink(_departmentLink(role: 'INSTRUCTOR'));
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: mode,
+        child: const MaterialApp(
+          home: Scaffold(body: ProductionQuickLogSheet()),
+        ),
+      ),
+    );
+
+    expect(find.text('Create Training Sheet'), findsOneWidget);
+    expect(find.byKey(const Key('quick_add_training_sheet')), findsOneWidget);
+    expect(find.text('Scan Training Sheet'), findsOneWidget);
+    expect(find.byKey(const Key('quick_add_scan_class_qr')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('department evaluators can scan but cannot create training sheets',
+      (tester) async {
+    final mode = AppModeController();
+    await mode.setDepartmentLink(_departmentLink(role: 'EVALUATOR'));
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: mode,
+        child: const MaterialApp(
+          home: Scaffold(body: ProductionQuickLogSheet()),
+        ),
+      ),
+    );
+
+    expect(find.text('Create Training Sheet'), findsNothing);
+    expect(find.text('Scan Training Sheet'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('department administrators can create and scan training sheets',
+      (tester) async {
+    final mode = AppModeController();
+    await mode.setDepartmentLink(
+      _departmentLink(role: 'DEPARTMENT_ADMINISTRATOR'),
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: mode,
+        child: const MaterialApp(
+          home: Scaffold(body: ProductionQuickLogSheet()),
+        ),
+      ),
+    );
+
+    expect(find.text('Create Training Sheet'), findsOneWidget);
+    expect(find.text('Scan Training Sheet'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -175,3 +265,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 }
+
+DepartmentLink _departmentLink({required String role}) => DepartmentLink(
+      departmentId: 'department-1',
+      departmentName: 'Test Department',
+      userId: 'user-1',
+      userName: 'Test User',
+      email: 'test@example.com',
+      role: role,
+      rank: null,
+      linkedAt: DateTime(2026, 1, 1),
+    );
