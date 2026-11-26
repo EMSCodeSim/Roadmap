@@ -8,6 +8,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/widgets/app_back_button.dart';
+import 'package:firepath/widgets/home_screen_customization_sheet.dart';
 import 'package:firepath/widgets/portfolio_backup_sheet.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -134,6 +135,15 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Future<void> _customizeHomeScreen() async {
+    final saved = await HomeScreenCustomizationSheet.show(context);
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Home Screen updated.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -167,6 +177,22 @@ class _SettingsPageState extends State<SettingsPage> {
                   title: Text('About Responder Roadmap'),
                   subtitle: Text('Career planning and professional record'),
                   trailing: Text('1.2.5 (35)'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _SettingsSection(
+              title: 'HOME SCREEN',
+              children: [
+                ListTile(
+                  key: const Key('settings-customize-home'),
+                  leading: const Icon(Icons.dashboard_customize_outlined),
+                  title: const Text('Customize Home Screen'),
+                  subtitle: const Text(
+                    'Choose, hide, and arrange your Home sections',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _customizeHomeScreen,
                 ),
               ],
             ),
