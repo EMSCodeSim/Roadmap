@@ -38,7 +38,6 @@ import 'package:firepath/pages/career/career_record_v2_page.dart';
 import 'package:firepath/pages/career/quick_log_setup_page.dart';
 import 'package:firepath/pages/resources/resources_page.dart';
 import 'package:firepath/pages/settings/settings_page.dart';
-import 'package:firepath/pages/training/training_hub_page.dart';
 import 'package:firepath/pages/profile/profile_page.dart';
 import 'package:firepath/pages/requirement/requirement_detail_page.dart';
 import 'package:firepath/pages/requirement/get_started_page.dart';
@@ -296,7 +295,9 @@ class AppRouter {
                 path: AppRoutes.training,
                 name: 'training',
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: TrainingHubPage()),
+                    const NoTransitionPage(
+                      child: CareerRecordV2Page(embedded: true),
+                    ),
               ),
             ],
           ),
