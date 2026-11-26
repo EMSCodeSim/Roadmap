@@ -6,6 +6,35 @@ import 'package:firepath/services/home_section_preferences_store.dart';
 import 'package:firepath/widgets/home_screen_customization_sheet.dart';
 
 void main() {
+  test('new users start with only the five primary Home sections enabled', () {
+    final visible = HomeSectionPreferencesStore.defaults
+        .where((item) => item.visible)
+        .map((item) => item.type)
+        .toSet();
+
+    expect(
+      visible,
+      {
+        HomeSectionType.goal,
+        HomeSectionType.nextStep,
+        HomeSectionType.needsAttention,
+        HomeSectionType.dailyQuiz,
+        HomeSectionType.trainingIdeas,
+      },
+    );
+    expect(
+      HomeSectionPreferencesStore.defaults
+          .where((item) => !item.visible)
+          .map((item) => item.type)
+          .toSet(),
+      {
+        HomeSectionType.careerSnapshot,
+        HomeSectionType.jobSearch,
+        HomeSectionType.department,
+      },
+    );
+  });
+
   testWidgets('users can choose and save visual Home sections', (tester) async {
     final store = _FakeHomeSectionStore();
 
