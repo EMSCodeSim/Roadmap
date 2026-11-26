@@ -146,17 +146,20 @@ class _JobSearchPageState extends State<JobSearchPage> {
       final searchable =
           '${job.title} ${job.employer} ${job.category}'.toLowerCase();
       final place = '${job.city} ${job.state}'.toLowerCase();
-      final employment =
-          '${job.title} ${job.employmentType}'.toLowerCase();
+      final employment = job.normalizedEmploymentType;
 
       if (position.isNotEmpty && !searchable.contains(position)) return false;
       if (location.isNotEmpty && !place.contains(location)) return false;
       if (_category.isNotEmpty && job.category != _category) return false;
-      if (keywords.isNotEmpty && !'$searchable $place'.contains(keywords)) {
-        return false;
+      if (keywords.isNotEmpty) {
+        final combined = '$searchable $place';
+        final terms = keywords
+            .split(RegExp(r'[, ]+'))
+            .where((term) => term.isNotEmpty);
+        if (!terms.every(combined.contains)) return false;
       }
       if (_employmentType.isNotEmpty &&
-          !employment.contains(_employmentType.toLowerCase())) {
+          employment != _employmentType.toLowerCase()) {
         return false;
       }
       if (minimumPay != null && minimumPay > 0) {
@@ -521,6 +524,20 @@ class _ResponderJob {
         closes: DateTime.tryParse(json['closes'] as String? ?? ''),
         employmentType: json['employmentType'] as String? ?? '',
       );
+
+  String get normalizedEmploymentType {
+    final provided = employmentType.trim().toLowerCase();
+    if (provided.isNotEmpty) return provided;
+    final lowerTitle = title.toLowerCase();
+    if (lowerTitle.contains('temporary') || lowerTitle.contains('seasonal')) {
+      return 'temporary';
+    }
+    if (lowerTitle.contains('part-time') || lowerTitle.contains('part time')) {
+      return 'part-time';
+    }
+    if (lowerTitle.contains('volunteer')) return 'volunteer';
+    return 'full-time';
+  }
 
   int? get minimumAnnualPay {
     if (salary.trim().isEmpty) return null;
