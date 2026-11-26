@@ -31,7 +31,11 @@ void main() {
     expect(find.text('DRIVING'), findsOneWidget);
     expect(find.text('CAREER'), findsOneWidget);
     expect(
-      find.text('Customize Fire, EMS & personal choices'),
+      find.text('Customize Quick Pick Buttons'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Choose and arrange your colored Quick Add tiles'),
       findsOneWidget,
     );
     expect(find.text('Task Book / Career Road progress'), findsNothing);
