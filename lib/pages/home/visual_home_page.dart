@@ -95,7 +95,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
         (roadmap == null ? 'Choose a goal when you are ready' : 'Your roadmap is caught up');
     final nextStepSubtitle = nextStep == null
         ? 'Keep documenting the work that is shaping your career.'
-        : 'Recommended next step in your personal growth plan.';
+        : 'Open training, study, official, and practice resources for this step.';
 
     final sectionWidgets = <HomeSectionType, Widget>{
       HomeSectionType.goal: Column(
@@ -122,9 +122,20 @@ class _VisualHomePageState extends State<VisualHomePage> {
             icon: Icons.auto_awesome_rounded,
             title: nextStepTitle,
             subtitle: nextStepSubtitle,
-            onTap: () => context.go(
-              roadmap == null ? AppRoutes.goalSetup : AppRoutes.careerGoals,
-            ),
+            onTap: () {
+              if (roadmap == null) {
+                context.go(AppRoutes.goalSetup);
+                return;
+              }
+              if (nextStep != null) {
+                context.push(
+                  AppRoutes.getStarted,
+                  extra: nextStep.requirement,
+                );
+                return;
+              }
+              context.go(AppRoutes.careerGoals);
+            },
           ),
         ],
       ),
