@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
@@ -79,16 +78,6 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
           }
         }
       });
-    }
-  }
-
-  Future<void> _openJobSearch() async {
-    final uri = Uri.parse('https://emscodesim.com/jobs/');
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open the job search.')),
-      );
     }
   }
 
@@ -1258,7 +1247,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                         margin: EdgeInsets.zero,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
-                          onTap: _openJobSearch,
+                          onTap: () => context.push(AppRoutes.jobSearch),
                           child: const Padding(
                             padding: EdgeInsets.all(16),
                             child: Column(
