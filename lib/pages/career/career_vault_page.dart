@@ -1093,7 +1093,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
         surfaceTintColor: Colors.transparent,
         leading: const AppBackButton.toAdvance(),
         title: const Text(
-          'My Career',
+          'Roadmap',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         actions: [
@@ -1127,7 +1127,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                         const Icon(Icons.trending_up_rounded, size: 28, color: Colors.white),
                         const SizedBox(height: 12),
                         Text(
-                          'Your growth over time',
+                          'Advance your career',
                           style: Theme.of(context)
                               .textTheme
                               .headlineSmall
@@ -1138,7 +1138,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'See how your experience, skills, learning, and leadership have developed year by year.',
+                          'Build your qualifications, prepare stronger applications, and turn years of experience into your next opportunity.',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: Colors.white.withValues(alpha: 0.78),
                                 height: 1.4,
@@ -1204,7 +1204,51 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
+                const _SectionTitle(
+                  title: 'Career advancement',
+                  subtitle:
+                      'Choose the next move, prepare for it, and keep every application organized.',
+                ),
+                const SizedBox(height: 10),
+                Card(
+                  clipBehavior: Clip.antiAlias,
+                  margin: EdgeInsets.zero,
+                  child: InkWell(
+                    onTap: () => context.push(AppRoutes.applicationCenter),
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF312E81), Color(0xFF6D28D9)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: const Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Colors.white24,
+                            child: Icon(Icons.rocket_launch_outlined, color: Colors.white),
+                          ),
+                          SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Application Center', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
+                                SizedBox(height: 4),
+                                Text('Reusable profile, document readiness, references, and hiring progress', style: TextStyle(color: Colors.white70, height: 1.35)),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right_rounded, color: Colors.white),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
