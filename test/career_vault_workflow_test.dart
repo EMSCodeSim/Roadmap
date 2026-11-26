@@ -125,6 +125,19 @@ void main() {
       expect(find.text('Building qualifications'), findsOneWidget);
       expect(find.text('Paramedic'), findsOneWidget);
       expect(find.text('Credential added'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Career opportunities'),
+        250,
+        scrollable: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              widget.axisDirection == AxisDirection.down,
+        ),
+      );
+      expect(find.text('Career opportunities'), findsOneWidget);
+      expect(find.text('Application Center'), findsOneWidget);
+      expect(find.text('Job history'), findsOneWidget);
+      expect(find.text('Job search'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );
