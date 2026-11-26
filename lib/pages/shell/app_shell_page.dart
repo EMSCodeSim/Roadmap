@@ -11,9 +11,8 @@ import 'package:firepath/widgets/unread_pulse_indicator.dart';
 ///
 /// Keep the navigation focused on the responder's core jobs:
 /// - Home: what needs attention now
-/// - Timeline: lifelong career history, with goals as a secondary tool
-/// - Record: durable personal evidence and activity history
-/// - Credentials: licenses/certifications and expiration upkeep
+/// - Roadmap: career direction, advancement, and next steps
+/// - Records: complete searchable Quick Add history, statistics, and evidence
 /// - Department: official assignments, evaluations, and department work
 ///
 /// Quick Add is intentionally available from every primary tab so field capture
