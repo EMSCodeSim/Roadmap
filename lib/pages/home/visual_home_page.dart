@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:firepath/nav.dart';
+import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/home_section_preference.dart';
@@ -98,275 +99,93 @@ class _VisualHomePageState extends State<VisualHomePage> {
         ? 'Keep documenting the work that is shaping your career.'
         : 'Open training, study, official, and practice resources for this step.';
 
-    final sectionWidgets = <HomeSectionType, Widget>{
-      HomeSectionType.goal: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionTitle(context, 'Career Goal'),
-          AppCardTile(
-            icon: Icons.flag_outlined,
-            title: app.selectedGoal?.title ?? 'Choose your career goal',
-            subtitle: app.selectedGoal == null
-                ? 'Build a personal plan for the position or achievement you want next.'
-                : 'Open your Roadmap to review progress and requirements.',
-            // Open the active plan itself. RoadmapEntryPage falls back to
-            // goal setup when the user has not selected a roadmap yet.
-            onTap: () => context.go(AppRoutes.myPathLegacy),
+    bool isVisible(HomeSectionType type) {
+      return _homeSections
+          .where((preference) => preference.type == type)
+          .firstOrNull
+          ?.visible ??
+          false;
+    }
+
+    final recentRecords = List<CareerRecord>.from(_records)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    final todayCards = <Widget>[
+      if (isVisible(HomeSectionType.needsAttention))
+        _HomeGridCard(
+          icon: Icons.notifications_active_outlined,
+          title: 'Needs Attention',
+          detail: attentionCount == 0
+              ? 'Nothing needs action'
+              : '$attentionCount item${attentionCount == 1 ? '' : 's'} to review',
+          value: '$attentionCount',
+          accent: colors.error,
+          onTap: () => context.push(AppRoutes.needsAttention),
+        ),
+      if (isVisible(HomeSectionType.dailyQuiz))
+        _HomeGridCard(
+          icon: Icons.quiz_outlined,
+          title: 'Daily Quiz',
+          detail: 'Five-minute EMS quiz',
+          accent: const Color(0xFF2563EB),
+          onTap: () => _openExternal(
+            Uri.parse('https://emscodesim.com/quiz/'),
           ),
-        ],
+        ),
+      _HomeGridCard(
+        icon: Icons.add_circle_outline_rounded,
+        title: 'Quick Add',
+        detail: 'Log a call, skill or training',
+        accent: const Color(0xFF7C3AED),
+        onTap: () async {
+          await QuickLogLauncher.open(context);
+          await _loadRecords();
+        },
       ),
-      HomeSectionType.nextStep: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionTitle(context, 'Your Next Best Step'),
-          AppCardTile(
-            icon: Icons.auto_awesome_rounded,
-            title: nextStepTitle,
-            subtitle: nextStepSubtitle,
-            onTap: () {
-              if (roadmap == null) {
-                context.go(AppRoutes.goalSetup);
-                return;
-              }
-              if (nextStep != null) {
-                AppRouter.openRoadmapPrimaryAction(
-                  context,
-                  nextStep.requirement,
-                  goalId: roadmap.goal.id,
-                );
-                return;
-              }
-              context.go(AppRoutes.careerGoals);
-            },
-          ),
-        ],
-      ),
-      HomeSectionType.needsAttention: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionTitle(
-            context,
-            attentionCount == 0
-                ? 'Needs Attention'
-                : 'Needs Attention · $attentionCount',
-            actionLabel: attentionCount == 0 ? null : 'Review all',
-            onAction: attentionCount == 0
-                ? null
-                : () => context.push(AppRoutes.needsAttention),
-          ),
-          if (attentionCount > 0) ...[
-            Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              color: colors.errorContainer.withValues(alpha: 0.58),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-                side: BorderSide(
-                  color: colors.error.withValues(alpha: 0.45),
-                  width: 1.5,
-                ),
-              ),
-              child: ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                leading: Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: colors.error,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    Icons.notifications_active_rounded,
-                    color: colors.onError,
-                  ),
-                ),
-                title: Text(
-                  '$attentionCount item${attentionCount == 1 ? '' : 's'} need attention',
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-                subtitle: const Text(
-                  'Review renewals and unfinished record follow-ups.',
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => context.push(AppRoutes.needsAttention),
-              ),
-            ),
-          ],
-          if (credentials.isEmpty)
-            AppCardTile(
-              icon: Icons.verified_outlined,
-              title: 'No credential follow-up needed',
-              subtitle:
-                  'Missing dates, upcoming renewals, and expired credentials appear here.',
-              onTap: () => context.go(AppRoutes.certifications),
-            )
-          else
-            ...credentials.take(3).map(
-                  (item) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: Icon(
-                        Icons.warning_amber_rounded,
-                        color: colors.error,
-                      ),
-                      title: Text(app.certificationDisplayName(item.cert)),
-                      subtitle: Text(
-                        item.missingExpirationDate
-                            ? 'No expiration date · review credential status'
-                            : item.isExpired
-                                ? 'Expired · renewal needs attention'
-                                : 'Expires in ${item.daysRemaining} ${item.daysRemaining == 1 ? 'day' : 'days'}',
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () => context.push(
-                        '${AppRoutes.certificationDetail}/${item.cert.id}',
-                      ),
-                    ),
-                  ),
-                ),
-          const SizedBox(height: 8),
-          AppCardTile(
-            icon: Icons.history_rounded,
-            title: _loadingRecords
-                ? 'Checking personal records…'
-                : followUps.isEmpty
-                    ? 'No unfinished follow-ups'
-                    : '${followUps.length} follow-up${followUps.length == 1 ? '' : 's'} to finish',
-            subtitle: _loadingRecords
-                ? 'Your saved history and Roadmap evidence are loading.'
-                : followUps.isEmpty
-                    ? 'Logged activity and completed milestones stay in Records.'
-                    : followUps.first.title,
-            onTap: () => context.go(AppRoutes.training),
-          ),
-        ],
-      ),
-      HomeSectionType.careerSnapshot: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionTitle(context, 'Career Snapshot'),
-          Row(
-            children: [
-              Expanded(
-                child: PublicSafetyMetricTile(
-                  icon: Icons.auto_awesome_rounded,
-                  accent: Theme.of(context).brightness == Brightness.dark
-                      ? DarkModeColors.growthPurple
-                      : LightModeColors.growthPurple,
-                  value: '${monthRecords.length}',
-                  label: 'Activities',
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: PublicSafetyMetricTile(
-                  icon: Icons.schedule_rounded,
-                  accent: Theme.of(context).brightness == Brightness.dark
-                      ? DarkModeColors.trainingBlue
-                      : LightModeColors.trainingBlue,
-                  value: monthHours == 0
-                      ? '—'
-                      : monthHours.toStringAsFixed(
-                          monthHours == monthHours.roundToDouble() ? 0 : 1,
-                        ),
-                  label: 'Hours',
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: PublicSafetyMetricTile(
-                  icon: Icons.verified_rounded,
-                  accent: Theme.of(context).brightness == Brightness.dark
-                      ? DarkModeColors.credentialGreen
-                      : LightModeColors.credentialGreen,
-                  value: '$currentCredentialCount',
-                  label: 'Credentials',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      HomeSectionType.jobSearch: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionTitle(context, 'Job Search Findings'),
-          AppCardTile(
-            icon: Icons.work_outline_rounded,
-            title: 'Review jobs matching your saved search',
-            subtitle:
-                'Open verified fire and EMS listings without rebuilding your filters.',
-            onTap: () => context.push(AppRoutes.jobSearch),
-          ),
-        ],
-      ),
-      HomeSectionType.dailyQuiz: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionTitle(context, 'Daily Quiz'),
-          AppCardTile(
-            icon: Icons.quiz_outlined,
-            title: 'Take today’s five-minute EMS quiz',
-            subtitle: 'Practice EMT or paramedic questions on EMSCodeSim.',
-            onTap: () => _openExternal(Uri.parse('https://emscodesim.com/quiz/')),
-          ),
-        ],
-      ),
-      HomeSectionType.trainingIdeas: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionTitle(context, 'Training Ideas'),
-          AppCardTile(
-            icon: Icons.local_fire_department_outlined,
-            title: 'FireOpsSim Drill Library',
-            subtitle: 'Quick fire scenarios and drills for a crew or solo practice.',
-            onTap: () => _openExternal(
-              Uri.parse('https://fireopssim.com/drill-library'),
-            ),
-          ),
-          const SizedBox(height: 10),
-          AppCardTile(
-            icon: Icons.medical_services_outlined,
-            title: 'EMSCodeSim Training Library',
-            subtitle: 'Targeted EMT and paramedic practice resources.',
-            onTap: () => _openExternal(
-              Uri.parse('https://emscodesim.com/ems-training-library.html'),
-            ),
-          ),
-        ],
-      ),
-      HomeSectionType.department: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionTitle(
-            context,
-            'Department',
-            actionLabel: 'Open',
-            onAction: () => context.go(AppRoutes.department),
-          ),
-          AppCardTile(
-            icon: Icons.apartment_rounded,
-            title: department.actionCount == 0
-                ? 'No department actions waiting'
-                : '${department.actionCount} item${department.actionCount == 1 ? '' : 's'} need attention',
-            subtitle: department.unreadCount == 0
-                ? 'Department requests and updates appear here.'
-                : '${department.unreadCount} unread update${department.unreadCount == 1 ? '' : 's'}',
-            trailing: department.unreadCount > 0
-                ? const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      UnreadPulseIndicator(),
-                      SizedBox(width: 8),
-                      Icon(Icons.chevron_right_rounded),
-                    ],
-                  )
-                : null,
-            onTap: () => context.go(AppRoutes.department),
-          ),
-        ],
-      ),
-    };
+      if (isVisible(HomeSectionType.trainingIdeas))
+        _HomeGridCard(
+          icon: Icons.school_outlined,
+          title: 'Training Ideas',
+          detail: 'Fire and EMS resources',
+          accent: const Color(0xFFEA580C),
+          onTap: _openTrainingIdeas,
+        ),
+    ];
+
+    final optionalCards = <Widget>[
+      if (isVisible(HomeSectionType.careerSnapshot))
+        _HomeGridCard(
+          icon: Icons.insights_outlined,
+          title: 'Career Snapshot',
+          detail:
+              '${monthRecords.length} activities · ${monthHours == 0 ? '—' : monthHours.toStringAsFixed(monthHours == monthHours.roundToDouble() ? 0 : 1)} hours',
+          value: '$currentCredentialCount',
+          valueLabel: 'credentials',
+          accent: const Color(0xFF7C3AED),
+          onTap: () => context.go(AppRoutes.training),
+        ),
+      if (isVisible(HomeSectionType.jobSearch))
+        _HomeGridCard(
+          icon: Icons.work_outline_rounded,
+          title: 'Job Search',
+          detail: 'Review saved search findings',
+          accent: const Color(0xFF0F766E),
+          onTap: () => context.push(AppRoutes.jobSearch),
+        ),
+      if (isVisible(HomeSectionType.department) && hasDepartment)
+        _HomeGridCard(
+          icon: Icons.apartment_rounded,
+          title: 'Department',
+          detail: department.unreadCount == 0
+              ? 'No unread updates'
+              : '${department.unreadCount} unread update${department.unreadCount == 1 ? '' : 's'}',
+          value: department.actionCount > 0
+              ? '${department.actionCount}'
+              : null,
+          accent: const Color(0xFFDC2626),
+          onTap: () => context.go(AppRoutes.department),
+        ),
+    ];
 
     return Scaffold(
       appBar: FirefighterRoadmapAppBar(
@@ -384,19 +203,134 @@ class _VisualHomePageState extends State<VisualHomePage> {
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
           children: [
-            for (final preference in _homeSections)
-              if (preference.visible &&
-                  (preference.type != HomeSectionType.department ||
-                      hasDepartment)) ...[
-                sectionWidgets[preference.type]!,
-                const SizedBox(height: 18),
-              ],
+            if (isVisible(HomeSectionType.goal)) ...[
+              _sectionTitle(
+                context,
+                'Career Goal',
+                actionLabel: roadmap == null ? null : 'View Roadmap',
+                onAction: roadmap == null
+                    ? null
+                    : () => context.go(AppRoutes.myPathLegacy),
+              ),
+              _CareerGoalHomeCard(
+                title: app.selectedGoal?.title ?? 'Choose your career goal',
+                completed: roadmap?.completedCount ?? 0,
+                total: roadmap?.totalCount ?? 0,
+                progress: roadmap?.percentComplete ?? 0,
+                onTap: () => context.go(AppRoutes.myPathLegacy),
+              ),
+              const SizedBox(height: 20),
+            ],
+            if (isVisible(HomeSectionType.nextStep)) ...[
+              _sectionTitle(context, 'Next Best Step'),
+              _NextBestStepHomeCard(
+                title: nextStepTitle,
+                detail: nextStepSubtitle,
+                enabled: roadmap != null,
+                onTap: () {
+                  if (roadmap == null) {
+                    context.go(AppRoutes.goalSetup);
+                    return;
+                  }
+                  if (nextStep != null) {
+                    AppRouter.openRoadmapPrimaryAction(
+                      context,
+                      nextStep.requirement,
+                      goalId: roadmap.goal.id,
+                    );
+                    return;
+                  }
+                  context.go(AppRoutes.careerGoals);
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+            if (todayCards.isNotEmpty) ...[
+              _sectionTitle(context, 'Today'),
+              GridView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  mainAxisExtent: 142,
+                ),
+                children: todayCards,
+              ),
+              const SizedBox(height: 20),
+            ],
+            if (optionalCards.isNotEmpty) ...[
+              _sectionTitle(context, 'More'),
+              GridView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  mainAxisExtent: 132,
+                ),
+                children: optionalCards,
+              ),
+              const SizedBox(height: 20),
+            ],
+            if (!_loadingRecords && recentRecords.isNotEmpty) ...[
+              _sectionTitle(
+                context,
+                'Recent Activity',
+                actionLabel: 'View all',
+                onAction: () => context.go(AppRoutes.training),
+              ),
+              for (final record in recentRecords.take(2))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 9),
+                  child: AppCardTile(
+                    icon: _recordIcon(record),
+                    title: record.title,
+                    subtitle:
+                        '${_recordTypeLabel(record)} · ${_formatRecordDate(record.date)}',
+                    onTap: () => context.go(AppRoutes.training),
+                  ),
+                ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  IconData _recordIcon(CareerRecord record) {
+    return switch (record.type) {
+      CareerRecordType.call => Icons.local_fire_department_outlined,
+      CareerRecordType.training => Icons.school_outlined,
+      CareerRecordType.skill => Icons.handyman_outlined,
+      CareerRecordType.driving => Icons.local_shipping_outlined,
+      CareerRecordType.exposure => Icons.health_and_safety_outlined,
+      CareerRecordType.leadership => Icons.groups_outlined,
+      CareerRecordType.teaching => Icons.co_present_outlined,
+      CareerRecordType.achievement => Icons.emoji_events_outlined,
+      CareerRecordType.education => Icons.menu_book_outlined,
+      CareerRecordType.project => Icons.task_alt_outlined,
+      CareerRecordType.custom => Icons.note_alt_outlined,
+    };
+  }
+
+  String _recordTypeLabel(CareerRecord record) {
+    final raw = record.type.name;
+    return '${raw[0].toUpperCase()}${raw.substring(1)}';
+  }
+
+  String _formatRecordDate(DateTime date) {
+    const months = <String>[
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   Widget _sectionTitle(
@@ -433,5 +367,321 @@ class _VisualHomePageState extends State<VisualHomePage> {
     }
   }
 
+  Future<void> _openTrainingIdeas() async {
+    final destination = await showModalBottomSheet<Uri>(
+      context: context,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(18, 2, 18, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Choose training ideas',
+              style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.local_fire_department_outlined),
+              title: const Text('FireOpsSim drill library'),
+              subtitle: const Text('Fire drills, scenarios and crew practice'),
+              trailing: const Icon(Icons.open_in_new_rounded),
+              onTap: () => Navigator.pop(
+                sheetContext,
+                Uri.parse('https://fireopssim.com/drill-library'),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.medical_services_outlined),
+              title: const Text('EMSCodeSim training library'),
+              subtitle: const Text('EMT and paramedic practice resources'),
+              trailing: const Icon(Icons.open_in_new_rounded),
+              onTap: () => Navigator.pop(
+                sheetContext,
+                Uri.parse(
+                  'https://emscodesim.com/ems-training-library.html',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (destination != null && mounted) {
+      await _openExternal(destination);
+    }
+  }
+
   // _statusCard removed in favor of shared AppCardTile.
 }
+
+class _CareerGoalHomeCard extends StatelessWidget {
+  const _CareerGoalHomeCard({
+    required this.title,
+    required this.completed,
+    required this.total,
+    required this.progress,
+    required this.onTap,
+  });
+
+  final String title;
+  final int completed;
+  final int total;
+  final double progress;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    const accent = Color(0xFF7C3AED);
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: const Icon(Icons.flag_outlined, color: accent),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          total == 0
+                              ? 'Build your personal career plan'
+                              : '$completed of $total complete',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+              if (total > 0) ...[
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: progress.clamp(0.0, 1.0),
+                    minHeight: 8,
+                    color: accent,
+                    backgroundColor: cs.surfaceContainerHighest,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NextBestStepHomeCard extends StatelessWidget {
+  const _NextBestStepHomeCard({
+    required this.title,
+    required this.detail,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String title;
+  final String detail;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    const accent = Color(0xFF2563EB);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Icon(Icons.auto_awesome_rounded, color: accent),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    detail,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: onTap,
+                      icon: Icon(
+                        enabled
+                            ? Icons.play_arrow_rounded
+                            : Icons.flag_outlined,
+                      ),
+                      label: Text(enabled ? 'Start' : 'Choose goal'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeGridCard extends StatelessWidget {
+  const _HomeGridCard({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.accent,
+    required this.onTap,
+    this.value,
+    this.valueLabel,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final Color accent;
+  final VoidCallback onTap;
+  final String? value;
+  final String? valueLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: accent.withValues(alpha: 0.30)),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(13),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Icon(icon, color: accent, size: 21),
+                  ),
+                  const Spacer(),
+                  if (value != null)
+                    Container(
+                      constraints: const BoxConstraints(minWidth: 30),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        value!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: accent,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                valueLabel == null ? detail : '$detail · $valueLabel',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.25,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
