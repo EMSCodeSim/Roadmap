@@ -6,6 +6,18 @@ import 'package:firepath/services/catalog.dart';
 /// Guardrail: when the career catalog is slimmed or expanded, these expectations
 /// force an intentional test update instead of silent CI drift.
 void main() {
+  test('EMS progression never recommends lower credentials to a paramedic', () {
+    bool satisfies(String held, String required) =>
+        FireOpsCatalog.certificationSatisfiesRequirement(
+          heldDefinitionId: held, requiredDefinitionId: required);
+    expect(satisfies('paramedic', 'aemt'), isTrue);
+    expect(satisfies('paramedic', 'emt'), isTrue);
+    expect(satisfies('aemt', 'emt'), isTrue);
+    expect(satisfies('aemt', 'paramedic'), isFalse);
+    expect(satisfies('emt', 'aemt'), isFalse);
+    expect(satisfies('paramedic', 'firefighter_1'), isFalse);
+  });
+
   test('catalog exposes the full operations career ladder', () {
     final goals = FireOpsCatalog.goals();
     final ids = goals.map((g) => g.id).toList();
