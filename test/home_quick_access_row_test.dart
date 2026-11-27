@@ -33,13 +33,13 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Today'), findsOneWidget);
-    expect(find.text('Next action'), findsOneWidget);
+    expect(find.text('Career goal'), findsOneWidget);
+    expect(find.text('Next best step'), findsOneWidget);
+    expect(find.text('Needs attention'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Credentials'), 200);
     expect(find.text('Credentials'), findsOneWidget);
     expect(find.text('YOUR CAREER'), findsNothing);
-    await tester.scrollUntilVisible(find.text('Unfinished records'), 200);
-    expect(find.text('Unfinished records'), findsOneWidget);
+    expect(find.text('Unfinished records'), findsNothing);
     expect(find.text('Department attention'), findsNothing);
     expect(find.text('Start my roadmap'), findsNothing);
 
