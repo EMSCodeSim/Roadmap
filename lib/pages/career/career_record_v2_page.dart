@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/nav.dart';
