@@ -60,15 +60,22 @@ void main() {
       );
       // Avoid waiting indefinitely for progress indicators and asynchronous sync.
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Today'), findsOneWidget);
-      final wordmark = tester.widget<Text>(find.text('Responder Roadmap'));
-      expect(wordmark.style?.color, Colors.white);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Text &&
+              const {'Good night', 'Good morning', 'Good afternoon', 'Good evening'}
+                  .contains(widget.data),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Career goal'), findsOneWidget);
+      expect(find.text('Next best step'), findsOneWidget);
+      expect(find.text('Needs attention'), findsOneWidget);
+      expect(find.text('Credentials'), findsOneWidget);
+      expect(find.text('Open Resource'), findsNWidgets(2));
       expect(find.text('YOUR CAREER'), findsNothing);
       expect(find.text('Add detailed career history'), findsNothing);
-      expect(find.text('Next action'), findsOneWidget);
-      expect(find.text('Credentials'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Unfinished records'), 200);
-      expect(find.text('Unfinished records'), findsOneWidget);
+      expect(find.text('Unfinished records'), findsNothing);
       expect(find.text('Department attention'), findsNothing);
       expect(find.text('Open Career Goals'), findsNothing);
       expect(find.text('Quick actions'), findsNothing);
