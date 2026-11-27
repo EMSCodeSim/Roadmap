@@ -2261,8 +2261,18 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       for (var index = 0; index < skillIds.length; index++)
         skillIds[index]: index + 1,
     };
+    String pdfText(String value) => value
+        .replaceAll('\u00a0', ' ')
+        .replaceAll(RegExp(r'[\u2010-\u2015]'), '-')
+        .replaceAll(RegExp(r'[\u2022\u00b7\u203a\u2192]'), ' - ')
+        .replaceAll(RegExp(r'[\u2018\u2019]'), "'")
+        .replaceAll(RegExp(r'[\u201c\u201d]'), '"')
+        .replaceAll('\u2026', '...')
+        .replaceAll(RegExp(r'[^\x09\x0a\x0d\x20-\x7e\xa0-\xff]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
     String checklistResultLabel(String? result) {
-      if (result == null || result == 'NOT_EVALUATED') return '—';
+      if (result == null || result == 'NOT_EVALUATED') return '-';
       if (result == 'PASS' || result == 'FAIL') return result;
       if (result == 'NOT_APPLICABLE') return 'N/A';
       return result.replaceAll('_', ' ');
@@ -2306,11 +2316,15 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       width: double.infinity,
       padding: const pw.EdgeInsets.all(5),
       decoration: pw.BoxDecoration(color: PdfColors.grey300, border: pw.Border.all(width: .5)),
-      child: pw.Text(label, style: bold),
+      child: pw.Text(pdfText(label), style: bold),
     );
     pw.Widget table(List<String> headers, List<List<String>> rows, {Map<int, pw.TableColumnWidth>? widths}) =>
       pw.TableHelper.fromTextArray(
-        headers: headers, data: rows, columnWidths: widths,
+        headers: headers.map(pdfText).toList(growable: false),
+        data: rows
+            .map((row) => row.map(pdfText).toList(growable: false))
+            .toList(growable: false),
+        columnWidths: widths,
         headerStyle: bold,
         headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
         cellStyle: const pw.TextStyle(fontSize: 8),
@@ -2322,7 +2336,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       height: 38,
       padding: const pw.EdgeInsets.all(5),
       decoration: pw.BoxDecoration(border: pw.Border.all(width: .5)),
-      child: pw.Text(label, style: bold),
+      child: pw.Text(pdfText(label), style: bold),
     );
     // Limit the number of skill columns per table to maintain readable print.
     final batches = <List<String>>[
@@ -2340,18 +2354,18 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         mainAxisSize: pw.MainAxisSize.min,
         crossAxisAlignment: pw.CrossAxisAlignment.stretch,
         children: [
-        pw.Text(departmentName.isEmpty ? 'Responder Roadmap' : departmentName.toUpperCase(),
+        pw.Text(pdfText(departmentName.isEmpty ? 'Responder Roadmap' : departmentName.toUpperCase()),
           textAlign: pw.TextAlign.center,
           style: pw.TextStyle(fontSize: 19, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey900)),
         pw.Text('TRAINING SHEET', textAlign: pw.TextAlign.center,
           style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
         if (detail.status != 'COMPLETE')
-          pw.Text('DRAFT — NOT FINALIZED OR APPROVED', textAlign: pw.TextAlign.center,
+          pw.Text('DRAFT - NOT FINALIZED OR APPROVED', textAlign: pw.TextAlign.center,
             style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 4),
         pw.Divider(color: PdfColors.blueGrey900, thickness: 1),
       ]),
-      footer: (context) => pw.Text('Training ID: ${detail.id} | Page ${context.pageNumber} of ${context.pagesCount}',
+      footer: (context) => pw.Text(pdfText('Training ID: ${detail.id} | Page ${context.pageNumber} of ${context.pagesCount}'),
         style: const pw.TextStyle(fontSize: 8)),
       build: (context) => [
         table(['Training information', 'Recorded value', 'Time / administration', 'Recorded value'], [
@@ -2365,14 +2379,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         heading('Training description / objectives / notes'),
         pw.Container(width: double.infinity, padding: const pw.EdgeInsets.all(6),
           decoration: pw.BoxDecoration(border: pw.Border.all(width: .5)),
-          child: pw.Text(recorded(detail.notes), style: const pw.TextStyle(fontSize: 9))),
+          child: pw.Text(pdfText(recorded(detail.notes)), style: const pw.TextStyle(fontSize: 9))),
         pw.SizedBox(height: 8),
         if (ceRows.isNotEmpty) ...[
           table(['CE category', 'Awarded hours'], [...ceRows, ['Total CE hours', totalCeHours.toStringAsFixed(2)]]),
           pw.SizedBox(height: 8),
         ],
         for (var batchIndex = 0; batchIndex < batches.length; batchIndex++) ...[
-          heading(batchIndex == 0 ? 'Student roster and evaluation results' : 'Evaluation results — continued'),
+          heading(batchIndex == 0 ? 'Student roster and evaluation results' : 'Evaluation results - continued'),
           table(['#', 'Student name', 'Attendance', 'Scoring result', ...batches[batchIndex].map((id) => '${skillNumbers[id] ?? ''}')],
             rosterRows.map((row) => <String>[
               ...row.take(4),
@@ -2390,25 +2404,18 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         if (skillIds.isNotEmpty) ...[
           heading('Station / skill reference'),
           for (final section in detail.sections) ...[
-            pw.Padding(padding: const pw.EdgeInsets.only(top: 4), child: pw.Text(section.title, style: bold)),
+            pw.Padding(padding: const pw.EdgeInsets.only(top: 4), child: pw.Text(pdfText(section.title), style: bold)),
             for (final skill in section.skills)
               pw.Padding(padding: const pw.EdgeInsets.only(left: 8, bottom: 2),
                 child: pw.Text(
-                  skill.description.isEmpty
+                  pdfText(skill.description.isEmpty
                       ? '${skillNumbers[skill.id]}. ${skill.title}'
-                      : '${skillNumbers[skill.id]}. ${skill.title}: ${skill.description}',
+                      : '${skillNumbers[skill.id]}. ${skill.title}: ${skill.description}'),
                   style: const pw.TextStyle(fontSize: 8),
                 )),
           ],
           pw.SizedBox(height: 8),
         ],
-        table(['Record approval / closeout', 'Recorded value'], [
-          ['Instructor approved', _recordDate(detail.instructorApprovedAt)],
-          ['RMS status', detail.rmsStatus.replaceAll('_', ' ')],
-          if (detail.rmsEnteredAt != null) ['RMS entered', _recordDate(detail.rmsEnteredAt)],
-          if (detail.rmsReference.isNotEmpty) ['RMS reference', detail.rmsReference],
-        ]),
-        pw.SizedBox(height: 8),
         pw.Row(children: [
           pw.Expanded(child: signature('Instructor name (print)')),
           pw.Expanded(child: signature('Instructor signature')),
