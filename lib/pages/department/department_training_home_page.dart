@@ -597,11 +597,19 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                 ? 'Evaluator'
                 : 'Member';
 
-    int countBy(bool Function(DepartmentTaskBookAssignment a) test) =>
-        _assignments.where(test).length;
-    final overdue = countBy((a) => _status(a) == 'Overdue');
-    final waiting = countBy((a) => _status(a).toLowerCase().contains('waiting'));
-    final returned = countBy((a) => _status(a).toLowerCase().contains('returned'));
+    final overdueItems = _assignments.where((a) => _status(a) == 'Overdue').toList();
+    final waitingItems = _assignments.where((a) => _status(a).toLowerCase().contains('waiting')).toList();
+    final returnedItems = _assignments.where((a) => _status(a).toLowerCase().contains('returned')).toList();
+
+    void openOverview(String title, IconData icon, Color accent, List<DepartmentTaskBookAssignment> items) {
+      _showDashboardSection(
+        title: title, icon: icon, count: items.length, accent: accent,
+        child: _Section(title: title, items: items, status: _status, onTap: (item) async {
+          Navigator.of(context).pop();
+          await _open(item);
+        }),
+      );
+    }
 
     return Scaffold(
       appBar: FirefighterRoadmapAppBar(
@@ -681,9 +689,14 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     child: _OverviewMetricsRow(
                       activeTaskBooks: assignedTaskBooks.length,
                       activeAssignments: oneOffAssignments.length,
-                      overdue: overdue,
-                      waiting: waiting,
-                      returned: returned,
+                      overdue: overdueItems.length,
+                      waiting: waitingItems.length,
+                      returned: returnedItems.length,
+                      onTaskBooks: () => openOverview('Task Books', Icons.menu_book_outlined, cs.primary, assignedTaskBooks),
+                      onAssignments: () => openOverview('Assignments', Icons.assignment_outlined, cs.primary, oneOffAssignments),
+                      onOverdue: () => openOverview('Overdue', Icons.assignment_late_outlined, FireOpsSemanticColors.red, overdueItems),
+                      onWaiting: () => openOverview('Waiting', Icons.hourglass_bottom_rounded, FireOpsSemanticColors.amber, waitingItems),
+                      onReturned: () => openOverview('Returned', Icons.undo_rounded, FireOpsSemanticColors.red, returnedItems),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -809,6 +822,7 @@ class _OverviewMetricsRow extends StatelessWidget {
   final int overdue;
   final int waiting;
   final int returned;
+  final VoidCallback onTaskBooks, onAssignments, onOverdue, onWaiting, onReturned;
 
   const _OverviewMetricsRow({
     required this.activeTaskBooks,
@@ -816,6 +830,11 @@ class _OverviewMetricsRow extends StatelessWidget {
     required this.overdue,
     required this.waiting,
     required this.returned,
+    required this.onTaskBooks,
+    required this.onAssignments,
+    required this.onOverdue,
+    required this.onWaiting,
+    required this.onReturned,
   });
 
   @override
@@ -824,10 +843,13 @@ class _OverviewMetricsRow extends StatelessWidget {
     final cs = theme.colorScheme;
     final trainingBlue = Theme.of(context).brightness == Brightness.dark ? DarkModeColors.trainingBlue : LightModeColors.trainingBlue;
 
-    Widget metric({required String label, required String value, required IconData icon, required Color color}) {
+    Widget metric({required String label, required String value, required IconData icon, required Color color, required VoidCallback onTap}) {
       return Card(
         margin: EdgeInsets.zero,
-        child: Padding(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(children: [
             Container(
@@ -847,6 +869,7 @@ class _OverviewMetricsRow extends StatelessWidget {
             ),
           ]),
         ),
+        ),
       );
     }
 
@@ -856,18 +879,18 @@ class _OverviewMetricsRow extends StatelessWidget {
         Text('Department overview', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
         const SizedBox(height: 10),
         Row(children: [
-          Expanded(child: metric(label: 'Task books', value: '$activeTaskBooks', icon: Icons.menu_book_outlined, color: trainingBlue)),
+          Expanded(child: metric(onTap: onTaskBooks, label: 'Task books', value: '$activeTaskBooks', icon: Icons.menu_book_outlined, color: trainingBlue)),
           const SizedBox(width: 12),
-          Expanded(child: metric(label: 'Assignments', value: '$activeAssignments', icon: Icons.assignment_outlined, color: cs.primary)),
+          Expanded(child: metric(onTap: onAssignments, label: 'Assignments', value: '$activeAssignments', icon: Icons.assignment_outlined, color: cs.primary)),
         ]),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: metric(label: 'Overdue', value: '$overdue', icon: Icons.assignment_late_outlined, color: FireOpsSemanticColors.red)),
+          Expanded(child: metric(onTap: onOverdue, label: 'Overdue', value: '$overdue', icon: Icons.assignment_late_outlined, color: FireOpsSemanticColors.red)),
           const SizedBox(width: 12),
-          Expanded(child: metric(label: 'Waiting', value: '$waiting', icon: Icons.hourglass_bottom_rounded, color: FireOpsSemanticColors.amber)),
+          Expanded(child: metric(onTap: onWaiting, label: 'Waiting', value: '$waiting', icon: Icons.hourglass_bottom_rounded, color: FireOpsSemanticColors.amber)),
         ]),
         const SizedBox(height: 12),
-        metric(label: 'Returned', value: '$returned', icon: Icons.undo_rounded, color: FireOpsSemanticColors.red),
+        metric(onTap: onReturned, label: 'Returned', value: '$returned', icon: Icons.undo_rounded, color: FireOpsSemanticColors.red),
       ],
     );
   }
