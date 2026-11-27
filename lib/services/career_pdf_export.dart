@@ -10,6 +10,7 @@ import 'package:firepath/models/department_transfer.dart';
 import 'package:firepath/services/advancement_analyzer.dart';
 import 'package:firepath/services/career_intelligence.dart';
 import 'package:firepath/services/department_transfer_service.dart';
+import 'package:firepath/services/pdf_text_sanitizer.dart';
 import 'package:firepath/state/app_state.dart';
 
 class CareerExportIdentity {
@@ -81,7 +82,7 @@ class CareerPdfExport {
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
-        margin: const pw.EdgeInsets.all(36),
+        margin: const pw.EdgeInsets.fromLTRB(36, 18, 36, 30),
         footer: _footer,
         build: (context) => [
           _header(identity, 'CAREER PORTFOLIO', app),
@@ -110,7 +111,7 @@ class CareerPdfExport {
           pw.SizedBox(height: 12),
           _sectionTitle('Advancement Readiness'),
           _body(
-            'Readiness score: ${advancement.readinessScore}% — ${advancement.readinessLabel}',
+            'Readiness score: ${advancement.readinessScore}% - ${advancement.readinessLabel}',
           ),
           _body(
             'Requirements complete: ${advancement.completedRequirements}/${advancement.totalRequirements}',
@@ -183,7 +184,7 @@ class CareerPdfExport {
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
-        margin: const pw.EdgeInsets.fromLTRB(42, 36, 42, 36),
+        margin: const pw.EdgeInsets.fromLTRB(42, 18, 42, 30),
         footer: _footer,
         build: (context) => [
           pw.Text(
@@ -223,7 +224,7 @@ class CareerPdfExport {
                 .take(18)
                 .map(
                   (c) => pw.Text(
-                    '• ${app.certificationDisplayName(c)}',
+                    pdfSafeText('- ${app.certificationDisplayName(c)}'),
                     style: const pw.TextStyle(fontSize: 9.5),
                   ),
                 )
@@ -253,7 +254,7 @@ class CareerPdfExport {
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
-        margin: const pw.EdgeInsets.all(36),
+        margin: const pw.EdgeInsets.fromLTRB(36, 18, 36, 30),
         footer: _footer,
         build: (context) => [
           _header(identity, 'PROMOTION PREPARATION PACKET', app),
@@ -273,13 +274,13 @@ class CareerPdfExport {
           pw.SizedBox(height: 18),
           _sectionTitle('Next Best Step'),
           _body(
-            '${advancement.recommendation.title} — ${advancement.recommendation.reason}',
+            '${advancement.recommendation.title} - ${advancement.recommendation.reason}',
           ),
           pw.SizedBox(height: 12),
           _sectionTitle('Promotion Competency Map'),
           ...advancement.competencies.map(
             (c) => _bullet(
-              '${c.title}: ${c.exampleCount}/${c.targetExamples} examples${c.supported ? ' — supported' : ' — build more evidence'}',
+              '${c.title}: ${c.exampleCount}/${c.targetExamples} examples${c.supported ? ' - supported' : ' - build more evidence'}',
             ),
           ),
           pw.SizedBox(height: 12),
@@ -318,7 +319,7 @@ class CareerPdfExport {
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
-        margin: const pw.EdgeInsets.all(36),
+        margin: const pw.EdgeInsets.fromLTRB(36, 18, 36, 30),
         footer: _footer,
         build: (context) => [
           _header(identity, 'DEPARTMENT TRANSFER READINESS', app),
@@ -382,7 +383,7 @@ class CareerPdfExport {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  title,
+                  pdfSafeText(title),
                   style: pw.TextStyle(
                     color: PdfColors.white,
                     fontSize: 18,
@@ -392,8 +393,8 @@ class CareerPdfExport {
                 pw.SizedBox(height: 4),
                 pw.Text(
                   identity.name.trim().isEmpty
-                      ? _roles(app)
-                      : identity.name.trim(),
+                      ? pdfSafeText(_roles(app))
+                      : pdfSafeText(identity.name.trim()),
                   style: pw.TextStyle(
                     color: _gold,
                     fontSize: 11,
@@ -434,7 +435,7 @@ class CareerPdfExport {
                 (m) => pw.Column(
                   children: [
                     pw.Text(
-                      m.$2,
+                      pdfSafeText(m.$2),
                       style: pw.TextStyle(
                         fontSize: 14,
                         fontWeight: pw.FontWeight.bold,
@@ -442,7 +443,7 @@ class CareerPdfExport {
                       ),
                     ),
                     pw.Text(
-                      m.$1,
+                      pdfSafeText(m.$1),
                       style: const pw.TextStyle(
                         fontSize: 7.5,
                         color: PdfColors.grey700,
@@ -458,7 +459,7 @@ class CareerPdfExport {
   static pw.Widget _sectionTitle(String text) => pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 5),
     child: pw.Text(
-      text.toUpperCase(),
+      pdfSafeText(text.toUpperCase()),
       style: pw.TextStyle(
         fontSize: 11,
         fontWeight: pw.FontWeight.bold,
@@ -476,7 +477,7 @@ class CareerPdfExport {
         border: pw.Border(bottom: pw.BorderSide(color: _gold, width: 1)),
       ),
       child: pw.Text(
-        text,
+        pdfSafeText(text),
         style: pw.TextStyle(
           fontSize: 10,
           fontWeight: pw.FontWeight.bold,
@@ -489,7 +490,7 @@ class CareerPdfExport {
   static pw.Widget _body(String text) => pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 3),
     child: pw.Text(
-      text,
+      pdfSafeText(text),
       style: const pw.TextStyle(fontSize: 9.5, lineSpacing: 2),
     ),
   );
@@ -500,12 +501,12 @@ class CareerPdfExport {
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text(
-          '• ',
+          '- ',
           style: pw.TextStyle(color: _gold, fontWeight: pw.FontWeight.bold),
         ),
         pw.Expanded(
           child: pw.Text(
-            text,
+            pdfSafeText(text),
             style: const pw.TextStyle(fontSize: 9.3, lineSpacing: 2),
           ),
         ),
@@ -531,8 +532,8 @@ class CareerPdfExport {
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            _body('$title — $employer'),
-            _body('$start – $end${location.isEmpty ? '' : ' · $location'}'),
+            _body('$title - $employer'),
+            _body('$start - $end${location.isEmpty ? '' : ' - $location'}'),
             if (notes.isNotEmpty) _body(notes),
           ],
         ),
@@ -558,9 +559,9 @@ class CareerPdfExport {
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text('$title — $employer',
+            pw.Text(pdfSafeText('$title - $employer'),
                 style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
-            pw.Text('$start – $end${location.isEmpty ? '' : ' · $location'}',
+            pw.Text(pdfSafeText('$start - $end${location.isEmpty ? '' : ' - $location'}'),
                 style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
             if (notes.isNotEmpty) _body(notes),
           ],
@@ -592,7 +593,7 @@ class CareerPdfExport {
     if (list.isEmpty) return [_bullet('No entries documented yet.')];
     return list.map(
       (r) => _bullet(
-        '${_date(r.date)} — ${r.title}${(r.impact ?? '').trim().isEmpty ? '' : ': ${r.impact!.trim()}'}',
+        '${_date(r.date)} - ${r.title}${(r.impact ?? '').trim().isEmpty ? '' : ': ${r.impact!.trim()}'}',
       ),
     );
   }
@@ -605,7 +606,7 @@ class CareerPdfExport {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text(
-                r.title,
+                pdfSafeText(r.title),
                 style: pw.TextStyle(
                   fontSize: 9.5,
                   fontWeight: pw.FontWeight.bold,
@@ -613,7 +614,7 @@ class CareerPdfExport {
               ),
               if ((r.roleOrAssignment ?? '').trim().isNotEmpty)
                 pw.Text(
-                  r.roleOrAssignment!.trim(),
+                  pdfSafeText(r.roleOrAssignment!.trim()),
                   style: const pw.TextStyle(
                     fontSize: 8.5,
                     color: PdfColors.grey700,
@@ -621,7 +622,7 @@ class CareerPdfExport {
                 ),
               if ((r.impact ?? '').trim().isNotEmpty)
                 pw.Text(
-                  r.impact!.trim(),
+                  pdfSafeText(r.impact!.trim()),
                   style: const pw.TextStyle(fontSize: 8.8, lineSpacing: 2),
                 ),
             ],
@@ -640,7 +641,7 @@ class CareerPdfExport {
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text(
-          record.title,
+          pdfSafeText(record.title),
           style: pw.TextStyle(
             fontSize: 9.5,
             fontWeight: pw.FontWeight.bold,
@@ -671,7 +672,7 @@ class CareerPdfExport {
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             pw.Text(
-              satisfied ? '✓' : '○',
+              satisfied ? 'PASS' : 'OPEN',
               style: pw.TextStyle(
                 fontWeight: pw.FontWeight.bold,
                 color: satisfied ? PdfColors.green700 : PdfColors.orange700,
@@ -683,14 +684,14 @@ class CareerPdfExport {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text(
-                    title,
+                    pdfSafeText(title),
                     style: pw.TextStyle(
                       fontSize: 9.3,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
                   pw.Text(
-                    reason,
+                    pdfSafeText(reason),
                     style: const pw.TextStyle(
                       fontSize: 8.3,
                       color: PdfColors.grey700,
@@ -734,7 +735,7 @@ class CareerPdfExport {
     identity.location,
     identity.phone,
     identity.email,
-  ].where((e) => e.trim().isNotEmpty).join(' • ');
+  ].where((e) => e.trim().isNotEmpty).map(pdfSafeText).join(' | ');
 
   static String _profileSummary(AppState app, List<CareerRecord> records) {
     final years = app.profile.yearsOfService;
