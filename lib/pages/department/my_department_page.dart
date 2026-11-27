@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/department/department_join_qr_scanner_page.dart';
@@ -184,6 +185,18 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
     );
     if (!mounted || code == null) return;
     await _createDepartmentAccount(scannedCode: code);
+  }
+
+  Future<void> _openTrainingOfficerSetup() async {
+    final opened = await launchUrl(
+      Uri.parse('https://responderroadmap.com'),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to open responderroadmap.com.')),
+      );
+    }
   }
 
   Future<void> _createDepartmentAccount({String? scannedCode}) async {
@@ -600,11 +613,8 @@ class _MyDepartmentPageState extends State<MyDepartmentPage> {
                         onConnect: _connect,
                         onCreateAccount: _createDepartmentAccount,
                         onScanQr: _scanDepartmentJoinQr,
+                        onTrainingOfficerSetup: _openTrainingOfficerSetup,
                       ),
-                      if (!widget.taskBooksOnly) ...[
-                        const SizedBox(height: 12),
-                        const _DepartmentSetupGuide(),
-                      ],
                     ] else ...[
                       if (widget.taskBooksOnly) ...[
                         Text(
@@ -1391,6 +1401,7 @@ class _ConnectCard extends StatelessWidget {
   final VoidCallback onConnect;
   final VoidCallback onCreateAccount;
   final VoidCallback onScanQr;
+  final VoidCallback onTrainingOfficerSetup;
 
   const _ConnectCard({
     required this.busy,
@@ -1398,14 +1409,56 @@ class _ConnectCard extends StatelessWidget {
     required this.onConnect,
     required this.onCreateAccount,
     required this.onScanQr,
+    required this.onTrainingOfficerSetup,
   });
+
+  Future<void> _showJoinOptions(BuildContext context) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Join a department',
+                style: Theme.of(sheetContext)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              const Text('Use the private code or QR provided by your Training Officer.'),
+              const SizedBox(height: 14),
+              FilledButton.tonalIcon(
+                onPressed: () => Navigator.pop(sheetContext, 'code'),
+                icon: const Icon(Icons.password_rounded),
+                label: const Text('Enter join code'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.pop(sheetContext, 'qr'),
+                icon: const Icon(Icons.qr_code_scanner_rounded),
+                label: const Text('Scan join QR'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice == 'code') onCreateAccount();
+    if (choice == 'qr') onScanQr();
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cs.primaryContainer,
         borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -1415,17 +1468,91 @@ class _ConnectCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Your department workspace',
+            'Connect your department',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            'Sign in to receive Task Books and training assignments, read department messages, and send completed work to an approved evaluator.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.45),
+            'Assign training, track qualifications, review progress, and keep department records organized.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
           ),
           const SizedBox(height: 12),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 2.35,
+            children: const [
+              _DepartmentBenefit(
+                icon: Icons.assignment_outlined,
+                label: 'Task Books &\nAssignments',
+              ),
+              _DepartmentBenefit(
+                icon: Icons.school_outlined,
+                label: 'Training\nSheets',
+              ),
+              _DepartmentBenefit(
+                icon: Icons.verified_user_outlined,
+                label: 'Evaluations &\nApprovals',
+              ),
+              _DepartmentBenefit(
+                icon: Icons.bar_chart_rounded,
+                label: 'Reports &\nRecords',
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _DepartmentSetupGuide(onSetup: onTrainingOfficerSetup),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(error!, style: TextStyle(color: cs.error, fontWeight: FontWeight.w700)),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: busy ? null : onConnect,
+                  icon: busy
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.login_rounded),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(busy ? 'Signing in…' : 'Log in'),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: busy ? null : onCreateAccount,
+                  icon: const Icon(Icons.person_add_alt_1_rounded),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('Create account'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: busy ? null : () => _showJoinOptions(context),
+              icon: const Icon(Icons.qr_code_scanner_rounded),
+              label: const Text('Join with code or QR'),
+            ),
+          ),
+          const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: cs.surface.withValues(alpha: .6),
               borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -1433,50 +1560,50 @@ class _ConnectCard extends StatelessWidget {
             child: const Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.lock_outline_rounded, size: 20),
-                SizedBox(width: 9),
+                Icon(Icons.lock_outline_rounded, size: 19),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Your personal Career Road, Quick Log, career history, and private notes stay on this device. They are not uploaded to your department automatically.',
+                    'Personal career records stay private unless you choose to share them.',
                   ),
                 ),
               ],
             ),
           ),
-          if (error != null) ...[
-            const SizedBox(height: 12),
-            Text(error!, style: TextStyle(color: cs.error, fontWeight: FontWeight.w700)),
-          ],
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: FilledButton.icon(
-              onPressed: busy ? null : onConnect,
-              icon: busy
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.link_rounded),
-              label: Text(busy ? 'Signing in…' : 'Sign in to department'),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: OutlinedButton.icon(
-              onPressed: busy ? null : onScanQr,
-              icon: const Icon(Icons.qr_code_scanner_rounded),
-              label: const Text('Scan department join QR'),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: OutlinedButton.icon(
-              onPressed: busy ? null : onCreateAccount,
-              icon: const Icon(Icons.person_add_alt_1_rounded),
-              label: const Text('Create account with department code'),
+        ],
+      ),
+    );
+  }
+}
+
+class _DepartmentBenefit extends StatelessWidget {
+  const _DepartmentBenefit({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: cs.surface.withValues(alpha: .72),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: .65)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 23, color: cs.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    height: 1.12,
+                  ),
             ),
           ),
         ],
@@ -1486,19 +1613,26 @@ class _ConnectCard extends StatelessWidget {
 }
 
 class _DepartmentSetupGuide extends StatelessWidget {
-  const _DepartmentSetupGuide();
+  const _DepartmentSetupGuide({required this.onSetup});
+
+  final VoidCallback onSetup;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer.withValues(alpha: .55),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: cs.primary.withValues(alpha: .15)),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'How department access works',
+              'For Training Officers',
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -1507,32 +1641,25 @@ class _DepartmentSetupGuide extends StatelessWidget {
             const SizedBox(height: 12),
             const _SetupStep(
               number: '1',
-              title: 'Your department enrolls',
-              detail:
-                  'A Training Captain or administrator creates the department dashboard at responderroadmap.com and receives its join code.',
+              title: 'Create your department account',
+              detail: 'Start the department workspace on the Responder Roadmap website.',
             ),
             const _SetupStep(
               number: '2',
-              title: 'You receive access',
-              detail:
-                  'Enter the private join code. After it is accepted, create your account in the app or website.',
+              title: 'Set up roles, templates, and requirements',
+              detail: 'Match the workspace to your department’s training process.',
             ),
             const _SetupStep(
               number: '3',
-              title: 'Training Officer approval',
-              detail:
-                  'Every join-code account remains pending until a Training Officer approves it. Then sign in to receive assignments.',
+              title: 'Invite members with a join code or QR',
+              detail: 'Review each request before the member receives department access.',
             ),
-            const SizedBox(height: 4),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: cs.secondaryContainer.withValues(alpha: .4),
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
-              child: const Text(
-                'Need access? Ask your Training Captain or department administrator for an invitation or join code.',
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: onSetup,
+                icon: const Icon(Icons.open_in_new_rounded, size: 17),
+                label: const Text('Set up at responderroadmap.com'),
               ),
             ),
           ],
