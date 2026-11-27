@@ -588,6 +588,30 @@ class AppRouter {
     ],
   );
 
+  /// Opens the primary action used by Roadmap's Next Best Step cards.
+  ///
+  /// Home and Roadmap must call this same method so a recommendation always
+  /// leads to the same workflow.
+  static void openRoadmapPrimaryAction(
+    BuildContext context,
+    Requirement requirement, {
+    String? goalId,
+  }) {
+    switch (requirement.type) {
+      case RequirementType.certification:
+      case RequirementType.taskBook:
+      case RequirementType.numericProgress:
+        openRequirement(context, requirement, goalId: goalId);
+        return;
+      case RequirementType.experience:
+        context.go(AppRoutes.personalLog);
+        return;
+      default:
+        context.push(AppRoutes.getStarted, extra: requirement);
+        return;
+    }
+  }
+
   /// Opens a Task Book requirement at the correct depth.
   ///
   /// Certifications go to the JPR/skills checklist. Preparation tasks remain

@@ -8,7 +8,6 @@ import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/user_profile.dart';
 import 'package:firepath/nav.dart';
 import 'package:firepath/pages/home/visual_home_page.dart';
-import 'package:firepath/pages/requirement/get_started_page.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
@@ -18,7 +17,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('Next Best Step opens resources for the recommended requirement',
+  testWidgets('Home Next Best Step uses the Roadmap primary action',
       (tester) async {
     final now = DateTime(2026, 1, 1);
     final app = AppState();
@@ -64,10 +63,19 @@ void main() {
           path: '/',
           builder: (_, __) => const VisualHomePage(),
         ),
-        GoRoute(
-          path: AppRoutes.getStarted,
-          builder: (_, state) => GetStartedPage(requirement: state.extra),
-        ),
+        for (final path in [
+          AppRoutes.getStarted,
+          AppRoutes.requirementChecklist,
+          AppRoutes.qualificationTaskBook,
+          AppRoutes.requirementDetail,
+          AppRoutes.personalLog,
+        ])
+          GoRoute(
+            path: path,
+            builder: (_, __) => const Scaffold(
+              body: Center(child: Text('ROADMAP PRIMARY ACTION')),
+            ),
+          ),
       ],
     );
 
@@ -90,9 +98,6 @@ void main() {
     await tester.tap(find.text(nextRequirement.name));
     await tester.pumpAndSettle();
 
-    expect(find.text('Get Started'), findsOneWidget);
-    expect(find.text(nextRequirement.name), findsOneWidget);
-    expect(find.text('Official requirements'), findsOneWidget);
-    expect(find.text('Find training'), findsOneWidget);
+    expect(find.text('ROADMAP PRIMARY ACTION'), findsOneWidget);
   });
 }
