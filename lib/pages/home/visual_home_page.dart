@@ -88,6 +88,7 @@ class _VisualHomePageState extends State<VisualHomePage> {
     final followUps = CareerInbox.build(app: app, records: _records)
         .where((item) => item.kind != CareerInboxKind.certification)
         .toList(growable: false);
+    final attentionCount = credentials.length + followUps.length;
     final currentCredentialCount = app.certifications
         .where((c) => c.status == CertificationStatus.current)
         .length;
@@ -144,10 +145,52 @@ class _VisualHomePageState extends State<VisualHomePage> {
         children: [
           _sectionTitle(
             context,
-            'Needs Attention',
-            actionLabel: 'Records',
-            onAction: () => context.go(AppRoutes.training),
+            attentionCount == 0
+                ? 'Needs Attention'
+                : 'Needs Attention · $attentionCount',
+            actionLabel: attentionCount == 0 ? null : 'Review all',
+            onAction: attentionCount == 0
+                ? null
+                : () => context.push(AppRoutes.needsAttention),
           ),
+          if (attentionCount > 0) ...[
+            Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              color: colors.errorContainer.withValues(alpha: 0.58),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+                side: BorderSide(
+                  color: colors.error.withValues(alpha: 0.45),
+                  width: 1.5,
+                ),
+              ),
+              child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: colors.error,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.notifications_active_rounded,
+                    color: colors.onError,
+                  ),
+                ),
+                title: Text(
+                  '$attentionCount item${attentionCount == 1 ? '' : 's'} need attention',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                subtitle: const Text(
+                  'Review renewals and unfinished record follow-ups.',
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.push(AppRoutes.needsAttention),
+              ),
+            ),
+          ],
           if (credentials.isEmpty)
             AppCardTile(
               icon: Icons.verified_outlined,
@@ -273,10 +316,21 @@ class _VisualHomePageState extends State<VisualHomePage> {
         children: [
           _sectionTitle(context, 'Training Ideas'),
           AppCardTile(
-            icon: Icons.school_outlined,
-            title: 'Find something useful to train today',
-            subtitle: 'Choose FireOpsSim drills or EMSCodeSim practice.',
-            onTap: _openTrainingIdeas,
+            icon: Icons.local_fire_department_outlined,
+            title: 'FireOpsSim Drill Library',
+            subtitle: 'Quick fire scenarios and drills for a crew or solo practice.',
+            onTap: () => _openExternal(
+              Uri.parse('https://fireopssim.com/drill-library'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          AppCardTile(
+            icon: Icons.medical_services_outlined,
+            title: 'EMSCodeSim Training Library',
+            subtitle: 'Targeted EMT and paramedic practice resources.',
+            onTap: () => _openExternal(
+              Uri.parse('https://emscodesim.com/ems-training-library.html'),
+            ),
           ),
         ],
       ),
@@ -376,51 +430,6 @@ class _VisualHomePageState extends State<VisualHomePage> {
         const SnackBar(content: Text('Unable to open this resource.')),
       );
     }
-  }
-
-  Future<void> _openTrainingIdeas() async {
-    final destination = await showModalBottomSheet<Uri>(
-      context: context,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(18, 2, 18, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Choose training ideas',
-              style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            ListTile(
-              leading: const Icon(Icons.local_fire_department_outlined),
-              title: const Text('Fire training ideas'),
-              subtitle: const Text('Open the FireOpsSim drill library'),
-              trailing: const Icon(Icons.open_in_new_rounded),
-              onTap: () => Navigator.pop(
-                sheetContext,
-                Uri.parse('https://fireopssim.com/drill-library'),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.medical_services_outlined),
-              title: const Text('EMS training ideas'),
-              subtitle: const Text('Open the EMSCodeSim training library'),
-              trailing: const Icon(Icons.open_in_new_rounded),
-              onTap: () => Navigator.pop(
-                sheetContext,
-                Uri.parse('https://emscodesim.com/ems-training-library.html'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (destination != null && mounted) await _openExternal(destination);
   }
 
   // _statusCard removed in favor of shared AppCardTile.
