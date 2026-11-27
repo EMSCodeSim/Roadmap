@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import 'package:firepath/widgets/app_back_button.dart';
 import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/prefill.dart';
@@ -209,65 +208,58 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final leadership = _records
         .where((record) => record.type == CareerRecordType.leadership)
         .toList();
-    final teaching = _records
-        .where((record) => record.type == CareerRecordType.teaching)
-        .toList();
     final milestones = _records
         .where((record) =>
             record.type == CareerRecordType.achievement ||
             record.type == CareerRecordType.project)
         .toList();
-    final taskBookEvidence = _records
-        .where((record) => record.type == CareerRecordType.taskBookEvidence)
+    final experience = _records
+        .where((record) =>
+            record.type == CareerRecordType.operationalExperience)
+        .toList();
+    final education = _records
+        .where((record) =>
+            record.type == CareerRecordType.training ||
+            record.type == CareerRecordType.education ||
+            record.type == CareerRecordType.teaching)
         .toList();
 
-    String yearsLabel(Iterable<int> years) {
-      final count = years.toSet().length;
-      return count == 0
-          ? 'No years documented yet'
-          : 'Across $count documented year${count == 1 ? '' : 's'}';
-    }
-
-    String recordsLabel(List<CareerRecord> records) =>
-        '${records.length} record${records.length == 1 ? '' : 's'}';
-
     return [
+      _GrowthCategorySummary(
+        title: 'Qualifications',
+        icon: Icons.workspace_premium_outlined,
+        value: '${app.certifications.length}',
+        detail: 'Credentials and roadmap requirements',
+      ),
       _GrowthCategorySummary(
         title: 'Leadership',
         icon: Icons.groups_outlined,
         value: '${stats.leadershipCount}',
-        detail: '${recordsLabel(leadership)} · ${yearsLabel(leadership.map((e) => e.date.year))}',
+        detail: '${leadership.length} leadership records',
       ),
       _GrowthCategorySummary(
-        title: 'Teaching',
-        icon: Icons.record_voice_over_outlined,
-        value: stats.teachingHours > 0
-            ? stats.teachingLabel
-            : '${teaching.length}',
-        detail: stats.teachingHours > 0
-            ? '${recordsLabel(teaching)} · hours taught'
-            : 'Teaching and mentoring records',
+        title: 'Training & Education',
+        icon: Icons.school_outlined,
+        value: '${education.length}',
+        detail: 'Courses, teaching, and education',
       ),
       _GrowthCategorySummary(
-        title: 'Credentials',
-        icon: Icons.verified_outlined,
-        value: '${app.certifications.length}',
-        detail: yearsLabel(app.certifications.map(
-          (certification) =>
-              (certification.issueDate ?? certification.createdAt).year,
-        )),
+        title: 'Experience',
+        icon: Icons.local_fire_department_outlined,
+        value: '${experience.length}',
+        detail: 'Calls, assignments, and service',
       ),
       _GrowthCategorySummary(
-        title: 'Achievements',
-        icon: Icons.emoji_events_outlined,
+        title: 'Promotion Prep',
+        icon: Icons.trending_up_rounded,
         value: '${stats.achievements + stats.projects}',
-        detail: '${recordsLabel(milestones)} · ${yearsLabel(milestones.map((e) => e.date.year))}',
+        detail: '${milestones.length} stories and milestones',
       ),
       _GrowthCategorySummary(
-        title: 'Task book evidence',
-        icon: Icons.fact_check_outlined,
-        value: '${stats.taskBookUpdates}',
-        detail: '${recordsLabel(taskBookEvidence)} · ${yearsLabel(taskBookEvidence.map((e) => e.date.year))}',
+        title: 'Specialty Paths',
+        icon: Icons.route_outlined,
+        value: app.selectedGoal == null ? 'Explore' : 'View',
+        detail: 'Career goals and specialty options',
       ),
     ];
   }
@@ -422,126 +414,26 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
       children: [
         const _SectionTitle(
           title: 'Career opportunities',
-          subtitle:
-              'When you are ready to make a move, manage applications, work history, and job searches here.',
-        ),
-        const SizedBox(height: 10),
-        Card(
-          clipBehavior: Clip.antiAlias,
-          margin: EdgeInsets.zero,
-          child: InkWell(
-            onTap: () => context.push(AppRoutes.applicationCenter),
-            child: Container(
-              padding: const EdgeInsets.all(18),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF312E81), Color(0xFF6D28D9)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: const Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.white24,
-                    child: Icon(
-                      Icons.rocket_launch_outlined,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Application Center',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 17,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Reusable profile, document readiness, references, and hiring progress',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: Colors.white),
-                ],
-              ),
-            ),
-          ),
+          subtitle: 'Find opportunities and keep application materials organized.',
         ),
         const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
-              child: Card(
-                margin: EdgeInsets.zero,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => context.push(AppRoutes.jobHistory),
-                  child: const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: Color(0xFFE0E7FF),
-                          child: Icon(
-                            Icons.work_history_outlined,
-                            color: Color(0xFF3730A3),
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'Job history',
-                          style: TextStyle(fontWeight: FontWeight.w900),
-                        ),
-                        SizedBox(height: 4),
-                        Text('Roles and service dates', maxLines: 2),
-                      ],
-                    ),
-                  ),
-                ),
+              child: OutlinedButton.icon(
+                onPressed: () => context.push(AppRoutes.jobSearch),
+                icon: const Icon(Icons.search_rounded),
+                label: const Text('Job Search'),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Card(
-                margin: EdgeInsets.zero,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => context.push(AppRoutes.jobSearch),
-                  child: const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: Color(0xFFDCFCE7),
-                          child: Icon(
-                            Icons.travel_explore_rounded,
-                            color: Color(0xFF166534),
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'Job search',
-                          style: TextStyle(fontWeight: FontWeight.w900),
-                        ),
-                        SizedBox(height: 4),
-                        Text('Find fire and EMS openings', maxLines: 2),
-                      ],
-                    ),
-                  ),
+              child: OutlinedButton.icon(
+                onPressed: () => context.push(AppRoutes.applicationCenter),
+                icon: const Icon(Icons.description_outlined),
+                label: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('Application Center'),
                 ),
               ),
             ),
@@ -1120,23 +1012,60 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
     final goal = app.selectedGoal;
     final growthYears = _growthYears(app);
     final growthCategories = _growthCategorySummaries(app);
-    final activeYears = growthYears.length;
+    final nextStep = roadmap?.nextStep;
+
+    void openDevelopment(int index) {
+      switch (index) {
+        case 0:
+          context.push(AppRoutes.certifications);
+        case 1:
+          context.push(AppRoutes.growthDetails);
+        case 2:
+        case 3:
+          context.go(AppRoutes.training);
+        case 4:
+          context.push(AppRoutes.promotionPortfolioReview);
+        case 5:
+          context.push(AppRoutes.goalSetup);
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: cs.primary,
         foregroundColor: cs.onPrimary,
         surfaceTintColor: Colors.transparent,
-        leading: const AppBackButton.toAdvance(),
-        title: const Text(
-          'Roadmap',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        automaticallyImplyLeading: false,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Roadmap', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+            Text('Career Development', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          ],
         ),
         actions: [
           IconButton(
-            tooltip: 'Career Goals',
-            onPressed: () => context.go(AppRoutes.careerGoals),
-            icon: const Icon(Icons.flag_outlined),
+            tooltip: 'Export career record',
+            onPressed: () => context.push(AppRoutes.careerExport),
+            icon: const Icon(Icons.ios_share_outlined),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'More roadmap tools',
+            onSelected: (value) {
+              switch (value) {
+                case 'completed':
+                  context.go(AppRoutes.careerGoals);
+                case 'customize':
+                  context.push(AppRoutes.taskBookRequirementsSetup);
+                case 'review':
+                  context.push(AppRoutes.promotionPortfolioReview);
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'completed', child: Text('Completed milestones')),
+              PopupMenuItem(value: 'customize', child: Text('Customize my roadmap')),
+              PopupMenuItem(value: 'review', child: Text('Promotion review')),
+            ],
           ),
         ],
       ),
@@ -1146,121 +1075,101 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               children: [
                 Card(
-                  clipBehavior: Clip.antiAlias,
-                  child: Container(
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF071A33), Color(0xFF164E7A)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.trending_up_rounded, size: 28, color: Colors.white),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Advance your career',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Build your qualifications, prepare stronger applications, and turn years of experience into your next opportunity.',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.78),
-                                height: 1.4,
-                              ),
-                        ),
-                        const SizedBox(height: 16),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _GrowthMetric(
-                              value: '$activeYears',
-                              label: activeYears == 1 ? 'year documented' : 'years documented',
-                            ),
-                            _GrowthMetric(
-                              value: roadmap == null
-                                  ? '—'
-                                  : '${roadmap.completedCount}/${roadmap.totalCount}',
-                              label: 'roadmap steps',
-                            ),
-                            _GrowthMetric(
-                              value: '${app.certifications.length}',
-                              label: 'credentials',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  color: const Color(0xFFEAF1FC),
+                  margin: EdgeInsets.zero,
+                  color: const Color(0xFFF5F1FF),
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text('Current career goal', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
-                            const Icon(Icons.flag_rounded, size: 28),
+                            const CircleAvatar(
+                              radius: 27,
+                              backgroundColor: Color(0xFFE9DFFF),
+                              child: Icon(Icons.flag_rounded, color: Color(0xFF7138F4), size: 28),
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Text(
-                                goal == null
-                                    ? 'Choose a career goal'
-                                    : goal.title,
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                    ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(goal?.title ?? 'Choose a career goal', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    roadmap == null ? 'No roadmap created yet' : '${roadmap.completedCount} of ${roadmap.totalCount} milestones complete',
+                                    style: TextStyle(color: cs.onSurfaceVariant),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        Text(
-                          roadmap == null
-                              ? 'Set a destination for your professional growth. Your timeline will show the experience and milestones you build along the way.'
-                              : '${roadmap.completedCount} of ${roadmap.totalCount} roadmap steps complete. Your career records capture the experience and milestones behind your progress.',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: cs.onSurfaceVariant,
-                                height: 1.4,
-                              ),
-                        ),
                         if (roadmap != null && roadmap.totalCount > 0) ...[
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 12),
                           LinearProgressIndicator(
-                            minHeight: 8,
+                            minHeight: 7,
                             value: roadmap.percentComplete,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${roadmap.completedCount} of ${roadmap.totalCount} steps complete',
-                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            color: const Color(0xFF7138F4),
+                            borderRadius: BorderRadius.circular(999),
                           ),
                         ],
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: () => context.go(AppRoutes.careerGoals),
-                            icon: Icon(goal == null ? Icons.flag_outlined : Icons.edit_outlined),
-                            label: Text(goal == null ? 'Set my goal' : 'Update my goal'),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(child: OutlinedButton(onPressed: () => context.push(AppRoutes.goalSetup), child: Text(goal == null ? 'Set goal' : 'Change goal'))),
+                            const SizedBox(width: 8),
+                            Expanded(child: FilledButton(onPressed: () => context.go(AppRoutes.careerGoals), child: const Text('View plan'))),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const _SectionTitle(
+                  title: 'Next best step',
+                  subtitle: 'One recommendation based on your selected career goal.',
+                ),
+                const SizedBox(height: 10),
+                Card(
+                  margin: EdgeInsets.zero,
+                  color: const Color(0xFFF5F1FF),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const CircleAvatar(
+                          backgroundColor: Color(0xFFE7EAFE),
+                          child: Icon(Icons.auto_awesome_rounded, color: Color(0xFF2454DF)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(nextStep?.requirement.name ?? 'Your roadmap is caught up', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                              const SizedBox(height: 4),
+                              Text(nextStep == null ? 'Review your plan or document new career evidence.' : 'Open the remaining requirement and skills checklist.', style: TextStyle(color: cs.onSurfaceVariant)),
+                              const SizedBox(height: 10),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: FilledButton.icon(
+                                  onPressed: () {
+                                    if (nextStep == null || roadmap == null) {
+                                      context.go(AppRoutes.careerGoals);
+                                    } else {
+                                      AppRouter.openRequirement(context, nextStep.requirement, goalId: roadmap.goal.id);
+                                    }
+                                  },
+                                  icon: const Icon(Icons.play_arrow_rounded),
+                                  label: Text(nextStep == null ? 'View plan' : 'Open checklist'),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -1269,82 +1178,51 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                 ),
                 const SizedBox(height: 18),
                 const _SectionTitle(
-                  title: 'Career-building areas',
-                  subtitle:
-                      'Focus on leadership, credentials, achievements, teaching, and evidence that support advancement.',
+                  title: 'My development',
+                  subtitle: 'Open a focused view of the part of your career you want to develop.',
                 ),
                 const SizedBox(height: 10),
-                SizedBox(
-                  height: 156,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: growthCategories.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (context, index) => SizedBox(
-                      width: 184,
-                      child: _GrowthCategoryCard(
-                        category: growthCategories[index],
-                      ),
-                    ),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: growthCategories.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 1.9,
+                  ),
+                  itemBuilder: (context, index) => _GrowthCategoryCard(
+                    category: growthCategories[index],
+                    onTap: () => openDevelopment(index),
                   ),
                 ),
-                const SizedBox(height: 18),
-                const _SectionTitle(
-                  title: 'Advancement milestones',
-                  subtitle:
-                      'A high-level view of qualifications and career-building milestones. Skills, calls, and individual training entries stay in Records.',
-                ),
-                const SizedBox(height: 10),
-                if (growthYears.isEmpty)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(22),
-                      child: Column(
-                        children: [
-                          const Icon(Icons.timeline_rounded, size: 36),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Your advancement story starts with a milestone',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Choose a career goal, add qualifications, and mark important leadership, education, project, or achievement milestones.',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                  height: 1.4,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  ...growthYears.map((year) => _growthYearCard(app, year)),
                 const SizedBox(height: 18),
                 _careerOpportunityTools(),
                 const SizedBox(height: 12),
-                Card(
-                  color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                  child: ListTile(
-                    leading: const Icon(Icons.inventory_2_outlined),
-                    title: const Text('Need a specific detail?'),
-                    subtitle: const Text(
-                      'Records contains the complete searchable timeline for everything entered through Quick Add, including skills and training.',
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => context.go(AppRoutes.training),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () => _showCareerBrief(app),
-                  icon: const Icon(Icons.description_outlined),
-                  label: const Text('Create career brief'),
+                ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                  title: const Text('More roadmap tools', style: TextStyle(fontWeight: FontWeight.w900)),
+                  subtitle: const Text('Completed milestones • Customize • Promotion review'),
+                  children: [
+                    ListTile(leading: const Icon(Icons.check_circle_outline_rounded), title: const Text('Completed milestones'), onTap: () => context.go(AppRoutes.careerGoals)),
+                    ListTile(leading: const Icon(Icons.tune_rounded), title: const Text('Customize my roadmap'), onTap: () => context.push(AppRoutes.taskBookRequirementsSetup)),
+                    ListTile(leading: const Icon(Icons.fact_check_outlined), title: const Text('Promotion review'), onTap: () => context.push(AppRoutes.promotionPortfolioReview)),
+                    ListTile(leading: const Icon(Icons.description_outlined), title: const Text('Create career brief'), onTap: () => _showCareerBrief(app)),
+                    if (growthYears.isNotEmpty) ...[
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(12, 8, 12, 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Completed milestones', style: TextStyle(fontWeight: FontWeight.w900)),
+                        ),
+                      ),
+                      ...growthYears.map((year) => Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: _growthYearCard(app, year),
+                          )),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -1377,84 +1255,61 @@ class _GrowthCategorySummary {
 
 class _GrowthCategoryCard extends StatelessWidget {
   final _GrowthCategorySummary category;
+  final VoidCallback onTap;
 
-  const _GrowthCategoryCard({required this.category});
+  const _GrowthCategoryCard({required this.category, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Card(
+    return Tooltip(
+      message: category.detail,
+      child: Card(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(category.icon, size: 20, color: cs.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    category.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w800),
-                  ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 19,
+                backgroundColor: cs.primaryContainer,
+                child: Icon(category.icon, size: 20, color: cs.primary),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      category.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            height: 1.1,
+                          ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      category.value,
+                      maxLines: 1,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              category.value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: cs.primary,
-                  ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              category.detail,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    height: 1.25,
-                  ),
-            ),
-          ],
+              ),
+              Icon(Icons.chevron_right_rounded, size: 20, color: cs.onSurfaceVariant),
+            ],
+          ),
         ),
       ),
-    );
-  }
-}
-
-class _GrowthMetric extends StatelessWidget {
-  final String value;
-  final String label;
-
-  const _GrowthMetric({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-          Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant)),
-        ],
       ),
     );
   }
