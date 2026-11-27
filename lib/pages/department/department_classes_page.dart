@@ -2248,17 +2248,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       return result.replaceAll('_', ' ');
     }
 
-    final checklistRows = <List<String>>[];
-    for (final student in detail.roster) {
-      final resultsBySkill = <String, String>{
-        for (final result in student.results) result.requirementId: result.result,
-      };
-      checklistRows.add(<String>[
-        student.name,
-        for (final skillId in skillIds) checklistResultLabel(resultsBySkill[skillId]),
-      ]);
-    }
-    final rosterRows = detail.roster.map((student) {
+    final rosterRows = detail.roster.asMap().entries.map((entry) {
+      final student = entry.value;
       final scores = trainingScoreParts(
         customFields: detail.customFields,
         customValues: student.customValues,
@@ -2267,9 +2258,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         writtenScore: student.writtenScore,
         ccfScore: student.ccfScore,
       );
+      final results = {for (final result in student.results) result.requirementId: result.result};
       return <String>[
-        '${student.name} — ${scores.join(' · ')}',
+        '${entry.key + 1}', student.name,
         student.attendance.replaceAll('_', ' '),
+        scores.join(' / '),
+        for (final id in skillIds) checklistResultLabel(results[id]),
       ];
     }).toList(growable: false);
     final ceRows = detail.ceCredits
@@ -2284,168 +2278,113 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       (sum, item) => sum + ((item['hours'] as num?)?.toDouble() ?? 0),
     );
 
-    pw.Widget line(String label, String value) => pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 4),
-      child: pw.RichText(text: pw.TextSpan(children: [
-        pw.TextSpan(text: '$label: ', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-        pw.TextSpan(text: value.isEmpty ? 'Not recorded' : value),
-      ])),
+    final landscape = skillIds.length > 3;
+    final pageFormat = landscape ? PdfPageFormat.letter.landscape : PdfPageFormat.letter;
+    final bold = pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold);
+    pw.Widget heading(String label) => pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.all(5),
+      decoration: pw.BoxDecoration(color: PdfColors.grey300, border: pw.Border.all(width: .5)),
+      child: pw.Text(label, style: bold),
     );
-
+    pw.Widget table(List<String> headers, List<List<String>> rows, {Map<int, pw.TableColumnWidth>? widths}) =>
+      pw.TableHelper.fromTextArray(
+        headers: headers, data: rows, columnWidths: widths,
+        headerStyle: bold,
+        headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+        cellStyle: const pw.TextStyle(fontSize: 8),
+        cellPadding: const pw.EdgeInsets.all(4),
+        border: pw.TableBorder.all(color: PdfColors.grey800, width: .5),
+      );
+    String recorded(String value) => value.trim().isEmpty ? 'Not recorded' : value;
+    pw.Widget signature(String label) => pw.Container(
+      height: 38,
+      padding: const pw.EdgeInsets.all(5),
+      decoration: pw.BoxDecoration(border: pw.Border.all(width: .5)),
+      child: pw.Text(label, style: bold),
+    );
+    // Limit the number of skill columns per table to maintain readable print.
+    final batches = <List<String>>[
+      if (skillIds.isEmpty) <String>[],
+      for (var i = 0; i < skillIds.length; i += 6)
+        skillIds.skip(i).take(6).toList(),
+    ];
     document.addPage(pw.MultiPage(
-      pageFormat: PdfPageFormat.letter,
-      margin: const pw.EdgeInsets.all(36),
-      header: (context) => pw.Container(
-        padding: const pw.EdgeInsets.only(bottom: 8),
-        decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: .5))),
-        child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Text(departmentName.isEmpty ? 'Responder Roadmap' : departmentName,
-            style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-          pw.Text('Official Training Record', style: const pw.TextStyle(fontSize: 9)),
-        ]),
-      ),
-      footer: (context) => pw.Align(
-        alignment: pw.Alignment.centerRight,
-        child: pw.Text('Page ${context.pageNumber} of ${context.pagesCount} | Training ID ${detail.id}',
-          style: const pw.TextStyle(fontSize: 8)),
-      ),
+      pageFormat: pageFormat,
+      margin: const pw.EdgeInsets.all(28),
+      header: (context) => pw.Column(children: [
+        pw.Text(departmentName.isEmpty ? 'Responder Roadmap' : departmentName.toUpperCase(),
+          style: pw.TextStyle(fontSize: 19, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey900)),
+        pw.Text('TRAINING SHEET', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 4),
+        pw.Divider(color: PdfColors.blueGrey900, thickness: 1),
+      ]),
+      footer: (context) => pw.Text('Training ID: ${detail.id} | Page ${context.pageNumber} of ${context.pagesCount}',
+        style: const pw.TextStyle(fontSize: 8)),
       build: (context) => [
-        pw.SizedBox(height: 10),
-        pw.Text(detail.title, style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 12),
-        line('Category', detail.trainingCategory.replaceAll('_', ' ')),
-        line('Checklist', detail.checklistTitle),
-        line('Station / facility', detail.station.isNotEmpty ? detail.station : detail.location),
-        line('Shift', detail.shift),
-        line('Start', _recordDate(detail.startsAt)),
-        line('Finish', _recordDate(detail.endsAt)),
-        line('Training hours', detail.creditHours.toStringAsFixed(2)),
+        table(['Training information', 'Recorded value', 'Time / administration', 'Recorded value'], [
+          ['Training title', detail.title, 'Start', _recordDate(detail.startsAt)],
+          ['Station / facility', recorded(detail.station.isNotEmpty ? detail.station : detail.location), 'End', _recordDate(detail.endsAt)],
+          ['Training category', recorded(detail.trainingCategory.replaceAll('_', ' ')), 'Total hours', detail.creditHours.toStringAsFixed(2)],
+          ['Checklist', recorded(detail.checklistTitle), 'CE hours', totalCeHours.toStringAsFixed(2)],
+          ['Shift', recorded(detail.shift), 'Status', detail.status],
+        ], widths: const {0: pw.FlexColumnWidth(1.1), 1: pw.FlexColumnWidth(2), 2: pw.FlexColumnWidth(1.1), 3: pw.FlexColumnWidth(1.7)}),
+        pw.SizedBox(height: 8),
+        heading('Training description / objectives / notes'),
+        pw.Container(width: double.infinity, padding: const pw.EdgeInsets.all(6),
+          decoration: pw.BoxDecoration(border: pw.Border.all(width: .5)),
+          child: pw.Text(recorded(detail.notes), style: const pw.TextStyle(fontSize: 9))),
+        pw.SizedBox(height: 8),
         if (ceRows.isNotEmpty) ...[
-          pw.SizedBox(height: 10),
-          pw.Text('CE category breakdown', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 6),
-          pw.TableHelper.fromTextArray(
-            headers: const ['CE category', 'Hours'],
-            data: <List<String>>[
-              ...ceRows,
-              <String>['Total CE hours', totalCeHours.toStringAsFixed(2)],
-            ],
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
-            cellStyle: const pw.TextStyle(fontSize: 9),
-            cellPadding: const pw.EdgeInsets.all(5),
-          ),
+          table(['CE category', 'Awarded hours'], [...ceRows, ['Total CE hours', totalCeHours.toStringAsFixed(2)]]),
+          pw.SizedBox(height: 8),
         ],
-        line('Status', detail.status),
-        line('Instructor approval', _recordDate(detail.instructorApprovedAt)),
-        line('RMS status', detail.rmsStatus.replaceAll('_', ' ')),
-        if (detail.rmsEnteredAt != null) line('RMS entered', _recordDate(detail.rmsEnteredAt)),
-        if (detail.rmsReference.isNotEmpty) line('RMS reference', detail.rmsReference),
-        if (detail.notes.isNotEmpty) ...[
-          pw.SizedBox(height: 10),
-          pw.Text('Class objectives and training narrative', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 5),
-          pw.Text(detail.notes),
+        for (var batchIndex = 0; batchIndex < batches.length; batchIndex++) ...[
+          heading(batchIndex == 0 ? 'Student roster and evaluation results' : 'Evaluation results — continued'),
+          table(['#', 'Student name', 'Attendance', 'Scoring result', ...batches[batchIndex].map((id) => skillNames[id] ?? 'Skill')],
+            rosterRows.map((row) => <String>[
+              ...row.take(4),
+              for (final id in batches[batchIndex]) row[4 + skillIds.indexOf(id)],
+            ]).toList(),
+            widths: <int, pw.TableColumnWidth>{
+              0: const pw.FixedColumnWidth(20),
+              1: const pw.FlexColumnWidth(2),
+              2: const pw.FlexColumnWidth(1.1),
+              3: const pw.FlexColumnWidth(1.6),
+              for (var i = 0; i < batches[batchIndex].length; i++) i + 4: const pw.FlexColumnWidth(1),
+            }),
+          pw.SizedBox(height: 8),
         ],
-        pw.SizedBox(height: 16),
-        pw.Text('Class roster', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 6),
-        pw.TableHelper.fromTextArray(
-          headers: const ['Student and scoring result', 'Attendance'],
-          data: rosterRows,
-          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
-          cellStyle: const pw.TextStyle(fontSize: 8),
-          cellPadding: const pw.EdgeInsets.all(4),
-          columnWidths: const {
-            0: pw.FlexColumnWidth(4),
-            1: pw.FlexColumnWidth(1.2),
-          },
-        ),
-        pw.SizedBox(height: 14),
-        pw.Text('Generated from the canonical Responder Roadmap record.', style: const pw.TextStyle(fontSize: 8)),
+        if (skillIds.isNotEmpty) ...[
+          heading('Station / skill reference'),
+          for (final section in detail.sections) ...[
+            pw.Padding(padding: const pw.EdgeInsets.only(top: 4), child: pw.Text(section.title, style: bold)),
+            for (final skill in section.skills)
+              pw.Padding(padding: const pw.EdgeInsets.only(left: 8, bottom: 2),
+                child: pw.Text(skill.description.isEmpty ? skill.title : '${skill.title}: ${skill.description}', style: const pw.TextStyle(fontSize: 8))),
+          ],
+          pw.SizedBox(height: 8),
+        ],
+        table(['Record approval / closeout', 'Recorded value'], [
+          ['Instructor approved', _recordDate(detail.instructorApprovedAt)],
+          ['RMS status', detail.rmsStatus.replaceAll('_', ' ')],
+          if (detail.rmsEnteredAt != null) ['RMS entered', _recordDate(detail.rmsEnteredAt)],
+          if (detail.rmsReference.isNotEmpty) ['RMS reference', detail.rmsReference],
+        ]),
+        pw.SizedBox(height: 8),
+        pw.Row(children: [
+          pw.Expanded(child: signature('Instructor name (print)')),
+          pw.Expanded(child: signature('Instructor signature')),
+          pw.SizedBox(width: 85, child: signature('Date')),
+        ]),
+        pw.SizedBox(height: 4),
+        pw.Row(children: [
+          pw.Expanded(child: signature('Training officer (if required)')),
+          pw.Expanded(child: signature('Signature')),
+          pw.SizedBox(width: 85, child: signature('Date')),
+        ]),
       ],
     ));
-    if (skillIds.isNotEmpty) {
-      final checklistColumnWidths = <int, pw.TableColumnWidth>{
-        0: const pw.FlexColumnWidth(1.8),
-        for (var index = 0; index < skillIds.length; index++)
-          index + 1: const pw.FlexColumnWidth(1),
-      };
-      document.addPage(pw.MultiPage(
-        pageFormat: PdfPageFormat.letter.landscape,
-        margin: const pw.EdgeInsets.all(32),
-        header: (context) => pw.Container(
-          padding: const pw.EdgeInsets.only(bottom: 8),
-          decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: .5))),
-          child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-            pw.Text(departmentName.isEmpty ? 'Responder Roadmap' : departmentName,
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-            pw.Text('Checklist results · Training ID ${detail.id}',
-              style: const pw.TextStyle(fontSize: 9)),
-          ]),
-        ),
-        footer: (context) => pw.Align(
-          alignment: pw.Alignment.centerRight,
-          child: pw.Text('Page ${context.pageNumber} of ${context.pagesCount}',
-            style: const pw.TextStyle(fontSize: 8)),
-        ),
-        build: (context) => [
-          pw.SizedBox(height: 10),
-          pw.Text('Checklist results',
-            style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 4),
-          pw.Text('${detail.title} · One row per student; each skill appears once across the top.',
-            style: const pw.TextStyle(fontSize: 9)),
-          pw.SizedBox(height: 10),
-          pw.TableHelper.fromTextArray(
-            headers: <String>['Student', for (final skillId in skillIds) skillNames[skillId] ?? 'Skill'],
-            data: checklistRows,
-            headerStyle: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
-            cellStyle: const pw.TextStyle(fontSize: 8),
-            cellPadding: const pw.EdgeInsets.all(5),
-            border: pw.TableBorder.all(color: PdfColors.black, width: .5),
-            columnWidths: checklistColumnWidths,
-          ),
-          pw.SizedBox(height: 12),
-          pw.Text('Station / skill reference',
-            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 4),
-          for (final section in detail.sections) ...[
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(top: 4, bottom: 2),
-              child: pw.Text(section.title,
-                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            ),
-            for (final skill in section.skills)
-              pw.Padding(
-                padding: const pw.EdgeInsets.only(left: 10, bottom: 2),
-                child: pw.Text(
-                  skill.description.isEmpty ? skill.title : '${skill.title}: ${skill.description}',
-                  style: const pw.TextStyle(fontSize: 8),
-                ),
-              ),
-          ],
-          pw.SizedBox(height: 18),
-          pw.Row(children: [
-            pw.Expanded(child: pw.Container(
-              height: 24,
-              alignment: pw.Alignment.bottomLeft,
-              decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: .7))),
-              child: pw.Text('Instructor signature', style: pw.TextStyle(fontSize: 8)),
-            )),
-            pw.SizedBox(width: 24),
-            pw.SizedBox(width: 140, child: pw.Container(
-              height: 24,
-              alignment: pw.Alignment.bottomLeft,
-              decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: .7))),
-              child: pw.Text('Date', style: pw.TextStyle(fontSize: 8)),
-            )),
-          ]),
-        ],
-      ));
-    }
     return document.save();
   }
 
