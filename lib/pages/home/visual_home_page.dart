@@ -7,7 +7,6 @@ import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/home_section_preference.dart';
 import 'package:firepath/nav.dart';
-import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/career_inbox.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/certification_urgency.dart';
@@ -144,7 +143,6 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
       HomeSectionType.trainingIdeas: _TrainingIdeasCard(
         onOpenEms: () => _openExternal(Uri.parse('https://emscodesim.com/ems-training-library.html')),
         onOpenFire: () => _openExternal(Uri.parse('https://fireopssim.com/drill-library.html')),
-        onShowAnother: _openTrainingIdeas,
       ),
       HomeSectionType.department: _DepartmentMiniCard(
         unread: department.unreadCount,
@@ -199,15 +197,6 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
                       FadeSlideIn(delay: Duration(milliseconds: 30 * i), child: sectionWidgets[_homeSections[i].type] ?? const SizedBox.shrink()),
                       const SizedBox(height: 14),
                     ],
-                  FadeSlideIn(
-                    delay: Duration(milliseconds: 30 * _homeSections.length),
-                    child: _QuickAddCard(
-                      onQuickAdd: () async {
-                        await QuickLogLauncher.open(context);
-                        await _loadRecords();
-                      },
-                    ),
-                  ),
                   const SizedBox(height: 34),
                 ]),
               ),
@@ -233,39 +222,6 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
     }
   }
 
-  Future<void> _openTrainingIdeas() async {
-    final destination = await showModalBottomSheet<Uri>(
-      context: context,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(18, 2, 18, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Choose training ideas', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 12),
-            ListTile(
-              leading: const Icon(Icons.local_fire_department_outlined),
-              title: const Text('FireOpsSim drill library'),
-              subtitle: const Text('Fire drills, scenarios and crew practice'),
-              trailing: const Icon(Icons.open_in_new_rounded),
-              onTap: () => Navigator.pop(sheetContext, Uri.parse('https://fireopssim.com/drill-library.html')),
-            ),
-            ListTile(
-              leading: const Icon(Icons.medical_services_outlined),
-              title: const Text('EMSCodeSim training library'),
-              subtitle: const Text('EMT and paramedic practice resources'),
-              trailing: const Icon(Icons.open_in_new_rounded),
-              onTap: () => Navigator.pop(sheetContext, Uri.parse('https://emscodesim.com/ems-training-library.html')),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (destination != null && mounted) await _openExternal(destination);
-  }
 }
 
 class _CardMeta {
@@ -666,9 +622,8 @@ class _SimpleHomeCard extends StatelessWidget {
 class _TrainingIdeasCard extends StatelessWidget {
   final VoidCallback onOpenFire;
   final VoidCallback onOpenEms;
-  final VoidCallback onShowAnother;
 
-  const _TrainingIdeasCard({required this.onOpenFire, required this.onOpenEms, required this.onShowAnother});
+  const _TrainingIdeasCard({required this.onOpenFire, required this.onOpenEms});
 
   @override
   Widget build(BuildContext context) {
@@ -709,8 +664,6 @@ class _TrainingIdeasCard extends StatelessWidget {
                     Row(
                       children: [
                         SizedBox(height: 44, child: FilledButton.tonalIcon(onPressed: onOpen, icon: const Icon(Icons.open_in_new_rounded), label: const Text('Open Resource'))),
-                        const SizedBox(width: 10),
-                        SizedBox(height: 44, child: OutlinedButton.icon(onPressed: onShowAnother, icon: const Icon(Icons.shuffle_rounded), label: const Text('Show Another'))),
                       ],
                     ),
                   ],
@@ -769,66 +722,6 @@ class _DepartmentMiniCard extends StatelessWidget {
         trailing: unread > 0 ? const Row(mainAxisSize: MainAxisSize.min, children: [UnreadPulseIndicator(), SizedBox(width: 8), Icon(Icons.chevron_right_rounded)]) : null,
         onTap: onOpen,
       ),
-    );
-  }
-}
-
-class _QuickAddCard extends StatelessWidget {
-  final Future<void> Function() onQuickAdd;
-
-  const _QuickAddCard({required this.onQuickAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final accent = Theme.of(context).brightness == Brightness.dark ? DarkModeColors.skillsTeal : LightModeColors.skillsTeal;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: PressableScale(
-        onTap: onQuickAdd,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: Row(
-            children: [
-              Container(
-                height: 46,
-                width: 46,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: cs.outline.withValues(alpha: AppCardTokens.subtleBorderAlpha)),
-                ),
-                alignment: Alignment.center,
-                child: Icon(Icons.add_rounded, color: accent),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(child: _QuickAddText()),
-              const SizedBox(width: 10),
-              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickAddText extends StatelessWidget {
-  const _QuickAddText();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Quick add', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-        const SizedBox(height: 4),
-        Text('Log a call, skill, training, or milestone in seconds.', style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.25, fontWeight: FontWeight.w600)),
-      ],
     );
   }
 }
