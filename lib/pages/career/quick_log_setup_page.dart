@@ -64,32 +64,6 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
     });
   }
 
-  void _moveQuickAction(String key, int direction) {
-    final visible = _quickActionOptions
-        .where((option) => _quickActionKeys.contains(option.$1))
-        .toList()
-      ..sort(
-        (a, b) => _quickActionKeys
-            .indexOf(a.$1)
-            .compareTo(_quickActionKeys.indexOf(b.$1)),
-      );
-    final visibleIndex = visible.indexWhere((option) => option.$1 == key);
-    final targetVisibleIndex = visibleIndex + direction;
-    if (visibleIndex < 0 ||
-        targetVisibleIndex < 0 ||
-        targetVisibleIndex >= visible.length) {
-      return;
-    }
-    final currentIndex = _quickActionKeys.indexOf(key);
-    final targetIndex =
-        _quickActionKeys.indexOf(visible[targetVisibleIndex].$1);
-    setState(() {
-      final item = _quickActionKeys[currentIndex];
-      _quickActionKeys[currentIndex] = _quickActionKeys[targetIndex];
-      _quickActionKeys[targetIndex] = item;
-    });
-  }
-
   QuickLogRolePreset? _guessPreset(List<String> pinned) {
     for (final preset in QuickLogRolePreset.values) {
       final defaults = QuickLogCatalog.defaultsFor(preset);
@@ -150,117 +124,61 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
-                  Container(
-                    padding: AppSpacing.paddingMd,
-                    decoration: BoxDecoration(
-                      color: cs.primaryContainer.withValues(alpha: 0.55),
-                      borderRadius: BorderRadius.circular(AppRadius.xl),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Make Quick Add work your way',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Choose the large Quick Pick tiles you want to see, then arrange them in the order that feels most natural.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: cs.onSurfaceVariant,
-                                height: 1.45,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    '1 · CHOOSE YOUR QUICK PICKS',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap a tile to show or hide it. At least one Quick Pick stays active.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
-                  ),
-                  const SizedBox(height: 10),
-                  GridView.count(
-                    crossAxisCount: 2,
+                  Text('Choose and arrange your Quick Picks', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  Text('Drag the handles to reorder. Switch off any tile you do not use.', style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(height: 12),
+                  ReorderableListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 1.75,
-                    children: _quickActionOptions.map((option) {
-                      final active = _quickActionKeys.contains(option.$1);
-                      return _QuickPickSelector(
-                        key: Key('quick_pick_selector_${option.$1}'),
-                        label: option.$2,
-                        icon: option.$3,
-                        color: option.$4,
-                        selected: active,
-                        onTap: () => _toggleQuickAction(option.$1),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 22),
-                  Text(
-                    '2 · ARRANGE YOUR QUICK ADD SCREEN',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'This preview matches the order of the colored tiles in Quick Add.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          height: 1.35,
-                        ),
-                  ),
-                  const SizedBox(height: 10),
-                  GridView.builder(
+                    buildDefaultDragHandles: false,
                     itemCount: selectedQuickActions.length,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 1.38,
-                    ),
+                    onReorder: (oldIndex, newIndex) {
+                      if (newIndex > oldIndex) newIndex--;
+                      final ordered = selectedQuickActions.map((e) => e.$1).toList();
+                      ordered.insert(newIndex, ordered.removeAt(oldIndex));
+                      setState(() {
+                        _quickActionKeys = [...ordered, ..._quickActionKeys.where((key) => !ordered.contains(key))];
+                      });
+                    },
                     itemBuilder: (context, index) {
                       final option = selectedQuickActions[index];
-                      return _QuickPickPreview(
-                        key: Key('quick_pick_preview_${option.$1}'),
-                        number: index + 1,
-                        label: option.$2,
-                        icon: option.$3,
-                        color: option.$4,
-                        canMoveEarlier: index > 0,
-                        canMoveLater: index < selectedQuickActions.length - 1,
-                        onMoveEarlier: () =>
-                            _moveQuickAction(option.$1, -1),
-                        onMoveLater: () => _moveQuickAction(option.$1, 1),
+                      return Card(
+                        key: ValueKey(option.$1),
+                        margin: const EdgeInsets.only(bottom: 6),
+                        child: ListTile(
+                          leading: ReorderableDragStartListener(index: index, child: const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Icon(Icons.drag_handle))),
+                          title: Row(children: [
+                            Icon(option.$3, color: option.$4),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(option.$2, style: const TextStyle(fontWeight: FontWeight.w700))),
+                          ]),
+                          trailing: Switch(value: true, onChanged: selectedQuickActions.length > 1 ? (_) => _toggleQuickAction(option.$1) : null),
+                        ),
                       );
                     },
                   ),
+                  ..._quickActionOptions.where((option) => !_quickActionKeys.contains(option.$1)).map((option) => Card(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    child: SwitchListTile(
+                      secondary: Icon(option.$3, color: option.$4),
+                      title: Text(option.$2),
+                      value: false,
+                      onChanged: (_) => _toggleQuickAction(option.$1),
+                    ),
+                  )),
+                  const SizedBox(height: 8),
+                  Text('${selectedQuickActions.length} active · At least one must stay on', style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 12),
+                  ExpansionTile(
+                    title: const Text('Customize detailed choices'),
+                    subtitle: const Text('Role presets, skills and custom buttons'),
+                    children: [
                   const SizedBox(height: 24),
                   Text(
-                    '3 · OPTIONAL ROLE PRESET',
+                    'ROLE PRESET',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w900,
                       color: cs.onSurfaceVariant,
@@ -357,6 +275,8 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                         }),
                       ),
                     ),
+                  ),
+                    ],
                   ),
                 ],
               ),
@@ -527,214 +447,6 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-}
-
-class _QuickPickSelector extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _QuickPickSelector({
-    super.key,
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: selected
-          ? color.withValues(alpha: 0.11)
-          : cs.surfaceContainerHighest.withValues(alpha: 0.55),
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(
-              color: selected
-                  ? color.withValues(alpha: 0.42)
-                  : cs.outline.withValues(alpha: 0.18),
-              width: selected ? 1.5 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: selected
-                      ? color
-                      : cs.onSurfaceVariant.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  icon,
-                  size: 23,
-                  color: selected ? Colors.white : cs.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: selected ? color : cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Icon(
-                selected
-                    ? Icons.check_circle_rounded
-                    : Icons.add_circle_outline_rounded,
-                size: 21,
-                color: selected ? color : cs.onSurfaceVariant,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickPickPreview extends StatelessWidget {
-  final int number;
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool canMoveEarlier;
-  final bool canMoveLater;
-  final VoidCallback onMoveEarlier;
-  final VoidCallback onMoveLater;
-
-  const _QuickPickPreview({
-    super.key,
-    required this.number,
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.canMoveEarlier,
-    required this.canMoveLater,
-    required this.onMoveEarlier,
-    required this.onMoveLater,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.11),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: color.withValues(alpha: 0.34)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(icon, size: 22, color: Colors.white),
-              ),
-              const Spacer(),
-              CircleAvatar(
-                radius: 13,
-                backgroundColor: color.withValues(alpha: 0.15),
-                child: Text(
-                  '$number',
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: color, fontWeight: FontWeight.w900),
-          ),
-          const Spacer(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              _ReorderButton(
-                tooltip: 'Move $label earlier',
-                icon: Icons.arrow_back_rounded,
-                color: color,
-                onPressed: canMoveEarlier ? onMoveEarlier : null,
-              ),
-              const SizedBox(width: 4),
-              _ReorderButton(
-                tooltip: 'Move $label later',
-                icon: Icons.arrow_forward_rounded,
-                color: color,
-                onPressed: canMoveLater ? onMoveLater : null,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReorderButton extends StatelessWidget {
-  final String tooltip;
-  final IconData icon;
-  final Color color;
-  final VoidCallback? onPressed;
-
-  const _ReorderButton({
-    required this.tooltip,
-    required this.icon,
-    required this.color,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 34,
-      height: 30,
-      child: IconButton(
-        tooltip: tooltip,
-        padding: EdgeInsets.zero,
-        visualDensity: VisualDensity.compact,
-        onPressed: onPressed,
-        style: IconButton.styleFrom(
-          backgroundColor: color.withValues(alpha: 0.12),
-          disabledBackgroundColor: color.withValues(alpha: 0.04),
-        ),
-        icon: Icon(icon, size: 18),
-        color: color,
-      ),
-    );
   }
 }
 
