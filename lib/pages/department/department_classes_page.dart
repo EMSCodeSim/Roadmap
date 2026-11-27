@@ -2332,13 +2332,22 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     ];
     document.addPage(pw.MultiPage(
       pageFormat: pageFormat,
-      margin: const pw.EdgeInsets.all(28),
-      header: (context) => pw.Column(children: [
+      // Keep the form anchored near the printable top edge. A bounded header is
+      // important here: a max-height Column can reserve excess vertical space
+      // in native print previews and push the whole form down the page.
+      margin: const pw.EdgeInsets.fromLTRB(28, 12, 28, 22),
+      header: (context) => pw.Column(
+        mainAxisSize: pw.MainAxisSize.min,
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
         pw.Text(departmentName.isEmpty ? 'Responder Roadmap' : departmentName.toUpperCase(),
+          textAlign: pw.TextAlign.center,
           style: pw.TextStyle(fontSize: 19, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey900)),
-        pw.Text('TRAINING SHEET', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+        pw.Text('TRAINING SHEET', textAlign: pw.TextAlign.center,
+          style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
         if (detail.status != 'COMPLETE')
-          pw.Text('DRAFT — NOT FINALIZED OR APPROVED', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+          pw.Text('DRAFT — NOT FINALIZED OR APPROVED', textAlign: pw.TextAlign.center,
+            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 4),
         pw.Divider(color: PdfColors.blueGrey900, thickness: 1),
       ]),
