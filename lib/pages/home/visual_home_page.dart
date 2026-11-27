@@ -7,7 +7,6 @@ import 'package:firepath/models/career_record.dart';
 import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/home_section_preference.dart';
 import 'package:firepath/nav.dart';
-import 'package:firepath/services/career_inbox.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/certification_urgency.dart';
 import 'package:firepath/services/home_section_preferences_store.dart';
@@ -35,7 +34,6 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
 
   List<CareerRecord> _records = const [];
   List<HomeSectionPreference> _homeSections = List<HomeSectionPreference>.from(HomeSectionPreferencesStore.defaults);
-  bool _loadingRecords = true;
 
   @override
   bool get wantKeepAlive => true;
@@ -52,7 +50,6 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
     if (!mounted) return;
     setState(() {
       _records = records;
-      _loadingRecords = false;
     });
   }
 
@@ -78,8 +75,6 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
     final hasDepartment = appMode.departmentLink != null;
 
     final credentials = CertificationUrgency.urgent(app.certifications, withinDays: 90);
-    final followUps = CareerInbox.build(app: app, records: _records).where((item) => item.kind != CareerInboxKind.certification).toList(growable: false);
-
     final now = DateTime.now();
     final monthRecords = _records.where((record) => record.date.year == now.year && record.date.month == now.month).toList();
     final monthHours = monthRecords.fold<double>(0, (total, record) => total + (record.hours ?? 0));
@@ -114,13 +109,10 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
       ),
       HomeSectionType.needsAttention: _NeedsAttentionCard(
         urgentCredentials: credentials.length,
-        followUps: followUps.length,
         departmentActions: hasDepartment ? department.actionCount : 0,
         departmentUnread: hasDepartment ? department.unreadCount : 0,
         onReviewCredentials: () => context.go(AppRoutes.certifications),
-        onReviewRecords: () => context.go(AppRoutes.training),
         onOpenDepartment: hasDepartment ? () => context.go(AppRoutes.department) : null,
-        loadingRecords: _loadingRecords,
       ),
       HomeSectionType.careerSnapshot: _CareerSnapshotRow(activities: monthRecords.length, hours: monthHours, credentials: currentCredentialCount),
       HomeSectionType.jobSearch: _SimpleHomeCard(
@@ -410,23 +402,17 @@ class _NextBestStepCard extends StatelessWidget {
 
 class _NeedsAttentionCard extends StatelessWidget {
   final int urgentCredentials;
-  final int followUps;
   final int departmentActions;
   final int departmentUnread;
   final VoidCallback onReviewCredentials;
-  final VoidCallback onReviewRecords;
   final VoidCallback? onOpenDepartment;
-  final bool loadingRecords;
 
   const _NeedsAttentionCard({
     required this.urgentCredentials,
-    required this.followUps,
     required this.departmentActions,
     required this.departmentUnread,
     required this.onReviewCredentials,
-    required this.onReviewRecords,
     required this.onOpenDepartment,
-    required this.loadingRecords,
   });
 
   @override
@@ -435,7 +421,8 @@ class _NeedsAttentionCard extends StatelessWidget {
     final cs = theme.colorScheme;
     final urgent = urgentCredentials > 0;
     final attentionColor = urgent ? cs.error : (Theme.of(context).brightness == Brightness.dark ? DarkModeColors.drivingAmber : LightModeColors.drivingAmber);
-    final total = urgentCredentials + (loadingRecords ? 0 : followUps) + (onOpenDepartment == null ? 0 : departmentActions);
+    final total = urgentCredentials +
+        (onOpenDepartment == null ? 0 : departmentActions);
 
     Widget row({required IconData icon, required String label, required int count, required VoidCallback onTap, Color? color}) {
       final c = color ?? cs.primary;
@@ -471,14 +458,6 @@ class _NeedsAttentionCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           row(icon: Icons.verified_outlined, label: 'Credentials', count: urgentCredentials, onTap: onReviewCredentials, color: urgentCredentials > 0 ? cs.error : FireOpsSemanticColors.green),
-          const SizedBox(height: 10),
-          row(
-            icon: Icons.history_rounded,
-            label: loadingRecords ? 'Records (loading…) ' : 'Records follow-ups',
-            count: loadingRecords ? 0 : followUps,
-            onTap: onReviewRecords,
-            color: Theme.of(context).brightness == Brightness.dark ? DarkModeColors.trainingBlue : LightModeColors.trainingBlue,
-          ),
           if (onOpenDepartment != null) ...[
             const SizedBox(height: 10),
             AppCardTile(
