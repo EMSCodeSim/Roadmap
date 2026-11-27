@@ -1312,29 +1312,26 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 ),
                 Expanded(child: ListView(children: tiles)),
                 Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Row(
                     children: [
-                      SizedBox(
-                        width: double.infinity,
+                      Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => Navigator.pop(sheetContext, 'print_preview'),
-                          icon: const Icon(Icons.print_outlined),
-                          label: const Text('Print Training Sheet'),
+                          icon: const Icon(Icons.print_outlined, size: 18),
+                          label: const Text('Print'),
                         ),
                       ),
-                      if (!hasMissingItems)
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            onPressed: () => Navigator.pop(sheetContext, 'edit_details'),
-                            icon: const Icon(Icons.edit_outlined),
-                            label: const Text('Edit training details'),
-                          ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          onPressed: () => Navigator.pop(sheetContext, 'edit_details'),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Edit'),
                         ),
-                      SizedBox(
-                        width: double.infinity,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
                         child: FilledButton.icon(
                           onPressed: () => Navigator.pop(
                             sheetContext,
@@ -1346,14 +1343,9 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                             hasMissingItems
                                 ? Icons.edit_note_rounded
                                 : Icons.verified_outlined,
+                            size: 18,
                           ),
-                          label: Text(
-                            hasMissingItems
-                                ? (memberIssues.isNotEmpty
-                                    ? 'Enter student scores / results'
-                                    : 'Complete training details')
-                                : 'Finalize & approve Training Sheet',
-                          ),
+                          label: Text(hasMissingItems ? 'Complete' : 'Approve'),
                         ),
                       ),
                     ],
