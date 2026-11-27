@@ -500,7 +500,11 @@ class _PathTab extends StatelessWidget {
                   subtitle: MyPathPage._whyLabel(item.requirement),
                   primaryLabel: _primaryLabel(item.requirement),
                   onOpen: () => AppRouter.openRequirement(context, item.requirement, goalId: state.roadmap?.goal.id),
-                  onPrimary: () => _primaryAction(context, state, item.requirement),
+                  onPrimary: () => AppRouter.openRoadmapPrimaryAction(
+                    context,
+                    item.requirement,
+                    goalId: state.roadmap?.goal.id,
+                  ),
                   onMarkDone: () => state.setRequirementCompleted(
                     goalId: roadmap.goal.id,
                     requirementId: item.requirement.id,
@@ -601,22 +605,6 @@ class _PathTab extends StatelessWidget {
       RequirementType.experience => 'Log',
       _ => 'Start',
     };
-  }
-
-  static void _primaryAction(BuildContext context, AppState state, Requirement r) {
-    if (r.type == RequirementType.certification) {
-      AppRouter.openRequirement(context, r, goalId: state.roadmap?.goal.id);
-      return;
-    }
-    if (r.type == RequirementType.taskBook || r.type == RequirementType.numericProgress) {
-      AppRouter.openRequirement(context, r, goalId: state.roadmap?.goal.id);
-      return;
-    }
-    if (r.type == RequirementType.experience) {
-      context.go(AppRoutes.personalLog);
-      return;
-    }
-    context.push(AppRoutes.getStarted, extra: r);
   }
 
   static String _groupLabel(Requirement r) {
