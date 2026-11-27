@@ -1316,6 +1316,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.pop(sheetContext, 'print_preview'),
+                          icon: const Icon(Icons.print_outlined),
+                          label: const Text('Print Training Sheet'),
+                        ),
+                      ),
                       if (!hasMissingItems)
                         Align(
                           alignment: Alignment.centerRight,
@@ -1364,6 +1372,24 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       if (await _editTrainingDocumentation() && mounted) await _reviewAndFinish();
     } else if (selection == 'edit_details') {
       if (await _editTrainingDocumentation() && mounted) await _reviewAndFinish();
+    } else if (selection == 'print_preview') {
+      try {
+        var departmentName = '';
+        try {
+          final record = await _api.getClosedTrainingExportRecord(detail.id);
+          final department = record['department'];
+          if (department is Map) departmentName = department['name']?.toString() ?? '';
+        } catch (_) {
+          // Drafts may not have a closed export record.
+        }
+        final bytes = await _buildTrainingRecordPdf(detail, departmentName);
+        await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'Training Sheet Preview');
+      } catch (error) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to print training sheet: $error')),
+        );
+      }
+      if (mounted) await _reviewAndFinish();
     } else if (selection == 'approve' && validation.canClose) {
       await _closeAndApproveTraining();
     }
@@ -2231,7 +2257,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
     final document = pw.Document(
       title: '${detail.title} Training Record',
       author: departmentName.isEmpty ? 'Responder Roadmap' : departmentName,
-      subject: 'Completed department training record',
+      subject: detail.status == 'COMPLETE' ? 'Completed department training record' : 'Draft department training record',
     );
     final skillNames = <String, String>{
       for (final section in detail.sections)
@@ -2316,6 +2342,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         pw.Text(departmentName.isEmpty ? 'Responder Roadmap' : departmentName.toUpperCase(),
           style: pw.TextStyle(fontSize: 19, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey900)),
         pw.Text('TRAINING SHEET', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+        if (detail.status != 'COMPLETE')
+          pw.Text('DRAFT — NOT FINALIZED OR APPROVED', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 4),
         pw.Divider(color: PdfColors.blueGrey900, thickness: 1),
       ]),
