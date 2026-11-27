@@ -95,6 +95,133 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
   QuickLogTracker? _tracker(String key) =>
       QuickLogCatalog.byKey(key, _customTrackers);
 
+  String _categoryKeyForTracker(QuickLogTracker tracker) {
+    final haystack = '${tracker.title} ${tracker.category}'.toLowerCase();
+    if (tracker.keyName == 'fire.driver') return 'drive';
+    return switch (tracker.type) {
+      CareerRecordType.skill => 'skill',
+      CareerRecordType.training => 'training',
+      CareerRecordType.operationalExperience =>
+        haystack.contains('exposure') ? 'exposure' : 'call',
+      _ => 'career',
+    };
+  }
+
+  List<QuickLogTracker> _choicesForCategory(String categoryKey) => [
+        ...QuickLogCatalog.builtIns,
+        ..._customTrackers,
+      ]
+          .where((tracker) => _categoryKeyForTracker(tracker) == categoryKey)
+          .toList(growable: false);
+
+  int _selectedCountForCategory(String categoryKey) => _pinned
+      .map(_tracker)
+      .whereType<QuickLogTracker>()
+      .where((tracker) => _categoryKeyForTracker(tracker) == categoryKey)
+      .length;
+
+  Future<void> _editCategoryQuickPicks(
+    (String, String, IconData, Color) option,
+  ) async {
+    if (!_quickActionKeys.contains(option.$1)) {
+      _toggleQuickAction(option.$1);
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final choices = _choicesForCategory(option.$1);
+          return FractionallySizedBox(
+            heightFactor: 0.78,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 12, 10),
+                  child: Row(
+                    children: [
+                      Icon(option.$3, color: option.$4),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${option.$2} QUICK PICKS',
+                              style: Theme.of(sheetContext)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const Text('Choose the buttons shown inside this category.'),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: choices.isEmpty
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              'No saved Quick Picks are available for this category yet. Use Advanced setup to create one.',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
+                          itemCount: choices.length,
+                          itemBuilder: (context, index) {
+                            final tracker = choices[index];
+                            final selected = _pinned.contains(tracker.keyName);
+                            return CheckboxListTile(
+                              value: selected,
+                              title: Text(
+                                tracker.title,
+                                style: const TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                              subtitle: Text(
+                                tracker.tracksOutcome
+                                    ? '${tracker.category} • success tracking'
+                                    : tracker.category,
+                              ),
+                              onChanged: (checked) {
+                                setState(() {
+                                  _preset = null;
+                                  if (checked ?? false) {
+                                    if (!_pinned.contains(tracker.keyName)) {
+                                      _pinned.add(tracker.keyName);
+                                    }
+                                  } else {
+                                    _pinned.remove(tracker.keyName);
+                                  }
+                                });
+                                setSheetState(() {});
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -126,9 +253,9 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
-                  Text('Choose and arrange your Quick Picks', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                  Text('1. Set up main categories', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
                   const SizedBox(height: 6),
-                  Text('Drag the handles to reorder. Switch off any tile you do not use.', style: Theme.of(context).textTheme.bodyMedium),
+                  Text('Turn categories on or off, drag to reorder, and tap a category to choose its Quick Picks.', style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 12),
                   ReorderableListView.builder(
                     shrinkWrap: true,
@@ -150,11 +277,13 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                         margin: const EdgeInsets.only(bottom: 6),
                         child: ListTile(
                           leading: ReorderableDragStartListener(index: index, child: const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Icon(Icons.drag_handle))),
+                          onTap: () => _editCategoryQuickPicks(option),
                           title: Row(children: [
                             Icon(option.$3, color: option.$4),
                             const SizedBox(width: 10),
                             Expanded(child: Text(option.$2, style: const TextStyle(fontWeight: FontWeight.w700))),
                           ]),
+                          subtitle: Text('${_selectedCountForCategory(option.$1)} Quick Picks • Tap to assign'),
                           trailing: Switch(value: true, onChanged: selectedQuickActions.length > 1 ? (_) => _toggleQuickAction(option.$1) : null),
                         ),
                       );
@@ -172,9 +301,34 @@ class _QuickLogSetupPageState extends State<QuickLogSetupPage> {
                   const SizedBox(height: 8),
                   Text('${selectedQuickActions.length} active · At least one must stay on', style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer.withValues(alpha: .55),
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.touch_app_outlined, color: cs.primary),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('2. Assign Quick Picks', style: TextStyle(fontWeight: FontWeight.w900)),
+                              SizedBox(height: 3),
+                              Text('Tap Call, Training, Skill, Exposure, Driving, or Career above. Then check the buttons you want inside that category.'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   ExpansionTile(
-                    title: const Text('Customize detailed choices'),
-                    subtitle: const Text('Role presets, skills and custom buttons'),
+                    title: const Text('Advanced setup'),
+                    subtitle: const Text('Role presets, all Quick Picks and custom buttons'),
                     children: [
                   const SizedBox(height: 24),
                   Text(
