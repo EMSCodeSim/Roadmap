@@ -200,9 +200,6 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                       customChoices: _trackersForMode(_mode!),
                       onBack: () => setState(() => _mode = null),
                       onPick: _pickChoice,
-                      onCustomize: _openCustomization,
-                      onMoreDetails: () => Navigator.of(context)
-                          .pop(SimpleQuickLogResult.moreDetails),
                     )
                   : _CategoryStep(
                       key: const ValueKey('category'),
@@ -811,8 +808,6 @@ class _ChoiceStep extends StatelessWidget {
   final _SimpleMode mode;
   final VoidCallback onBack;
   final ValueChanged<String> onPick;
-  final VoidCallback onMoreDetails;
-  final VoidCallback onCustomize;
   final List<QuickLogTracker> customChoices;
 
   const _ChoiceStep({
@@ -820,8 +815,6 @@ class _ChoiceStep extends StatelessWidget {
     required this.mode,
     required this.onBack,
     required this.onPick,
-    required this.onMoreDetails,
-    required this.onCustomize,
     required this.customChoices,
   });
 
@@ -879,18 +872,6 @@ class _ChoiceStep extends StatelessWidget {
               onPressed: () => onPick(choices[index]),
               child: Text(choices[index], textAlign: TextAlign.center),
             ),
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: onCustomize,
-            icon: const Icon(Icons.tune),
-            label: const Text('Customize these choices'),
-          ),
-          const SizedBox(height: 4),
-          OutlinedButton.icon(
-            onPressed: onMoreDetails,
-            icon: const Icon(Icons.add),
-            label: const Text('Custom / more details'),
           ),
         ],
       ),
