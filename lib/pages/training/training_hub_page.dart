@@ -12,6 +12,7 @@ import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
 import 'package:firepath/services/certification_urgency.dart';
+import 'package:firepath/services/pdf_text_sanitizer.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/widgets/section_header.dart';
@@ -138,7 +139,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(36),
+        margin: const pw.EdgeInsets.fromLTRB(36, 18, 36, 30),
         build: (context) => [
           pw.Text(
             'Responder Roadmap - Personal Record',
@@ -163,7 +164,7 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
           else
             ...certs.map((cert) => pw.Padding(
                   padding: const pw.EdgeInsets.only(top: 5),
-                  child: pw.Text(cert.name + ' - ' + _certDateSummary(cert)),
+                  child: pw.Text(pdfSafeText(cert.name + ' - ' + _certDateSummary(cert))),
                 )),
           pw.SizedBox(height: 14),
           pw.Text('Training history (' + training.length.toString() + ')',
@@ -202,19 +203,19 @@ class _TrainingHubPageState extends State<TrainingHubPage> {
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             pw.Text(
-              CareerStats.formatDate(record.date) + ' - ' + record.title,
+              pdfSafeText(CareerStats.formatDate(record.date) + ' - ' + record.title),
               style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
             ),
-            pw.Text([
+            pw.Text(pdfSafeText([
               record.type.shortLabel,
               if (record.category.trim().isNotEmpty) record.category,
               if (record.hours != null && record.hours! > 0)
                 CareerStats.formatDurationHours(record.hours!),
-            ].join(' | ')),
+            ].join(' | '))),
             if ((record.summary ?? '').trim().isNotEmpty)
-              pw.Text(record.summary!.trim()),
+              pw.Text(pdfSafeText(record.summary!.trim())),
             if ((record.evidenceReference ?? '').trim().isNotEmpty)
-              pw.Text('Evidence: ' + record.evidenceReference!.trim()),
+              pw.Text(pdfSafeText('Evidence: ' + record.evidenceReference!.trim())),
           ],
         ),
       );
