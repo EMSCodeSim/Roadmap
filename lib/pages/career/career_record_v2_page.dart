@@ -1421,6 +1421,7 @@ class _ActivityFilterCard extends StatelessWidget {
 
   final String title;
   final int count;
+  final bool selected;
   final VoidCallback onTap;
 
   @override

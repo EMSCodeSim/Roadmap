@@ -357,11 +357,23 @@ class _PathTab extends StatelessWidget {
     final personal = [...roadmap.missing.where((e) => e.requirement.requirementSource != RequirementSource.departmentRequirement), ...completed];
     final doneIds = completed.map((e) => e.requirement.id).toSet();
     String category(Requirement r) {
-      if (r.type == RequirementType.interview || r.type == RequirementType.promotionalTest) return 'Promotion Prep';
-      if (r.type == RequirementType.certification) return 'Qualifications';
+      if (r.type == RequirementType.interview || r.type == RequirementType.promotionalTest ||
+          r.timelineCategory == TimelineCategory.promotionalPreparation) return 'Promotion Prep';
+
+      // Prefer persisted category metadata, then the existing timeline/type
+      // fields. Name matching is kept only as a compatibility fallback for
+      // older or custom requirements that lack useful structured metadata.
+      final stored = r.category.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+      if ({'leadership', 'leadership evidence', 'supervision', 'command'}.contains(stored)) return 'Leadership';
+      if ({'training', 'education', 'training & education', 'training and education', 'coursework'}.contains(stored)) return 'Training & Education';
+      if ({'experience', 'service', 'operational experience'}.contains(stored)) return 'Experience';
+      if ({'promotion prep', 'promotion preparation', 'promotional preparation'}.contains(stored)) return 'Promotion Prep';
+      if ({'qualification', 'qualifications', 'certification', 'certifications', 'task book', 'task books'}.contains(stored)) return 'Qualifications';
+
+      if (r.timelineCategory == TimelineCategory.experience || r.type == RequirementType.experience || r.type == RequirementType.numericProgress) return 'Experience';
+      if (r.timelineCategory == TimelineCategory.course || r.type == RequirementType.trainingCourse || r.type == RequirementType.course || r.type == RequirementType.education || r.type == RequirementType.practical) return 'Training & Education';
+      if (r.type == RequirementType.certification || r.type == RequirementType.taskBook || r.timelineCategory == TimelineCategory.certification || r.timelineCategory == TimelineCategory.taskBook) return 'Qualifications';
       if (RegExp(r'leadership|supervis|acting officer|command', caseSensitive: false).hasMatch(r.name)) return 'Leadership';
-      if (r.type == RequirementType.experience || r.type == RequirementType.numericProgress) return 'Experience';
-      if (r.type == RequirementType.trainingCourse || r.type == RequirementType.course || r.type == RequirementType.education || r.type == RequirementType.practical) return 'Training & Education';
       return 'Qualifications';
     }
     void openSheet(String title, Widget child) {
