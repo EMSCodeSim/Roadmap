@@ -1510,36 +1510,22 @@ class _ConnectCard extends StatelessWidget {
             Text(error!, style: TextStyle(color: cs.error, fontWeight: FontWeight.w700)),
           ],
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: busy ? null : onConnect,
-                  icon: busy
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.login_rounded),
-                  label: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(busy ? 'Signing in…' : 'Log in'),
-                  ),
-                ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: busy ? null : onConnect,
+              icon: busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.login_rounded),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(busy ? 'Signing in…' : 'Log in'),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: busy ? null : onCreateAccount,
-                  icon: const Icon(Icons.person_add_alt_1_rounded),
-                  label: const FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text('Create account'),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 8),
           SizedBox(
