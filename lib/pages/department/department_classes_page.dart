@@ -2261,6 +2261,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       for (var index = 0; index < skillIds.length; index++)
         skillIds[index]: index + 1,
     };
+    final skillById = {
+      for (final section in detail.sections)
+        for (final skill in section.skills) skill.id: skill,
+    };
     String pdfText(String value) => value
         .replaceAll('\u00a0', ' ')
         .replaceAll(RegExp(r'[\u2010-\u2015]'), '-')
@@ -2272,9 +2276,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
     String checklistResultLabel(String? result) {
-      if (result == null || result == 'NOT_EVALUATED') return '-';
+      if (result == null || result == 'NOT_EVALUATED') return 'NE';
       if (result == 'PASS' || result == 'FAIL') return result;
       if (result == 'NOT_APPLICABLE') return 'N/A';
+      if (result == 'NEEDS_REMEDIATION' || result == 'REMEDIATION') return 'R';
       return result.replaceAll('_', ' ');
     }
 
@@ -2288,13 +2293,22 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         writtenScore: student.writtenScore,
         ccfScore: student.ccfScore,
       );
-      final resultLabel = formatTrainingOverallResult(student.finalResult);
+      final resultLabel = student.attendance == 'ABSENT'
+          ? 'ABSENT'
+          : student.attendance == 'EXCUSED'
+              ? 'EXCUSED'
+              : formatTrainingOverallResult(student.finalResult);
       final results = {for (final result in student.results) result.requirementId: result.result};
       return <String>[
         '${entry.key + 1}', student.name,
         student.attendance.replaceAll('_', ' '),
         [...scores, resultLabel].join(' / '),
-        for (final id in skillIds) checklistResultLabel(results[id]),
+        for (final id in skillIds)
+          student.attendance == 'ABSENT'
+              ? 'A'
+              : student.attendance == 'EXCUSED'
+                  ? 'E'
+                  : checklistResultLabel(results[id]),
       ];
     }).toList(growable: false);
     final ceRows = detail.ceCredits
@@ -2309,7 +2323,8 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       (sum, item) => sum + ((item['hours'] as num?)?.toDouble() ?? 0),
     );
 
-    final landscape = skillIds.length > 3;
+    final longChecklist = skillIds.length > 6;
+    final landscape = !longChecklist && skillIds.length > 3;
     final pageFormat = landscape ? PdfPageFormat.letter.landscape : PdfPageFormat.letter;
     final bold = pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold);
     pw.Widget heading(String label) => pw.Container(
@@ -2338,11 +2353,24 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       decoration: pw.BoxDecoration(border: pw.Border.all(width: .5)),
       child: pw.Text(pdfText(label), style: bold),
     );
-    // Limit the number of skill columns per table to maintain readable print.
+    pw.Widget resultLegend() => pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.all(5),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.grey100,
+        border: pw.Border.all(color: PdfColors.grey700, width: .5),
+      ),
+      child: pw.Text(
+        'Result key: PASS = Pass | FAIL = Fail | R = Needs remediation | '
+        'NE = Not evaluated | N/A = Not applicable | A = Absent | E = Excused',
+        style: const pw.TextStyle(fontSize: 7.5),
+      ),
+    );
+    // Limit checklist columns so names and results remain readable on paper.
     final batches = <List<String>>[
       if (skillIds.isEmpty) <String>[],
-      for (var i = 0; i < skillIds.length; i += 6)
-        skillIds.skip(i).take(6).toList(),
+      for (var i = 0; i < skillIds.length; i += 8)
+        skillIds.skip(i).take(8).toList(),
     ];
     document.addPage(pw.MultiPage(
       pageFormat: pageFormat,
@@ -2385,7 +2413,22 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           table(['CE category', 'Awarded hours'], [...ceRows, ['Total CE hours', totalCeHours.toStringAsFixed(2)]]),
           pw.SizedBox(height: 8),
         ],
-        for (var batchIndex = 0; batchIndex < batches.length; batchIndex++) ...[
+        if (longChecklist) ...[
+          heading('Student roster and overall results'),
+          table(
+            ['#', 'Student name', 'Attendance', 'Overall result'],
+            rosterRows.map((row) => row.take(4).toList()).toList(),
+            widths: const {
+              0: pw.FixedColumnWidth(20),
+              1: pw.FlexColumnWidth(2.4),
+              2: pw.FlexColumnWidth(1.2),
+              3: pw.FlexColumnWidth(2),
+            },
+          ),
+          pw.SizedBox(height: 8),
+        ],
+        if (!longChecklist)
+          for (var batchIndex = 0; batchIndex < batches.length; batchIndex++) ...[
           heading(batchIndex == 0 ? 'Student roster and evaluation results' : 'Evaluation results - continued'),
           table(['#', 'Student name', 'Attendance', 'Scoring result', ...batches[batchIndex].map((id) => '${skillNumbers[id] ?? ''}')],
             rosterRows.map((row) => <String>[
@@ -2399,9 +2442,13 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
               3: const pw.FlexColumnWidth(1.6),
               for (var i = 0; i < batches[batchIndex].length; i++) i + 4: const pw.FlexColumnWidth(1),
             }),
+          if (skillIds.isNotEmpty) ...[
+            pw.SizedBox(height: 4),
+            resultLegend(),
+          ],
           pw.SizedBox(height: 8),
         ],
-        if (skillIds.isNotEmpty) ...[
+        if (skillIds.isNotEmpty && !longChecklist) ...[
           heading('Station / skill reference'),
           for (final section in detail.sections) ...[
             pw.Padding(padding: const pw.EdgeInsets.only(top: 4), child: pw.Text(pdfText(section.title), style: bold)),
@@ -2416,19 +2463,112 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ],
           pw.SizedBox(height: 8),
         ],
-        pw.Row(children: [
-          pw.Expanded(child: signature('Instructor name (print)')),
-          pw.Expanded(child: signature('Instructor signature')),
-          pw.SizedBox(width: 85, child: signature('Date')),
-        ]),
-        pw.SizedBox(height: 4),
-        pw.Row(children: [
-          pw.Expanded(child: signature('Training officer (if required)')),
-          pw.Expanded(child: signature('Signature')),
-          pw.SizedBox(width: 85, child: signature('Date')),
-        ]),
+        if (!longChecklist) ...[
+          pw.Row(children: [
+            pw.Expanded(child: signature('Instructor name (print)')),
+            pw.Expanded(child: signature('Instructor signature')),
+            pw.SizedBox(width: 85, child: signature('Date')),
+          ]),
+          pw.SizedBox(height: 4),
+          pw.Row(children: [
+            pw.Expanded(child: signature('Training officer (if required)')),
+            pw.Expanded(child: signature('Signature')),
+            pw.SizedBox(width: 85, child: signature('Date')),
+          ]),
+        ],
       ],
     ));
+    if (longChecklist) {
+      for (var batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        final batch = batches[batchIndex];
+        final isLastBatch = batchIndex == batches.length - 1;
+        document.addPage(pw.MultiPage(
+          pageFormat: PdfPageFormat.letter.landscape,
+          margin: const pw.EdgeInsets.fromLTRB(28, 12, 28, 22),
+          header: (context) => pw.Column(
+            mainAxisSize: pw.MainAxisSize.min,
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: [
+              pw.Text(
+                pdfText(departmentName.isEmpty
+                    ? 'Responder Roadmap'
+                    : departmentName.toUpperCase()),
+                textAlign: pw.TextAlign.center,
+                style: pw.TextStyle(
+                  fontSize: 15,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.blueGrey900,
+                ),
+              ),
+              pw.Text(
+                'TRAINING SHEET - CHECKLIST RESULTS ${batchIndex + 1} OF ${batches.length}',
+                textAlign: pw.TextAlign.center,
+                style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+              ),
+              if (detail.status != 'COMPLETE')
+                pw.Text(
+                  'DRAFT - NOT FINALIZED OR APPROVED',
+                  textAlign: pw.TextAlign.center,
+                  style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+                ),
+              pw.SizedBox(height: 3),
+              pw.Divider(color: PdfColors.blueGrey900, thickness: 1),
+            ],
+          ),
+          footer: (context) => pw.Text(
+            pdfText('Training ID: ${detail.id} | Page ${context.pageNumber} of ${context.pagesCount}'),
+            style: const pw.TextStyle(fontSize: 8),
+          ),
+          build: (context) => [
+            table(
+              ['#', 'Student name', 'Attendance', 'Overall', ...batch.map((id) => '${skillNumbers[id] ?? ''}')],
+              rosterRows.map((row) => <String>[
+                ...row.take(4),
+                for (final id in batch) row[4 + skillIds.indexOf(id)],
+              ]).toList(),
+              widths: <int, pw.TableColumnWidth>{
+                0: const pw.FixedColumnWidth(20),
+                1: const pw.FlexColumnWidth(2.2),
+                2: const pw.FlexColumnWidth(1.1),
+                3: const pw.FlexColumnWidth(1.5),
+                for (var i = 0; i < batch.length; i++)
+                  i + 4: const pw.FlexColumnWidth(.72),
+              },
+            ),
+            pw.SizedBox(height: 5),
+            resultLegend(),
+            pw.SizedBox(height: 8),
+            heading('Station / skill reference'),
+            for (final id in batch)
+              pw.Padding(
+                padding: const pw.EdgeInsets.only(left: 6, top: 3),
+                child: pw.Text(
+                  pdfText(
+                    (skillById[id]?.description.isNotEmpty ?? false)
+                        ? '${skillNumbers[id]}. ${skillById[id]!.title}: ${skillById[id]!.description}'
+                        : '${skillNumbers[id]}. ${skillById[id]?.title ?? 'Skill'}',
+                  ),
+                  style: const pw.TextStyle(fontSize: 8),
+                ),
+              ),
+            if (isLastBatch) ...[
+              pw.SizedBox(height: 10),
+              pw.Row(children: [
+                pw.Expanded(child: signature('Instructor name (print)')),
+                pw.Expanded(child: signature('Instructor signature')),
+                pw.SizedBox(width: 85, child: signature('Date')),
+              ]),
+              pw.SizedBox(height: 4),
+              pw.Row(children: [
+                pw.Expanded(child: signature('Training officer (if required)')),
+                pw.Expanded(child: signature('Signature')),
+                pw.SizedBox(width: 85, child: signature('Date')),
+              ]),
+            ],
+          ],
+        ));
+      }
+    }
     return document.save();
   }
 
