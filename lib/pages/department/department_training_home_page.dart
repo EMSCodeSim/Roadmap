@@ -818,12 +818,6 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   }
 }
 
-class upstream {
-}
-
-class DepartmentAssignment {
-}
-
 class _QuickAction {
   final IconData icon;
   final String title;
