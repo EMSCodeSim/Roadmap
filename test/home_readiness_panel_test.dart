@@ -82,8 +82,9 @@ void main() {
 
     await pumpHome(tester, app);
 
-    expect(find.text('Today'), findsOneWidget);
-    expect(find.text('Next action'), findsOneWidget);
+    expect(find.text('Career goal'), findsOneWidget);
+    expect(find.text('Next best step'), findsOneWidget);
+    expect(find.text('Needs attention'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Credentials'), 200);
     expect(find.text('Credentials'), findsOneWidget);
     expect(find.text('My Roadmap'), findsNothing);
@@ -97,13 +98,9 @@ void main() {
 
     await pumpHome(tester, app);
 
-    expect(find.text('Set a career goal (optional)'), findsOneWidget);
-    expect(
-      find.text(
-        'Your personal record works without a goal. Add one later for suggested next steps.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('Career goal'), findsOneWidget);
+    expect(find.text('Choose your career destination'), findsOneWidget);
+    expect(find.text('View Roadmap'), findsOneWidget);
     expect(find.text('Start my roadmap'), findsNothing);
     expect(find.text('My Goals'), findsNothing);
   });
