@@ -108,9 +108,9 @@ class _VisualHomePageState extends State<VisualHomePage> {
             subtitle: app.selectedGoal == null
                 ? 'Build a personal plan for the position or achievement you want next.'
                 : 'Open your Roadmap to review progress and requirements.',
-            onTap: () => context.go(
-              roadmap == null ? AppRoutes.goalSetup : AppRoutes.careerGoals,
-            ),
+            // Open the active plan itself. RoadmapEntryPage falls back to
+            // goal setup when the user has not selected a roadmap yet.
+            onTap: () => context.go(AppRoutes.myPathLegacy),
           ),
         ],
       ),
