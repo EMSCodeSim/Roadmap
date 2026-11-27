@@ -13,6 +13,7 @@ import 'package:firepath/nav.dart';
 import 'package:firepath/pages/career/quick_log_launcher.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/career_stats.dart';
+import 'package:firepath/services/certification_urgency.dart';
 import 'package:firepath/services/scored_skill_store.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/services/theme.dart';
@@ -827,7 +828,9 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
     AppState app,
     BuildContext sheetContext,
   ) {
-    final credentials = app.certifications;
+    final urgent = CertificationUrgency.urgent(app.certifications);
+    final urgentIds = urgent.map((item) => item.cert.id).toSet();
+    final credentials = [...urgent.map((item) => item.cert), ...app.certifications.where((cert) => !urgentIds.contains(cert.id))];
     final cs = Theme.of(sheetContext).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -867,22 +870,22 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                   : cert.expirationDate == null
                       ? 'Expiration date needs attention'
                       : 'Expires ${CareerStats.formatDate(cert.expirationDate!)}';
+              final needsAttention = urgentIds.contains(cert.id);
+              final warning = cert.status == CertificationStatus.expired ? 'Expired' : cert.expirationDate == null ? 'Missing expiration date' : 'Expires in ${cert.daysRemaining} days';
               return Card(
                 margin: const EdgeInsets.only(bottom: 9),
                 child: ListTile(
                   leading: Icon(
-                    cert.status == CertificationStatus.expired
+                    needsAttention
                         ? Icons.warning_amber_rounded
                         : Icons.workspace_premium_outlined,
-                    color: cert.status == CertificationStatus.expired
-                        ? cs.error
-                        : const Color(0xFFEA580C),
+                    color: needsAttention ? cs.error : const Color(0xFFEA580C),
                   ),
                   title: Text(
                     app.certificationDisplayName(cert),
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
-                  subtitle: Text(subtitle),
+                  subtitle: Text(needsAttention ? '$warning\n$subtitle' : subtitle, style: needsAttention ? TextStyle(color: cs.error, fontWeight: FontWeight.w700) : null),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () {
                     Navigator.pop(sheetContext);
@@ -919,6 +922,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final certAlerts = CertificationUrgency.urgent(app.certifications);
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: FirefighterRoadmapAppBar(
@@ -1013,11 +1017,11 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 ),
                 children: [
                   _RecordsCategoryCard(
-                    icon: Icons.verified_user_outlined,
+                    icon: certAlerts.isEmpty ? Icons.verified_user_outlined : Icons.warning_amber_rounded,
                     title: 'Certification Center',
-                    detail:
-                        '${app.certifications.length} credential${app.certifications.length == 1 ? '' : 's'}',
-                    accent: const Color(0xFFEA580C),
+                    detail: certAlerts.isNotEmpty ? '${certAlerts.length} need attention' : '${app.certifications.length} credential${app.certifications.length == 1 ? '' : 's'}',
+                    accent: certAlerts.isEmpty ? const Color(0xFFEA580C) : cs.error,
+                    alert: certAlerts.isNotEmpty,
                     onTap: () => _showRecordsCategorySheet(
                       _RecordsCategory.certifications,
                     ),
@@ -1363,6 +1367,7 @@ class _RecordsCategoryCard extends StatelessWidget {
     required this.accent,
     required this.onTap,
     this.selected = false,
+    this.alert = false,
   });
 
   final IconData icon;
@@ -1371,6 +1376,7 @@ class _RecordsCategoryCard extends StatelessWidget {
   final Color accent;
   final VoidCallback onTap;
   final bool selected;
+  final bool alert;
 
   @override
   Widget build(BuildContext context) {
@@ -1388,10 +1394,10 @@ class _RecordsCategoryCard extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
           side: BorderSide(
-            color: selected
+            color: selected || alert
                 ? accent
                 : cs.outlineVariant.withValues(alpha: 0.85),
-            width: selected ? 1.6 : 1,
+            width: selected || alert ? 1.6 : 1,
           ),
         ),
         clipBehavior: Clip.antiAlias,
@@ -1440,7 +1446,8 @@ class _RecordsCategoryCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
+                        color: alert ? accent : cs.onSurfaceVariant,
+                        fontWeight: alert ? FontWeight.w800 : null,
                         height: 1.2,
                       ),
                 ),
