@@ -143,7 +143,7 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
       ),
       HomeSectionType.trainingIdeas: _TrainingIdeasCard(
         onOpenEms: () => _openExternal(Uri.parse('https://emscodesim.com/ems-training-library.html')),
-        onOpenFire: () => _openExternal(Uri.parse('https://fireopssim.com/drill-library')),
+        onOpenFire: () => _openExternal(Uri.parse('https://fireopssim.com/drill-library.html')),
         onShowAnother: _openTrainingIdeas,
       ),
       HomeSectionType.department: _DepartmentMiniCard(
@@ -251,7 +251,7 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
               title: const Text('FireOpsSim drill library'),
               subtitle: const Text('Fire drills, scenarios and crew practice'),
               trailing: const Icon(Icons.open_in_new_rounded),
-              onTap: () => Navigator.pop(sheetContext, Uri.parse('https://fireopssim.com/drill-library')),
+              onTap: () => Navigator.pop(sheetContext, Uri.parse('https://fireopssim.com/drill-library.html')),
             ),
             ListTile(
               leading: const Icon(Icons.medical_services_outlined),
