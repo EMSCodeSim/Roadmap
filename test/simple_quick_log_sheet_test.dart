@@ -178,6 +178,27 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Quick Pick categories only show selectable choices',
+      (tester) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AppModeController(),
+        child: const MaterialApp(
+          home: Scaffold(body: ProductionQuickLogSheet()),
+        ),
+      ),
+    );
+
+    await tester.ensureVisible(find.text('CALL'));
+    await tester.tap(find.text('CALL'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('What kind of call?'), findsOneWidget);
+    expect(find.text('Customize these choices'), findsNothing);
+    expect(find.text('Custom / more details'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Driving captures miles response mode emergent transport and notes',
       (tester) async {
     await tester.pumpWidget(
