@@ -1,3 +1,11 @@
+String formatTrainingOverallResult(String finalResult) {
+  final value = finalResult.trim().toUpperCase();
+  if (value.isEmpty || value == 'PENDING' || value == 'NOT_EVALUATED') {
+    return 'Overall: Not evaluated';
+  }
+  return 'Overall: ${value.replaceAll('_', ' ')}';
+}
+
 String formatTrainingScoreValue(Object? value, String type) {
   if (value == null || value.toString().trim().isEmpty) return 'Not recorded';
   if (type == 'CHECKBOX') return value == true || value.toString().toLowerCase() == 'true' ? 'Yes' : 'No';

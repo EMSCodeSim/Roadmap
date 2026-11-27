@@ -130,14 +130,12 @@ class _CareerApplicationPageState extends State<CareerApplicationPage> {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: TextField(
                         controller: controllers[field.key],
-                        textCapitalization: field.capitalization,
                         keyboardType: field.keyboardType,
                         minLines: field.multiline ? 3 : 1,
                         maxLines: field.multiline ? 6 : 1,
                         decoration: InputDecoration(
                           labelText: field.label,
                           hintText: field.hint,
-                          helperText: field.helper,
                           alignLabelWithHint: field.multiline,
                         ),
                       ),
@@ -602,19 +600,15 @@ class _ApplicationField {
     this.key,
     this.label, {
     this.hint,
-    this.helper,
     this.multiline = false,
     this.keyboardType,
-    this.capitalization = TextCapitalization.sentences,
   });
 
   final String key;
   final String label;
   final String? hint;
-  final String? helper;
   final bool multiline;
   final TextInputType? keyboardType;
-  final TextCapitalization capitalization;
 }
 
 class _SectionHeader extends StatelessWidget {

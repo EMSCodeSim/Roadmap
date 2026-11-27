@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firepath/services/theme.dart';
 
 /// A compact, mobile-first header row used at the top of dense dashboards.
 ///

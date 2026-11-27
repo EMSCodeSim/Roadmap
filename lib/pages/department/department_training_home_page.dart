@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:firepath/pages/department/department_classes_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -312,107 +311,6 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     if (item.kind == 'TRAINING_SHEET' || item.kind == 'RMS_ENTRY') {
       await _openClass(item.targetId);
     }
-  }
-
-  Widget _dashboardButton({
-    required String title,
-    required IconData icon,
-    required int count,
-    required Widget child,
-    required Color accent,
-    String? subtitle,
-  }) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    return Semantics(
-      button: true,
-      label: '$title. $count item${count == 1 ? '' : 's'}',
-      child: Card(
-        margin: EdgeInsets.zero,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(
-            color: accent.withValues(alpha: 0.34),
-            width: count > 0 ? 1.5 : 1,
-          ),
-        ),
-        child: InkWell(
-          onTap: () => _showDashboardSection(
-            title: title,
-            icon: icon,
-            count: count,
-            child: child,
-            accent: accent,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(icon, color: accent, size: 22),
-                    ),
-                    const Spacer(),
-                    Container(
-                      constraints: const BoxConstraints(minWidth: 32),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: count > 0
-                            ? accent.withValues(alpha: 0.14)
-                            : cs.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '$count',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: count > 0 ? accent : cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    height: 1.08,
-                  ),
-                ),
-                if ((subtitle ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 5),
-                  Text(
-                    subtitle!.trim(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      height: 1.25,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _dashboardBox({

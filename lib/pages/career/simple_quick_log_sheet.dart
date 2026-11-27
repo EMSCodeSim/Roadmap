@@ -420,11 +420,9 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
         // best-effort and must never block the field log from saving.
       }
       if (!mounted) return;
-      var shared = false;
       if (_shareWithDepartment) {
         try {
           await _sharing.sync();
-          shared = true;
         } catch (_) {
           // Keep the local record and sharing intent. A later shared save can
           // retry the full set without losing the responder's entry.

@@ -82,7 +82,6 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
   final TextEditingController _search = TextEditingController();
   List<CareerRecord> _records = const [];
   List<ScoredSkillPreference> _scoredSkills = const [];
-  bool _loading = true;
   _RecordPeriod _period = _RecordPeriod.month;
   DateTime _periodAnchor = DateTime.now();
   DateTimeRange? _customRange;
@@ -174,7 +173,6 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
     setState(() {
       _records = records;
       _scoredSkills = scoredSkills;
-      _loading = false;
     });
   }
 
@@ -379,46 +377,6 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
           record.type == CareerRecordType.achievement ||
               record.type == CareerRecordType.project,
       };
-
-  Widget _searchAndSortControls() {
-    return Column(
-      children: [
-        TextField(
-          controller: _search,
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search),
-            hintText: 'Search all records',
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: FilledButton.tonalIcon(
-                  onPressed: _pickFilter,
-                  icon: const Icon(Icons.filter_alt_outlined),
-                  label: Text('Filter: ${_filter.label}'),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: _pickSort,
-                  icon: const Icon(Icons.sort_rounded),
-                  label: Text(_sort.label),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   Widget _dailyLogsSection(
     CareerStats stats,
@@ -1366,7 +1324,6 @@ class _RecordsCategoryCard extends StatelessWidget {
     required this.detail,
     required this.accent,
     required this.onTap,
-    this.selected = false,
     this.alert = false,
   });
 
@@ -1375,7 +1332,6 @@ class _RecordsCategoryCard extends StatelessWidget {
   final String detail;
   final Color accent;
   final VoidCallback onTap;
-  final bool selected;
   final bool alert;
 
   @override
@@ -1383,21 +1339,18 @@ class _RecordsCategoryCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
-      selected: selected,
       label: '$title. $detail',
       child: Card(
         margin: EdgeInsets.zero,
-        elevation: selected ? 2 : 0,
-        color: selected
-            ? Color.alphaBlend(accent.withValues(alpha: 0.10), cs.surface)
-            : cs.surface,
+        elevation: 0,
+        color: cs.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
           side: BorderSide(
-            color: selected || alert
+            color: alert
                 ? accent
                 : cs.outlineVariant.withValues(alpha: 0.85),
-            width: selected || alert ? 1.6 : 1,
+            width: alert ? 1.6 : 1,
           ),
         ),
         clipBehavior: Clip.antiAlias,
@@ -1422,11 +1375,9 @@ class _RecordsCategoryCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     Icon(
-                      selected
-                          ? Icons.check_circle_rounded
-                          : Icons.arrow_forward_rounded,
+                      alert ? Icons.warning_amber_rounded : Icons.arrow_forward_rounded,
                       size: 20,
-                      color: selected ? accent : cs.onSurfaceVariant,
+                      color: alert ? accent : cs.onSurfaceVariant,
                     ),
                   ],
                 ),
@@ -1470,7 +1421,6 @@ class _ActivityFilterCard extends StatelessWidget {
 
   final String title;
   final int count;
-  final bool selected;
   final VoidCallback onTap;
 
   @override
@@ -1482,7 +1432,6 @@ class _ActivityFilterCard extends StatelessWidget {
 
     return Semantics(
       button: true,
-      selected: selected,
       label: '$title, $count ${count == 1 ? 'entry' : 'entries'}',
       child: Card(
         margin: EdgeInsets.zero,

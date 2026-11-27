@@ -2,6 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:firepath/utils/training_record_format.dart';
 
 void main() {
+  test('preserves actual overall outcomes and does not turn pending into pass', () {
+    expect(formatTrainingOverallResult('PASS'), 'Overall: PASS');
+    expect(formatTrainingOverallResult('FAIL'), 'Overall: FAIL');
+    expect(formatTrainingOverallResult('NEEDS_REMEDIATION'), 'Overall: NEEDS REMEDIATION');
+    expect(formatTrainingOverallResult('PENDING'), 'Overall: Not evaluated');
+  });
+
   test('prints a selected percentage system beside the student', () {
     final parts = trainingScoreParts(
       customFields: const <Map<String, dynamic>>[
