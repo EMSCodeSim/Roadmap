@@ -87,7 +87,7 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
     final currentCredentialCount = app.certifications.where((c) => c.status == CertificationStatus.current).length;
 
     final nextStepTitle = nextStep?.requirement.name ?? (roadmap == null ? 'Choose a goal when you are ready' : 'Your roadmap is caught up');
-    final nextStepSubtitle = nextStep == null ? 'Keep documenting the work that is shaping your career.' : 'Open training, study, official, and practice resources for this step.';
+    final nextStepSubtitle = nextStep == null ? 'Keep documenting the work that is shaping your career.' : 'Open the same requirement and skills checklist used in your Roadmap.';
 
     final sectionWidgets = <HomeSectionType, Widget>{
       HomeSectionType.goal: _HomeGoalCard(
@@ -107,7 +107,7 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
             return;
           }
           if (nextStep != null) {
-            context.push(AppRoutes.getStarted, extra: nextStep.requirement);
+            AppRouter.openRequirement(context, nextStep.requirement, goalId: roadmap.goal.id);
             return;
           }
           context.go(AppRoutes.careerGoals);
