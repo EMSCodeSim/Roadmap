@@ -17,6 +17,7 @@ import 'package:firepath/state/department_inbox_controller.dart';
 
 import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/training_sheet_result.dart';
+import 'package:firepath/services/pdf_text_sanitizer.dart';
 import 'package:firepath/services/theme.dart';
 import 'package:firepath/services/training_time_calculator.dart';
 import 'package:firepath/utils/training_record_format.dart';
@@ -2265,16 +2266,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       for (final section in detail.sections)
         for (final skill in section.skills) skill.id: skill,
     };
-    String pdfText(String value) => value
-        .replaceAll('\u00a0', ' ')
-        .replaceAll(RegExp(r'[\u2010-\u2015]'), '-')
-        .replaceAll(RegExp(r'[\u2022\u00b7\u203a\u2192]'), ' - ')
-        .replaceAll(RegExp(r'[\u2018\u2019]'), "'")
-        .replaceAll(RegExp(r'[\u201c\u201d]'), '"')
-        .replaceAll('\u2026', '...')
-        .replaceAll(RegExp(r'[^\x09\x0a\x0d\x20-\x7e\xa0-\xff]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    String pdfText(String value) => pdfSafeText(value);
     String checklistResultLabel(String? result) {
       if (result == null || result == 'NOT_EVALUATED') return 'NE';
       if (result == 'PASS' || result == 'FAIL') return result;
@@ -2626,13 +2618,13 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       build: (context) => pw.Center(child: pw.Column(
         mainAxisSize: pw.MainAxisSize.min,
         children: [
-          pw.Text(title, style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+          pw.Text(pdfSafeText(title), style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 20),
           pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: url, width: 250, height: 250),
           pw.SizedBox(height: 16),
           pw.Text('Scan to sign in to this training class'),
           pw.SizedBox(height: 8),
-          pw.Text(url, style: const pw.TextStyle(fontSize: 9)),
+          pw.Text(pdfSafeText(url), style: const pw.TextStyle(fontSize: 9)),
         ],
       )),
     ));
