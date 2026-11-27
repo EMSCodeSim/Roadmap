@@ -26,7 +26,7 @@ class MyPathPage extends StatelessWidget {
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
           surfaceTintColor: Colors.transparent,
-          title: const Text('Career Goals',
+          title: const Text('My Roadmap',
               style: TextStyle(fontWeight: FontWeight.w800)),
           centerTitle: false,
           bottom: roadmap == null
@@ -353,38 +353,42 @@ class _PathTab extends StatelessWidget {
     // Career guidance prioritizes personal milestones; department-owned work
     // remains accessible in the Department area.
     final nextActions = _buildNextActions(roadmap);
-    final stillNeeded = roadmap.missing
-        .where((e) => e.requirement.requirementSource != RequirementSource.departmentRequirement)
-        .where((e) => nextActions.indexWhere((n) => n.requirement.id == e.requirement.id) == -1)
-        .toList()
-      ..sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
-    final completed = roadmap.completed
-      ..sort((a, b) => a.requirement.sortOrder.compareTo(b.requirement.sortOrder));
-
-    final grouped = <String, List<RoadmapRequirement>>{};
-    for (final item in stillNeeded) {
-      final key = _groupLabel(item.requirement);
-      (grouped[key] ??= <RoadmapRequirement>[]).add(item);
+    final completed = roadmap.completed.where((e) => e.requirement.requirementSource != RequirementSource.departmentRequirement).toList();
+    final personal = [...roadmap.missing.where((e) => e.requirement.requirementSource != RequirementSource.departmentRequirement), ...completed];
+    final doneIds = completed.map((e) => e.requirement.id).toSet();
+    String category(Requirement r) {
+      if (r.type == RequirementType.interview || r.type == RequirementType.promotionalTest) return 'Promotion Prep';
+      if (r.type == RequirementType.certification) return 'Qualifications';
+      if (RegExp(r'leadership|supervis|acting officer|command', caseSensitive: false).hasMatch(r.name)) return 'Leadership';
+      if (r.type == RequirementType.experience || r.type == RequirementType.numericProgress) return 'Experience';
+      if (r.type == RequirementType.trainingCourse || r.type == RequirementType.course || r.type == RequirementType.education || r.type == RequirementType.practical) return 'Training & Education';
+      return 'Qualifications';
     }
-    final groupOrder = [
-      'Certifications',
-      'Training',
-      'Experience',
-      'Milestones & Tasks',
-      'Personal Requirements',
-      'Promotion Preparation',
-      'Other',
-    ];
-    final orderedGroups = grouped.keys.toList()
-      ..sort((a, b) {
-        final ia = groupOrder.indexOf(a);
-        final ib = groupOrder.indexOf(b);
-        if (ia == -1 && ib == -1) return a.compareTo(b);
-        if (ia == -1) return 1;
-        if (ib == -1) return -1;
-        return ia.compareTo(ib);
-      });
-
+    void openSheet(String title, Widget child) {
+      showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true,
+        builder: (sheetContext) => SafeArea(child: FractionallySizedBox(heightFactor: .85,
+          child: ListView(padding: AppSpacing.paddingLg, children: [
+            Text(title, style: Theme.of(sheetContext).textTheme.headlineSmall),
+            const SizedBox(height: 12), child,
+          ]))));
+    }
+    Widget itemsView(List<RoadmapRequirement> items) => Column(children: [
+      if (items.isEmpty) const ListTile(title: Text('No milestones in this category yet.')),
+      ...items.map((r) => Builder(builder: (sheetContext) => _ReqTile(
+        requirement: r.requirement,
+        statusIcon: doneIds.contains(r.requirement.id) ? Icons.check_circle : Icons.circle_outlined,
+        statusColor: doneIds.contains(r.requirement.id) ? FireOpsSemanticColors.completed : cs.onSurfaceVariant,
+        onTap: () { Navigator.pop(sheetContext); AppRouter.openRequirement(context, r.requirement, goalId: roadmap.goal.id); },
+        onMarkDone: doneIds.contains(r.requirement.id) ? null : () { state.setRequirementCompleted(goalId: roadmap.goal.id, requirementId: r.requirement.id, completed: true); Navigator.pop(sheetContext); },
+        compactBadges: true,
+      ))),
+    ]);
+    Widget tile(String title, IconData icon, String detail, VoidCallback action) => _QuickCaptureTile(icon: icon, title: title, subtitle: detail, onTap: action);
+    Widget groupTile(String title, IconData icon) {
+      final items = personal.where((e) => category(e.requirement) == title).toList();
+      final done = items.where((e) => doneIds.contains(e.requirement.id)).length;
+      return tile(title, icon, '$done of ${items.length} complete', () => openSheet(title, itemsView(items)));
+    }
     return SafeArea(
       child: ListView(
         padding: AppSpacing.paddingLg,
@@ -411,76 +415,7 @@ class _PathTab extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.md),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.flag_outlined),
-              title: const Text('Your career, your direction'),
-              subtitle: const Text('Focus on your next milestone. Customize your personal plan whenever your goals change. Department assignments remain in Department.'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push(AppRoutes.goalSetup),
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.lg),
-          _SectionTitle(label: 'CAPTURE & RECALL'),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'New priority: collect the details you’ll want later — for promotions, interviews, and annual reviews.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: _QuickCaptureTile(
-                  icon: Icons.edit_note_rounded,
-                  title: 'Log an event',
-                  subtitle: 'Assignments, drills, leadership moments',
-                  onTap: () => context.go(AppRoutes.personalLog),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _QuickCaptureTile(
-                  icon: Icons.timeline_rounded,
-                  title: 'Timeline',
-                  subtitle: 'Recall key milestones fast',
-                  onTap: () => DefaultTabController.of(context).animateTo(1),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: _QuickCaptureTile(
-                  icon: Icons.workspace_premium_outlined,
-                  title: 'Promotion review',
-                  subtitle: 'Interview-ready highlights',
-                  onTap: () => context.push(AppRoutes.promotionPortfolioReview),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _QuickCaptureTile(
-                  icon: Icons.picture_as_pdf_outlined,
-                  title: 'Export',
-                  subtitle: 'Bring records to reviews',
-                  onTap: () => context.push(AppRoutes.careerExport),
-                ),
-              ),
-            ],
-          ),
-
-          if (state.profile.effectiveCareerPath != CareerPath.ems) ...[
-            const SizedBox(height: AppSpacing.lg),
-            _CareerPathOverview(state: state, roadmap: roadmap),
-            const SizedBox(height: AppSpacing.lg),
-            _SpecialtyPathsSection(state: state),
-          ],
-          const SizedBox(height: AppSpacing.lg),
-          _SectionTitle(label: 'YOUR NEXT BEST STEPS'),
+          _SectionTitle(label: 'NEXT BEST STEP'),
           const SizedBox(height: AppSpacing.sm),
           if (nextActions.isEmpty)
             Text(
@@ -498,13 +433,9 @@ class _PathTab extends StatelessWidget {
                   requirement: item.requirement,
                   emphasized: emphasized,
                   subtitle: MyPathPage._whyLabel(item.requirement),
-                  primaryLabel: _primaryLabel(item.requirement),
+                  primaryLabel: 'Open checklist',
                   onOpen: () => AppRouter.openRequirement(context, item.requirement, goalId: state.roadmap?.goal.id),
-                  onPrimary: () => AppRouter.openRoadmapPrimaryAction(
-                    context,
-                    item.requirement,
-                    goalId: state.roadmap?.goal.id,
-                  ),
+                  onPrimary: () => AppRouter.openRequirement(context, item.requirement, goalId: roadmap.goal.id),
                   onMarkDone: () => state.setRequirementCompleted(
                     goalId: roadmap.goal.id,
                     requirementId: item.requirement.id,
@@ -514,69 +445,30 @@ class _PathTab extends StatelessWidget {
               );
             }),
           const SizedBox(height: AppSpacing.md),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.auto_awesome_outlined),
-              title: const Text('How your plan adapts'),
-              subtitle: const Text('Your next steps are recalculated from unfinished personal milestones. Completed work stays in your history; department requirements are managed separately.'),
-              onTap: () => context.push(AppRoutes.careerIntelligence),
-              trailing: const Icon(Icons.chevron_right),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          _SectionTitle(label: 'YOUR LONG-TERM PLAN'),
-          const SizedBox(height: AppSpacing.sm),
-          if (orderedGroups.isEmpty)
-            const Text('No remaining milestones. Explore another career goal.')
-          else
-            ...orderedGroups.map((group) {
-              final items = grouped[group]!;
-              return ExpansionTile(
-                initiallyExpanded: false,
-                title: Text(group),
-                subtitle: Text('${items.length} milestones to explore'),
-                children: items.map((r) => _ReqTile(
-                  requirement: r.requirement,
-                  statusIcon: Icons.circle_outlined,
-                  statusColor: cs.onSurfaceVariant,
-                  onTap: () => AppRouter.openRequirement(context, r.requirement, goalId: state.roadmap?.goal.id),
-                  onMarkDone: () => state.setRequirementCompleted(
-                    goalId: roadmap.goal.id,
-                    requirementId: r.requirement.id,
-                    completed: true,
-                  ),
-                  compactBadges: true,
-                )).toList(),
-              );
-            }),
-          const SizedBox(height: AppSpacing.xl),
-          ExpansionTile(
-            initiallyExpanded: false,
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: EdgeInsets.zero,
-            title: Text(
-              'COMPLETED ${completed.isEmpty ? '' : '(${completed.length})'}',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900, color: cs.onSurfaceVariant),
-            ),
-            children: [
-              if (completed.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                  child: Text('Nothing completed yet.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
-                )
-              else
-                ...completed.map((r) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: _ReqTile(
-                        requirement: r.requirement,
-                        statusIcon: Icons.check_circle,
-                        statusColor: FireOpsSemanticColors.completed,
-                        onTap: () => AppRouter.openRequirement(context, r.requirement, goalId: state.roadmap?.goal.id),
-                        compactBadges: true,
-                      ),
-                    )),
-            ],
-          ),
+          _SectionTitle(label: 'MY DEVELOPMENT'),
+          const SizedBox(height: 8),
+          GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 1.35, children: [
+            groupTile('Qualifications', Icons.verified_outlined),
+            groupTile('Leadership', Icons.groups_outlined),
+            groupTile('Training & Education', Icons.school_outlined),
+            groupTile('Experience', Icons.work_outline),
+            groupTile('Promotion Prep', Icons.trending_up),
+            tile('Specialty Paths', Icons.alt_route, 'Explore options', () => openSheet('Specialty Paths', state.profile.effectiveCareerPath == CareerPath.ems ? Column(children: [ListTile(title: const Text('Explore EMS career goals'), onTap: () => context.push(AppRoutes.goalSetup))]) : _SpecialtyPathsSection(state: state))),
+          ]),
+          const SizedBox(height: 12),
+          if (state.profile.effectiveCareerPath != CareerPath.ems)
+            _CareerPathOverview(state: state, roadmap: roadmap),
+          const SizedBox(height: 12),
+          _SectionTitle(label: 'CAREER OPPORTUNITIES'),
+          const SizedBox(height: 8),
+          GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 8, childAspectRatio: 1.35, children: [
+            tile('Job Search', Icons.search, 'Find opportunities', () => context.push(AppRoutes.jobSearch)),
+            tile('Application Center', Icons.assignment_outlined, 'Manage applications', () => context.push(AppRoutes.applicationCenter)),
+          ]),
+          ListTile(leading: const Icon(Icons.workspace_premium_outlined), title: const Text('Promotion review'), onTap: () => context.push(AppRoutes.promotionPortfolioReview)),
+          ListTile(leading: const Icon(Icons.check_circle_outline), title: const Text('Completed milestones'), subtitle: Text('${completed.length} completed'), onTap: () => openSheet('Completed milestones', itemsView(completed))),
+          ListTile(leading: const Icon(Icons.tune), title: const Text('Customize my roadmap'), onTap: () => MyPathPage()._showCustomizeSheet(context, state, roadmap)),
+          ListTile(leading: const Icon(Icons.picture_as_pdf_outlined), title: const Text('Export career records'), onTap: () => context.push(AppRoutes.careerExport)),
           const SizedBox(height: AppSpacing.lg),
         ],
       ),
@@ -594,36 +486,12 @@ class _PathTab extends StatelessWidget {
     if (recommended != null &&
         recommended.requirement.requirementSource != RequirementSource.departmentRequirement) {
       personal.removeWhere((item) => item.requirement.id == recommended.requirement.id);
-      return [recommended, ...personal.take(2)];
+      return [recommended];
     }
-    return personal.take(3).toList();
+    return personal.take(1).toList();
   }
 
-  static String _primaryLabel(Requirement r) {
-    return switch (r.type) {
-      RequirementType.taskBook || RequirementType.numericProgress => 'Update',
-      RequirementType.experience => 'Log',
-      _ => 'Start',
-    };
-  }
 
-  static String _groupLabel(Requirement r) {
-    if (r.type == RequirementType.certification) return 'Certifications';
-    if (r.type == RequirementType.taskBook) return 'Task Books';
-    if (r.type == RequirementType.experience || r.type == RequirementType.numericProgress) {
-      return 'Experience';
-    }
-    if (r.requirementSource == RequirementSource.departmentRequirement) {
-      return 'Department Requirements';
-    }
-    if (r.type == RequirementType.interview || r.type == RequirementType.promotionalTest) {
-      return 'Promotion Preparation';
-    }
-    if (r.type == RequirementType.trainingCourse || r.type == RequirementType.course || r.type == RequirementType.education || r.type == RequirementType.practical) {
-      return 'Training';
-    }
-    return 'Other';
-  }
 }
 
 class _CareerPathOverview extends StatelessWidget {
@@ -1109,7 +977,7 @@ class _RoadmapHeader extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '$percentReady% Ready',
+                  '$percentReady% career plan progress',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ),
