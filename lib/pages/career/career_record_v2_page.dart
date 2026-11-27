@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:firepath/models/career_record.dart';
+import 'package:firepath/models/certification.dart';
 import 'package:firepath/models/requirement.dart';
 import 'package:firepath/models/task_book.dart';
 import 'package:firepath/nav.dart';
@@ -40,7 +41,7 @@ enum _RecordSort {
 
 enum _RecordPeriod { month, year, custom, career }
 
-enum _RecordsCategory { dailyLogs, statistics, careerTimeline }
+enum _RecordsCategory { certifications, dailyLogs, statistics, careerTimeline }
 
 extension _RecordSortX on _RecordSort {
   String get label => switch (this) {
@@ -87,7 +88,6 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
   _CareerFilter _filter = _CareerFilter.all;
   _RecordSort _sort = _RecordSort.newest;
   String? _activityTitle;
-  _RecordsCategory _recordsCategory = _RecordsCategory.dailyLogs;
 
   Future<void> _pickFilter() async {
     final selected = await showModalBottomSheet<_CareerFilter>(
@@ -421,8 +421,9 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
 
   Widget _dailyLogsSection(
     CareerStats stats,
-    List<CareerRecord> visible,
-  ) {
+    List<CareerRecord> visible, {
+    VoidCallback? onSelectionChanged,
+  }) {
     final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -455,7 +456,10 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
               ),
               if (_activityTitle != null)
                 TextButton(
-                  onPressed: () => setState(() => _activityTitle = null),
+                  onPressed: () {
+                    setState(() => _activityTitle = null);
+                    onSelectionChanged?.call();
+                  },
                   child: const Text('Show all'),
                 ),
             ],
@@ -486,9 +490,12 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 title: entry.key,
                 count: entry.value,
                 selected: selected,
-                onTap: () => setState(
-                  () => _activityTitle = selected ? null : entry.key,
-                ),
+                onTap: () {
+                  setState(
+                    () => _activityTitle = selected ? null : entry.key,
+                  );
+                  onSelectionChanged?.call();
+                },
               );
             },
           ),
@@ -644,14 +651,275 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
     );
   }
 
+  Future<void> _showRecordsCategorySheet(
+    _RecordsCategory category,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final app = sheetContext.watch<AppState>();
+          final stats = CareerStats.fromRecords(_periodRecords);
+          final procedureStats = _procedureStats(_periodRecords);
+          final visible = _visibleRecords;
+          final title = switch (category) {
+            _RecordsCategory.certifications => 'Certification Center',
+            _RecordsCategory.dailyLogs => 'Daily Logs',
+            _RecordsCategory.statistics => 'Statistics',
+            _RecordsCategory.careerTimeline => 'Career Timeline',
+          };
+          final icon = switch (category) {
+            _RecordsCategory.certifications => Icons.verified_user_outlined,
+            _RecordsCategory.dailyLogs => Icons.today_outlined,
+            _RecordsCategory.statistics => Icons.query_stats_rounded,
+            _RecordsCategory.careerTimeline => Icons.timeline_rounded,
+          };
+          final accent = switch (category) {
+            _RecordsCategory.certifications => const Color(0xFFEA580C),
+            _RecordsCategory.dailyLogs => const Color(0xFF2563EB),
+            _RecordsCategory.statistics => const Color(0xFF7C3AED),
+            _RecordsCategory.careerTimeline => const Color(0xFF0F766E),
+          };
+          final section = switch (category) {
+            _RecordsCategory.certifications =>
+              _certificationCenterSheet(app, sheetContext),
+            _RecordsCategory.dailyLogs => _dailyLogsSection(
+                stats,
+                visible,
+                onSelectionChanged: () => setSheetState(() {}),
+              ),
+            _RecordsCategory.statistics =>
+              _statisticsSection(stats, procedureStats),
+            _RecordsCategory.careerTimeline =>
+              _careerTimelineSection(visible),
+          };
+          final showRecordTools =
+              category != _RecordsCategory.certifications;
+
+          return FractionallySizedBox(
+            heightFactor: 0.92,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(icon, color: accent),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: Theme.of(sheetContext)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                if (showRecordTools)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Column(
+                      children: [
+                        _PeriodControls(
+                          period: _period,
+                          label: _periodLabel,
+                          onPeriodChanged: (period) async {
+                            await _setPeriod(period);
+                            if (sheetContext.mounted) {
+                              setSheetState(() {});
+                            }
+                          },
+                          onPrevious: _period == _RecordPeriod.month ||
+                                  _period == _RecordPeriod.year
+                              ? () {
+                                  _movePeriod(-1);
+                                  setSheetState(() {});
+                                }
+                              : null,
+                          onNext: _period == _RecordPeriod.month ||
+                                  _period == _RecordPeriod.year
+                              ? () {
+                                  _movePeriod(1);
+                                  setSheetState(() {});
+                                }
+                              : null,
+                        ),
+                        if (category != _RecordsCategory.statistics) ...[
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _search,
+                            onChanged: (_) => setSheetState(() {}),
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.search),
+                              hintText: 'Search records',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton.tonalIcon(
+                                  onPressed: () async {
+                                    await _pickFilter();
+                                    if (sheetContext.mounted) {
+                                      setSheetState(() {});
+                                    }
+                                  },
+                                  icon: const Icon(Icons.filter_alt_outlined),
+                                  label: Text('Filter: ${_filter.label}'),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () async {
+                                    await _pickSort();
+                                    if (sheetContext.mounted) {
+                                      setSheetState(() {});
+                                    }
+                                  },
+                                  icon: const Icon(Icons.sort_rounded),
+                                  label: Text(_sort.label),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                const Divider(height: 1),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    child: section,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _certificationCenterSheet(
+    AppState app,
+    BuildContext sheetContext,
+  ) {
+    final credentials = app.certifications;
+    final cs = Theme.of(sheetContext).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (credentials.isEmpty)
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.workspace_premium_outlined,
+                    size: 42,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'No credentials saved yet',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Add certifications and renewal dates so they can be tracked here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...credentials.map(
+            (cert) {
+              final subtitle = cert.doesNotExpire
+                  ? 'Does not expire'
+                  : cert.expirationDate == null
+                      ? 'Expiration date needs attention'
+                      : 'Expires ${CareerStats.formatDate(cert.expirationDate!)}';
+              return Card(
+                margin: const EdgeInsets.only(bottom: 9),
+                child: ListTile(
+                  leading: Icon(
+                    cert.status == CertificationStatus.expired
+                        ? Icons.warning_amber_rounded
+                        : Icons.workspace_premium_outlined,
+                    color: cert.status == CertificationStatus.expired
+                        ? cs.error
+                        : const Color(0xFFEA580C),
+                  ),
+                  title: Text(
+                    app.certificationDisplayName(cert),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: Text(subtitle),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    context.push(
+                      '${AppRoutes.certificationDetail}/${cert.id}',
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          onPressed: () {
+            Navigator.pop(sheetContext);
+            context.push(AppRoutes.certificationAdd);
+          },
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Add certification'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.pop(sheetContext);
+            context.push(AppRoutes.certifications);
+          },
+          icon: const Icon(Icons.settings_outlined),
+          label: const Text('Manage Certification Center'),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     final cs = Theme.of(context).colorScheme;
-    final stats = CareerStats.fromRecords(_periodRecords);
-    final procedureStats = _procedureStats(_periodRecords);
-    final visible = _visibleRecords;
-
     return Scaffold(
       appBar: FirefighterRoadmapAppBar(
         // This screen is frequently opened via `context.go('/log')`, which can
@@ -750,7 +1018,9 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                     detail:
                         '${app.certifications.length} credential${app.certifications.length == 1 ? '' : 's'}',
                     accent: const Color(0xFFEA580C),
-                    onTap: () => context.push(AppRoutes.certifications),
+                    onTap: () => _showRecordsCategorySheet(
+                      _RecordsCategory.certifications,
+                    ),
                   ),
                   _RecordsCategoryCard(
                     icon: Icons.today_outlined,
@@ -758,9 +1028,8 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                     detail:
                         '${_periodRecords.length} entr${_periodRecords.length == 1 ? 'y' : 'ies'} in $_periodLabel',
                     accent: const Color(0xFF2563EB),
-                    selected: _recordsCategory == _RecordsCategory.dailyLogs,
-                    onTap: () => setState(
-                      () => _recordsCategory = _RecordsCategory.dailyLogs,
+                    onTap: () => _showRecordsCategorySheet(
+                      _RecordsCategory.dailyLogs,
                     ),
                   ),
                   _RecordsCategoryCard(
@@ -768,9 +1037,8 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                     title: 'Statistics',
                     detail: 'Totals, hours and skill performance',
                     accent: const Color(0xFF7C3AED),
-                    selected: _recordsCategory == _RecordsCategory.statistics,
-                    onTap: () => setState(
-                      () => _recordsCategory = _RecordsCategory.statistics,
+                    onTap: () => _showRecordsCategorySheet(
+                      _RecordsCategory.statistics,
                     ),
                   ),
                   _RecordsCategoryCard(
@@ -778,48 +1046,21 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                     title: 'Career Timeline',
                     detail: 'Month, year, custom or all-time history',
                     accent: const Color(0xFF0F766E),
-                    selected:
-                        _recordsCategory == _RecordsCategory.careerTimeline,
-                    onTap: () => setState(
-                      () => _recordsCategory = _RecordsCategory.careerTimeline,
+                    onTap: () => _showRecordsCategorySheet(
+                      _RecordsCategory.careerTimeline,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
-              _PeriodControls(
-                period: _period,
-                label: _periodLabel,
-                onPeriodChanged: _setPeriod,
-                onPrevious: _period == _RecordPeriod.month ||
-                        _period == _RecordPeriod.year
-                    ? () => _movePeriod(-1)
-                    : null,
-                onNext: _period == _RecordPeriod.month ||
-                        _period == _RecordPeriod.year
-                    ? () => _movePeriod(1)
-                    : null,
+              const SizedBox(height: 14),
+              Text(
+                'Tap a category to open it in a focused window.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
-              if (_recordsCategory != _RecordsCategory.statistics) ...[
-                const SizedBox(height: 14),
-                _searchAndSortControls(),
-              ],
-              const SizedBox(height: 20),
-              if (_loading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              else ...[
-                if (_recordsCategory == _RecordsCategory.dailyLogs)
-                  _dailyLogsSection(stats, visible),
-                if (_recordsCategory == _RecordsCategory.statistics)
-                  _statisticsSection(stats, procedureStats),
-                if (_recordsCategory == _RecordsCategory.careerTimeline)
-                  _careerTimelineSection(visible),
-              ],
               const SizedBox(height: 22),
               Text(
                 'Privacy: this is a professional career record, not an ePCR. Do not enter patient names, DOBs, addresses, medical record numbers, or other identifying information.',
