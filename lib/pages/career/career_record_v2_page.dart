@@ -664,15 +664,15 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 12, 8),
                   child: Row(
                     children: [
                       Container(
-                        width: 46,
-                        height: 46,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
                           color: accent.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(icon, color: accent),
                       ),
@@ -696,7 +696,7 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                 ),
                 if (showRecordTools)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                     child: Column(
                       children: [
                         _PeriodControls(
@@ -724,42 +724,41 @@ class _CareerRecordV2PageState extends State<CareerRecordV2Page> {
                               : null,
                         ),
                         if (category != _RecordsCategory.statistics) ...[
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: _search,
-                            onChanged: (_) => setSheetState(() {}),
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.search),
-                              hintText: 'Search records',
-                            ),
-                          ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 8),
                           Row(
                             children: [
                               Expanded(
-                                child: FilledButton.tonalIcon(
-                                  onPressed: () async {
-                                    await _pickFilter();
-                                    if (sheetContext.mounted) {
-                                      setSheetState(() {});
-                                    }
-                                  },
-                                  icon: const Icon(Icons.filter_alt_outlined),
-                                  label: Text('Filter: ${_filter.label}'),
+                                child: TextField(
+                                  controller: _search,
+                                  onChanged: (_) => setSheetState(() {}),
+                                  decoration: const InputDecoration(
+                                    isDense: true,
+                                    prefixIcon: Icon(Icons.search),
+                                    hintText: 'Search records',
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () async {
-                                    await _pickSort();
-                                    if (sheetContext.mounted) {
-                                      setSheetState(() {});
-                                    }
-                                  },
-                                  icon: const Icon(Icons.sort_rounded),
-                                  label: Text(_sort.label),
-                                ),
+                              IconButton.outlined(
+                                tooltip: 'Filter: ${_filter.label}',
+                                onPressed: () async {
+                                  await _pickFilter();
+                                  if (sheetContext.mounted) {
+                                    setSheetState(() {});
+                                  }
+                                },
+                                icon: const Icon(Icons.filter_alt_outlined),
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton.outlined(
+                                tooltip: 'Sort: ${_sort.label}',
+                                onPressed: () async {
+                                  await _pickSort();
+                                  if (sheetContext.mounted) {
+                                    setSheetState(() {});
+                                  }
+                                },
+                                icon: const Icon(Icons.sort_rounded),
                               ),
                             ],
                           ),
@@ -1509,7 +1508,7 @@ class _PeriodControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -1520,6 +1519,10 @@ class _PeriodControls extends StatelessWidget {
         children: [
           SegmentedButton<_RecordPeriod>(
             showSelectedIcon: false,
+            style: const ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.padded,
+            ),
             segments: const [
               ButtonSegment(
                 value: _RecordPeriod.month,
@@ -1541,10 +1544,10 @@ class _PeriodControls extends StatelessWidget {
             selected: {period},
             onSelectionChanged: (selection) => onPeriodChanged(selection.first),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 2),
           Row(
             children: [
-              IconButton.filledTonal(
+              IconButton(
                 tooltip: 'Previous period',
                 onPressed: onPrevious,
                 icon: const Icon(Icons.chevron_left_rounded),
@@ -1562,7 +1565,7 @@ class _PeriodControls extends StatelessWidget {
                   ),
                 ),
               ),
-              IconButton.filledTonal(
+              IconButton(
                 tooltip: 'Next period',
                 onPressed: onNext,
                 icon: const Icon(Icons.chevron_right_rounded),
