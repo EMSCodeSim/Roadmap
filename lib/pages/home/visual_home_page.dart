@@ -16,10 +16,7 @@ import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/widgets/app_card_tile.dart';
-import 'package:firepath/widgets/unread_pulse_indicator.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
-import 'package:firepath/widgets/public_safety_metric_tile.dart';
-import 'package:firepath/services/theme.dart';
 
 /// A compact daily overview. Lifelong history lives in Career Timeline.
 class VisualHomePage extends StatefulWidget {
@@ -100,11 +97,10 @@ class _VisualHomePageState extends State<VisualHomePage> {
         : 'Open training, study, official, and practice resources for this step.';
 
     bool isVisible(HomeSectionType type) {
-      return _homeSections
-          .where((preference) => preference.type == type)
-          .firstOrNull
-          ?.visible ??
-          false;
+      for (final preference in _homeSections) {
+        if (preference.type == type) return preference.visible;
+      }
+      return false;
     }
 
     final recentRecords = List<CareerRecord>.from(_records)
@@ -306,24 +302,20 @@ class _VisualHomePageState extends State<VisualHomePage> {
 
   IconData _recordIcon(CareerRecord record) {
     return switch (record.type) {
-      CareerRecordType.call => Icons.local_fire_department_outlined,
-      CareerRecordType.training => Icons.school_outlined,
+      CareerRecordType.operationalExperience =>
+        Icons.local_fire_department_outlined,
       CareerRecordType.skill => Icons.handyman_outlined,
-      CareerRecordType.driving => Icons.local_shipping_outlined,
-      CareerRecordType.exposure => Icons.health_and_safety_outlined,
+      CareerRecordType.training => Icons.school_outlined,
+      CareerRecordType.achievement => Icons.emoji_events_outlined,
       CareerRecordType.leadership => Icons.groups_outlined,
       CareerRecordType.teaching => Icons.co_present_outlined,
-      CareerRecordType.achievement => Icons.emoji_events_outlined,
-      CareerRecordType.education => Icons.menu_book_outlined,
       CareerRecordType.project => Icons.task_alt_outlined,
-      CareerRecordType.custom => Icons.note_alt_outlined,
+      CareerRecordType.education => Icons.menu_book_outlined,
+      CareerRecordType.taskBookEvidence => Icons.fact_check_outlined,
     };
   }
 
-  String _recordTypeLabel(CareerRecord record) {
-    final raw = record.type.name;
-    return '${raw[0].toUpperCase()}${raw.substring(1)}';
-  }
+  String _recordTypeLabel(CareerRecord record) => record.type.label;
 
   String _formatRecordDate(DateTime date) {
     const months = <String>[
