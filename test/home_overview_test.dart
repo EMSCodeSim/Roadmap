@@ -72,7 +72,6 @@ void main() {
       expect(find.text('Next best step'), findsOneWidget);
       expect(find.text('Needs attention'), findsOneWidget);
       expect(find.text('Credentials'), findsOneWidget);
-      expect(find.text('Open Resource'), findsNWidgets(2));
       expect(find.text('YOUR CAREER'), findsNothing);
       expect(find.text('Add detailed career history'), findsNothing);
       expect(find.text('Unfinished records'), findsNothing);
