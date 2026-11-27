@@ -129,9 +129,10 @@ class _VisualHomePageState extends State<VisualHomePage> {
                 return;
               }
               if (nextStep != null) {
-                context.push(
-                  AppRoutes.getStarted,
-                  extra: nextStep.requirement,
+                AppRouter.openRoadmapPrimaryAction(
+                  context,
+                  nextStep.requirement,
+                  goalId: roadmap.goal.id,
                 );
                 return;
               }
