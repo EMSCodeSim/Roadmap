@@ -238,6 +238,11 @@ class FireOpsCatalog {
     if (held.isEmpty || required.isEmpty) return false;
     if (held == required) return true;
 
+    // EMS career progression is not identical to admission prerequisites:
+    // paramedic programs need not require AEMT first. A held paramedic
+    // credential nevertheless supersedes AEMT for personal roadmap progress.
+    if (held == 'paramedic' && required == 'aemt') return true;
+
     final visited = <String>{};
     bool includesPrerequisite(String definitionId) {
       if (!visited.add(definitionId)) return false;
