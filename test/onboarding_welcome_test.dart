@@ -10,13 +10,13 @@ void main() {
     );
 
     expect(
-      find.text('One career record. A clearer path forward.'),
+      find.text('Your career record belongs to you.'),
       findsOneWidget,
     );
-    expect(find.text('Keep your career record'), findsOneWidget);
-    expect(find.text('Build a simple roadmap'), findsOneWidget);
+    expect(find.text('Build your career story'), findsOneWidget);
+    expect(find.text('Choose what comes next'), findsOneWidget);
     expect(
-      find.text('Connect to a department when needed'),
+      find.text('Use it on your own'),
       findsOneWidget,
     );
     expect(
