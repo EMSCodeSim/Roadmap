@@ -46,7 +46,6 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   List<DepartmentClassDetail> _rmsActions = const [];
   List<InstructorTrainingAttention> _instructorTraining = const [];
   List<DepartmentWorkQueueItem> _workQueue = const [];
-  String? _expandedSection;
   bool _loading = true;
   bool _refreshing = false;
   String? _error;
@@ -310,86 +309,184 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
     }
   }
 
-  Widget _dashboardBox({
-    required String id, required String title, required IconData icon,
-    required int count, required Widget child,
+  Widget _dashboardButton({
+    required String title,
+    required IconData icon,
+    required int count,
+    required Widget child,
+    required Color accent,
     String? subtitle,
   }) {
-    final expanded = _expandedSection == id;
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final pillBg = count > 0
-        ? cs.primaryContainer.withValues(alpha: 0.85)
-        : cs.surfaceContainerHighest;
-    final pillFg = count > 0 ? cs.primary : cs.onSurfaceVariant;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: [
-        InkWell(
-          onTap: () => setState(() => _expandedSection = expanded ? null : id),
+    return Semantics(
+      button: true,
+      label: '$title. $count item${count == 1 ? '' : 's'}',
+      child: Card(
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(
+            color: accent.withValues(alpha: 0.34),
+            width: count > 0 ? 1.5 : 1,
+          ),
+        ),
+        child: InkWell(
+          onTap: () => _showDashboardSection(
+            title: title,
+            icon: icon,
+            count: count,
+            child: child,
+            accent: accent,
+          ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            child: Row(
+            padding: const EdgeInsets.all(14),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: cs.primary.withValues(alpha: AppCardTokens.subtleBorderAlpha)),
-                  ),
-                  child: Icon(icon, color: cs.primary, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900, height: 1.1)),
-                      if ((subtitle ?? '').trim().isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle!.trim(),
-                          style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Column(
+                Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
-                        color: pillBg,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: cs.outline.withValues(alpha: AppCardTokens.subtleBorderAlpha)),
+                        color: accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Text('$count', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w900, color: pillFg)),
+                      child: Icon(icon, color: accent, size: 22),
                     ),
-                    const SizedBox(height: 6),
-                    Icon(expanded ? Icons.expand_less : Icons.expand_more, color: cs.onSurfaceVariant),
+                    const Spacer(),
+                    Container(
+                      constraints: const BoxConstraints(minWidth: 32),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: count > 0
+                            ? accent.withValues(alpha: 0.14)
+                            : cs.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '$count',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: count > 0 ? accent : cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
+                const Spacer(),
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    height: 1.08,
+                  ),
+                ),
+                if ((subtitle ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    subtitle!.trim(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
         ),
-        AnimatedCrossFade(
-          duration: AppMotion.medium,
-          crossFadeState: expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-          firstChild: const SizedBox.shrink(),
-          secondChild: Column(children: [
-            Divider(height: 1, color: cs.outline.withValues(alpha: 0.12)),
-            Padding(padding: const EdgeInsets.all(12), child: child),
-          ]),
+      ),
+    );
+  }
+
+  Future<void> _showDashboardSection({
+    required String title,
+    required IconData icon,
+    required int count,
+    required Widget child,
+    required Color accent,
+  }) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: 0.86,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(icon, color: accent),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(sheetContext)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  Container(
+                    constraints: const BoxConstraints(minWidth: 36),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$count',
+                      style: TextStyle(
+                        color: accent,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.pop(sheetContext),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                child: child,
+              ),
+            ),
+          ],
         ),
-      ]),
+      ),
     );
   }
 
@@ -453,87 +550,187 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                     ),
                   _SyncLine(inbox: inbox),
                   const SizedBox(height: 12),
-                  _dashboardBox(
-                    id: 'attention', title: 'Needs Attention',
-                    icon: Icons.notification_important_outlined,
-                    count: _workQueue.length,
-                    subtitle: 'Items that need a next step to keep department work moving.',
-                    child: _CanonicalWorkQueue(items: _workQueue, onTap: _openWorkItem),
-                  ),
-                  _dashboardBox(
-                    id: 'assignments', title: 'Assignments',
-                    icon: Icons.assignment_outlined, count: oneOffAssignments.length,
-                    subtitle: 'One-off items assigned to you (not a full Task Book).',
-                    child: _Section(title: 'Assigned to you', items: oneOffAssignments,
-                      status: _status, onTap: _open),
-                  ),
-                  _dashboardBox(
-                    id: 'taskbooks', title: 'Task Books',
-                    icon: Icons.menu_book_outlined, count: assignedTaskBooks.length,
-                    subtitle: 'Department Task Books assigned to you for completion and sign-off.',
-                    child: _Section(title: 'Your department task books',
-                      items: assignedTaskBooks, status: _status, onTap: _open),
-                  ),
-                  if (canManageTrainingSheets)
-                    _dashboardBox(
-                      id: 'instructors',
-                      title: 'Training Sheets',
-                      icon: Icons.school_outlined,
-                      count: _instructorTraining.length +
-                          _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).length,
-                      subtitle: 'Create classes, finalize training sheets, and handle instructor approvals.',
-                      child: Column(children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: FilledButton.tonalIcon(
-                            onPressed: _openClasses,
-                            icon: const Icon(Icons.add_rounded),
-                            label: const Text('Create Training Sheet'),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        for (final item in _instructorTraining)
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            subtitle: Text(item.nextStep, maxLines: 2, overflow: TextOverflow.ellipsis),
-                            trailing: const Icon(Icons.chevron_right_rounded),
-                            onTap: () => _openClass(item.id),
-                          ),
-                        for (final item in _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)))
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            subtitle: const Text('Not yet entered into RMS'),
-                            trailing: const Icon(Icons.chevron_right_rounded),
-                            onTap: () => _openClass(item.id),
-                          ),
-                        if (_instructorTraining.isEmpty && _rmsActions.isEmpty)
-                          const ListTile(contentPadding: EdgeInsets.zero, title: Text('No classes awaiting action')),
-                      ]),
+                  GridView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      mainAxisExtent: 158,
                     ),
-                  _dashboardBox(
-                    id: 'eligibility', title: 'Check Member Eligibility',
-                    icon: Icons.verified_user_outlined, count: 0,
-                    child: ListTile(
-                      title: const Text('Look up member qualifications'),
-                      subtitle: const Text('Check who is approved to drive, act as officer, or perform another department role.'),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const DepartmentQualificationsPage(focusLookup: true),
+                    children: [
+                      _dashboardButton(
+                        title: 'Needs Attention',
+                        icon: Icons.notification_important_outlined,
+                        count: _workQueue.length,
+                        subtitle: 'Work that needs your next step.',
+                        accent: const Color(0xFFDC2626),
+                        child: _CanonicalWorkQueue(
+                          items: _workQueue,
+                          onTap: _openWorkItem,
                         ),
                       ),
-                    ),
-                  ),
-                  _dashboardBox(
-                    id: 'complete', title: 'Complete',
-                    icon: Icons.check_circle_outline_rounded,
-                    count: _assignments.where((a) => _status(a) == 'Complete').length,
-                    subtitle: 'Finished items (kept for reference).',
-                    child: _Section(title: 'Completed items',
-                      items: _assignments.where((a) => _status(a) == 'Complete').toList(),
-                      status: _status, onTap: _open),
+                      _dashboardButton(
+                        title: 'Assignments',
+                        icon: Icons.assignment_outlined,
+                        count: oneOffAssignments.length,
+                        subtitle: 'One-off items assigned to you.',
+                        accent: const Color(0xFF2563EB),
+                        child: _Section(
+                          title: 'Assigned to you',
+                          items: oneOffAssignments,
+                          status: _status,
+                          onTap: _open,
+                        ),
+                      ),
+                      _dashboardButton(
+                        title: 'Task Books',
+                        icon: Icons.menu_book_outlined,
+                        count: assignedTaskBooks.length,
+                        subtitle: 'Department qualification progress.',
+                        accent: const Color(0xFF7C3AED),
+                        child: _Section(
+                          title: 'Your department task books',
+                          items: assignedTaskBooks,
+                          status: _status,
+                          onTap: _open,
+                        ),
+                      ),
+                      _dashboardButton(
+                        title: 'Training Sheets',
+                        icon: Icons.school_outlined,
+                        count: _instructorTraining.length +
+                            _rmsActions
+                                .where(
+                                  (item) => !_instructorTraining.any(
+                                    (mine) => mine.id == item.id,
+                                  ),
+                                )
+                                .length,
+                        subtitle: canManageTrainingSheets
+                            ? 'Create, finalize and approve training.'
+                            : 'View department training activity.',
+                        accent: const Color(0xFFEA580C),
+                        child: canManageTrainingSheets
+                            ? Column(
+                                children: [
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: FilledButton.tonalIcon(
+                                      onPressed: _openClasses,
+                                      icon: const Icon(Icons.add_rounded),
+                                      label:
+                                          const Text('Create Training Sheet'),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  for (final item in _instructorTraining)
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text(
+                                        item.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      subtitle: Text(
+                                        item.nextStep,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      trailing: const Icon(
+                                        Icons.chevron_right_rounded,
+                                      ),
+                                      onTap: () => _openClass(item.id),
+                                    ),
+                                  for (final item in _rmsActions.where(
+                                    (item) => !_instructorTraining.any(
+                                      (mine) => mine.id == item.id,
+                                    ),
+                                  ))
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text(
+                                        item.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      subtitle:
+                                          const Text('Not yet entered into RMS'),
+                                      trailing: const Icon(
+                                        Icons.chevron_right_rounded,
+                                      ),
+                                      onTap: () => _openClass(item.id),
+                                    ),
+                                  if (_instructorTraining.isEmpty &&
+                                      _rmsActions.isEmpty)
+                                    const ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title:
+                                          Text('No classes awaiting action'),
+                                    ),
+                                ],
+                              )
+                            : ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading:
+                                    const Icon(Icons.school_outlined),
+                                title: const Text(
+                                  'Open department training sheets',
+                                ),
+                                subtitle: const Text(
+                                  'Review available training activity and attendance.',
+                                ),
+                                trailing: const Icon(
+                                  Icons.chevron_right_rounded,
+                                ),
+                                onTap: _openClasses,
+                              ),
+                      ),
+                      _dashboardButton(
+                        title: 'Check Member Eligibility',
+                        icon: Icons.verified_user_outlined,
+                        count: 0,
+                        subtitle: 'Look up qualifications and roles.',
+                        accent: const Color(0xFF0F766E),
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title:
+                              const Text('Look up member qualifications'),
+                          subtitle: const Text(
+                            'Check who is approved to drive, act as officer, or perform another department role.',
+                          ),
+                          trailing:
+                              const Icon(Icons.chevron_right_rounded),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const DepartmentQualificationsPage(
+                                focusLookup: true,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      _dashboardButton(
+                        title: 'Complete',
+                        icon: Icons.check_circle_outline_rounded,
+                        count: _assignments
+                            .where((a) => _status(a) == 'Complete')
+                            .length,
+                        subtitle: 'Finished items kept for reference.',
+                        accent: const Color(0xFF16A34A),
+                        child: _Section(
+                          title: 'Completed items',
+                          items: _assignments
+                              .where((a) => _status(a) == 'Complete')
+                              .toList(),
+                          status: _status,
+                          onTap: _open,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
