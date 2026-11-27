@@ -7,6 +7,7 @@ import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/advancement_analyzer.dart';
 import 'package:firepath/services/career_intelligence.dart';
 import 'package:firepath/services/career_pdf_export.dart';
+import 'package:firepath/services/pdf_text_sanitizer.dart';
 import 'package:firepath/state/app_state.dart';
 
 class PromotionPortfolioExport {
@@ -32,7 +33,7 @@ class PromotionPortfolioExport {
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
-        margin: const pw.EdgeInsets.fromLTRB(38, 34, 38, 34),
+        margin: const pw.EdgeInsets.fromLTRB(38, 18, 38, 30),
         footer: _footer,
         build: (context) => [
           _header(identity, 'PROFESSIONAL CAREER SUMMARY', app),
@@ -105,7 +106,7 @@ class PromotionPortfolioExport {
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
-        margin: const pw.EdgeInsets.fromLTRB(38, 34, 38, 34),
+        margin: const pw.EdgeInsets.fromLTRB(38, 18, 38, 30),
         footer: _footer,
         build: (context) => [
           _header(identity, 'PROMOTION PORTFOLIO', app),
@@ -167,7 +168,7 @@ class PromotionPortfolioExport {
           else
             ...advancement.evidenceGaps.take(10).map(
               (gap) => _bullet(
-                '${gap.requirement.name} — ${gap.isComplete ? 'requirement is complete but supporting career evidence is missing' : 'requirement and supporting evidence still need attention'}',
+                '${gap.requirement.name} - ${gap.isComplete ? 'requirement is complete but supporting career evidence is missing' : 'requirement and supporting evidence still need attention'}',
               ),
             ),
           pw.SizedBox(height: 8),
@@ -334,7 +335,7 @@ class PromotionPortfolioExport {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  title,
+                  pdfSafeText(title),
                   style: pw.TextStyle(
                     color: PdfColors.white,
                     fontSize: 18,
@@ -343,7 +344,7 @@ class PromotionPortfolioExport {
                 ),
                 pw.SizedBox(height: 4),
                 pw.Text(
-                  subtitle,
+                  pdfSafeText(subtitle),
                   style: pw.TextStyle(
                     color: _gold,
                     fontSize: 11,
@@ -352,7 +353,7 @@ class PromotionPortfolioExport {
                 ),
                 if (_contactLine(identity).isNotEmpty)
                   pw.Text(
-                    _contactLine(identity),
+                    pdfSafeText(_contactLine(identity)),
                     style: const pw.TextStyle(color: PdfColors.white, fontSize: 8.5),
                   ),
               ],
@@ -370,27 +371,27 @@ class PromotionPortfolioExport {
         child: pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
           children: metrics.map((m) => pw.Column(children: [
-            pw.Text(m.$2, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: _navy)),
-            pw.Text(m.$1, style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
+            pw.Text(pdfSafeText(m.$2), style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: _navy)),
+            pw.Text(pdfSafeText(m.$1), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
           ])).toList(),
         ),
       );
 
   static pw.Widget _sectionTitle(String text) => pw.Padding(
         padding: const pw.EdgeInsets.only(bottom: 5),
-        child: pw.Text(text.toUpperCase(), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: _navy)),
+        child: pw.Text(pdfSafeText(text.toUpperCase()), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: _navy)),
       );
 
   static pw.Widget _body(String text) => pw.Padding(
         padding: const pw.EdgeInsets.only(bottom: 3),
-        child: pw.Text(text, style: const pw.TextStyle(fontSize: 9.5, lineSpacing: 2)),
+        child: pw.Text(pdfSafeText(text), style: const pw.TextStyle(fontSize: 9.5, lineSpacing: 2)),
       );
 
   static pw.Widget _bullet(String text) => pw.Padding(
         padding: const pw.EdgeInsets.only(left: 8, bottom: 3),
         child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-          pw.Text('• ', style: pw.TextStyle(color: _gold, fontWeight: pw.FontWeight.bold)),
-          pw.Expanded(child: pw.Text(text, style: const pw.TextStyle(fontSize: 9.2, lineSpacing: 2))),
+          pw.Text('- ', style: pw.TextStyle(color: _gold, fontWeight: pw.FontWeight.bold)),
+          pw.Expanded(child: pw.Text(pdfSafeText(text), style: const pw.TextStyle(fontSize: 9.2, lineSpacing: 2))),
         ]),
       );
 
@@ -402,9 +403,9 @@ class PromotionPortfolioExport {
           color: _light,
         ),
         child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-          pw.Text(item.title, style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: _navy)),
+          pw.Text(pdfSafeText(item.title), style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: _navy)),
           pw.SizedBox(height: 2),
-          pw.Text(item.detail, style: const pw.TextStyle(fontSize: 8.7, color: PdfColors.grey800)),
+          pw.Text(pdfSafeText(item.detail), style: const pw.TextStyle(fontSize: 8.7, color: PdfColors.grey800)),
         ]),
       );
 
@@ -416,9 +417,9 @@ class PromotionPortfolioExport {
           border: pw.Border(left: pw.BorderSide(color: _gold, width: 4)),
         ),
         child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-          pw.Text(title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9.5, color: _navy)),
+          pw.Text(pdfSafeText(title), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9.5, color: _navy)),
           pw.SizedBox(height: 2),
-          pw.Text(detail, style: const pw.TextStyle(fontSize: 8.8, lineSpacing: 2)),
+          pw.Text(pdfSafeText(detail), style: const pw.TextStyle(fontSize: 8.8, lineSpacing: 2)),
         ]),
       );
 
@@ -431,7 +432,7 @@ class PromotionPortfolioExport {
       columnWidths: const {0: pw.FlexColumnWidth(2.2), 1: pw.FlexColumnWidth(1), 2: pw.FlexColumnWidth(1)},
       children: [
         _tableRow(['Area', 'Records', 'Hours'], header: true),
-        ...rows.take(8).map((a) => _tableRow([a.type.label, '${a.count}', a.hours > 0 ? a.hours.toStringAsFixed(1) : '—'])),
+        ...rows.take(8).map((a) => _tableRow([a.type.label, '${a.count}', a.hours > 0 ? a.hours.toStringAsFixed(1) : '-'])),
       ],
     );
   }
@@ -453,7 +454,7 @@ class PromotionPortfolioExport {
         children: cells.map((text) => pw.Padding(
           padding: const pw.EdgeInsets.all(5),
           child: pw.Text(
-            text,
+            pdfSafeText(text),
             style: pw.TextStyle(
               fontSize: 8.2,
               color: header ? PdfColors.white : PdfColors.grey900,
@@ -473,8 +474,8 @@ class PromotionPortfolioExport {
             decoration: pw.BoxDecoration(shape: pw.BoxShape.circle, color: supported ? _green : _gold),
           ),
           pw.Expanded(child: pw.RichText(text: pw.TextSpan(children: [
-            pw.TextSpan(text: '$title — ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _navy)),
-            pw.TextSpan(text: detail, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800)),
+            pw.TextSpan(text: pdfSafeText('$title - '), style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _navy)),
+            pw.TextSpan(text: pdfSafeText(detail), style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800)),
           ]))),
         ]),
       );
@@ -488,10 +489,10 @@ class PromotionPortfolioExport {
       padding: const pw.EdgeInsets.all(8),
       decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300, width: .6), borderRadius: pw.BorderRadius.circular(3)),
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Text('${_date(r.date)} • ${r.title}', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: _navy)),
-        if (role.isNotEmpty) pw.Text('Role: $role', style: const pw.TextStyle(fontSize: 8.5)),
-        if (summary.isNotEmpty) pw.Text('Situation / action: $summary', style: const pw.TextStyle(fontSize: 8.5, lineSpacing: 2)),
-        if (impact.isNotEmpty) pw.Text('Result / impact: $impact', style: pw.TextStyle(fontSize: 8.5, lineSpacing: 2, color: _green)),
+        pw.Text(pdfSafeText('${_date(r.date)} - ${r.title}'), style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: _navy)),
+        if (role.isNotEmpty) pw.Text(pdfSafeText('Role: $role'), style: const pw.TextStyle(fontSize: 8.5)),
+        if (summary.isNotEmpty) pw.Text(pdfSafeText('Situation / action: $summary'), style: const pw.TextStyle(fontSize: 8.5, lineSpacing: 2)),
+        if (impact.isNotEmpty) pw.Text(pdfSafeText('Result / impact: $impact'), style: pw.TextStyle(fontSize: 8.5, lineSpacing: 2, color: _green)),
       ]),
     );
   }
@@ -515,8 +516,8 @@ class PromotionPortfolioExport {
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            _body('$title — $employer'),
-            _body('$start – $end${location.isEmpty ? '' : ' · $location'}'),
+            _body('$title - $employer'),
+            _body('$start - $end${location.isEmpty ? '' : ' - $location'}'),
             if (notes.isNotEmpty) _body(notes),
           ],
         ),
@@ -539,7 +540,7 @@ class PromotionPortfolioExport {
     if (list.isEmpty) return [_bullet('No entries documented yet.')];
     return list.map((r) {
       final impact = (r.impact ?? '').trim();
-      return _bullet('${_date(r.date)} — ${r.title}${impact.isEmpty ? '' : ' — $impact'}');
+      return _bullet('${_date(r.date)} - ${r.title}${impact.isEmpty ? '' : ' - $impact'}');
     });
   }
 
@@ -553,7 +554,7 @@ class PromotionPortfolioExport {
         identity.email.trim(),
         identity.phone.trim(),
         identity.location.trim(),
-      ].where((e) => e.isNotEmpty).join('  •  ');
+      ].where((e) => e.isNotEmpty).map(pdfSafeText).join(' | ');
 
   static String _date(DateTime d) => '${d.month}/${d.day}/${d.year}';
 
@@ -565,6 +566,6 @@ class PromotionPortfolioExport {
   static pw.Widget _footer(pw.Context context) => pw.Container(
         alignment: pw.Alignment.centerRight,
         margin: const pw.EdgeInsets.only(top: 8),
-        child: pw.Text('Responder Roadmap • ${context.pageNumber}/${context.pagesCount}', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
+        child: pw.Text('Responder Roadmap | ${context.pageNumber}/${context.pagesCount}', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
       );
 }
