@@ -14,7 +14,6 @@ import 'package:firepath/services/responder_roadmap_api.dart';
 import 'package:firepath/services/career_record_store.dart';
 import 'package:firepath/services/competency_evidence_bridge.dart';
 import 'package:firepath/services/theme.dart';
-import 'package:firepath/widgets/unread_pulse_indicator.dart';
 import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/state/app_state.dart';
@@ -682,8 +681,6 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                       ),
                     ),
                   const SizedBox(height: 10),
-                  FadeSlideIn(delay: const Duration(milliseconds: 40), child: _SyncLine(inbox: inbox)),
-                  const SizedBox(height: 12),
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 100),
                     child: _OverviewMetricsRow(
@@ -709,28 +706,6 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                       count: _workQueue.length,
                       subtitle: 'Pending work that needs your next step.',
                       child: _CanonicalWorkQueue(items: _workQueue, onTap: _openWorkItem),
-                    ),
-                  ),
-                  FadeSlideIn(
-                    delay: const Duration(milliseconds: 160),
-                    child: _dashboardBox(
-                      id: 'assignments',
-                      title: 'Assignments',
-                      icon: Icons.assignment_outlined,
-                      count: oneOffAssignments.length,
-                      subtitle: 'One-off items assigned to you (not a full task book).',
-                      child: _Section(title: 'Assigned to you', items: oneOffAssignments, status: _status, onTap: _open),
-                    ),
-                  ),
-                  FadeSlideIn(
-                    delay: const Duration(milliseconds: 190),
-                    child: _dashboardBox(
-                      id: 'taskbooks',
-                      title: 'Task Books',
-                      icon: Icons.menu_book_outlined,
-                      count: assignedTaskBooks.length,
-                      subtitle: 'Department task books assigned to you for completion and sign-off.',
-                      child: _Section(title: 'Your department task books', items: assignedTaskBooks, status: _status, onTap: _open),
                     ),
                   ),
                   if (canManageTrainingSheets)
@@ -895,69 +870,6 @@ class _OverviewMetricsRow extends StatelessWidget {
     );
   }
 }
-
-class _SyncLine extends StatelessWidget {
-  final DepartmentInboxController inbox;
-  const _SyncLine({required this.inbox});
-  @override
-  Widget build(BuildContext context) {
-    final label = switch (inbox.syncState) {
-      DepartmentSyncState.synced => 'Synced',
-      DepartmentSyncState.waitingToUpload => 'Waiting to upload',
-      DepartmentSyncState.failed => 'Sync failed',
-      DepartmentSyncState.syncing => 'Syncing…',
-      DepartmentSyncState.disconnected => 'Disconnected',
-    };
-    final cs = Theme.of(context).colorScheme;
-    final synced = inbox.syncState == DepartmentSyncState.synced;
-    return Row(children: [
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(
-          color: (synced ? FireOpsSemanticColors.green : FireOpsSemanticColors.amber)
-              .withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: (synced ? FireOpsSemanticColors.green : FireOpsSemanticColors.amber)
-                .withValues(alpha: 0.25),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              synced ? Icons.cloud_done_outlined : Icons.cloud_sync_outlined,
-              size: 16,
-              color: synced
-                  ? FireOpsSemanticColors.green
-                  : FireOpsSemanticColors.amber,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-          ],
-        ),
-      ),
-      if (inbox.unreadCount > 0) ...[
-        const Spacer(),
-        const UnreadPulseIndicator(size: 15),
-        const SizedBox(width: 5),
-        Text(
-          '${inbox.unreadCount} new update${inbox.unreadCount == 1 ? '' : 's'}',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-      ],
-    ]);
-  }
-}
-
 
 class _Section extends StatelessWidget {
   final String title;
