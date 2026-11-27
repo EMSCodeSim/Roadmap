@@ -2253,14 +2253,14 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       author: departmentName.isEmpty ? 'Responder Roadmap' : departmentName,
       subject: detail.status == 'COMPLETE' ? 'Completed department training record' : 'Draft department training record',
     );
-    final skillNames = <String, String>{
-      for (final section in detail.sections)
-        for (final skill in section.skills) skill.id: skill.title,
-    };
     final skillIds = <String>{
       for (final section in detail.sections)
         for (final skill in section.skills) skill.id,
     }.toList(growable: false);
+    final skillNumbers = <String, int>{
+      for (var index = 0; index < skillIds.length; index++)
+        skillIds[index]: index + 1,
+    };
     String checklistResultLabel(String? result) {
       if (result == null || result == 'NOT_EVALUATED') return '—';
       if (result == 'PASS' || result == 'FAIL') return result;
@@ -2373,7 +2373,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
         ],
         for (var batchIndex = 0; batchIndex < batches.length; batchIndex++) ...[
           heading(batchIndex == 0 ? 'Student roster and evaluation results' : 'Evaluation results — continued'),
-          table(['#', 'Student name', 'Attendance', 'Scoring result', ...batches[batchIndex].map((id) => skillNames[id] ?? 'Skill')],
+          table(['#', 'Student name', 'Attendance', 'Scoring result', ...batches[batchIndex].map((id) => '${skillNumbers[id] ?? ''}')],
             rosterRows.map((row) => <String>[
               ...row.take(4),
               for (final id in batches[batchIndex]) row[4 + skillIds.indexOf(id)],
@@ -2393,7 +2393,12 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             pw.Padding(padding: const pw.EdgeInsets.only(top: 4), child: pw.Text(section.title, style: bold)),
             for (final skill in section.skills)
               pw.Padding(padding: const pw.EdgeInsets.only(left: 8, bottom: 2),
-                child: pw.Text(skill.description.isEmpty ? skill.title : '${skill.title}: ${skill.description}', style: const pw.TextStyle(fontSize: 8))),
+                child: pw.Text(
+                  skill.description.isEmpty
+                      ? '${skillNumbers[skill.id]}. ${skill.title}'
+                      : '${skillNumbers[skill.id]}. ${skill.title}: ${skill.description}',
+                  style: const pw.TextStyle(fontSize: 8),
+                )),
           ],
           pw.SizedBox(height: 8),
         ],
