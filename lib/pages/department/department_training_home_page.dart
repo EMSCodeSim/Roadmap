@@ -18,6 +18,8 @@ import 'package:firepath/state/app_mode_controller.dart';
 import 'package:firepath/state/department_inbox_controller.dart';
 import 'package:firepath/state/app_state.dart';
 import 'package:firepath/widgets/firefighter_roadmap_app_bar.dart';
+import 'package:firepath/widgets/compact_page_header.dart';
+import 'package:firepath/widgets/modern_motion.dart';
 
 DepartmentReviewItem? resolveDepartmentReviewTarget(
   String targetId,
@@ -39,7 +41,7 @@ class DepartmentTrainingHomePage extends StatefulWidget {
 }
 
 class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
   final _api = ResponderRoadmapApi();
   final _careerRecordStore = CareerRecordStore();
   List<DepartmentTaskBookAssignment> _assignments = const [];
@@ -49,6 +51,9 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
   bool _loading = true;
   bool _refreshing = false;
   String? _error;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -492,17 +497,34 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final mode = context.watch<AppModeController>();
     final inbox = context.watch<DepartmentInboxController>();
     final active = _assignments.where((a) => _status(a) != 'Complete').toList();
     final oneOffAssignments = active.where((a) => a.isSingleTask).toList();
     final assignedTaskBooks = active.where((a) => !a.isSingleTask).toList();
     final canManageTrainingSheets = mode.isInstructor || mode.isAdmin;
+    final cs = Theme.of(context).colorScheme;
+    final deptName = (mode.departmentLink?.departmentName ?? '').trim().isNotEmpty
+        ? mode.departmentLink!.departmentName
+        : 'Department';
+    final roleLabel = mode.isAdmin
+        ? 'Admin'
+        : mode.isInstructor
+            ? 'Instructor'
+            : mode.isEvaluator
+                ? 'Evaluator'
+                : 'Member';
+
+    int countBy(bool Function(DepartmentTaskBookAssignment a) test) =>
+        _assignments.where(test).length;
+    final overdue = countBy((a) => _status(a) == 'Overdue');
+    final waiting = countBy((a) => _status(a).toLowerCase().contains('waiting'));
+    final returned = countBy((a) => _status(a).toLowerCase().contains('returned'));
+
     return Scaffold(
       appBar: FirefighterRoadmapAppBar(
-        subtitle: (mode.departmentLink?.departmentName ?? '').trim().isNotEmpty
-            ? mode.departmentLink!.departmentName
-            : 'Department',
+        subtitle: deptName,
         actions: [
           IconButton(
             tooltip: 'Department settings',
@@ -520,34 +542,27 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
-        child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+        child: CustomScrollView(
+          key: const PageStorageKey('department_training_home_scroll'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (_loading) const LinearProgressIndicator(),
-                  if (_error != null)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _error!,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.3,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                  SafeArea(
+                    bottom: false,
+                    child: CompactPageHeader(
+                      title: deptName,
+                      subtitle: '$roleLabel • ${inbox.unreadCount > 0 ? '${inbox.unreadCount} update${inbox.unreadCount == 1 ? '' : 's'}' : 'No new updates'}',
+                      trailingPill: HeaderPill(
+                        icon: inbox.syncState == DepartmentSyncState.synced ? Icons.cloud_done_outlined : Icons.cloud_sync_outlined,
+                        label: inbox.syncState == DepartmentSyncState.synced ? 'Synced' : 'Sync',
+                        color: inbox.syncState == DepartmentSyncState.synced ? FireOpsSemanticColors.green : FireOpsSemanticColors.amber,
                       ),
                     ),
+<<<<<<< Updated upstream
                   _SyncLine(inbox: inbox),
                   const SizedBox(height: 12),
                   GridView(
@@ -731,10 +746,383 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                         ),
                       ),
                     ],
+<<<<<<< Updated upstream
+=======
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
                   ),
                 ],
               ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  if (_error != null)
+                    FadeSlideIn(
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.warning_amber_rounded, color: cs.error),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _error!,
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.error, fontWeight: FontWeight.w800, height: 1.3),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 10),
+                  FadeSlideIn(delay: const Duration(milliseconds: 40), child: _SyncLine(inbox: inbox)),
+                  const SizedBox(height: 12),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 70),
+                    child: _CommandQuickActions(
+                      connected: mode.departmentLink != null,
+                      canCreateTrainingSheet: canManageTrainingSheets,
+                      onScan: () => context.push(AppRoutes.departmentQrScan),
+                      onTrainingSheets: () => context.push(AppRoutes.departmentTrainingSheets),
+                      onCreateTrainingSheet: _openClasses,
+                      onQualifications: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const DepartmentQualificationsPage(focusLookup: true)),
+                      ),
+                      onSettings: () => context.push(AppRoutes.departmentSettings),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 100),
+                    child: _OverviewMetricsRow(
+                      activeTaskBooks: assignedTaskBooks.length,
+                      activeAssignments: oneOffAssignments.length,
+                      overdue: overdue,
+                      waiting: waiting,
+                      returned: returned,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 130),
+                    child: _dashboardBox(
+                      id: 'attention',
+                      title: 'Needs Attention',
+                      icon: Icons.notification_important_outlined,
+                      count: _workQueue.length,
+                      subtitle: 'Pending work that needs your next step.',
+                      child: _CanonicalWorkQueue(items: _workQueue, onTap: _openWorkItem),
+                    ),
+                  ),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 160),
+                    child: _dashboardBox(
+                      id: 'assignments',
+                      title: 'Assignments',
+                      icon: Icons.assignment_outlined,
+                      count: oneOffAssignments.length,
+                      subtitle: 'One-off items assigned to you (not a full task book).',
+                      child: _Section(title: 'Assigned to you', items: oneOffAssignments, status: _status, onTap: _open),
+                    ),
+                  ),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 190),
+                    child: _dashboardBox(
+                      id: 'taskbooks',
+                      title: 'Task Books',
+                      icon: Icons.menu_book_outlined,
+                      count: assignedTaskBooks.length,
+                      subtitle: 'Department task books assigned to you for completion and sign-off.',
+                      child: _Section(title: 'Your department task books', items: assignedTaskBooks, status: _status, onTap: _open),
+                    ),
+                  ),
+                  if (canManageTrainingSheets)
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 220),
+                      child: _dashboardBox(
+                        id: 'instructors',
+                        title: 'Training Sheets',
+                        icon: Icons.school_outlined,
+                        count: _instructorTraining.length + _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)).length,
+                        subtitle: 'Create classes, finalize training sheets, and handle instructor approvals.',
+                        child: Column(children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: FilledButton.tonalIcon(
+                              onPressed: _openClasses,
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text('Create Training Sheet'),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          for (final item in _instructorTraining)
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              subtitle: Text(item.nextStep, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              trailing: const Icon(Icons.chevron_right_rounded),
+                              onTap: () => _openClass(item.id),
+                            ),
+                          for (final item in _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)))
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              subtitle: const Text('Not yet entered into RMS'),
+                              trailing: const Icon(Icons.chevron_right_rounded),
+                              onTap: () => _openClass(item.id),
+                            ),
+                          if (_instructorTraining.isEmpty && _rmsActions.isEmpty)
+                            const ListTile(contentPadding: EdgeInsets.zero, title: Text('No classes awaiting action')),
+                        ]),
+                      ),
+                    ),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 250),
+                    child: _dashboardBox(
+                      id: 'eligibility',
+                      title: 'Check Member Eligibility',
+                      icon: Icons.verified_user_outlined,
+                      count: 0,
+                      child: ListTile(
+                        title: const Text('Look up member qualifications'),
+                        subtitle: const Text('Check who is approved to drive, act as officer, or perform another department role.'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const DepartmentQualificationsPage(focusLookup: true)),
+                        ),
+                      ),
+                    ),
+                  ),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 280),
+                    child: _dashboardBox(
+                      id: 'complete',
+                      title: 'Complete',
+                      icon: Icons.check_circle_outline_rounded,
+                      count: _assignments.where((a) => _status(a) == 'Complete').length,
+                      subtitle: 'Finished items (kept for reference).',
+                      child: _Section(
+                        title: 'Completed items',
+                        items: _assignments.where((a) => _status(a) == 'Complete').toList(),
+                        status: _status,
+                        onTap: _open,
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class DepartmentAssignment {
+}
+
+class _QuickAction {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+  const _QuickAction({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap});
+}
+
+class _CommandQuickActions extends StatelessWidget {
+  final bool connected;
+  final bool canCreateTrainingSheet;
+  final VoidCallback onScan;
+  final VoidCallback onTrainingSheets;
+  final VoidCallback onCreateTrainingSheet;
+  final VoidCallback onQualifications;
+  final VoidCallback onSettings;
+
+  const _CommandQuickActions({
+    required this.connected,
+    required this.canCreateTrainingSheet,
+    required this.onScan,
+    required this.onTrainingSheets,
+    required this.onCreateTrainingSheet,
+    required this.onQualifications,
+    required this.onSettings,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final trainingBlue = Theme.of(context).brightness == Brightness.dark ? DarkModeColors.trainingBlue : LightModeColors.trainingBlue;
+    final skillsTeal = Theme.of(context).brightness == Brightness.dark ? DarkModeColors.skillsTeal : LightModeColors.skillsTeal;
+
+    final actions = <_QuickAction>[
+      if (connected)
+        _QuickAction(
+          icon: Icons.qr_code_scanner_rounded,
+          title: 'Scan training sheet',
+          subtitle: 'Capture completion fast.',
+          color: trainingBlue,
+          onTap: onScan,
+        ),
+      if (canCreateTrainingSheet)
+        _QuickAction(
+          icon: Icons.add_rounded,
+          title: 'Create training sheet',
+          subtitle: 'Instructor tools.',
+          color: skillsTeal,
+          onTap: onCreateTrainingSheet,
+        ),
+      _QuickAction(
+        icon: Icons.school_outlined,
+        title: 'Training sheets',
+        subtitle: 'Classes & rosters.',
+        color: skillsTeal,
+        onTap: onTrainingSheets,
+      ),
+      _QuickAction(
+        icon: Icons.verified_user_outlined,
+        title: 'Eligibility lookup',
+        subtitle: 'Check qualifications.',
+        color: cs.primary,
+        onTap: onQualifications,
+      ),
+      _QuickAction(
+        icon: Icons.settings_outlined,
+        title: 'Department settings',
+        subtitle: 'Preferences & access.',
+        color: cs.onSurfaceVariant,
+        onTap: onSettings,
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Quick actions', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+        const SizedBox(height: 10),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final spacing = 12.0;
+            final itemWidth = (constraints.maxWidth - spacing) / 2;
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: [
+                for (final action in actions)
+                  SizedBox(
+                    width: itemWidth,
+                    child: PressableScale(
+                      onTap: action.onTap,
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                height: 40,
+                                width: 40,
+                                decoration: BoxDecoration(
+                                  color: action.color.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(AppRadius.md),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(action.icon, color: action.color, size: 20),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(action.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+                              const SizedBox(height: 4),
+                              Text(action.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.2)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _OverviewMetricsRow extends StatelessWidget {
+  final int activeTaskBooks;
+  final int activeAssignments;
+  final int overdue;
+  final int waiting;
+  final int returned;
+
+  const _OverviewMetricsRow({
+    required this.activeTaskBooks,
+    required this.activeAssignments,
+    required this.overdue,
+    required this.waiting,
+    required this.returned,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final trainingBlue = Theme.of(context).brightness == Brightness.dark ? DarkModeColors.trainingBlue : LightModeColors.trainingBlue;
+
+    Widget metric({required String label, required String value, required IconData icon, required Color color}) {
+      return Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(children: [
+            Container(
+              height: 34,
+              width: 34,
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.md)),
+              alignment: Alignment.center,
+              child: Icon(icon, size: 18, color: color),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 1),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w800)),
+              ]),
+            ),
+          ]),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Department overview', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: metric(label: 'Task books', value: '$activeTaskBooks', icon: Icons.menu_book_outlined, color: trainingBlue)),
+          const SizedBox(width: 12),
+          Expanded(child: metric(label: 'Assignments', value: '$activeAssignments', icon: Icons.assignment_outlined, color: cs.primary)),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: metric(label: 'Overdue', value: '$overdue', icon: Icons.assignment_late_outlined, color: FireOpsSemanticColors.red)),
+          const SizedBox(width: 12),
+          Expanded(child: metric(label: 'Waiting', value: '$waiting', icon: Icons.hourglass_bottom_rounded, color: FireOpsSemanticColors.amber)),
+        ]),
+        const SizedBox(height: 12),
+        metric(label: 'Returned', value: '$returned', icon: Icons.undo_rounded, color: FireOpsSemanticColors.red),
+      ],
     );
   }
 }
