@@ -7,6 +7,7 @@ import 'package:firepath/models/career_record.dart';
 import 'package:firepath/services/advancement_analyzer.dart';
 import 'package:firepath/services/career_intelligence.dart';
 import 'package:firepath/services/career_pdf_export.dart';
+import 'package:firepath/services/pdf_text_sanitizer.dart';
 import 'package:firepath/state/app_state.dart';
 
 class PromotionPortfolioDraft {
@@ -150,7 +151,7 @@ class EditablePromotionPortfolio {
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.letter,
-        margin: const pw.EdgeInsets.fromLTRB(38, 34, 38, 34),
+        margin: const pw.EdgeInsets.fromLTRB(38, 18, 38, 30),
         footer: (context) => pw.Align(
           alignment: pw.Alignment.centerRight,
           child: pw.Text('Page ${context.pageNumber} of ${context.pagesCount}', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
@@ -191,7 +192,7 @@ class EditablePromotionPortfolio {
           if (draft.includeCompetencies) ...[
             pw.SizedBox(height: 12),
             _section('Promotion Competency Map'),
-            ...advancement.competencies.map((c) => _bullet('${c.title}: ${c.exampleCount}/${c.targetExamples} documented examples${c.supported ? ' — supported' : ' — build more evidence'}')),
+            ...advancement.competencies.map((c) => _bullet('${c.title}: ${c.exampleCount}/${c.targetExamples} documented examples${c.supported ? ' - supported' : ' - build more evidence'}')),
           ],
           pw.SizedBox(height: 12),
           _section('Interview Story Bank'),
@@ -220,7 +221,7 @@ class EditablePromotionPortfolio {
             if (advancement.evidenceGaps.isEmpty)
               _bullet('No current roadmap evidence gaps identified.')
             else
-              ...advancement.evidenceGaps.take(10).map((g) => _bullet('${g.requirement.name} — ${g.isComplete ? 'requirement is complete but supporting career evidence is missing' : 'requirement and supporting evidence still need attention'}')),
+              ...advancement.evidenceGaps.take(10).map((g) => _bullet('${g.requirement.name} - ${g.isComplete ? 'requirement is complete but supporting career evidence is missing' : 'requirement and supporting evidence still need attention'}')),
             _callout(advancement.recommendation.title, advancement.recommendation.reason),
           ],
           if (draft.includeChecklist) ...[
@@ -250,7 +251,8 @@ class EditablePromotionPortfolio {
     final contact = [identity.email, identity.phone, identity.location]
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
-        .join(' • ');
+        .map(pdfSafeText)
+        .join(' | ');
     return pw.Container(
       padding: const pw.EdgeInsets.all(18),
       decoration: pw.BoxDecoration(color: _navy, borderRadius: pw.BorderRadius.circular(6)),
@@ -262,8 +264,8 @@ class EditablePromotionPortfolio {
               children: [
                 pw.Text('PROMOTION PORTFOLIO', style: pw.TextStyle(color: PdfColors.white, fontSize: 18, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 4),
-                pw.Text(name, style: pw.TextStyle(color: _gold, fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                if (contact.isNotEmpty) pw.Text(contact, style: const pw.TextStyle(color: PdfColors.white, fontSize: 8.5)),
+                pw.Text(pdfSafeText(name), style: pw.TextStyle(color: _gold, fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                if (contact.isNotEmpty) pw.Text(pdfSafeText(contact), style: const pw.TextStyle(color: PdfColors.white, fontSize: 8.5)),
               ],
             ),
           ),
@@ -279,35 +281,35 @@ class EditablePromotionPortfolio {
     child: pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
       children: metrics.map((m) => pw.Column(children: [
-        pw.Text(m.$2, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: _navy)),
-        pw.Text(m.$1, style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
+        pw.Text(pdfSafeText(m.$2), style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: _navy)),
+        pw.Text(pdfSafeText(m.$1), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
       ])).toList(),
     ),
   );
 
   static pw.Widget _section(String title) => pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 5),
-    child: pw.Text(title.toUpperCase(), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: _navy)),
+    child: pw.Text(pdfSafeText(title.toUpperCase()), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: _navy)),
   );
 
   static pw.Widget _body(String text) => pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 4),
-    child: pw.Text(text, style: const pw.TextStyle(fontSize: 9.5, lineSpacing: 2)),
+    child: pw.Text(pdfSafeText(text), style: const pw.TextStyle(fontSize: 9.5, lineSpacing: 2)),
   );
 
   static pw.Widget _bullet(String text) => pw.Padding(
     padding: const pw.EdgeInsets.only(left: 8, bottom: 4),
     child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-      pw.Text('• ', style: pw.TextStyle(color: _gold, fontWeight: pw.FontWeight.bold)),
-      pw.Expanded(child: pw.Text(text, style: const pw.TextStyle(fontSize: 9.2, lineSpacing: 2))),
+      pw.Text('- ', style: pw.TextStyle(color: _gold, fontWeight: pw.FontWeight.bold)),
+      pw.Expanded(child: pw.Text(pdfSafeText(text), style: const pw.TextStyle(fontSize: 9.2, lineSpacing: 2))),
     ]),
   );
 
   static pw.Widget _recordBullet(CareerRecord r) {
     final impact = (r.impact ?? '').trim();
     final role = (r.roleOrAssignment ?? '').trim();
-    final extra = [if (role.isNotEmpty) role, if (impact.isNotEmpty) impact].join(' — ');
-    return _bullet('${r.date.month}/${r.date.day}/${r.date.year} — ${r.title}${extra.isEmpty ? '' : ': $extra'}');
+    final extra = [if (role.isNotEmpty) role, if (impact.isNotEmpty) impact].join(' - ');
+    return _bullet('${r.date.month}/${r.date.day}/${r.date.year} - ${r.title}${extra.isEmpty ? '' : ': $extra'}');
   }
 
   static pw.Widget _storyBlock(CareerRecord r) => pw.Container(
@@ -315,10 +317,10 @@ class EditablePromotionPortfolio {
     padding: const pw.EdgeInsets.all(9),
     decoration: pw.BoxDecoration(color: _light, borderRadius: pw.BorderRadius.circular(4)),
     child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-      pw.Text(r.title, style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: _navy)),
-      if ((r.roleOrAssignment ?? '').trim().isNotEmpty) pw.Text('Role: ${r.roleOrAssignment!.trim()}', style: const pw.TextStyle(fontSize: 8.5)),
-      if ((r.summary ?? '').trim().isNotEmpty) pw.Text('Situation / action: ${r.summary!.trim()}', style: const pw.TextStyle(fontSize: 8.5)),
-      if ((r.impact ?? '').trim().isNotEmpty) pw.Text('Result / impact: ${r.impact!.trim()}', style: const pw.TextStyle(fontSize: 8.5)),
+      pw.Text(pdfSafeText(r.title), style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: _navy)),
+      if ((r.roleOrAssignment ?? '').trim().isNotEmpty) pw.Text(pdfSafeText('Role: ${r.roleOrAssignment!.trim()}'), style: const pw.TextStyle(fontSize: 8.5)),
+      if ((r.summary ?? '').trim().isNotEmpty) pw.Text(pdfSafeText('Situation / action: ${r.summary!.trim()}'), style: const pw.TextStyle(fontSize: 8.5)),
+      if ((r.impact ?? '').trim().isNotEmpty) pw.Text(pdfSafeText('Result / impact: ${r.impact!.trim()}'), style: const pw.TextStyle(fontSize: 8.5)),
     ]),
   );
 
@@ -327,9 +329,9 @@ class EditablePromotionPortfolio {
     padding: const pw.EdgeInsets.all(9),
     decoration: pw.BoxDecoration(color: _light, borderRadius: pw.BorderRadius.circular(4)),
     child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-      pw.Text(title, style: pw.TextStyle(fontSize: 9.3, fontWeight: pw.FontWeight.bold, color: _navy)),
+      pw.Text(pdfSafeText(title), style: pw.TextStyle(fontSize: 9.3, fontWeight: pw.FontWeight.bold, color: _navy)),
       pw.SizedBox(height: 2),
-      pw.Text(detail, style: const pw.TextStyle(fontSize: 8.7, lineSpacing: 2)),
+      pw.Text(pdfSafeText(detail), style: const pw.TextStyle(fontSize: 8.7, lineSpacing: 2)),
     ]),
   );
 
