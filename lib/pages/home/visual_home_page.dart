@@ -134,7 +134,7 @@ class _VisualHomePageState extends State<VisualHomePage> with AutomaticKeepAlive
       ),
       HomeSectionType.trainingIdeas: _TrainingIdeasCard(
         onOpenEms: () => _openExternal(Uri.parse('https://emscodesim.com/roadmap/')),
-        onOpenFire: () => _openExternal(Uri.parse('https://fireopssim.com/drill-library.html')),
+        onOpenFire: () => _openExternal(Uri.parse('https://fireopssim.com/roadmap/')),
       ),
       HomeSectionType.department: _DepartmentMiniCard(
         unread: department.unreadCount,
