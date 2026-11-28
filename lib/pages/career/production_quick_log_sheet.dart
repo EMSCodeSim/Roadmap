@@ -12,10 +12,25 @@ import 'package:firepath/state/app_mode_controller.dart';
 /// Department instructors/admins get a direct Training Sheet action here so
 /// field workflows start from the universal Quick Add button rather than from
 /// a separate Department-page shortcut.
-class ProductionQuickLogSheet extends StatelessWidget {
+class ProductionQuickLogSheet extends StatefulWidget {
   final LogPrefill? prefill;
 
   const ProductionQuickLogSheet({super.key, this.prefill});
+
+  @override
+  State<ProductionQuickLogSheet> createState() =>
+      _ProductionQuickLogSheetState();
+}
+
+class _ProductionQuickLogSheetState extends State<ProductionQuickLogSheet> {
+  late bool _showMainQuickAddActions;
+
+  @override
+  void initState() {
+    super.initState();
+    _showMainQuickAddActions =
+        (widget.prefill?.title ?? '').trim().isEmpty;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +47,7 @@ class ProductionQuickLogSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (isDepartmentConnected)
+          if (isDepartmentConnected && _showMainQuickAddActions)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: Column(
@@ -70,10 +85,14 @@ class ProductionQuickLogSheet extends StatelessWidget {
               ),
             ),
           SimpleQuickLogSheet(
-            prefill: prefill,
+            prefill: widget.prefill,
             // Department QR access is owned by the gated action above. Never
             // show the legacy QR shortcut to standalone personal users.
             showDepartmentQrAction: false,
+            onRootViewChanged: (isRoot) {
+              if (_showMainQuickAddActions == isRoot) return;
+              setState(() => _showMainQuickAddActions = isRoot);
+            },
           ),
         ],
       ),
