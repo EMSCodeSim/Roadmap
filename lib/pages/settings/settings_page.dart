@@ -194,6 +194,17 @@ class _SettingsPageState extends State<SettingsPage> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _customizeHomeScreen,
                 ),
+                const Divider(height: 1),
+                ListTile(
+                  key: const Key('settings-phone-notifications'),
+                  leading: const Icon(Icons.notifications_active_outlined),
+                  title: const Text('Phone notifications'),
+                  subtitle: const Text(
+                    'Task Books, Assignments, and Needs Attention alerts',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push(AppRoutes.departmentSettings),
+                ),
               ],
             ),
             const SizedBox(height: 18),
