@@ -291,7 +291,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
               title: 'EMS Training',
               subtitle: 'Open EMSCodeSim',
               onTap: () => Navigator.of(sheetContext).pop(
-                Uri.parse('https://emscodesim.com/ems-training-library.html'),
+                Uri.parse('https://emscodesim.com/roadmap/'),
               ),
             ),
             const SizedBox(height: 10),
