@@ -94,8 +94,7 @@ class _CareerInboxPreviewState extends State<CareerInboxPreview> {
                     const SizedBox(height: 2),
                     Text(
                       '${items.length} item${items.length == 1 ? '' : 's'} • ${first.title}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 3,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],

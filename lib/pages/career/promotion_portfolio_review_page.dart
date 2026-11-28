@@ -393,8 +393,7 @@ class _RecordChoice extends StatelessWidget {
           detail.isEmpty
               ? '${record.type.label} • ${record.date.month}/${record.date.day}/${record.date.year}'
               : '${record.type.label} • $detail',
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
+          maxLines: 6,
         ),
         controlAffinity: ListTileControlAffinity.leading,
       ),

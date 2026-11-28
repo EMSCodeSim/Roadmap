@@ -1002,7 +1002,7 @@ class _PrereqPicker extends StatelessWidget {
             children: all.map((r) {
               final active = selected.contains(r.id);
               return FilterChip(
-                label: Text(r.name, overflow: TextOverflow.ellipsis),
+                label: Text(r.name, maxLines: 3),
                 selected: active,
                 onSelected: (v) {
                   final next = [...selected];

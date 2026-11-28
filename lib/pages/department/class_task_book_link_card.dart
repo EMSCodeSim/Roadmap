@@ -103,7 +103,7 @@ class _ClassTaskBookLinkCardState extends State<ClassTaskBookLinkCard> {
             decoration: const InputDecoration(labelText: 'Published Task Book', border: OutlineInputBorder()),
             items: _books!.map((book) => DropdownMenuItem<String>(
               value: book['id'] as String,
-              child: Text(book['title']?.toString() ?? 'Task Book', overflow: TextOverflow.ellipsis),
+              child: Text(book['title']?.toString() ?? 'Task Book', maxLines: 3),
             )).toList(),
             onChanged: _saving ? null : (value) => setState(() => _selectedBook = value),
           ),

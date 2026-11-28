@@ -143,8 +143,7 @@ class _ActionRow extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       item.reason,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 4,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: cs.onSurfaceVariant,
                             height: 1.35,

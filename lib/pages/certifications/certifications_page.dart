@@ -525,9 +525,7 @@ class _CertificationsPageState extends State<CertificationsPage> {
                                                     const SizedBox(height: 3),
                                                     Text(
                                                       expirationText,
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
+                                                      maxLines: 3,
                                                       style: Theme.of(context)
                                                           .textTheme
                                                           .bodySmall

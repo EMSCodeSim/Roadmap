@@ -894,8 +894,7 @@ class _EvidenceGapCard extends StatelessWidget {
               requirement.description.trim().isEmpty
                   ? 'No personal career evidence is linked to this requirement yet.'
                   : requirement.description,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
+              maxLines: 6,
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
@@ -1034,8 +1033,7 @@ class _StoryCard extends StatelessWidget {
               const SizedBox(height: 7),
               Text(
                 'Result: ${record.impact}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                maxLines: 5,
               ),
             ],
           ],

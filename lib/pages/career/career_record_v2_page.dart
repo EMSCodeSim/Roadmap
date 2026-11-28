@@ -1383,8 +1383,7 @@ class _RecordsCategoryCard extends StatelessWidget {
                 const Spacer(),
                 Text(
                   title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 3,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w900,
                         height: 1.15,
@@ -1393,8 +1392,7 @@ class _RecordsCategoryCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   detail,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 4,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: alert ? accent : cs.onSurfaceVariant,
                         fontWeight: alert ? FontWeight.w800 : null,
@@ -1451,8 +1449,7 @@ class _ActivityFilterCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: 3,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           color: selected
                               ? cs.onPrimaryContainer
@@ -1526,19 +1523,19 @@ class _PeriodControls extends StatelessWidget {
             segments: const [
               ButtonSegment(
                 value: _RecordPeriod.month,
-                label: Text('MONTH'),
+                label: _PeriodSegmentLabel('MONTH'),
               ),
               ButtonSegment(
                 value: _RecordPeriod.year,
-                label: Text('YEAR'),
+                label: _PeriodSegmentLabel('YEAR'),
               ),
               ButtonSegment(
                 value: _RecordPeriod.custom,
-                label: Text('CUSTOM'),
+                label: _PeriodSegmentLabel('CUSTOM'),
               ),
               ButtonSegment(
                 value: _RecordPeriod.career,
-                label: Text('ALL'),
+                label: _PeriodSegmentLabel('ALL'),
               ),
             ],
             selected: {period},
@@ -1576,6 +1573,18 @@ class _PeriodControls extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PeriodSegmentLabel extends StatelessWidget {
+  final String text;
+
+  const _PeriodSegmentLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(text, maxLines: 1, softWrap: false),
+      );
 }
 
 class _SummaryGrid extends StatelessWidget {
@@ -1678,8 +1687,7 @@ class _SummaryCard extends StatelessWidget {
           if (metric.detail != null)
             Text(
               metric.detail!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: 3,
               style: Theme.of(context)
                   .textTheme
                   .labelSmall
@@ -1826,8 +1834,7 @@ class _RecordCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         record.summary!.trim(),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        maxLines: 5,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                               height: 1.3,

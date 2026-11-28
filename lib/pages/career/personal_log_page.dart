@@ -1486,8 +1486,7 @@ class _QuickLogCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 tracker.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                maxLines: 3,
                 style: const TextStyle(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 2),
@@ -1500,8 +1499,7 @@ class _QuickLogCard extends StatelessWidget {
               if (successLabel != null)
                 Text(
                   successLabel!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: cs.primary,
                     fontWeight: FontWeight.w800,
@@ -1636,8 +1634,7 @@ class _RecentRecord extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 3),
                     child: Text(
                       record.summary!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 5,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),

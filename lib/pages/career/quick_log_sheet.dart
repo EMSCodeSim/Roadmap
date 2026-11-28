@@ -361,15 +361,13 @@ class _Chooser extends StatelessWidget {
                   children: [
                     Text(
                       s.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 3,
                       style: const TextStyle(fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       s.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 3,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -454,7 +452,8 @@ class _Chooser extends StatelessWidget {
                       icon: Icon(_trackerIcon(tracker.iconName), size: 18),
                       label: Text(
                         tracker.title,
-                        overflow: TextOverflow.ellipsis,
+                        maxLines: 3,
+                        textAlign: TextAlign.center,
                       ),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -699,7 +698,7 @@ class _DriveApparatusPicker extends StatelessWidget {
           return FilledButton.tonalIcon(
             onPressed: () => onSelected(profile),
             icon: Icon(_apparatusIcon(profile.kind), size: 19),
-            label: Text(profile.name, overflow: TextOverflow.ellipsis),
+            label: Text(profile.name, maxLines: 3, textAlign: TextAlign.center),
           );
         },
       ),

@@ -239,8 +239,7 @@ class _RoadmapHeroCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     goal,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: 4,
                     style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900, height: 1.15),
                   ),
                   const SizedBox(height: 6),
@@ -434,8 +433,7 @@ class _RoadmapRequirementRow extends StatelessWidget {
       ),
       title: Text(
         req.name,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
+        maxLines: 4,
         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
       ),
       subtitle: Padding(
@@ -452,8 +450,7 @@ class _RoadmapRequirementRow extends StatelessWidget {
             Flexible(
               child: Text(
                 req.type.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
                 style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ),

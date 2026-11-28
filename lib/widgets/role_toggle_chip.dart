@@ -67,7 +67,8 @@ class RoleToggleChip extends StatelessWidget {
                     Flexible(
                       child: Text(
                         label,
-                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                        textAlign: TextAlign.center,
                         style: theme.textTheme.labelLarge?.copyWith(
                           color: fg,
                           fontWeight: FontWeight.w700,

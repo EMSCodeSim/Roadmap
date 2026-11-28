@@ -59,7 +59,7 @@ class PortalAssignmentsPage extends StatelessWidget {
                 onSelectChanged: (_) => context.go('${AppRoutes.portal}/members/${a.memberId}'),
                 cells: [
                   DataCell(Text(member?.name ?? '—', style: const TextStyle(fontWeight: FontWeight.w900))),
-                  DataCell(Text(_taskBookTitle(portal, a), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  DataCell(Text(_taskBookTitle(portal, a), maxLines: 3)),
                   DataCell(Text('${(progress * 100).round()}%')),
                   DataCell(Text('$pending')),
                   DataCell(Text(due == null ? '—' : '${due.month}/${due.day}/${due.year}')),

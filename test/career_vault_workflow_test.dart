@@ -59,7 +59,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(AlertDialog), findsNothing);
-    expect(find.text('Advance your career'), findsOneWidget);
+    expect(find.text('My development'), findsOneWidget);
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );
@@ -98,33 +98,24 @@ void main() {
       await tester.pumpWidget(
         ChangeNotifierProvider<AppState>.value(
           value: app,
-          child: MaterialApp(home: CareerVaultPage(api: api)),
+          child: MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: const TextScaler.linear(1.6),
+              ),
+              child: child!,
+            ),
+            home: CareerVaultPage(api: api),
+          ),
         ),
       );
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
       expect(find.text('Roadmap'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('Advancement milestones'),
-        250,
-        scrollable: find.byWidgetPredicate(
-          (widget) =>
-              widget is Scrollable &&
-              widget.axisDirection == AxisDirection.down,
-        ),
-      );
-      expect(find.text('Advancement milestones'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('Building qualifications'),
-        250,
-        scrollable: find.byWidgetPredicate(
-          (widget) =>
-              widget is Scrollable &&
-              widget.axisDirection == AxisDirection.down,
-        ),
-      );
-      expect(find.text('Building qualifications'), findsOneWidget);
-      expect(find.text('Paramedic'), findsOneWidget);
-      expect(find.text('Credential added'), findsOneWidget);
+      expect(find.text('My development'), findsOneWidget);
+      expect(find.text('Qualifications'), findsOneWidget);
+      final qualifications = tester.widget<Text>(find.text('Qualifications'));
+      expect(qualifications.softWrap, isFalse);
+      expect(qualifications.overflow, isNull);
       await tester.scrollUntilVisible(
         find.text('Career opportunities'),
         250,
@@ -132,12 +123,13 @@ void main() {
           (widget) =>
               widget is Scrollable &&
               widget.axisDirection == AxisDirection.down,
-        ),
+        ).first,
       );
       expect(find.text('Career opportunities'), findsOneWidget);
       expect(find.text('Application Center'), findsOneWidget);
-      expect(find.text('Job history'), findsOneWidget);
-      expect(find.text('Job search'), findsOneWidget);
+      expect(find.text('Job Search'), findsOneWidget);
+      expect(find.text('More roadmap tools'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     },
     timeout: const Timeout(Duration(seconds: 45)),
   );

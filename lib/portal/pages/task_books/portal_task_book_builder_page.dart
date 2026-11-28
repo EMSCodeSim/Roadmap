@@ -352,8 +352,7 @@ class _SectionEditor extends StatelessWidget {
                           title: Text(r.title, style: const TextStyle(fontWeight: FontWeight.w900)),
                           subtitle: Text(
                             r.instructions.isEmpty ? '—' : r.instructions,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: 3,
                             style: TextStyle(color: cs.onSurfaceVariant, height: 1.35),
                           ),
                           trailing: StatusPill(text: r.evidenceType.label, icon: Icons.attachment, maxWidth: 190),

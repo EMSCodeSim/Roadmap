@@ -72,8 +72,7 @@ class ProfilePage extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             role ?? 'Set your current role',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: 3,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
@@ -82,8 +81,7 @@ class ProfilePage extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               department,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              maxLines: 3,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: cs.onSurfaceVariant,
                               ),
@@ -209,8 +207,7 @@ class _ProfileLinkCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 4,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),

@@ -147,7 +147,7 @@ class QualificationTaskBookPage extends StatelessWidget {
                 child: ListTile(
                   leading: const Icon(Icons.verified_outlined),
                   title: Text('Official ${authority.stateCode} reference', style: const TextStyle(fontWeight: FontWeight.w900)),
-                  subtitle: Text(authority.sourceTitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(authority.sourceTitle, maxLines: 5),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => launchUrl(Uri.parse(authority.sourceUrl), mode: LaunchMode.externalApplication),
                 ),
@@ -1209,8 +1209,7 @@ class _CertificationPhaseRail extends StatelessWidget {
                       const Spacer(),
                       Text(
                         label,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        maxLines: 4,
                         style: Theme.of(context).textTheme.labelMedium?.copyWith(
                               fontWeight: FontWeight.w900,
                             ),
@@ -1560,8 +1559,7 @@ class _TaskTile extends StatelessWidget {
                         if ((task.fireOpsObjective ?? '').trim().isNotEmpty)
                           Text(
                             task.fireOpsObjective!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: 4,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: cs.onSurfaceVariant,
                                 ),

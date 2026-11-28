@@ -170,7 +170,7 @@ class _DepartmentClassesPageState extends State<DepartmentClassesPage> {
                 ListTile(leading: const Icon(Icons.note_add_outlined), title: const Text('Blank Training Sheet'), onTap: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(null)),
                 ...templates.where((t) => category.isEmpty || t.topic == category).map((t) =>
                   ListTile(leading: const Icon(Icons.copy_all_outlined), title: Text(t.name),
-                    subtitle: Text(_trainingTemplateSummary(t), maxLines: 3, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(_trainingTemplateSummary(t), maxLines: 6),
                     onTap: () => sheetContext.pop<DepartmentTrainingSheetTemplate?>(t))),
               ])),
             ]),
@@ -481,7 +481,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
                       _trainingComponentSummary(component).isEmpty
                         ? component.name
                         : '${component.name} · ${_trainingComponentSummary(component)}',
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 4,
                     ))),
                 ],
                 onChanged: (value) {
@@ -500,7 +500,7 @@ class _CreateTrainingSheetState extends State<_CreateTrainingSheet> {
                       _trainingComponentSummary(component).isEmpty
                         ? component.name
                         : '${component.name} · ${_trainingComponentSummary(component)}',
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 4,
                     ))),
                 ],
                 onChanged: (value) {
@@ -1749,7 +1749,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                         hint: const Text('Choose CE categories for this class'),
                         items: ceOptions.map((option) => DropdownMenuItem(
                           value: option['key'] as String,
-                          child: Text(option['label'] as String, overflow: TextOverflow.ellipsis),
+                          child: Text(option['label'] as String, maxLines: 3),
                         )).toList(growable: false),
                         onChanged: (value) => update(() {
                           selectedCeOptionKey = value ?? '';
@@ -3211,8 +3211,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                     title: Text(template.name),
                     subtitle: Text(
                       _trainingTemplateSummary(template),
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 8,
                     ),
                     trailing: Icon(
                       Icons.chevron_right_rounded,
@@ -3422,8 +3421,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                                     ? 'No grade recorded · Tap the grade icon'
                                     : 'Tap to grade checklist')
                                 : summary,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: 5,
                           ),
                           trailing: hasGrades
                               ? IconButton(

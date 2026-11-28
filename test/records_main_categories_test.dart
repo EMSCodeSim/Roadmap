@@ -41,6 +41,9 @@ void main() {
     await tester.tap(find.text('Daily Logs'));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('DAILY LOG ENTRIES'), findsOneWidget);
+    final customPeriod = tester.widget<Text>(find.text('CUSTOM'));
+    expect(customPeriod.softWrap, isFalse);
+    expect(find.ancestor(of: find.text('CUSTOM'), matching: find.byType(FittedBox)), findsOneWidget);
     await tester.tap(find.byTooltip('Close'));
     await tester.pump(const Duration(milliseconds: 400));
 

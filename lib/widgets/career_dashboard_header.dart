@@ -69,8 +69,7 @@ class CareerDashboardHeader extends StatelessWidget {
                   children: [
                     Text(
                       roleLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                             color: Colors.white.withValues(alpha: 0.82),
                             fontWeight: FontWeight.w800,
@@ -80,8 +79,7 @@ class CareerDashboardHeader extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         departmentLabel!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Colors.white.withValues(alpha: 0.72),
                               fontWeight: FontWeight.w700,
@@ -96,8 +94,7 @@ class CareerDashboardHeader extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             goalTitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            maxLines: 4,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -133,15 +130,17 @@ class CareerDashboardHeader extends StatelessWidget {
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
-                  height: 52,
-                  child: FilledButton.icon(
-                    onPressed: onAction,
-                    icon: const Icon(Icons.arrow_forward_rounded),
-                    label: Text(actionLabel),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: cs.secondary,
-                      foregroundColor: cs.onSecondary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 52),
+                    child: FilledButton.icon(
+                      onPressed: onAction,
+                      icon: const Icon(Icons.arrow_forward_rounded),
+                      label: Text(actionLabel),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: cs.secondary,
+                        foregroundColor: cs.onSecondary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                      ),
                     ),
                   ),
                 ),

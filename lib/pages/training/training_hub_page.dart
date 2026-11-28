@@ -560,10 +560,14 @@ class _StatsStrip extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(values[i].$1, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: cs.primary)),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(values[i].$1, maxLines: 1, softWrap: false,
+                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: cs.primary)),
+                      ),
                       const SizedBox(height: 3),
-                      Text(values[i].$2, maxLines: 2, overflow: TextOverflow.ellipsis,
+                      Text(values[i].$2, maxLines: 3,
                           style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant)),
                     ],
                   ),
@@ -642,7 +646,7 @@ class _CredentialCard extends StatelessWidget {
             ...urgent.map((item) => ListTile(
                   dense: true,
                   leading: Icon(item.isExpired ? Icons.error_outline : Icons.schedule_outlined),
-                  title: Text(item.cert.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: Text(item.cert.name, maxLines: 3),
                   subtitle: Text(_certDateSummary(item.cert)),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: onOpen,
@@ -710,7 +714,7 @@ class _TrainingHistoryCard extends StatelessWidget {
                 ListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
-                  title: Text(record.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: Text(record.title, maxLines: 3),
                   subtitle: Text(CareerStats.formatDate(record.date) + '  ·  ' + (record.category.trim().isEmpty ? 'Training' : record.category)),
                   trailing: Text(record.hours == null ? '' : CareerStats.formatDurationHours(record.hours!)),
                   onTap: onOpen,
@@ -751,7 +755,7 @@ class _RecordPreviewCard extends StatelessWidget {
               ListTile(
                 dense: true,
                 leading: Icon(_iconFor(record.type)),
-                title: Text(record.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                title: Text(record.title, maxLines: 3),
                 subtitle: Text(CareerStats.formatDate(record.date) + '  ·  ' + record.type.shortLabel),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: onOpen,
@@ -769,7 +773,7 @@ class _BreakdownRow extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(children: [
-          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
+          Expanded(child: Text(label, maxLines: 3)),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
         ]),
       );

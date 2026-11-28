@@ -628,15 +628,15 @@ class _DepartmentTrainingHomePageState extends State<DepartmentTrainingHomePage>
                           for (final item in _instructorTraining)
                             ListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              subtitle: Text(item.nextStep, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              title: Text(item.title, maxLines: 3),
+                              subtitle: Text(item.nextStep, maxLines: 4),
                               trailing: const Icon(Icons.chevron_right_rounded),
                               onTap: () => _openClass(item.id),
                             ),
                           for (final item in _rmsActions.where((item) => !_instructorTraining.any((mine) => mine.id == item.id)))
                             ListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              title: Text(item.title, maxLines: 3),
                               subtitle: const Text('Not yet entered into RMS'),
                               trailing: const Icon(Icons.chevron_right_rounded),
                               onTap: () => _openClass(item.id),
@@ -737,7 +737,7 @@ class _OverviewMetricsRow extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
                 const SizedBox(height: 1),
-                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w800)),
+                Text(label, maxLines: 3, style: theme.textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w800)),
               ]),
             ),
           ]),
@@ -863,8 +863,7 @@ class _DepartmentStatusPill extends StatelessWidget {
       ),
       child: Text(
         label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        maxLines: 2,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: color,
               fontWeight: FontWeight.w800,

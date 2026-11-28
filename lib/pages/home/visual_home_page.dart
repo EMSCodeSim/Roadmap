@@ -296,7 +296,7 @@ class _HomeGoalCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(goalTitle ?? 'Choose your career destination', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        Text(goalTitle ?? 'Choose your career destination', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900), maxLines: 4),
                         const SizedBox(height: 6),
                         Text(progressLabel, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, fontWeight: FontWeight.w700)),
                       ],
@@ -365,9 +365,9 @@ class _NextBestStepCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900), maxLines: 4),
                         const SizedBox(height: 6),
-                        Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.25, fontWeight: FontWeight.w600), maxLines: 3, overflow: TextOverflow.ellipsis),
+                        Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.25, fontWeight: FontWeight.w600), maxLines: 5),
                       ],
                     ),
                   ),

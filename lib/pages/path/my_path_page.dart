@@ -617,8 +617,7 @@ class _CareerPathOverview extends StatelessWidget {
                           Expanded(
                             child: Text(
                               stage,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                              maxLines: 4,
                               style: Theme.of(context)
                                   .textTheme
                                   .labelLarge
@@ -825,8 +824,7 @@ class _SpecialtyPathsSection extends StatelessWidget {
                 ),
                 subtitle: Text(
                   '${state.specialtyPathStatus(specialty.id)} · ${specialty.description}',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 5,
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => _openSpecialty(context, specialty),
@@ -1325,7 +1323,7 @@ class _QuickCaptureTile extends StatelessWidget {
                 children: [
                   Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 2),
-                  Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.3)),
+                  Text(subtitle, maxLines: 4, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.3)),
                 ],
               ),
             ),

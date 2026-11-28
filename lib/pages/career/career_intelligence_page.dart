@@ -525,8 +525,7 @@ class _TimelineItem extends StatelessWidget {
                 if ((record.impact ?? '').trim().isNotEmpty)
                   Text(
                     record.impact!.trim(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: 5,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),

@@ -172,8 +172,7 @@ class CertificationRenewalTile extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         renewalSummary!.trim(),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        maxLines: 4,
                         style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface, height: 1.35, fontWeight: FontWeight.w700),
                       ),
                     ],

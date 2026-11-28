@@ -50,13 +50,16 @@ class AppCardTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                Text(
+                  title,
+                  maxLines: 3,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
                 if ((subtitle ?? '').trim().isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!.trim(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: 4,
                     style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.25),
                   ),
                 ],

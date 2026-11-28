@@ -682,7 +682,7 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                                 value: entry.key,
                                 child: Text(
                                   entry.value,
-                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 3,
                                 ),
                               ),
                             ),
@@ -1182,20 +1182,26 @@ class _CareerVaultPageState extends State<CareerVaultPage> {
                   subtitle: 'Open a focused view of the part of your career you want to develop.',
                 ),
                 const SizedBox(height: 10),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: growthCategories.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 1.9,
-                  ),
-                  itemBuilder: (context, index) => _GrowthCategoryCard(
-                    category: growthCategories[index],
-                    onTap: () => openDevelopment(index),
-                  ),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final scaledBody = MediaQuery.textScalerOf(context).scale(16);
+                    final useSingleColumn = constraints.maxWidth < 340 || scaledBody > 20;
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: growthCategories.length,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: useSingleColumn ? 1 : 2,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: useSingleColumn ? 3.15 : 1.75,
+                      ),
+                      itemBuilder: (context, index) => _GrowthCategoryCard(
+                        category: growthCategories[index],
+                        onTap: () => openDevelopment(index),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 18),
                 _careerOpportunityTools(),
@@ -1271,41 +1277,43 @@ class _GrowthCategoryCard extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              CircleAvatar(
-                radius: 19,
-                backgroundColor: cs.primaryContainer,
-                child: Icon(category.icon, size: 20, color: cs.primary),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 19,
+                    backgroundColor: cs.primaryContainer,
+                    child: Icon(category.icon, size: 20, color: cs.primary),
+                  ),
+                  const Spacer(),
+                  Icon(Icons.chevron_right_rounded, size: 20, color: cs.onSurfaceVariant),
+                ],
               ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      category.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            height: 1.1,
-                          ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      category.value,
-                      maxLines: 1,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                  ],
+              const Spacer(),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  category.title,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, size: 20, color: cs.onSurfaceVariant),
+              const SizedBox(height: 3),
+              Text(
+                category.value,
+                maxLines: 1,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
             ],
           ),
         ),

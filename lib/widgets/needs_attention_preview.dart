@@ -119,8 +119,7 @@ class _NeedsAttentionPreviewState extends State<NeedsAttentionPreview> {
                   Expanded(
                     child: Text(
                       item.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 4,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),

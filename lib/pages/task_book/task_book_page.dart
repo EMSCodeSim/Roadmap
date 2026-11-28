@@ -156,8 +156,7 @@ class TaskBookPage extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Active: $activeLabel',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 3,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant, height: 1.35),
                     ),
                     const SizedBox(height: 12),
