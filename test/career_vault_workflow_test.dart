@@ -133,6 +133,11 @@ void main() {
       expect(find.text('Career opportunities'), findsOneWidget);
       expect(find.text('Application Center'), findsOneWidget);
       expect(find.text('Job Search'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('More roadmap tools'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('More roadmap tools'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
