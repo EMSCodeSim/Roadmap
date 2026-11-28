@@ -6,6 +6,27 @@ String formatTrainingOverallResult(String finalResult) {
   return 'Overall: ${value.replaceAll('_', ' ')}';
 }
 
+/// Returns numbered roster columns in printable groups. Long checklists place
+/// checklist items down the page and these student numbers across the page.
+List<List<int>> trainingRosterColumnBatches(
+  int studentCount, {
+  int maxStudentsPerPage = 8,
+}) {
+  if (studentCount <= 0) return const <List<int>>[<int>[]];
+  assert(maxStudentsPerPage > 0);
+  return <List<int>>[
+    for (var start = 0; start < studentCount; start += maxStudentsPerPage)
+      <int>[
+        for (
+          var index = start;
+          index < studentCount && index < start + maxStudentsPerPage;
+          index++
+        )
+          index,
+      ],
+  ];
+}
+
 String formatTrainingScoreValue(Object? value, String type) {
   if (value == null || value.toString().trim().isEmpty) return 'Not recorded';
   if (type == 'CHECKBOX') return value == true || value.toString().toLowerCase() == 'true' ? 'Yes' : 'No';
