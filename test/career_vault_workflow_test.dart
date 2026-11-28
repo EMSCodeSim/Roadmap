@@ -111,6 +111,11 @@ void main() {
       );
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
       expect(find.text('Roadmap'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('My development'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('My development'), findsOneWidget);
       expect(find.text('Qualifications'), findsOneWidget);
       final qualifications = tester.widget<Text>(find.text('Qualifications'));
