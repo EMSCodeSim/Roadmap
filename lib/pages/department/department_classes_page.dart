@@ -2379,9 +2379,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           style: pw.TextStyle(fontSize: 19, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey900)),
         pw.Text('TRAINING SHEET', textAlign: pw.TextAlign.center,
           style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-        if (detail.status != 'COMPLETE')
-          pw.Text('DRAFT - NOT FINALIZED OR APPROVED', textAlign: pw.TextAlign.center,
-            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 4),
         pw.Divider(color: PdfColors.blueGrey900, thickness: 1),
       ]),
@@ -2497,12 +2494,6 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 textAlign: pw.TextAlign.center,
                 style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
               ),
-              if (detail.status != 'COMPLETE')
-                pw.Text(
-                  'DRAFT - NOT FINALIZED OR APPROVED',
-                  textAlign: pw.TextAlign.center,
-                  style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
-                ),
               pw.SizedBox(height: 3),
               pw.Divider(color: PdfColors.blueGrey900, thickness: 1),
             ],
