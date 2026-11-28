@@ -85,6 +85,20 @@ void main() {
     expect(find.byKey(const Key('quick_add_training_sheet')), findsOneWidget);
     expect(find.text('Scan Training Sheet'), findsOneWidget);
     expect(find.byKey(const Key('quick_add_scan_class_qr')), findsOneWidget);
+
+    await tester.ensureVisible(find.text('DRIVING'));
+    await tester.tap(find.text('DRIVING'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Which apparatus?'), findsOneWidget);
+    expect(find.text('Create Training Sheet'), findsNothing);
+    expect(find.text('Scan Training Sheet'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Create Training Sheet'), findsOneWidget);
+    expect(find.text('Scan Training Sheet'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
