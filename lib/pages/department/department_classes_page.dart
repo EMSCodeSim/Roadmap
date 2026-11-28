@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 52851)
+Total output lines: 4144
+
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
@@ -1877,271 +1880,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
             actions: [
               TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
               FilledButton(
-                onPressed: overAllocated || invalidCeIncrement || selectedTemplateId.isEmpty
-                    ? null
-                    : () {
-                        final computedMinutes = TrainingTimeCalculator.elapsedMinutes(start, end);
-                        Navigator.pop(dialogContext, <String, dynamic>{
-                          'start': start,
-                          'end': end,
-                          'notes': narrative.text,
-                          'location': station.text,
-                          'station': station.text,
-                          'shift': shift,
-                          'trainingCategory': trainingCategory,
-                          'trainingSheetTemplateId': selectedTemplateId,
-                          // Back-compat: creditHours remains a double, derived from elapsed minutes when possible.
-                          'hours': computedMinutes == null
-                              ? TrainingTimeCalculator.quarterHoursFromMinutes(
-                                  ((double.tryParse(hours.text.trim()) ?? 0.0) * 60).round(),
-                                )
-                              : TrainingTimeCalculator.quarterHoursFromMinutes(computedMinutes),
-                          'ceCredits': <String, double>{
-                            for (final category in ceCategories)
-                              category: parseHoursToMinutes(ceControllers[category]?.text ?? '') / 60.0,
-                          },
-                        });
-                      },
-                child: const Text('Save Documentation'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-    narrative.dispose(); station.dispose(); hours.dispose();
-    for(final controller in ceControllers.values){controller.dispose();}
-    if (result == null || !mounted) return false;
-    final savedStart = result['start'] as DateTime;
-    final savedEnd = result['end'] as DateTime?;
-    if (savedEnd == null || savedEnd.isBefore(savedStart)) {
-      setState(()=>_error='Enter an actual end time after the start time before closing.');
-      return false;
-    }
-    final requiresCe = ceCategories.isNotEmpty;
-    final ceCredits=result['ceCredits'] as Map<String,double>;
-    // CE credit assignment is optional; validate duration only when credits are entered.
-
-    final elapsedMinutes = TrainingTimeCalculator.elapsedMinutes(savedStart, savedEnd);
-    if (elapsedMinutes == null) {
-      setState(() => _error = 'End Time must be after Start Time.');
-      return false;
-    }
-    if (requiresCe) {
-      final allocatedMinutes = ceCredits.values.fold<int>(0, (sum, value) => sum + parseHoursToMinutes(value.toString()));
-      final roundedElapsedMinutes =
-          TrainingTimeCalculator.roundMinutesToQuarterHour(elapsedMinutes);
-      if (allocatedMinutes > roundedElapsedMinutes) {
-        setState(() => _error = 'Assigned CE credit cannot exceed rounded training hours (${formatQuarterHoursFromMinutes(roundedElapsedMinutes)}).');
-        return false;
-      }
-    }
-    setState(() { _busy=true; _error=null; });
-    try {
-      _setDetail(await _api.updateTrainingSheetDocumentation(
-        d.id, startsAt:savedStart, endsAt:savedEnd,
-        notes:result['notes'] as String, location:result['location'] as String,
-        station:result['station'] as String, shift:result['shift'] as String,
-        trainingCategory: trainingCategory,
-        trainingSheetTemplateId:result['trainingSheetTemplateId'] as String,
-        creditHours:result['hours'] as double,
-        ceCredits:ceCredits,
-      ));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Training time and class description saved.')),
-        );
-      }
-      return true;
-    } catch (error) {
-      if(mounted)setState(()=>_error='Unable to save training documentation: $error');
-      return false;
-    } finally { if(mounted)setState(()=>_busy=false); }
-  }
-
-  Future<void> _reviewPendingSkillSync() async {
-    final d = _detail;
-    if (d == null || _busy) return;
-    try {
-      final pending = await _api.pendingSkillMutationsForClass(d.id);
-      if (!mounted) return;
-      if (pending.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All skill evaluations on this device are synchronized.')),
-        );
-        return;
-      }
-      final server = await _api.getClass(d.id);
-      if (!mounted) return;
-      final batch = pending.first;
-      final raw = batch['results'];
-      final results = raw is List ? raw.whereType<Map>().toList() : <Map>[];
-      final conflict = batch['syncStatus'] == 'CONFLICT';
-      final action = await showDialog<String>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(conflict ? 'Skill results need reconciliation' : 'Skill results waiting to sync'),
-          content: SizedBox(width: 460, height: 340, child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${pending.length} saved batch(es) on this device. '
-                  'Compare local observations with the official server record before discarding anything.'),
-              const SizedBox(height: 8),
-              Expanded(child: ListView(
-                children: results.map((entry) {
-                  final id = entry['enrollmentId']?.toString() ?? '';
-                  final requirement = entry['requirementId']?.toString() ??
-                      batch['requirementId']?.toString() ?? '';
-                  final matches = server.roster.where((person) => person.id == id);
-                  final member = matches.isEmpty ? null : matches.first;
-                  final serverResults = member?.results.where((result) =>
-                      result.requirementId == requirement);
-                  final serverResult = serverResults == null || serverResults.isEmpty
-                      ? 'Not recorded' : serverResults.first.result;
-                  return ListTile(
-                    dense: true,
-                    title: Text(member?.name ?? id),
-                    subtitle: Text('Device: ${entry['result']} · Server: $serverResult'),
-                  );
-                }).toList(),
-              )),
-            ],
-          )),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Keep saved')),
-            TextButton(onPressed: () => Navigator.pop(dialogContext, 'retry'),
-                child: const Text('Retry sync')),
-            TextButton(onPressed: () => Navigator.pop(dialogContext, 'discard'),
-                child: const Text('Review & discard local copy')),
-          ],
-        ),
-      );
-      if (!mounted) return;
-      if (action == 'retry') {
-        final completed = await _api.retryPendingClassMutations();
-        if (!mounted) return;
-        await _load();
-        if (mounted) setState(() => _error = completed > 0
-            ? '$completed queued record(s) synchronized. Reopen sync review for remaining batches.'
-            : 'No queued records synchronized. Check connection or review conflicts.');
-      } else if (action == 'discard') {
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('Discard this device copy?'),
-            content: const Text('Only discard after verifying the official web record. '
-                'This removes the saved local observations without changing server results. '
-                'Any missing or incorrect evaluations must be corrected separately by an authorized instructor.'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Keep saved')),
-              FilledButton(onPressed: () => Navigator.pop(dialogContext, true),
-                  child: const Text('I verified — discard copy')),
-            ],
-          ),
-        ) ?? false;
-        if (confirmed) {
-          await _api.discardReviewedSkillMutation(d.id, batch['key']?.toString() ?? '');
-          if (mounted) setState(() => _error =
-              'Reviewed local copy discarded. Recheck the official Training Sheet before closing.');
-        }
-      }
-    } catch (error) {
-      if (mounted) setState(() => _error = 'Unable to review pending skill results: $error');
-    }
-  }
-
-  Future<void> _closeAndApproveTraining() async {
-    final detail = _detail;
-    if (detail == null || _busy) return;
-
-    int pending;
-    try {
-      pending = await _api.pendingSkillMutationCountForClass(detail.id);
-    } catch (error) {
-      if (mounted) {
-        setState(() => _error =
-            'Unable to check for unsynced skill results before approval: $error');
-      }
-      return;
-    }
-
-    if (pending > 0) {
-      if (mounted) {
-        setState(() => _error =
-            '$pending skill batch(es) are still saved on this device. '
-            'Sync or review them before final approval.');
-      }
-      await _reviewPendingSkillSync();
-      return;
-    }
-
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      // The server validates, closes, and approves the sheet in one operation.
-      // This avoids separate close and approval requests that can leave a
-      // completed sheet waiting for a second request.
-      final approved = await _api.approveTrainingSheet(detail.id);
-      if (!mounted) return;
-      _setDetail(approved);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Training Sheet finalized and approved. Department RMS entry is next.',
-          ),
-        ),
-      );
-    } on ResponderRoadmapApiException catch (error) {
-      if (mounted) {
-        setState(() => _error = error.message);
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(() => _error =
-            'Training Sheet approval did not finish. Refresh the sheet before retrying: $error');
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _approveTrainingSheet() async {
-    final d = _detail;
-    if (d == null || _busy) return;
-    setState(() => _busy = true);
-    try {
-      _setDetail(await _api.approveTrainingSheet(d.id));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Training Sheet approved. RMS entry is now needed.')),
-        );
-      }
-    } on ResponderRoadmapApiException catch (e) {
-      if (mounted) setState(() => _error = e.message);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _markRmsEntered() async {
-    final d = _detail;
-    if (d == null || _busy) return;
-    final reference = TextEditingController(text: d.rmsReference);
-    final note = TextEditingController(text: d.rmsEntryNote);
-    final result = await showDialog<(String, String)>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Mark RMS Entered'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: reference,
-              decoration: const InputDecoration(
-                labelText: 'RMS reference (optional)',
-                hintText: 'Record or incident number',
+              …2851 tokens truncated…ncident number',
               ),
             ),
             const SizedBox(height: 10),
@@ -2364,6 +2103,7 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       for (var i = 0; i < skillIds.length; i += 8)
         skillIds.skip(i).take(8).toList(),
     ];
+    final studentBatches = trainingRosterColumnBatches(detail.roster.length);
     document.addPage(pw.MultiPage(
       pageFormat: pageFormat,
       // Keep the form anchored near the printable top edge. A bounded header is
@@ -2468,9 +2208,11 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
       ],
     ));
     if (longChecklist) {
-      for (var batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-        final batch = batches[batchIndex];
-        final isLastBatch = batchIndex == batches.length - 1;
+      for (var batchIndex = 0;
+          batchIndex < studentBatches.length;
+          batchIndex++) {
+        final studentBatch = studentBatches[batchIndex];
+        final isLastBatch = batchIndex == studentBatches.length - 1;
         document.addPage(pw.MultiPage(
           pageFormat: PdfPageFormat.letter.landscape,
           margin: const pw.EdgeInsets.fromLTRB(28, 12, 28, 22),
@@ -2490,7 +2232,10 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
                 ),
               ),
               pw.Text(
-                'TRAINING SHEET - CHECKLIST RESULTS ${batchIndex + 1} OF ${batches.length}',
+                studentBatch.isEmpty
+                    ? 'TRAINING SHEET - CHECKLIST RESULTS'
+                    : 'TRAINING SHEET - CHECKLIST RESULTS: '
+                        'STUDENTS ${studentBatch.first + 1}-${studentBatch.last + 1}',
                 textAlign: pw.TextAlign.center,
                 style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
               ),
@@ -2504,36 +2249,36 @@ class _DepartmentClassDetailPageState extends State<DepartmentClassDetailPage> {
           ),
           build: (context) => [
             table(
-              ['#', 'Student name', 'Attendance', 'Overall', ...batch.map((id) => '${skillNumbers[id] ?? ''}')],
-              rosterRows.map((row) => <String>[
-                ...row.take(4),
-                for (final id in batch) row[4 + skillIds.indexOf(id)],
-              ]).toList(),
+              [
+                '#',
+                'Checklist item',
+                for (final studentIndex in studentBatch)
+                  'Student ${studentIndex + 1}',
+              ],
+              skillIds.map((id) {
+                final skill = skillById[id];
+                final checklistText = skill == null
+                    ? 'Skill'
+                    : skill.description.isEmpty
+                        ? skill.title
+                        : '${skill.title}: ${skill.description}';
+                final skillIndex = skillIds.indexOf(id);
+                return <String>[
+                  '${skillNumbers[id] ?? ''}',
+                  checklistText,
+                  for (final studentIndex in studentBatch)
+                    rosterRows[studentIndex][4 + skillIndex],
+                ];
+              }).toList(),
               widths: <int, pw.TableColumnWidth>{
-                0: const pw.FixedColumnWidth(20),
-                1: const pw.FlexColumnWidth(2.2),
-                2: const pw.FlexColumnWidth(1.1),
-                3: const pw.FlexColumnWidth(1.5),
-                for (var i = 0; i < batch.length; i++)
-                  i + 4: const pw.FlexColumnWidth(.72),
+                0: const pw.FixedColumnWidth(24),
+                1: const pw.FlexColumnWidth(4.5),
+                for (var i = 0; i < studentBatch.length; i++)
+                  i + 2: const pw.FlexColumnWidth(.85),
               },
             ),
             pw.SizedBox(height: 5),
             resultLegend(),
-            pw.SizedBox(height: 8),
-            heading('Station / skill reference'),
-            for (final id in batch)
-              pw.Padding(
-                padding: const pw.EdgeInsets.only(left: 6, top: 3),
-                child: pw.Text(
-                  pdfText(
-                    (skillById[id]?.description.isNotEmpty ?? false)
-                        ? '${skillNumbers[id]}. ${skillById[id]!.title}: ${skillById[id]!.description}'
-                        : '${skillNumbers[id]}. ${skillById[id]?.title ?? 'Skill'}',
-                  ),
-                  style: const pw.TextStyle(fontSize: 8),
-                ),
-              ),
             if (isLastBatch) ...[
               pw.SizedBox(height: 10),
               pw.Row(children: [
