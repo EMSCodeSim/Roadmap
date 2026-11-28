@@ -59,11 +59,13 @@ extension _SimpleModeX on _SimpleMode {
 class SimpleQuickLogSheet extends StatefulWidget {
   final LogPrefill? prefill;
   final bool showDepartmentQrAction;
+  final ValueChanged<bool>? onRootViewChanged;
 
   const SimpleQuickLogSheet({
     super.key,
     this.prefill,
     this.showDepartmentQrAction = true,
+    this.onRootViewChanged,
   });
 
   @override
@@ -198,12 +200,18 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
                       key: const ValueKey('choice'),
                       mode: _mode!,
                       customChoices: _trackersForMode(_mode!),
-                      onBack: () => setState(() => _mode = null),
+                      onBack: () {
+                        setState(() => _mode = null);
+                        widget.onRootViewChanged?.call(true);
+                      },
                       onPick: _pickChoice,
                     )
                   : _CategoryStep(
                       key: const ValueKey('category'),
-                      onPick: (mode) => setState(() => _mode = mode),
+                      onPick: (mode) {
+                        setState(() => _mode = mode);
+                        widget.onRootViewChanged?.call(false);
+                      },
                       visibleModes: _visibleModes,
                       onCustomize: _openCustomization,
                       onTrainingResources: _openTrainingResources,
