@@ -302,7 +302,7 @@ class _SimpleQuickLogSheetState extends State<SimpleQuickLogSheet> {
               subtitle: 'Open FireOpsSim',
               onTap: () => Navigator.of(sheetContext).pop(
                 Uri.parse(
-                  'https://fireopssim.com/fire-service-training-library.html',
+                  'https://fireopssim.com/roadmap/',
                 ),
               ),
             ),
