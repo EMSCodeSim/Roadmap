@@ -2,6 +2,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:firepath/utils/training_record_format.dart';
 
 void main() {
+  test('long checklist student columns stay tied to numbered roster batches', () {
+    expect(
+      trainingRosterColumnBatches(10),
+      <List<int>>[
+        <int>[0, 1, 2, 3, 4, 5, 6, 7],
+        <int>[8, 9],
+      ],
+    );
+    expect(trainingRosterColumnBatches(0), const <List<int>>[<int>[]]);
+  });
+
   test('preserves actual overall outcomes and does not turn pending into pass', () {
     expect(formatTrainingOverallResult('PASS'), 'Overall: PASS');
     expect(formatTrainingOverallResult('FAIL'), 'Overall: FAIL');
